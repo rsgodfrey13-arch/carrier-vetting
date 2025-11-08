@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Carrier Vetting</title>
+</head>
+<body>
+  <h1>Carrier List</h1>
+  <ul id="carrier-list"></ul>
+
+  <script>
+    fetch('/api/carriers')
+      .then(res => res.json())
+      .then(data => {
+        const list = document.getElementById('carrier-list');
+        list.innerHTML = data.map(c => `<li>${c.name}</li>`).join('');
+      })
+      .catch(err => console.error('Error:', err));
+  </script>
+</body>
+</html>
