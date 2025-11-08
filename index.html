@@ -2,20 +2,79 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Carrier Vetting</title>
+  <title>Carrier Vetting - Simple View</title>
 </head>
 <body>
-  <h1>Carrier List</h1>
-  <ul id="carrier-list"></ul>
+  <h1>Carriers</h1>
+
+  <table border="1">
+    <thead>
+      <tr>
+        <th>DOT</th>
+        <th>Address 1</th>
+        <th>Address 2</th>
+        <th>City</th>
+        <th>State</th>
+        <th>Zip</th>
+      </tr>
+    </thead>
+    <tbody id="carrier-table-body">
+      <!-- Rows will be added here by JavaScript -->
+    </tbody>
+  </table>
 
   <script>
+    // Call your Node.js API
     fetch('/api/carriers')
-      .then(res => res.json())
+      .then(response => response.json())
       .then(data => {
-        const list = document.getElementById('carrier-list');
-        list.innerHTML = data.map(c => `<li>${c.name}</li>`).join('');
+        const tbody = document.getElementById('carrier-table-body');
+
+        // If no data, show a simple message
+        if (!Array.isArray(data) || data.length === 0) {
+          const row = document.createElement('tr');
+          const cell = document.createElement('td');
+          cell.colSpan = 6;
+          cell.textContent = 'No carriers found.';
+          row.appendChild(cell);
+          tbody.appendChild(row);
+          return;
+        }
+
+        // For each carrier row from the database, add a table row
+        data.forEach(c => {
+          const row = document.createElement('tr');
+
+          const dotCell = document.createElement('td');
+          dotCell.textContent = c.dot || '';
+          row.appendChild(dotCell);
+
+          const address1Cell = document.createElement('td');
+          address1Cell.textContent = c.address1 || '';
+          row.appendChild(address1Cell);
+
+          const address2Cell = document.createElement('td');
+          address2Cell.textContent = c.address2 || '';
+          row.appendChild(address2Cell);
+
+          const cityCell = document.createElement('td');
+          cityCell.textContent = c.city || '';
+          row.appendChild(cityCell);
+
+          const stateCell = document.createElement('td');
+          stateCell.textContent = c.state || '';
+          row.appendChild(stateCell);
+
+          const zipCell = document.createElement('td');
+          zipCell.textContent = c.zip || '';
+          row.appendChild(zipCell);
+
+          tbody.appendChild(row);
+        });
       })
-      .catch(err => console.error('Error:', err));
+      .catch(err => {
+        console.error('Error fetching carriers:', err);
+      });
   </script>
 </body>
 </html>
