@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Carrier Profile</title>
+  <link rel="stylesheet" href="style1.css">
+</head>
+<body>
+  <div class="page">
+    <h1 class="page-title">Carrier Profile</h1>
+
+    <section id="carrier-header" class="carrier-header">
+      <div class="carrier-header-top">
+        <div class="carrier-name-block">
+          <div id="carrier-name" class="carrier-name">Loading…</div>
+          <div class="carrier-ids">
+            DOT <span id="carrier-dot">—</span>
+          </div>
+        </div>
+        <div id="carrier-status" class="carrier-pill">
+          Active
+        </div>
+      </div>
+
+      <div class="carrier-meta-row">
+        <div class="meta-block">
+          <div class="meta-label">Address</div>
+          <div id="carrier-address" class="meta-value">—</div>
+        </div>
+        <div class="meta-block">
+          <div class="meta-label">Location</div>
+          <div id="carrier-location" class="meta-value">—</div>
+        </div>
+        <div class="meta-block">
+          <div class="meta-label">Postal Code</div>
+          <div id="carrier-zip" class="meta-value">—</div>
+        </div>
+      </div>
+    </section>
+
+    <p class="help-text" style="margin-top:10px;">
+      <a href="/" class="dot-link">← Back to all carriers</a>
+    </p>
+  </div>
+
+  <script>
+    async function loadCarrier() {
+      // /12345 → "12345"
+      const path = window.location.pathname.replace(/^\\//, '');
+      const dot = decodeURIComponent(path);
+
+      if (!dot) return;
+
+      try {
+        // use single-carrier endpoint (cleaner)
+        const res = await fetch('/api/carriers/' + encodeURIComponent(dot));
+
+        if (res.status === 404) {
+          document.getElementById('carrier-name').textContent = 'Carrier not found';
+          document.getElementById('carrier-dot').textContent = dot;
+          return;
+        }
+
+        const c = await res.json();
+
+        const name = c.name || `Carrier ${c.dot || c.id || ''}`.trim();
+        document.getElementById('carrier-name').textContent = name;
+        document.getElementById('carrier-dot').textContent = c.dot || c.id || '—';
+
+        const addressParts = [c.address1, c.address2].filter(Boolean).join(', ');
+        document.getElementById('carrier-address').textContent = addressParts || '—';
+
+        const locParts = [c.city, c.state].filter(Boolean).join(', ');
+        document.getElementById('carrier-location').textContent = locParts || '—';
+
+        document.getElementById('carrier-zip').textContent = c.zip || '—';
+      } catch (err) {
+        console.error('Error fetching carrier:', err);
+      }
+    }
+
+    loadCarrier();
+  </script>
+</body>
+</html>
