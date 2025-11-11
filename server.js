@@ -35,7 +35,7 @@ app.get('/api/carriers', async (req, res) => {
         phystate as state,
         phyzipcode as zip
       FROM public.carriers
-      ORDER BY id
+      ORDER BY dotnumber
       LIMIT 50;
     `);
 
@@ -64,7 +64,7 @@ app.get('/api/carriers/:dot', async (req, res) => {
         phystate as state,
         phyzipcode as zip
       FROM public.carriers
-      WHERE id = $1;
+      WHERE dotnumber = $1;
     `, [dot]);
 
     if (result.rows.length === 0) {
