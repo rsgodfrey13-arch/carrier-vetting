@@ -28,12 +28,12 @@ app.get('/api/carriers', async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
-        id        AS dot,
-        address1,
-        address2,
-        city,
-        state,
-        zip
+        dotnumber        AS dot,
+        phyStreet as address1,
+        null as address2,
+        phycity as city,
+        phystate as state,
+        phyzipcode as zip
       FROM public.carriers
       ORDER BY id
       LIMIT 50;
@@ -57,12 +57,12 @@ app.get('/api/carriers/:dot', async (req, res) => {
 
     const result = await pool.query(`
       SELECT
-        id        AS dot,
-        address1,
-        address2,
-        city,
-        state,
-        zip
+        dotnumber        AS dot,
+        phyStreet as address1,
+        null as address2,
+        phycity as city,
+        phystate as state,
+        phyzipcode as zip
       FROM public.carriers
       WHERE id = $1;
     `, [dot]);
