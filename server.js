@@ -1,52 +1,51 @@
 const express = require('express');
 const { Pool } = require('pg');
+const path = require('path');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Serve your static files (HTML, JS, CSS) from the same folder
-app.use(express.static(__dirname));
+app.use(express.static(__dirname)); // serves index.html, style1.css, carrier.html, etc.
 
-/**
- * 1) DIRECT Postgres connection settings for testing
- *    We'll hard-code these first to make sure everything works.
- *    In STEP 3 we'll switch back to DATABASE_URL for DigitalOcean.
- */
+// Postgres connection
 const pool = new Pool({
-  host: 'carrier-vetting-do-user-27858216-0.e.db.ondigitalocean.com',
-  port: 25060,                 // from DigitalOcean screen
-  database: 'defaultdb',       // from DigitalOcean screen
-  user: 'doadmin',             // from DigitalOcean screen
-  password: 'AVNS_QZfAFA-4TzNXYII9lET',
+  connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
-/**
- * 2) API endpoint used by your HTML: /api/carriers
- */
+// API – all carriers
 app.get('/api/carriers', async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT
-        id        AS dot,
-        address1,
-        address2,
-        city,
-        state,
-        zip
-      FROM public.carriers
-      ORDER BY id
-      LIMIT 50;
-    `);
-
-    console.log('Rows from DB:', result.rows); // debug
+    const result = await pool.query('SELECT * FROM carriers;');
     res.json(result.rows);
   } catch (err) {
-    console.error('Error in /api/carriers:', err);
+    console.error(err);
     res.status(500).json({ error: 'Database query failed' });
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+// API – single carrier by DOT (optional but nice)
+app.get('/api/carriers/:dot', async (req, res) => {
+  try {
+    const dot = req.params.dot;
+    const result = await pool.query(
+      'SELECT * FROM carriers WHERE dot = $1;',
+      [dot]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Carrier not found' });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database query failed' });
+  }
 });
+
+// Carrier profile page: /12345
+// only match digits so /api/* and other paths still work
+app.get('/:dot(\\d+)', (req, res) => {
+  res.sendFile(path.join(__dirname, 'carrier.html'));
+});
+
+app.listen(port, () => console.log(`Server running on port ${port}`));
