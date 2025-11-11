@@ -1,0 +1,200 @@
+:root{
+  /* brandy blue-ish palette */
+  --brand:      #00b7ff;
+  --brand-dark: #0b78cf;
+  --ink:        #0F172A;
+  --muted:      #5B6577;
+  --card:       #0B1624;
+  --border:     rgba(255,255,255,.15);
+  --radius:     14px;
+}
+
+/* base layout */
+html, body{
+  min-height:100%;
+  margin:0;
+  padding:0;
+}
+
+body{
+  font-family:"Segoe UI", Roboto, Inter, system-ui, -apple-system, sans-serif;
+  color:#F9FEFF;
+  /* blue gradient similar to your political compass site */
+  background:
+    radial-gradient(1400px 900px at 20% -10%, rgba(255,255,255,.08), transparent 60%),
+    linear-gradient(180deg, #00b7ff 0%, #0aa1e2 45%, #0b78cf 100%);
+  display:flex;
+  justify-content:center;
+  padding:24px 12px;
+  box-sizing:border-box;
+}
+
+.page{
+  width:100%;
+  max-width:960px;
+}
+
+/* title */
+.page-title{
+  margin:0 0 16px;
+  font-size:24px;
+  letter-spacing:.4px;
+  font-weight:700;
+  text-shadow:0 1px 2px rgba(0,0,0,.35);
+}
+
+/* ===== carrier profile header (the “circle” area) ===== */
+
+.carrier-header{
+  background:
+    radial-gradient(circle at 0 0, rgba(255,255,255,.12), transparent 55%),
+    linear-gradient(135deg, #111827, #020617);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    0 18px 40px rgba(0,0,0,.65);
+  padding:18px 20px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.carrier-header-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:16px;
+  flex-wrap:wrap;
+}
+
+.carrier-name-block{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.carrier-name{
+  font-size:26px;
+  font-weight:700;
+  letter-spacing:.3px;
+}
+
+.carrier-ids{
+  font-size:14px;
+  color:#C2D5E5;
+}
+
+.carrier-pill{
+  padding:6px 12px;
+  border-radius:999px;
+  background:rgba(248, 180, 80, .18);
+  border:1px solid rgba(248, 180, 80, .7);
+  color:#FED7AA;
+  font-size:13px;
+  font-weight:600;
+  letter-spacing:.3px;
+  text-transform:uppercase;
+}
+
+.carrier-meta-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:16px;
+  font-size:13px;
+  color:#D0E4F5;
+}
+
+.meta-block{
+  min-width:180px;
+}
+
+.meta-label{
+  text-transform:uppercase;
+  font-size:11px;
+  letter-spacing:.18px;
+  color:#8BA1B5;
+  margin-bottom:2px;
+}
+
+.meta-value{
+  font-size:13px;
+  color:#E5F3FF;
+}
+
+/* ===== table card ===== */
+
+.list-card{
+  margin-top:18px;
+  background:rgba(6,25,30,.88);
+  border-radius:var(--radius);
+  border:1px solid var(--border);
+  box-shadow:0 12px 30px rgba(0,0,0,.55);
+  padding:14px 16px 18px;
+}
+
+.list-card h2{
+  margin:0 0 6px;
+  font-size:18px;
+  letter-spacing:.3px;
+}
+
+.help-text{
+  margin:0 0 10px;
+  font-size:13px;
+  color:#C9E5DD;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+}
+
+thead{
+  background:rgba(15,23,42,.96);
+}
+
+th, td{
+  padding:8px 10px;
+  border-bottom:1px solid rgba(148,163,184,.4);
+  text-align:left;
+  white-space:nowrap;
+}
+
+th{
+  font-weight:600;
+  color:#E5F0FF;
+  font-size:12px;
+  text-transform:uppercase;
+  letter-spacing:.15px;
+}
+
+tr:hover{
+  background:rgba(148,163,184,.20);
+  cursor:pointer;
+}
+
+/* dot links */
+
+.dot-link{
+  color:#7DD3FC;
+  text-decoration:none;
+  font-weight:600;
+}
+.dot-link:hover{
+  text-decoration:underline;
+}
+
+/* helpers */
+
+.hidden{ display:none; }
+
+@media (max-width:640px){
+  .carrier-meta-row{
+    flex-direction:column;
+  }
+  th,td{
+    white-space:normal;
+  }
+}
