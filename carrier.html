@@ -3,90 +3,123 @@
 <head>
   <meta charset="UTF-8">
   <title>Carrier Profile</title>
-  <link rel="stylesheet" href="style1.css">
-</head>
-<body>
-  <div class="page">
-    <h1 class="page-title">Carrier Profile</h1>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- HEADER -->
-    <section id="carrier-header" class="carrier-header">
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap"
+    rel="stylesheet">
+
+  <link rel="stylesheet" href="profile_style.css">
+</head>
+<body class="carrier-page">
+  <!-- techy background layers -->
+  <div class="bg-gradient"></div>
+  <div class="bg-grid"></div>
+
+  <div class="page">
+    <header class="page-header">
+      <div class="page-header-left">
+        <h1 class="page-title">Carrier Profile</h1>
+        <p class="page-subtitle">Live FMCSA-powered risk snapshot</p>
+      </div>
+      <div class="page-header-right">
+        <a href="/" class="ghost-link">
+          <span class="ghost-link-icon">←</span>
+          Back to all carriers
+        </a>
+      </div>
+    </header>
+
+    <!-- HERO HEADER CARD -->
+    <section id="carrier-header" class="carrier-header glass-card">
       <div class="carrier-header-top">
         <div class="carrier-name-block">
-          <div id="carrier-name" class="carrier-name">Loading…</div>
-          <div class="carrier-ids">
-            DOT <span id="carrier-dot">—</span>
+          <div class="carrier-name-row">
+            <div id="carrier-name" class="carrier-name">Loading…</div>
           </div>
-          <div class="carrier-ids">
-            EIN <span id="carrier-ein">—</span>
+
+          <div class="carrier-id-row">
+            <span class="carrier-ids">DOT <span id="carrier-dot">—</span></span>
+            <span class="carrier-ids">EIN <span id="carrier-ein">—</span></span>
           </div>
         </div>
 
         <div class="carrier-header-right">
-          <div id="carrier-status" class="carrier-pill">
-            —
+          <div class="pill-group">
+            <div id="carrier-status" class="carrier-pill">
+              —
+            </div>
+            <div class="carrier-pill ghost small" id="carrier-allowed">
+              —
+            </div>
           </div>
-          <div class="carrier-pill small" id="carrier-allowed">
-            —
+
+          <div class="quick-metrics">
+            <div class="metric-chip">
+              <span class="metric-label">ISS Score</span>
+              <span id="field-issscore" class="metric-value">—</span>
+            </div>
+            <div class="metric-chip">
+              <span class="metric-label">Safety Rating</span>
+              <span id="field-safetyrating" class="metric-value">—</span>
+            </div>
+            <div class="metric-chip">
+              <span class="metric-label">MCS-150 Outdated</span>
+              <span id="field-mcs150outdated" class="metric-value">—</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="carrier-meta-row">
-        <div class="meta-block">
-          <div class="meta-label">Legal Name</div>
-          <div id="carrier-legalname" class="meta-value">—</div>
+      <div class="carrier-meta-layout">
+        <div class="meta-column">
+          <div class="meta-block">
+            <div class="meta-label">Legal Name</div>
+            <div id="carrier-legalname" class="meta-value">—</div>
+          </div>
+          <div class="meta-block">
+            <div class="meta-label">DBA</div>
+            <div id="carrier-dbaname" class="meta-value">—</div>
+          </div>
         </div>
-        <div class="meta-block">
-          <div class="meta-label">DBA</div>
-          <div id="carrier-dbaname" class="meta-value">—</div>
+
+        <div class="meta-column">
+          <div class="meta-block">
+            <div class="meta-label">Location</div>
+            <div id="carrier-location" class="meta-value">—</div>
+          </div>
+          <div class="meta-block">
+            <div class="meta-label">Postal Code</div>
+            <div id="carrier-zip" class="meta-value">—</div>
+          </div>
         </div>
-        <div class="meta-block">
-          <div class="meta-label">Address</div>
-          <div id="carrier-address" class="meta-value">—</div>
+
+        <div class="meta-column">
+          <div class="meta-block">
+            <div class="meta-label">Address</div>
+            <div id="carrier-address" class="meta-value">—</div>
+          </div>
+          <div class="meta-block">
+            <div class="meta-label">Snapshot Date</div>
+            <div id="field-snapshotdate" class="meta-value">—</div>
+          </div>
         </div>
       </div>
 
-      <div class="carrier-meta-row">
-        <div class="meta-block">
-          <div class="meta-label">Location</div>
-          <div id="carrier-location" class="meta-value">—</div>
-        </div>
-        <div class="meta-block">
-          <div class="meta-label">Postal Code</div>
-          <div id="carrier-zip" class="meta-value">—</div>
-        </div>
-        <div class="meta-block">
-          <div class="meta-label">Snapshot Date</div>
-          <div id="field-snapshotdate" class="meta-value">—</div>
-        </div>
-      </div>
-
-      <div class="carrier-meta-row">
-        <div class="meta-block">
-          <div class="meta-label">ISS Score</div>
-          <div id="field-issscore" class="meta-value">—</div>
-        </div>
-        <div class="meta-block">
-          <div class="meta-label">Safety Rating</div>
-          <div id="field-safetyrating" class="meta-value">—</div>
-        </div>
-        <div class="meta-block">
-          <div class="meta-label">MCS-150 Outdated</div>
-          <div id="field-mcs150outdated" class="meta-value">—</div>
-        </div>
-      </div>
+      <div class="hero-accent-line"></div>
     </section>
-
-    <p class="help-text" style="margin-top:10px;">
-      <a href="/" class="dot-link">← Back to all carriers</a>
-    </p>
 
     <!-- MAIN GRID -->
     <section class="card-grid">
       <!-- Basics & Meta -->
-      <article class="info-card">
-        <h2>Basics & Meta</h2>
+      <article class="info-card glass-card">
+        <div class="card-header">
+          <h2>Basics &amp; Meta</h2>
+          <span class="card-tag">Timeline</span>
+        </div>
         <dl>
           <div class="row">
             <dt>Retrieval Date</dt>
@@ -128,8 +161,11 @@
       </article>
 
       <!-- Operations & Authority -->
-      <article class="info-card">
-        <h2>Operations & Authority</h2>
+      <article class="info-card glass-card">
+        <div class="card-header">
+          <h2>Operations &amp; Authority</h2>
+          <span class="card-tag">Profile</span>
+        </div>
         <dl>
           <div class="row">
             <dt>Common Authority Status</dt>
@@ -171,8 +207,11 @@
       </article>
 
       <!-- Insurance & Financial -->
-      <article class="info-card">
-        <h2>Insurance & Financial</h2>
+      <article class="info-card glass-card">
+        <div class="card-header">
+          <h2>Insurance &amp; Financial</h2>
+          <span class="card-tag">Coverage</span>
+        </div>
         <dl>
           <div class="row">
             <dt>BIPD Insurance On File</dt>
@@ -213,9 +252,12 @@
         </dl>
       </article>
 
-      <!-- Crashes & Events -->
-      <article class="info-card">
-        <h2>Crashes</h2>
+      <!-- Crashes -->
+      <article class="info-card glass-card">
+        <div class="card-header">
+          <h2>Crashes</h2>
+          <span class="card-tag">Events</span>
+        </div>
         <dl>
           <div class="row">
             <dt>Total Crashes</dt>
@@ -237,9 +279,12 @@
       </article>
 
       <!-- Inspections & OOS -->
-      <article class="info-card">
-        <h2>Inspections & OOS</h2>
-        <dl>
+      <article class="info-card wide glass-card">
+        <div class="card-header">
+          <h2>Inspections &amp; OOS</h2>
+          <span class="card-tag">Roadside</span>
+        </div>
+        <dl class="two-column">
           <div class="row">
             <dt>Driver Inspections</dt>
             <dd id="field-driverinsp">—</dd>
@@ -303,8 +348,11 @@
       </article>
 
       <!-- Counts & Flags -->
-      <article class="info-card">
-        <h2>Counts & Flags</h2>
+      <article class="info-card glass-card">
+        <div class="card-header">
+          <h2>Counts &amp; Flags</h2>
+          <span class="card-tag">Status</span>
+        </div>
         <dl>
           <div class="row">
             <dt>Status Code</dt>
@@ -322,8 +370,11 @@
       </article>
 
       <!-- FMCSA Links -->
-      <article class="info-card">
-        <h2>FMCSA Source Links</h2>
+      <article class="info-card glass-card">
+        <div class="card-header">
+          <h2>FMCSA Source Links</h2>
+          <span class="card-tag">Raw Data</span>
+        </div>
         <dl>
           <div class="row">
             <dt>Basics</dt>
@@ -366,162 +417,160 @@
     </section>
   </div>
 
-<script>
-  function setText(id, value) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.textContent = (value !== null && value !== undefined && value !== '') ? value : '—';
-  }
-
-  function setLink(id, url) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    if (url) {
-      el.textContent = 'Open';
-      el.href = url;
-    } else {
-      el.textContent = '—';
-      el.removeAttribute('href');
+  <script>
+    function setText(id, value) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = (value !== null && value !== undefined && value !== '') ? value : '—';
     }
-  }
 
-  async function loadCarrier() {
-    const path = window.location.pathname.replace(/^\//, '');
-    const dot = decodeURIComponent(path);
-
-    if (!dot) return;
-
-    try {
-      const res = await fetch('/api/carriers/' + encodeURIComponent(dot));
-
-      if (!res.ok) {
-        console.error('Carrier fetch failed:', res.status, await res.text());
-        document.getElementById('carrier-name').textContent = 'Carrier not found';
-        document.getElementById('carrier-dot').textContent = dot;
-        return;
-      }
-
-      const c = await res.json();
-
-      // Top-level header stuff
-      const name = (c.legalname || c.dbaname || `Carrier ${c.dotnumber || ''}`).trim();
-      document.getElementById('carrier-name').textContent = name || '—';
-      document.getElementById('carrier-dot').textContent = c.dotnumber || '—';
-      document.getElementById('carrier-ein').textContent = c.ein || '—';
-
-      const addr = [c.phystreet].filter(Boolean).join(', ');
-      document.getElementById('carrier-address').textContent = addr || '—';
-
-      const loc = [c.phycity, c.phystate, c.phycountry].filter(Boolean).join(', ');
-      document.getElementById('carrier-location').textContent = loc || '—';
-
-      document.getElementById('carrier-zip').textContent = c.phyzipcode || '—';
-
-      // Status pills
-      const statusText = c.statuscode || 'Status Unknown';
-      const allowedText = c.allowedtooperate
-        ? `Allowed to Operate: ${c.allowedtooperate}`
-        : 'Allowed to Operate: —';
-
-      const statusEl = document.getElementById('carrier-status');
-      statusEl.textContent = statusText;
-
-      const allowedEl = document.getElementById('carrier-allowed');
-      allowedEl.textContent = allowedText;
-
-      // Simple visual state if you want (optional, depends on your CSS)
-      if ((c.allowedtooperate || '').toString().toUpperCase() === 'Y') {
-        statusEl.classList.add('pill-ok');
+    function setLink(id, url) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (url) {
+        el.textContent = 'Open';
+        el.href = url;
       } else {
-        statusEl.classList.add('pill-warn');
+        el.textContent = '—';
+        el.removeAttribute('href');
       }
-
-      // Header meta
-      setText('carrier-legalname', c.legalname);
-      setText('carrier-dbaname', c.dbaname);
-      setText('field-snapshotdate', c.snapshotdate);
-      setText('field-issscore', c.issscore);
-      setText('field-safetyrating', c.safetyrating);
-      setText('field-mcs150outdated', c.mcs150outdated);
-
-      // Basics & meta
-      setText('field-retrieval_date', c.retrieval_date);
-      setText('field-statuscode', c.statuscode);
-      setText('field-reviewdate', c.reviewdate);
-      setText('field-reviewtype', c.reviewtype);
-      setText('field-safetyratingdate', c.safetyratingdate);
-      setText('field-safetyreviewdate', c.safetyreviewdate);
-      setText('field-safetyreviewtype', c.safetyreviewtype);
-      setText('field-oosdate', c.oosdate);
-      setText('field-oosratenationalaverageyear', c.oosratenationalaverageyear);
-
-      // Operations & authority
-      setText('field-commonauthoritystatus', c.commonauthoritystatus);
-      setText('field-contractauthoritystatus', c.contractauthoritystatus);
-      setText('field-brokerauthoritystatus', c.brokerauthoritystatus);
-      setText('field-carrieroperation_carrieroperationcode', c.carrieroperation_carrieroperationcode);
-      setText('field-carrieroperation_carrieroperationdesc', c.carrieroperation_carrieroperationdesc);
-      setText('field-censustypeid_censustype', c.censustypeid_censustype);
-      setText('field-censustypeid_censustypedesc', c.censustypeid_censustypedesc);
-      setText('field-censustypeid_censustypeid', c.censustypeid_censustypeid);
-      setText('field-ispassengercarrier', c.ispassengercarrier);
-
-      // Insurance & financial
-      setText('field-bipdinsuranceonfile', c.bipdinsuranceonfile);
-      setText('field-bipdinsurancerequired', c.bipdinsurancerequired);
-      setText('field-bipdrequiredamount', c.bipdrequiredamount);
-      setText('field-bondinsuranceonfile', c.bondinsuranceonfile);
-      setText('field-bondinsurancerequired', c.bondinsurancerequired);
-      setText('field-cargoinsuranceonfile', c.cargoinsuranceonfile);
-      setText('field-cargoinsurancerequired', c.cargoinsurancerequired);
-      setText('field-allowedtooperate', c.allowedtooperate);
-      setText('field-ein', c.ein);
-
-      // Crashes
-      setText('field-crashtotal', c.crashtotal);
-      setText('field-fatalcrash', c.fatalcrash);
-      setText('field-injcrash', c.injcrash);
-      setText('field-towawaycrash', c.towawaycrash);
-
-      // Inspections & OOS
-      setText('field-driverinsp', c.driverinsp);
-      setText('field-driveroosinsp', c.driveroosinsp);
-      setText('field-driveroosrate', c.driveroosrate);
-      setText('field-driveroosratenationalaverage', c.driveroosratenationalaverage);
-
-      setText('field-hazmatinsp', c.hazmatinsp);
-      setText('field-hazmatoosinsp', c.hazmatoosinsp);
-      setText('field-hazmatoosrate', c.hazmatoosrate);
-      setText('field-hazmatoosratenationalaverage', c.hazmatoosratenationalaverage);
-
-      setText('field-vehicleinsp', c.vehicleinsp);
-      setText('field-vehicleoosinsp', c.vehicleoosinsp);
-      setText('field-vehicleoosrate', c.vehicleoosrate);
-      setText('field-vehicleoosratenationalaverage', c.vehicleoosratenationalaverage);
-
-      setText('field-totaldrivers', c.totaldrivers);
-      setText('field-totalpowerunits', c.totalpowerunits);
-
-      // Counts & flags (dup view)
-      setText('field-statuscode-dup', c.statuscode);
-      setText('field-mcs150outdated-dup', c.mcs150outdated);
-      setText('field-snapshotdate-dup', c.snapshotdate);
-
-      // FMCSA links
-      setLink('field-link_basics', c.link_basics);
-      setLink('field-link_cargo_carried', c.link_cargo_carried);
-      setLink('field-link_operation_classification', c.link_operation_classification);
-      setLink('field-link_docket_numbers', c.link_docket_numbers);
-      setLink('field-link_active_for_hire', c.link_active_for_hire);
-      setLink('field-link_self', c.link_self);
-    } catch (err) {
-      console.error('Error fetching carrier:', err);
-      document.getElementById('carrier-name').textContent = 'Error loading carrier';
     }
-  }
 
-  loadCarrier();
-</script>
+    async function loadCarrier() {
+      const path = window.location.pathname.replace(/^\//, '');
+      const dot = decodeURIComponent(path);
 
+      if (!dot) return;
+
+      try {
+        const res = await fetch('/api/carriers/' + encodeURIComponent(dot));
+
+        if (!res.ok) {
+          console.error('Carrier fetch failed:', res.status, await res.text());
+          document.getElementById('carrier-name').textContent = 'Carrier not found';
+          document.getElementById('carrier-dot').textContent = dot;
+          return;
+        }
+
+        const c = await res.json();
+
+        // Top-level header stuff
+        const name = (c.legalname || c.dbaname || `Carrier ${c.dotnumber || ''}`).trim();
+        document.getElementById('carrier-name').textContent = name || '—';
+        document.getElementById('carrier-dot').textContent = c.dotnumber || '—';
+        document.getElementById('carrier-ein').textContent = c.ein || '—';
+
+        const addr = [c.phystreet].filter(Boolean).join(', ');
+        document.getElementById('carrier-address').textContent = addr || '—';
+
+        const loc = [c.phycity, c.phystate, c.phycountry].filter(Boolean).join(', ');
+        document.getElementById('carrier-location').textContent = loc || '—';
+
+        document.getElementById('carrier-zip').textContent = c.phyzipcode || '—';
+
+        // Status pills
+        const statusText = c.statuscode || 'Status Unknown';
+        const allowedText = c.allowedtooperate
+          ? `Allowed to Operate: ${c.allowedtooperate}`
+          : 'Allowed to Operate: —';
+
+        const statusEl = document.getElementById('carrier-status');
+        statusEl.textContent = statusText;
+
+        const allowedEl = document.getElementById('carrier-allowed');
+        allowedEl.textContent = allowedText;
+
+        if ((c.allowedtooperate || '').toString().toUpperCase() === 'Y') {
+          statusEl.classList.add('pill-ok');
+        } else {
+          statusEl.classList.add('pill-warn');
+        }
+
+        // Header meta
+        setText('carrier-legalname', c.legalname);
+        setText('carrier-dbaname', c.dbaname);
+        setText('field-snapshotdate', c.snapshotdate);
+        setText('field-issscore', c.issscore);
+        setText('field-safetyrating', c.safetyrating);
+        setText('field-mcs150outdated', c.mcs150outdated);
+
+        // Basics & meta
+        setText('field-retrieval_date', c.retrieval_date);
+        setText('field-statuscode', c.statuscode);
+        setText('field-reviewdate', c.reviewdate);
+        setText('field-reviewtype', c.reviewtype);
+        setText('field-safetyratingdate', c.safetyratingdate);
+        setText('field-safetyreviewdate', c.safetyreviewdate);
+        setText('field-safetyreviewtype', c.safetyreviewtype);
+        setText('field-oosdate', c.oosdate);
+        setText('field-oosratenationalaverageyear', c.oosratenationalaverageyear);
+
+        // Operations & authority
+        setText('field-commonauthoritystatus', c.commonauthoritystatus);
+        setText('field-contractauthoritystatus', c.contractauthoritystatus);
+        setText('field-brokerauthoritystatus', c.brokerauthoritystatus);
+        setText('field-carrieroperation_carrieroperationcode', c.carrieroperation_carrieroperationcode);
+        setText('field-carrieroperation_carrieroperationdesc', c.carrieroperation_carrieroperationdesc);
+        setText('field-censustypeid_censustype', c.censustypeid_censustype);
+        setText('field-censustypeid_censustypedesc', c.censustypeid_censustypedesc);
+        setText('field-censustypeid_censustypeid', c.censustypeid_censustypeid);
+        setText('field-ispassengercarrier', c.ispassengercarrier);
+
+        // Insurance & financial
+        setText('field-bipdinsuranceonfile', c.bipdinsuranceonfile);
+        setText('field-bipdinsurancerequired', c.bipdinsurancerequired);
+        setText('field-bipdrequiredamount', c.bipdrequiredamount);
+        setText('field-bondinsuranceonfile', c.bondinsuranceonfile);
+        setText('field-bondinsurancerequired', c.bondinsurancerequired);
+        setText('field-cargoinsuranceonfile', c.cargoinsuranceonfile);
+        setText('field-cargoinsurancerequired', c.cargoinsurancerequired);
+        setText('field-allowedtooperate', c.allowedtooperate);
+        setText('field-ein', c.ein);
+
+        // Crashes
+        setText('field-crashtotal', c.crashtotal);
+        setText('field-fatalcrash', c.fatalcrash);
+        setText('field-injcrash', c.injcrash);
+        setText('field-towawaycrash', c.towawaycrash);
+
+        // Inspections & OOS
+        setText('field-driverinsp', c.driverinsp);
+        setText('field-driveroosinsp', c.driveroosinsp);
+        setText('field-driveroosrate', c.driveroosrate);
+        setText('field-driveroosratenationalaverage', c.driveroosratenationalaverage);
+
+        setText('field-hazmatinsp', c.hazmatinsp);
+        setText('field-hazmatoosinsp', c.hazmatoosinsp);
+        setText('field-hazmatoosrate', c.hazmatoosrate);
+        setText('field-hazmatoosratenationalaverage', c.hazmatoosratenationalaverage);
+
+        setText('field-vehicleinsp', c.vehicleinsp);
+        setText('field-vehicleoosinsp', c.vehicleoosinsp);
+        setText('field-vehicleoosrate', c.vehicleoosrate);
+        setText('field-vehicleoosratenationalaverage', c.vehicleoosratenationalaverage);
+
+        setText('field-totaldrivers', c.totaldrivers);
+        setText('field-totalpowerunits', c.totalpowerunits);
+
+        // Counts & flags (dup view)
+        setText('field-statuscode-dup', c.statuscode);
+        setText('field-mcs150outdated-dup', c.mcs150outdated);
+        setText('field-snapshotdate-dup', c.snapshotdate);
+
+        // FMCSA links
+        setLink('field-link_basics', c.link_basics);
+        setLink('field-link_cargo_carried', c.link_cargo_carried);
+        setLink('field-link_operation_classification', c.link_operation_classification);
+        setLink('field-link_docket_numbers', c.link_docket_numbers);
+        setLink('field-link_active_for_hire', c.link_active_for_hire);
+        setLink('field-link_self', c.link_self);
+      } catch (err) {
+        console.error('Error fetching carrier:', err);
+        document.getElementById('carrier-name').textContent = 'Error loading carrier';
+      }
+    }
+
+    loadCarrier();
+  </script>
 </body>
 </html>
