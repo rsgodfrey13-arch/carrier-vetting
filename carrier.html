@@ -9,6 +9,7 @@
   <div class="page">
     <h1 class="page-title">Carrier Profile</h1>
 
+    <!-- HEADER -->
     <section id="carrier-header" class="carrier-header">
       <div class="carrier-header-top">
         <div class="carrier-name-block">
@@ -16,17 +17,37 @@
           <div class="carrier-ids">
             DOT <span id="carrier-dot">—</span>
           </div>
+          <div class="carrier-ids">
+            EIN <span id="carrier-ein">—</span>
+          </div>
         </div>
-        <div id="carrier-status" class="carrier-pill">
-          Active
+
+        <div class="carrier-header-right">
+          <div id="carrier-status" class="carrier-pill">
+            —
+          </div>
+          <div class="carrier-pill small" id="carrier-allowed">
+            —
+          </div>
         </div>
       </div>
 
       <div class="carrier-meta-row">
         <div class="meta-block">
+          <div class="meta-label">Legal Name</div>
+          <div id="carrier-legalname" class="meta-value">—</div>
+        </div>
+        <div class="meta-block">
+          <div class="meta-label">DBA</div>
+          <div id="carrier-dbaname" class="meta-value">—</div>
+        </div>
+        <div class="meta-block">
           <div class="meta-label">Address</div>
           <div id="carrier-address" class="meta-value">—</div>
         </div>
+      </div>
+
+      <div class="carrier-meta-row">
         <div class="meta-block">
           <div class="meta-label">Location</div>
           <div id="carrier-location" class="meta-value">—</div>
@@ -35,18 +56,337 @@
           <div class="meta-label">Postal Code</div>
           <div id="carrier-zip" class="meta-value">—</div>
         </div>
+        <div class="meta-block">
+          <div class="meta-label">Snapshot Date</div>
+          <div id="field-snapshotdate" class="meta-value">—</div>
+        </div>
+      </div>
+
+      <div class="carrier-meta-row">
+        <div class="meta-block">
+          <div class="meta-label">ISS Score</div>
+          <div id="field-issscore" class="meta-value">—</div>
+        </div>
+        <div class="meta-block">
+          <div class="meta-label">Safety Rating</div>
+          <div id="field-safetyrating" class="meta-value">—</div>
+        </div>
+        <div class="meta-block">
+          <div class="meta-label">MCS-150 Outdated</div>
+          <div id="field-mcs150outdated" class="meta-value">—</div>
+        </div>
       </div>
     </section>
 
     <p class="help-text" style="margin-top:10px;">
       <a href="/" class="dot-link">← Back to all carriers</a>
     </p>
+
+    <!-- MAIN GRID -->
+    <section class="card-grid">
+      <!-- Basics & Meta -->
+      <article class="info-card">
+        <h2>Basics & Meta</h2>
+        <dl>
+          <div class="row">
+            <dt>Retrieval Date</dt>
+            <dd id="field-retrieval_date">—</dd>
+          </div>
+          <div class="row">
+            <dt>Status Code</dt>
+            <dd id="field-statuscode">—</dd>
+          </div>
+          <div class="row">
+            <dt>Review Date</dt>
+            <dd id="field-reviewdate">—</dd>
+          </div>
+          <div class="row">
+            <dt>Review Type</dt>
+            <dd id="field-reviewtype">—</dd>
+          </div>
+          <div class="row">
+            <dt>Safety Rating Date</dt>
+            <dd id="field-safetyratingdate">—</dd>
+          </div>
+          <div class="row">
+            <dt>Safety Review Date</dt>
+            <dd id="field-safetyreviewdate">—</dd>
+          </div>
+          <div class="row">
+            <dt>Safety Review Type</dt>
+            <dd id="field-safetyreviewtype">—</dd>
+          </div>
+          <div class="row">
+            <dt>OOS Date</dt>
+            <dd id="field-oosdate">—</dd>
+          </div>
+          <div class="row">
+            <dt>OOS Rate National Avg Year</dt>
+            <dd id="field-oosratenationalaverageyear">—</dd>
+          </div>
+        </dl>
+      </article>
+
+      <!-- Operations & Authority -->
+      <article class="info-card">
+        <h2>Operations & Authority</h2>
+        <dl>
+          <div class="row">
+            <dt>Common Authority Status</dt>
+            <dd id="field-commonauthoritystatus">—</dd>
+          </div>
+          <div class="row">
+            <dt>Contract Authority Status</dt>
+            <dd id="field-contractauthoritystatus">—</dd>
+          </div>
+          <div class="row">
+            <dt>Broker Authority Status</dt>
+            <dd id="field-brokerauthoritystatus">—</dd>
+          </div>
+          <div class="row">
+            <dt>Carrier Operation Code</dt>
+            <dd id="field-carrieroperation_carrieroperationcode">—</dd>
+          </div>
+          <div class="row">
+            <dt>Carrier Operation Description</dt>
+            <dd id="field-carrieroperation_carrieroperationdesc">—</dd>
+          </div>
+          <div class="row">
+            <dt>Census Type</dt>
+            <dd id="field-censustypeid_censustype">—</dd>
+          </div>
+          <div class="row">
+            <dt>Census Type Description</dt>
+            <dd id="field-censustypeid_censustypedesc">—</dd>
+          </div>
+          <div class="row">
+            <dt>Census Type ID</dt>
+            <dd id="field-censustypeid_censustypeid">—</dd>
+          </div>
+          <div class="row">
+            <dt>Passenger Carrier</dt>
+            <dd id="field-ispassengercarrier">—</dd>
+          </div>
+        </dl>
+      </article>
+
+      <!-- Insurance & Financial -->
+      <article class="info-card">
+        <h2>Insurance & Financial</h2>
+        <dl>
+          <div class="row">
+            <dt>BIPD Insurance On File</dt>
+            <dd id="field-bipdinsuranceonfile">—</dd>
+          </div>
+          <div class="row">
+            <dt>BIPD Insurance Required</dt>
+            <dd id="field-bipdinsurancerequired">—</dd>
+          </div>
+          <div class="row">
+            <dt>BIPD Required Amount</dt>
+            <dd id="field-bipdrequiredamount">—</dd>
+          </div>
+          <div class="row">
+            <dt>Bond Insurance On File</dt>
+            <dd id="field-bondinsuranceonfile">—</dd>
+          </div>
+          <div class="row">
+            <dt>Bond Insurance Required</dt>
+            <dd id="field-bondinsurancerequired">—</dd>
+          </div>
+          <div class="row">
+            <dt>Cargo Insurance On File</dt>
+            <dd id="field-cargoinsuranceonfile">—</dd>
+          </div>
+          <div class="row">
+            <dt>Cargo Insurance Required</dt>
+            <dd id="field-cargoinsurancerequired">—</dd>
+          </div>
+          <div class="row">
+            <dt>Allowed To Operate</dt>
+            <dd id="field-allowedtooperate">—</dd>
+          </div>
+          <div class="row">
+            <dt>EIN</dt>
+            <dd id="field-ein">—</dd>
+          </div>
+        </dl>
+      </article>
+
+      <!-- Crashes & Events -->
+      <article class="info-card">
+        <h2>Crashes</h2>
+        <dl>
+          <div class="row">
+            <dt>Total Crashes</dt>
+            <dd id="field-crashtotal">—</dd>
+          </div>
+          <div class="row">
+            <dt>Fatal Crashes</dt>
+            <dd id="field-fatalcrash">—</dd>
+          </div>
+          <div class="row">
+            <dt>Injury Crashes</dt>
+            <dd id="field-injcrash">—</dd>
+          </div>
+          <div class="row">
+            <dt>Towaway Crashes</dt>
+            <dd id="field-towawaycrash">—</dd>
+          </div>
+        </dl>
+      </article>
+
+      <!-- Inspections & OOS -->
+      <article class="info-card">
+        <h2>Inspections & OOS</h2>
+        <dl>
+          <div class="row">
+            <dt>Driver Inspections</dt>
+            <dd id="field-driverinsp">—</dd>
+          </div>
+          <div class="row">
+            <dt>Driver OOS Inspections</dt>
+            <dd id="field-driveroosinsp">—</dd>
+          </div>
+          <div class="row">
+            <dt>Driver OOS Rate</dt>
+            <dd id="field-driveroosrate">—</dd>
+          </div>
+          <div class="row">
+            <dt>Driver OOS Rate National Avg</dt>
+            <dd id="field-driveroosratenationalaverage">—</dd>
+          </div>
+
+          <div class="row">
+            <dt>HazMat Inspections</dt>
+            <dd id="field-hazmatinsp">—</dd>
+          </div>
+          <div class="row">
+            <dt>HazMat OOS Inspections</dt>
+            <dd id="field-hazmatoosinsp">—</dd>
+          </div>
+          <div class="row">
+            <dt>HazMat OOS Rate</dt>
+            <dd id="field-hazmatoosrate">—</dd>
+          </div>
+          <div class="row">
+            <dt>HazMat OOS Rate National Avg</dt>
+            <dd id="field-hazmatoosratenationalaverage">—</dd>
+          </div>
+
+          <div class="row">
+            <dt>Vehicle Inspections</dt>
+            <dd id="field-vehicleinsp">—</dd>
+          </div>
+          <div class="row">
+            <dt>Vehicle OOS Inspections</dt>
+            <dd id="field-vehicleoosinsp">—</dd>
+          </div>
+          <div class="row">
+            <dt>Vehicle OOS Rate</dt>
+            <dd id="field-vehicleoosrate">—</dd>
+          </div>
+          <div class="row">
+            <dt>Vehicle OOS Rate National Avg</dt>
+            <dd id="field-vehicleoosratenationalaverage">—</dd>
+          </div>
+
+          <div class="row">
+            <dt>Total Drivers</dt>
+            <dd id="field-totaldrivers">—</dd>
+          </div>
+          <div class="row">
+            <dt>Total Power Units</dt>
+            <dd id="field-totalpowerunits">—</dd>
+          </div>
+        </dl>
+      </article>
+
+      <!-- Counts & Flags -->
+      <article class="info-card">
+        <h2>Counts & Flags</h2>
+        <dl>
+          <div class="row">
+            <dt>Status Code</dt>
+            <dd id="field-statuscode-dup">—</dd>
+          </div>
+          <div class="row">
+            <dt>MCS-150 Outdated</dt>
+            <dd id="field-mcs150outdated-dup">—</dd>
+          </div>
+          <div class="row">
+            <dt>Snapshot Date</dt>
+            <dd id="field-snapshotdate-dup">—</dd>
+          </div>
+        </dl>
+      </article>
+
+      <!-- FMCSA Links -->
+      <article class="info-card">
+        <h2>FMCSA Source Links</h2>
+        <dl>
+          <div class="row">
+            <dt>Basics</dt>
+            <dd>
+              <a id="field-link_basics" class="data-link" href="#" target="_blank">—</a>
+            </dd>
+          </div>
+          <div class="row">
+            <dt>Cargo Carried</dt>
+            <dd>
+              <a id="field-link_cargo_carried" class="data-link" href="#" target="_blank">—</a>
+            </dd>
+          </div>
+          <div class="row">
+            <dt>Operation Classification</dt>
+            <dd>
+              <a id="field-link_operation_classification" class="data-link" href="#" target="_blank">—</a>
+            </dd>
+          </div>
+          <div class="row">
+            <dt>Docket Numbers</dt>
+            <dd>
+              <a id="field-link_docket_numbers" class="data-link" href="#" target="_blank">—</a>
+            </dd>
+          </div>
+          <div class="row">
+            <dt>Active For Hire</dt>
+            <dd>
+              <a id="field-link_active_for_hire" class="data-link" href="#" target="_blank">—</a>
+            </dd>
+          </div>
+          <div class="row">
+            <dt>Self Link</dt>
+            <dd>
+              <a id="field-link_self" class="data-link" href="#" target="_blank">—</a>
+            </dd>
+          </div>
+        </dl>
+      </article>
+    </section>
   </div>
 
 <script>
+  function setText(id, value) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = (value !== null && value !== undefined && value !== '') ? value : '—';
+  }
+
+  function setLink(id, url) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (url) {
+      el.textContent = 'Open';
+      el.href = url;
+    } else {
+      el.textContent = '—';
+      el.removeAttribute('href');
+    }
+  }
+
   async function loadCarrier() {
-    // /12345 → "12345"
-    const path = window.location.pathname.replace(/^\//, '');  // <-- fixed
+    const path = window.location.pathname.replace(/^\//, '');
     const dot = decodeURIComponent(path);
 
     if (!dot) return;
@@ -63,17 +403,117 @@
 
       const c = await res.json();
 
-      const name = c.name || `Carrier ${c.dot || c.id || ''}`.trim();
-      document.getElementById('carrier-name').textContent = name;
-      document.getElementById('carrier-dot').textContent = c.dot || c.id || '—';
+      // Top-level header stuff
+      const name = (c.legalname || c.dbaname || `Carrier ${c.dotnumber || ''}`).trim();
+      document.getElementById('carrier-name').textContent = name || '—';
+      document.getElementById('carrier-dot').textContent = c.dotnumber || '—';
+      document.getElementById('carrier-ein').textContent = c.ein || '—';
 
-      const addressParts = [c.address1, c.address2].filter(Boolean).join(', ');
-      document.getElementById('carrier-address').textContent = addressParts || '—';
+      const addr = [c.phystreet].filter(Boolean).join(', ');
+      document.getElementById('carrier-address').textContent = addr || '—';
 
-      const locParts = [c.city, c.state].filter(Boolean).join(', ');
-      document.getElementById('carrier-location').textContent = locParts || '—';
+      const loc = [c.phycity, c.phystate, c.phycountry].filter(Boolean).join(', ');
+      document.getElementById('carrier-location').textContent = loc || '—';
 
-      document.getElementById('carrier-zip').textContent = c.zip || '—';
+      document.getElementById('carrier-zip').textContent = c.phyzipcode || '—';
+
+      // Status pills
+      const statusText = c.statuscode || 'Status Unknown';
+      const allowedText = c.allowedtooperate
+        ? `Allowed to Operate: ${c.allowedtooperate}`
+        : 'Allowed to Operate: —';
+
+      const statusEl = document.getElementById('carrier-status');
+      statusEl.textContent = statusText;
+
+      const allowedEl = document.getElementById('carrier-allowed');
+      allowedEl.textContent = allowedText;
+
+      // Simple visual state if you want (optional, depends on your CSS)
+      if ((c.allowedtooperate || '').toString().toUpperCase() === 'Y') {
+        statusEl.classList.add('pill-ok');
+      } else {
+        statusEl.classList.add('pill-warn');
+      }
+
+      // Header meta
+      setText('carrier-legalname', c.legalname);
+      setText('carrier-dbaname', c.dbaname);
+      setText('field-snapshotdate', c.snapshotdate);
+      setText('field-issscore', c.issscore);
+      setText('field-safetyrating', c.safetyrating);
+      setText('field-mcs150outdated', c.mcs150outdated);
+
+      // Basics & meta
+      setText('field-retrieval_date', c.retrieval_date);
+      setText('field-statuscode', c.statuscode);
+      setText('field-reviewdate', c.reviewdate);
+      setText('field-reviewtype', c.reviewtype);
+      setText('field-safetyratingdate', c.safetyratingdate);
+      setText('field-safetyreviewdate', c.safetyreviewdate);
+      setText('field-safetyreviewtype', c.safetyreviewtype);
+      setText('field-oosdate', c.oosdate);
+      setText('field-oosratenationalaverageyear', c.oosratenationalaverageyear);
+
+      // Operations & authority
+      setText('field-commonauthoritystatus', c.commonauthoritystatus);
+      setText('field-contractauthoritystatus', c.contractauthoritystatus);
+      setText('field-brokerauthoritystatus', c.brokerauthoritystatus);
+      setText('field-carrieroperation_carrieroperationcode', c.carrieroperation_carrieroperationcode);
+      setText('field-carrieroperation_carrieroperationdesc', c.carrieroperation_carrieroperationdesc);
+      setText('field-censustypeid_censustype', c.censustypeid_censustype);
+      setText('field-censustypeid_censustypedesc', c.censustypeid_censustypedesc);
+      setText('field-censustypeid_censustypeid', c.censustypeid_censustypeid);
+      setText('field-ispassengercarrier', c.ispassengercarrier);
+
+      // Insurance & financial
+      setText('field-bipdinsuranceonfile', c.bipdinsuranceonfile);
+      setText('field-bipdinsurancerequired', c.bipdinsurancerequired);
+      setText('field-bipdrequiredamount', c.bipdrequiredamount);
+      setText('field-bondinsuranceonfile', c.bondinsuranceonfile);
+      setText('field-bondinsurancerequired', c.bondinsurancerequired);
+      setText('field-cargoinsuranceonfile', c.cargoinsuranceonfile);
+      setText('field-cargoinsurancerequired', c.cargoinsurancerequired);
+      setText('field-allowedtooperate', c.allowedtooperate);
+      setText('field-ein', c.ein);
+
+      // Crashes
+      setText('field-crashtotal', c.crashtotal);
+      setText('field-fatalcrash', c.fatalcrash);
+      setText('field-injcrash', c.injcrash);
+      setText('field-towawaycrash', c.towawaycrash);
+
+      // Inspections & OOS
+      setText('field-driverinsp', c.driverinsp);
+      setText('field-driveroosinsp', c.driveroosinsp);
+      setText('field-driveroosrate', c.driveroosrate);
+      setText('field-driveroosratenationalaverage', c.driveroosratenationalaverage);
+
+      setText('field-hazmatinsp', c.hazmatinsp);
+      setText('field-hazmatoosinsp', c.hazmatoosinsp);
+      setText('field-hazmatoosrate', c.hazmatoosrate);
+      setText('field-hazmatoosratenationalaverage', c.hazmatoosratenationalaverage);
+
+      setText('field-vehicleinsp', c.vehicleinsp);
+      setText('field-vehicleoosinsp', c.vehicleoosinsp);
+      setText('field-vehicleoosrate', c.vehicleoosrate);
+      setText('field-vehicleoosratenationalaverage', c.vehicleoosratenationalaverage);
+
+      setText('field-totaldrivers', c.totaldrivers);
+      setText('field-totalpowerunits', c.totalpowerunits);
+
+      // Counts & flags (dup view)
+      setText('field-statuscode-dup', c.statuscode);
+      setText('field-mcs150outdated-dup', c.mcs150outdated);
+      setText('field-snapshotdate-dup', c.snapshotdate);
+
+      // FMCSA links
+      setLink('field-link_basics', c.link_basics);
+      setLink('field-link_cargo_carried', c.link_cargo_carried);
+      setLink('field-link_operation_classification', c.link_operation_classification);
+      setLink('field-link_docket_numbers', c.link_docket_numbers);
+      setLink('field-link_active_for_hire', c.link_active_for_hire);
+      setLink('field-link_self', c.link_self);
     } catch (err) {
       console.error('Error fetching carrier:', err);
       document.getElementById('carrier-name').textContent = 'Error loading carrier';
