@@ -13,11 +13,11 @@ app.use(express.static(__dirname));
  * Put back the exact values you used when it was working.
  */
 const pool = new Pool({
-  host: 'YOUR_DB_HOST',      // e.g. db-postgresql-xxxx.b.db.ondigitalocean.com
+  host: 'carrier-vetting-do-user-27858216-0.e.db.ondigitalocean.com',      // e.g. db-postgresql-xxxx.b.db.ondigitalocean.com
   port: 25060,               // DigitalOcean default
   database: 'defaultdb',     // or whatever your DB name is
   user: 'doadmin',           // or your user
-  password: 'YOUR_DB_PASSWORD',
+  password: 'AVNS_QZfAFA-4TzNXYII9lET',
   ssl: { rejectUnauthorized: false }
 });
 
