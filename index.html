@@ -2,48 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Carrier Vetting</title>
-  <!-- reference external style file -->
+  <title>Carrier Vetting – Home</title>
   <link rel="stylesheet" href="style1.css">
 </head>
 <body>
   <div class="page">
     <h1 class="page-title">Carrier Vetting</h1>
 
-    <!-- Profile header (shows when a specific DOT is selected) -->
-    <section id="carrier-header" class="carrier-header hidden">
-      <div class="carrier-header-top">
-        <div class="carrier-name-block">
-          <div id="carrier-name" class="carrier-name">Carrier</div>
-          <div class="carrier-ids">
-            DOT <span id="carrier-dot">—</span>
-          </div>
-        </div>
-        <div id="carrier-status" class="carrier-pill">
-          Preview
-        </div>
-      </div>
-
-      <div class="carrier-meta-row">
-        <div class="meta-block">
-          <div class="meta-label">Address</div>
-          <div id="carrier-address" class="meta-value">—</div>
-        </div>
-        <div class="meta-block">
-          <div class="meta-label">Location</div>
-          <div id="carrier-location" class="meta-value">—</div>
-        </div>
-        <div class="meta-block">
-          <div class="meta-label">Postal Code</div>
-          <div id="carrier-zip" class="meta-value">—</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- List of carriers -->
     <section class="list-card">
       <h2>All Carriers</h2>
-      <p class="help-text">Click a DOT number to open its profile header.</p>
+      <p class="help-text">Click a DOT number to open its profile page.</p>
 
       <table>
         <thead>
@@ -56,9 +24,7 @@
             <th>Zip</th>
           </tr>
         </thead>
-        <tbody id="carrier-table-body">
-          <!-- populated by JS -->
-        </tbody>
+        <tbody id="carrier-table-body"></tbody>
       </table>
     </section>
   </div>
@@ -68,12 +34,7 @@
       try {
         const res = await fetch('/api/carriers');
         const data = await res.json();
-
-        const params = new URLSearchParams(window.location.search);
-        const selectedDot = params.get('dot');
-
         const tbody = document.getElementById('carrier-table-body');
-        tbody.innerHTML = '';
 
         if (!Array.isArray(data) || data.length === 0) {
           const row = document.createElement('tr');
@@ -85,15 +46,15 @@
           return;
         }
 
-        // populate table
         data.forEach(c => {
           const row = document.createElement('tr');
 
+          const dotVal = c.dot || c.id || '';
+
           const dotCell = document.createElement('td');
           const link = document.createElement('a');
-          const dotVal = c.dot || c.id || '';
           link.textContent = dotVal;
-          link.href = '?dot=' + encodeURIComponent(dotVal);
+          link.href = '/' + encodeURIComponent(dotVal);   // ← pretty URL
           link.className = 'dot-link';
           dotCell.appendChild(link);
           row.appendChild(dotCell);
@@ -118,44 +79,18 @@
           zipCell.textContent = c.zip || '';
           row.appendChild(zipCell);
 
-          // clicking anywhere in the row also navigates
+          // click anywhere in the row
           row.addEventListener('click', (e) => {
             if (e.target.tagName.toLowerCase() !== 'a') {
-              window.location.search = '?dot=' + encodeURIComponent(dotVal);
+              window.location.pathname = '/' + encodeURIComponent(dotVal);
             }
           });
 
           tbody.appendChild(row);
         });
-
-        // if a DOT is selected, show the header card
-        if (selectedDot) {
-          const carrier = data.find(c => String(c.dot || c.id) === selectedDot);
-          if (carrier) {
-            renderCarrierHeader(carrier);
-          }
-        }
       } catch (err) {
         console.error('Error fetching carriers:', err);
       }
-    }
-
-    function renderCarrierHeader(c) {
-      const header = document.getElementById('carrier-header');
-
-      const name = c.name || `Carrier ${c.dot || c.id || ''}`.trim();
-      document.getElementById('carrier-name').textContent = name;
-      document.getElementById('carrier-dot').textContent = c.dot || c.id || '—';
-
-      const addressParts = [c.address1, c.address2].filter(Boolean).join(', ');
-      document.getElementById('carrier-address').textContent = addressParts || '—';
-
-      const locParts = [c.city, c.state].filter(Boolean).join(', ');
-      document.getElementById('carrier-location').textContent = locParts || '—';
-
-      document.getElementById('carrier-zip').textContent = c.zip || '—';
-
-      header.classList.remove('hidden');
     }
 
     loadCarriers();
