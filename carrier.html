@@ -43,43 +43,45 @@
     </p>
   </div>
 
-  <script>
-    async function loadCarrier() {
-      // /12345 → "12345"
-      const path = window.location.pathname.replace(/^\\//, '');
-      const dot = decodeURIComponent(path);
+<script>
+  async function loadCarrier() {
+    // /12345 → "12345"
+    const path = window.location.pathname.replace(/^\//, '');  // <-- fixed
+    const dot = decodeURIComponent(path);
 
-      if (!dot) return;
+    if (!dot) return;
 
-      try {
-        // use single-carrier endpoint (cleaner)
-        const res = await fetch('/api/carriers/' + encodeURIComponent(dot));
+    try {
+      const res = await fetch('/api/carriers/' + encodeURIComponent(dot));
 
-        if (res.status === 404) {
-          document.getElementById('carrier-name').textContent = 'Carrier not found';
-          document.getElementById('carrier-dot').textContent = dot;
-          return;
-        }
-
-        const c = await res.json();
-
-        const name = c.name || `Carrier ${c.dot || c.id || ''}`.trim();
-        document.getElementById('carrier-name').textContent = name;
-        document.getElementById('carrier-dot').textContent = c.dot || c.id || '—';
-
-        const addressParts = [c.address1, c.address2].filter(Boolean).join(', ');
-        document.getElementById('carrier-address').textContent = addressParts || '—';
-
-        const locParts = [c.city, c.state].filter(Boolean).join(', ');
-        document.getElementById('carrier-location').textContent = locParts || '—';
-
-        document.getElementById('carrier-zip').textContent = c.zip || '—';
-      } catch (err) {
-        console.error('Error fetching carrier:', err);
+      if (!res.ok) {
+        console.error('Carrier fetch failed:', res.status, await res.text());
+        document.getElementById('carrier-name').textContent = 'Carrier not found';
+        document.getElementById('carrier-dot').textContent = dot;
+        return;
       }
-    }
 
-    loadCarrier();
-  </script>
+      const c = await res.json();
+
+      const name = c.name || `Carrier ${c.dot || c.id || ''}`.trim();
+      document.getElementById('carrier-name').textContent = name;
+      document.getElementById('carrier-dot').textContent = c.dot || c.id || '—';
+
+      const addressParts = [c.address1, c.address2].filter(Boolean).join(', ');
+      document.getElementById('carrier-address').textContent = addressParts || '—';
+
+      const locParts = [c.city, c.state].filter(Boolean).join(', ');
+      document.getElementById('carrier-location').textContent = locParts || '—';
+
+      document.getElementById('carrier-zip').textContent = c.zip || '—';
+    } catch (err) {
+      console.error('Error fetching carrier:', err);
+      document.getElementById('carrier-name').textContent = 'Error loading carrier';
+    }
+  }
+
+  loadCarrier();
+</script>
+
 </body>
 </html>
