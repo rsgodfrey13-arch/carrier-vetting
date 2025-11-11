@@ -2,35 +2,256 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Carrier Vetting - Simple View</title>
+  <title>Carrier Vetting</title>
+  <style>
+    :root{
+      --brand:#00A676;
+      --brand-dark:#004F3D;
+      --ink:#0F172A;
+      --muted:#5B6577;
+      --card:#0B1624;
+      --border:rgba(255,255,255,.15);
+      --radius:14px;
+    }
+
+    html, body { min-height:100%; margin:0; padding:0; }
+
+    body{
+      font-family:"Segoe UI", Roboto, Inter, system-ui, -apple-system, sans-serif;
+      color:#F9FEFF;
+      background:
+        radial-gradient(1400px 900px at 20% -10%, rgba(255,255,255,.08), transparent 60%),
+        linear-gradient(180deg, #007F63 0%, #01694F 45%, #004537 100%);
+      display:flex;
+      justify-content:center;
+      padding:24px 12px;
+      box-sizing:border-box;
+    }
+
+    .page{
+      width:100%;
+      max-width:960px;
+    }
+
+    .page-title{
+      margin:0 0 16px;
+      font-size:24px;
+      letter-spacing:.4px;
+      font-weight:700;
+    }
+
+    /* === Profile “circle” header card === */
+    .carrier-header{
+      background: radial-gradient(circle at 0 0, rgba(255,255,255,.12), transparent 55%),
+                  linear-gradient(135deg, #111827, #020617);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.1),
+                  0 18px 40px rgba(0,0,0,.6);
+      padding:18px 20px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    .carrier-header-top{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:16px;
+      flex-wrap:wrap;
+    }
+
+    .carrier-name-block{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+
+    .carrier-name{
+      font-size:26px;
+      font-weight:700;
+      letter-spacing:.3px;
+    }
+
+    .carrier-ids{
+      font-size:14px;
+      color:#C2D5E5;
+    }
+
+    .carrier-pill{
+      padding:6px 12px;
+      border-radius:999px;
+      background:rgba(248, 180, 80, .18);
+      border:1px solid rgba(248, 180, 80, .7);
+      color:#FED7AA;
+      font-size:13px;
+      font-weight:600;
+      letter-spacing:.3px;
+      text-transform:uppercase;
+    }
+
+    .carrier-meta-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:16px;
+      font-size:13px;
+      color:#D0E4F5;
+    }
+
+    .meta-block{
+      min-width:180px;
+    }
+
+    .meta-label{
+      text-transform:uppercase;
+      font-size:11px;
+      letter-spacing:.18px;
+      color:#8BA1B5;
+      margin-bottom:2px;
+    }
+
+    .meta-value{
+      font-size:13px;
+      color:#E5F3FF;
+    }
+
+    /* === List card / table === */
+    .list-card{
+      margin-top:18px;
+      background:rgba(6,25,30,.86);
+      border-radius:var(--radius);
+      border:1px solid var(--border);
+      box-shadow:0 12px 30px rgba(0,0,0,.55);
+      padding:14px 16px 18px;
+    }
+
+    .list-card h2{
+      margin:0 0 6px;
+      font-size:18px;
+      letter-spacing:.3px;
+    }
+
+    .help-text{
+      margin:0 0 10px;
+      font-size:13px;
+      color:#C9E5DD;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:13px;
+    }
+
+    thead{
+      background:rgba(15,23,42,.9);
+    }
+
+    th, td{
+      padding:8px 10px;
+      border-bottom:1px solid rgba(148,163,184,.4);
+      text-align:left;
+      white-space:nowrap;
+    }
+
+    th{
+      font-weight:600;
+      color:#E5F0FF;
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.15px;
+    }
+
+    tr:hover{
+      background:rgba(148,163,184,.18);
+      cursor:pointer;
+    }
+
+    .dot-link{
+      color:#7DD3FC;
+      text-decoration:none;
+      font-weight:600;
+    }
+    .dot-link:hover{ text-decoration:underline; }
+
+    .hidden{ display:none; }
+
+    @media (max-width:640px){
+      .carrier-meta-row{ flex-direction:column; }
+      th,td{ white-space:normal; }
+    }
+  </style>
 </head>
 <body>
-  <h1>Carriers</h1>
+  <div class="page">
+    <h1 class="page-title">Carrier Vetting</h1>
 
-  <table border="1">
-    <thead>
-      <tr>
-        <th>DOT</th>
-        <th>Address 1</th>
-        <th>Address 2</th>
-        <th>City</th>
-        <th>State</th>
-        <th>Zip</th>
-      </tr>
-    </thead>
-    <tbody id="carrier-table-body">
-      <!-- Rows will be added here by JavaScript -->
-    </tbody>
-  </table>
+    <!-- Profile header (shows when a specific DOT is selected) -->
+    <section id="carrier-header" class="carrier-header hidden">
+      <div class="carrier-header-top">
+        <div class="carrier-name-block">
+          <div id="carrier-name" class="carrier-name">Carrier</div>
+          <div class="carrier-ids">
+            DOT <span id="carrier-dot">—</span>
+          </div>
+        </div>
+        <div id="carrier-status" class="carrier-pill">
+          Preview
+        </div>
+      </div>
+
+      <div class="carrier-meta-row">
+        <div class="meta-block">
+          <div class="meta-label">Address</div>
+          <div id="carrier-address" class="meta-value">—</div>
+        </div>
+        <div class="meta-block">
+          <div class="meta-label">Location</div>
+          <div id="carrier-location" class="meta-value">—</div>
+        </div>
+        <div class="meta-block">
+          <div class="meta-label">Postal Code</div>
+          <div id="carrier-zip" class="meta-value">—</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- List of carriers -->
+    <section class="list-card">
+      <h2>All Carriers</h2>
+      <p class="help-text">Click a DOT number to open its profile header.</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>DOT</th>
+            <th>Address 1</th>
+            <th>Address 2</th>
+            <th>City</th>
+            <th>State</th>
+            <th>Zip</th>
+          </tr>
+        </thead>
+        <tbody id="carrier-table-body">
+          <!-- populated by JS -->
+        </tbody>
+      </table>
+    </section>
+  </div>
 
   <script>
-    // Call your Node.js API
-    fetch('/api/carriers')
-      .then(response => response.json())
-      .then(data => {
-        const tbody = document.getElementById('carrier-table-body');
+    async function loadCarriers() {
+      try {
+        const res = await fetch('/api/carriers');
+        const data = await res.json();
 
-        // If no data, show a simple message
+        const params = new URLSearchParams(window.location.search);
+        const selectedDot = params.get('dot');
+
+        const tbody = document.getElementById('carrier-table-body');
+        tbody.innerHTML = '';
+
         if (!Array.isArray(data) || data.length === 0) {
           const row = document.createElement('tr');
           const cell = document.createElement('td');
@@ -41,12 +262,17 @@
           return;
         }
 
-        // For each carrier row from the database, add a table row
+        // populate table
         data.forEach(c => {
           const row = document.createElement('tr');
 
           const dotCell = document.createElement('td');
-          dotCell.textContent = c.dot || '';
+          const link = document.createElement('a');
+          const dotVal = c.dot || c.id || '';
+          link.textContent = dotVal;
+          link.href = '?dot=' + encodeURIComponent(dotVal);
+          link.className = 'dot-link';
+          dotCell.appendChild(link);
           row.appendChild(dotCell);
 
           const address1Cell = document.createElement('td');
@@ -69,13 +295,48 @@
           zipCell.textContent = c.zip || '';
           row.appendChild(zipCell);
 
+          // clicking anywhere in the row also navigates
+          row.addEventListener('click', (e) => {
+            // don’t double-trigger if they clicked the link
+            if (e.target.tagName.toLowerCase() !== 'a') {
+              window.location.search = '?dot=' + encodeURIComponent(dotVal);
+            }
+          });
+
           tbody.appendChild(row);
         });
-      })
-      .catch(err => {
+
+        // if a DOT is selected, show the header card
+        if (selectedDot) {
+          const carrier = data.find(c => String(c.dot || c.id) === selectedDot);
+          if (carrier) {
+            renderCarrierHeader(carrier);
+          }
+        }
+      } catch (err) {
         console.error('Error fetching carriers:', err);
-      });
+      }
+    }
+
+    function renderCarrierHeader(c) {
+      const header = document.getElementById('carrier-header');
+
+      const name = c.name || `Carrier ${c.dot || c.id || ''}`.trim();
+      document.getElementById('carrier-name').textContent = name;
+      document.getElementById('carrier-dot').textContent = c.dot || c.id || '—';
+
+      const addressParts = [c.address1, c.address2].filter(Boolean).join(', ');
+      document.getElementById('carrier-address').textContent = addressParts || '—';
+
+      const locParts = [c.city, c.state].filter(Boolean).join(', ');
+      document.getElementById('carrier-location').textContent = locParts || '—';
+
+      document.getElementById('carrier-zip').textContent = c.zip || '—';
+
+      header.classList.remove('hidden');
+    }
+
+    loadCarriers();
   </script>
 </body>
 </html>
- 
