@@ -474,7 +474,9 @@
         document.getElementById('carrier-zip').textContent = c.phyzipcode || '—';
 
         // Status pills
-        const statusText = c.statuscode || 'Status Unknown';
+        const statusText = c.statuscode
+          ? `Status: ${c.statuscode}`
+          : 'Status: —';
         const allowedText = c.allowedtooperate
           ? `Allowed to Operate: ${c.allowedtooperate}`
           : 'Allowed to Operate: —';
