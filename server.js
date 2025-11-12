@@ -33,7 +33,9 @@ app.get('/api/carriers', async (req, res) => {
         null as address2,
         phycity as city,
         phystate as state,
-        phyzipcode as zip, *
+        phyzipcode as zip,
+        TO_CHAR(retrieval_date::timestamp, 'Mon DD, YYYY HH12:MI AM EST') AS retrieval_date_formatted,
+        *
       FROM public.carriers
       ORDER BY dotnumber
       LIMIT 50;
@@ -62,7 +64,9 @@ app.get('/api/carriers/:dot', async (req, res) => {
         null as address2,
         phycity as city,
         phystate as state,
-        phyzipcode as zip, *
+        phyzipcode as zip,
+        TO_CHAR(retrieval_date::timestamp, 'Mon DD, YYYY HH12:MI AM EST') AS retrieval_date_formatted,
+        *
       FROM public.carriers
       WHERE dotnumber = $1;
     `, [dot]);
