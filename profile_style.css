@@ -317,3 +317,54 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   white-space: nowrap;
 }
 .copy-btn:hover .tooltip { opacity: 1; transform: translateY(0); }
+
+
+/* Make the DOT/EIN chips consistent */
+.carrier-id-row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+
+.carrier-id{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  height:32px;                 /* <- fixed chip height */
+  padding:4px 8px;
+  border-radius:10px;
+  border:1px solid var(--border-subtle, rgba(148,163,184,.25));
+  background:var(--card-bg, rgba(15,23,42,.35));
+  line-height:1;               /* <- kill stray baseline space */
+}
+
+/* Reset the copy button so it doesn't change line height */
+.copy-btn{
+  appearance:none;
+  -webkit-appearance:none;
+  border:1px solid var(--border-subtle, rgba(148,163,184,.25));
+  background:var(--bg-2, #0b1120);
+  width:24px; height:24px;     /* <- fixed size */
+  padding:0;                   /* <- no extra space */
+  margin:0;
+  display:inline-grid; place-items:center;
+  border-radius:6px;
+  line-height:0;               /* <- prevents line-box expansion */
+  flex:0 0 24px;               /* <- don't stretch */
+  vertical-align:middle;
+  position:relative;
+}
+.copy-btn svg{ display:block; } /* remove text-descender gap */
+
+/* Tooltip is absolutely positioned (no layout impact) */
+.copy-btn .tooltip{
+  position:absolute; bottom:110%;
+  left:50%; transform:translate(-50%,3px);
+  padding:4px 6px; font-size:11px; white-space:nowrap;
+  border-radius:6px;
+  background:var(--bg-2,#0b1120);
+  color:var(--text-main,#e5e7eb);
+  border:1px solid var(--border-subtle, rgba(148,163,184,.25));
+  opacity:0; pointer-events:none; transition:.15s ease;
+}
+.copy-btn:hover .tooltip{ opacity:1; transform:translate(-50%,0); }
+
+/* (optional) keep all header chips aligned vertically */
+.header-meta-row{ display:flex; align-items:center; flex-wrap:wrap; gap:12px; }
+
