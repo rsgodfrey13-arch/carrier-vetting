@@ -332,3 +332,42 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   margin-left: 3px;
   font-size: 11px;
 }
+
+
+/* ==== OVERRIDES: carrier header & copy icon ==== */
+
+/* Key: let the left shrink so the right column doesn't jump */
+.carrier-left  { flex: 1 1 auto; min-width: 0; }      /* was min-width:340px */
+.carrier-right { flex: 0 0 auto; }                    /* keep right steady */
+
+/* Compact, no-wrap ID row */
+.carrier-id-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.carrier-ids    { display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+
+/* Neutralize the earlier `.carrier-ids span { ... }` so it doesn't hit the icon */
+.carrier-ids span { color: inherit; font-weight: inherit; }
+/* Color only the values (your DOT/EIN spans have ids) */
+.carrier-ids [id^="carrier-"] { font-weight:500; color: var(--accent-1); }
+
+/* Tiny square copy icon — no line-height weirdness */
+.copy-btn{
+  position: relative;
+  display:inline-flex; align-items:center; justify-content:center;
+  width:16px; height:16px; line-height:1; font-size:11px;
+  border:1px solid var(--border-subtle); border-radius:3px;
+  margin-left:4px; cursor:pointer; user-select:none;
+  color:var(--text-muted); transition: color .15s, border-color .15s;
+}
+.copy-btn:hover{ color:var(--accent-1); border-color:var(--accent-1); }
+
+/* Tooltip (uses data-tip) */
+.copy-btn::after{
+  content: attr(data-tip);
+  position:absolute; bottom:125%; left:50%;
+  transform: translateX(-50%) translateY(-2px);
+  background: var(--bg-2); color: var(--text-main);
+  border:1px solid var(--border-subtle); border-radius:6px;
+  padding:3px 6px; font-size:11px; white-space:nowrap;
+  opacity:0; pointer-events:none; transition: opacity .15s, transform .15s;
+}
+.copy-btn:hover::after{ opacity:1; transform:translateX(-50%) translateY(-4px); }
