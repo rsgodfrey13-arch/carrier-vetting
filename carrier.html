@@ -42,11 +42,18 @@
         <div id="carrier-name" class="carrier-name">Loading…</div>
       </div>
 
-      <div class="carrier-id-row">
-        <span class="carrier-ids">DOT <span id="carrier-dot">—</span></span>
-        <span class="carrier-ids">EIN <span id="carrier-ein">—</span></span>
-      </div>
-    </div>
+<div class="carrier-id-row">
+  <span class="carrier-ids">
+    DOT <span id="carrier-dot">—</span>
+    <span class="copy-btn" data-target="carrier-dot">⧉</span>
+  </span>
+
+  <span class="carrier-ids">
+    EIN <span id="carrier-ein">—</span>
+    <span class="copy-btn" data-target="carrier-ein">⧉</span>
+  </span>
+</div>
+
 
     <!-- META INLINE BELOW NAME -->
     <div class="carrier-meta-inline">
@@ -580,5 +587,28 @@
 
     loadCarrier();
   </script>
+
+  <script>
+document.addEventListener('click', async e => {
+  const btn = e.target.closest('.copy-btn');
+  if (!btn) return;
+
+  const targetId = btn.dataset.target;
+  const targetEl = document.getElementById(targetId);
+  if (!targetEl) return;
+
+  const text = targetEl.textContent.trim();
+  if (!text || text === '—') return;
+
+  try {
+    await navigator.clipboard.writeText(text);
+    btn.textContent = '✓';
+    setTimeout(() => (btn.textContent = '⧉'), 800);
+  } catch {
+    alert('Copy failed');
+  }
+});
+</script>
+
 </body>
 </html>
