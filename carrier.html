@@ -487,10 +487,16 @@
         const allowedEl = document.getElementById('carrier-allowed');
         allowedEl.textContent = allowedText;
 
-        if ((c.allowedtooperate || '').toString().toUpperCase() === 'Y') {
+        if ((c.statuscode || '').toString().toUpperCase() === 'A') {
           statusEl.classList.add('pill-ok');
         } else {
           statusEl.classList.add('pill-warn');
+        }
+
+        if ((c.allowedtooperate || '').toString().toUpperCase() === 'A') {
+          allowedEl.classList.add('pill-ok');
+        } else {
+          allowedEl.classList.add('pill-warn');
         }
 
         // Header meta
