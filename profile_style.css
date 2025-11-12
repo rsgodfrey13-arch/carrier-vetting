@@ -269,3 +269,70 @@ dd{ margin:0; font-size:.9rem; color:#e5e7eb; text-align:right; }
   .carrier-header{ padding-inline:16px; }
   .info-card{ padding-inline:14px; }
 }
+
+
+/* --- Desktop: lock two-column layout so left never wraps under right --- */
+@media (min-width: 1024px){
+  .carrier-header-top{
+    flex-wrap: nowrap;          /* no wrapping on wide screens */
+    align-items: flex-start;
+  }
+
+  /* Left can shrink but not overflow */
+  .carrier-left{
+    flex: 1 1 auto;
+    min-width: 0;               /* allow shrink */
+    max-width: calc(100% - 340px - 24px); /* space left after right + gap */
+  }
+
+  /* Right stays fixed width */
+  .carrier-right{
+    flex: 0 0 340px;            /* fixed column */
+    max-width: 340px;
+    align-self: flex-start;
+  }
+
+  /* Keep meta items under the name in a tight 2-column grid */
+  .carrier-meta-inline{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 1.25rem;
+    row-gap: 6px;
+  }
+}
+
+/* Tablet/phone: allow stacking naturally */
+@media (max-width: 1023.98px){
+  .carrier-header-top{ flex-wrap: wrap; }
+  .carrier-right{
+    flex: 1 1 auto;
+    max-width: 100%;
+    align-items: flex-start;
+  }
+}
+
+/* Make ID row compact so it doesn’t push the layout wider than needed */
+.carrier-id-row{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; line-height:22px; }
+.carrier-ids{ display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+.carrier-ids [id^="carrier-"]{ font-weight:500; color:var(--accent-1); }
+
+/* Single, compact copy button rule (ensure only one .copy-btn block exists) */
+.copy-btn{
+  position:relative;
+  display:inline-flex; align-items:center; justify-content:center;
+  width:16px; height:16px; line-height:1; font-size:11px;
+  border:1px solid var(--border-subtle); border-radius:3px;
+  margin-left:4px; cursor:pointer; user-select:none;
+  color:var(--text-muted); transition:color .15s, border-color .15s;
+  vertical-align:middle; text-align:center;
+}
+.copy-btn:hover{ color:var(--accent-1); border-color:var(--accent-1); }
+.copy-btn::after{
+  content:attr(data-tip);
+  position:absolute; bottom:125%; left:50%;
+  transform:translateX(-50%) translateY(-2px);
+  background:var(--bg-2); color:var(--text-main);
+  border:1px solid var(--border-subtle); border-radius:6px;
+  padding:3px 6px; font-size:11px; white-space:nowrap;
+  opacity:0; pointer-events:none; transition:opacity .15s, transform .15s;
+}
+.copy-btn:hover::after{ opacity:1; transform:translateX(-50%) translateY(-4px); }
