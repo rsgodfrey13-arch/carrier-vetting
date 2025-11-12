@@ -246,14 +246,7 @@
             <dt>Cargo Insurance Required</dt>
             <dd id="field-cargoinsurancerequired">—</dd>
           </div>
-          <div class="row">
-            <dt>Allowed To Operate</dt>
-            <dd id="field-allowedtooperate">—</dd>
-          </div>
-          <div class="row">
-            <dt>EIN</dt>
-            <dd id="field-ein">—</dd>
-          </div>
+ 
         </dl>
       </article>
 
@@ -493,7 +486,7 @@
           statusEl.classList.add('pill-warn');
         }
 
-        if ((c.allowedtooperate || '').toString().toUpperCase() === 'A') {
+        if ((c.allowedtooperate || '').toString().toUpperCase() === 'Y') {
           allowedEl.classList.add('pill-ok');
         } else {
           allowedEl.classList.add('pill-warn');
