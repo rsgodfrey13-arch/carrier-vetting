@@ -45,12 +45,12 @@
 <div class="carrier-id-row">
   <span class="carrier-ids">
     DOT <span id="carrier-dot">—</span>
-    <span class="copy-btn" data-target="carrier-dot">⧉</span>
+    <span class="copy-btn" data-target="carrier-dot"> data-tip="Copy"⧉</span>
   </span>
 
   <span class="carrier-ids">
     EIN <span id="carrier-ein">—</span>
-    <span class="copy-btn" data-target="carrier-ein">⧉</span>
+    <span class="copy-btn" data-target="carrier-ein" data-tip="Copy">⧉</span>
   </span>
 </div>
 
@@ -589,26 +589,28 @@
   </script>
 
   <script>
-document.addEventListener('click', async e => {
-  const btn = e.target.closest('.copy-btn');
-  if (!btn) return;
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.copy-btn');
+    if (!btn) return;
+  
+    const targetId = btn.dataset.target;
+    const el = document.getElementById(targetId);
+    if (!el) return;
+  
+    const text = (el.textContent || '').trim();
+    if (!text || text === '—') return;
+  
+    try {
+      await navigator.clipboard.writeText(text);
+      const prev = btn.getAttribute('data-tip') || 'Copy';
+      btn.setAttribute('data-tip', 'Copied!');
+      setTimeout(() => btn.setAttribute('data-tip', prev), 900);
+    } catch {
+      // optional: show error
+    }
+  });
+  </script>
 
-  const targetId = btn.dataset.target;
-  const targetEl = document.getElementById(targetId);
-  if (!targetEl) return;
-
-  const text = targetEl.textContent.trim();
-  if (!text || text === '—') return;
-
-  try {
-    await navigator.clipboard.writeText(text);
-    btn.textContent = '✓';
-    setTimeout(() => (btn.textContent = '⧉'), 800);
-  } catch {
-    alert('Copy failed');
-  }
-});
-</script>
 
 </body>
 </html>
