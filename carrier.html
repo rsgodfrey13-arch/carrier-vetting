@@ -467,9 +467,11 @@
         document.getElementById('carrier-zip').textContent = c.phyzipcode || '—';
 
         // Status pills
-        const statusText = c.statuscode
-          ? `Status: ${c.statuscode}`
-          : 'Status: —';
+        const statusText =
+          (c.statuscode && c.statuscode.toString().toUpperCase() === 'A')
+            ? 'DOT Status: Active'
+            : 'DOT Status: Inactive';
+        
         const allowedText =
           (c.allowedtooperate && c.allowedtooperate.toString().toUpperCase() === 'Y')
             ? 'Operating Status: Authorized'
