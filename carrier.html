@@ -36,76 +36,61 @@
     <!-- HERO HEADER CARD -->
     <section id="carrier-header" class="carrier-header glass-card">
       <div class="carrier-header-top">
-        <div class="carrier-name-block">
-          <div class="carrier-name-row">
-            <div id="carrier-name" class="carrier-name">Loading…</div>
-          </div>
-
-          <div class="carrier-id-row">
-            <span class="carrier-ids">DOT <span id="carrier-dot">—</span></span>
-            <span class="carrier-ids">EIN <span id="carrier-ein">—</span></span>
-          </div>
-        </div>
-
-        <div class="carrier-header-right">
-          <div class="pill-group">
-            <div id="carrier-status" class="carrier-pill">
-              —
-            </div>
-            <div class="carrier-pill ghost small" id="carrier-allowed">
-              —
-            </div>
-          </div>
-
-          <div class="quick-metrics">
-            <div class="metric-chip">
-              <span class="metric-label">ISS Score</span>
-              <span id="field-issscore" class="metric-value">—</span>
-            </div>
-            <div class="metric-chip">
-              <span class="metric-label">Safety Rating</span>
-              <span id="field-safetyrating" class="metric-value">—</span>
-            </div>
-            <div class="metric-chip">
-              <span class="metric-label">MCS-150 Outdated</span>
-              <span id="field-mcs150outdated" class="metric-value">—</span>
-            </div>
-          </div>
-        </div>
+  <div class="carrier-left">
+    <div class="carrier-name-block">
+      <div class="carrier-name-row">
+        <div id="carrier-name" class="carrier-name">Loading…</div>
       </div>
 
-<!-- META ROW: left info, right bubbles -->
-<div class="carrier-meta-layout">
-  <!-- LEFT: meta info -->
-  <div class="meta-left">
-    <div class="meta-block">
-      <div class="meta-label">Legal Name</div>
-      <div id="carrier-legalname" class="meta-value">—</div>
+      <div class="carrier-id-row">
+        <span class="carrier-ids">DOT <span id="carrier-dot">—</span></span>
+        <span class="carrier-ids">EIN <span id="carrier-ein">—</span></span>
+      </div>
     </div>
-    <div class="meta-block">
-      <div class="meta-label">DBA</div>
-      <div id="carrier-dbaname" class="meta-value">—</div>
-    </div>
-    <div class="meta-block">
-      <div class="meta-label">Location</div>
-      <div id="carrier-location" class="meta-value">—</div>
-    </div>
-    <div class="meta-block">
-      <div class="meta-label">Postal Code</div>
-      <div id="carrier-zip" class="meta-value">—</div>
-    </div>
-    <div class="meta-block">
-      <div class="meta-label">Address</div>
-      <div id="carrier-address" class="meta-value">—</div>
-    </div>
-    <div class="meta-block">
-      <div class="meta-label">Last Verified</div>
-      <div id="field-retrieval_date" class="meta-value">—</div>
+
+    <!-- META INLINE BELOW NAME -->
+    <div class="carrier-meta-inline">
+      <div class="meta-pair">
+        <div class="meta-label">Legal Name</div>
+        <div id="carrier-legalname" class="meta-value">—</div>
+      </div>
+      <div class="meta-pair">
+        <div class="meta-label">Location</div>
+        <div id="carrier-location" class="meta-value">—</div>
+      </div>
+      <div class="meta-pair">
+        <div class="meta-label">Address</div>
+        <div id="carrier-address" class="meta-value">—</div>
+      </div>
+      <div class="meta-pair">
+        <div class="meta-label">Last Verified</div>
+        <div id="field-retrieval_date" class="meta-value">—</div>
+      </div>
     </div>
   </div>
 
-  <!-- RIGHT: extra bubbles (use existing .metric-chip style) -->
-  <div class="meta-right">
+  <div class="carrier-right">
+    <div class="pill-group">
+      <div id="carrier-status" class="carrier-pill">—</div>
+      <div class="carrier-pill ghost small" id="carrier-allowed">—</div>
+    </div>
+
+    <div class="quick-metrics">
+      <div class="metric-chip">
+        <span class="metric-label">ISS Score</span>
+        <span id="field-issscore" class="metric-value">—</span>
+      </div>
+      <div class="metric-chip">
+        <span class="metric-label">Safety Rating</span>
+        <span id="field-safetyrating" class="metric-value">—</span>
+      </div>
+      <div class="metric-chip">
+        <span class="metric-label">MCS-150 Outdated</span>
+        <span id="field-mcs150outdated" class="metric-value">—</span>
+      </div>
+    </div>
+
+    <!-- Optional right-side bubbles -->
     <div class="quick-bubbles">
       <div class="metric-chip">
         <span class="metric-label">Insurance</span>
@@ -115,10 +100,10 @@
         <span class="metric-label">Crashes</span>
         <span class="metric-value">—</span>
       </div>
-      <!-- add more chips as needed -->
     </div>
   </div>
 </div>
+
 
       <div class="hero-accent-line"></div>
     </section>
