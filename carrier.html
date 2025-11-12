@@ -80,8 +80,8 @@
 
   <div class="carrier-right">
     <div class="pill-group">
-      <div id="carrier-status" class="carrier-pill">—</div>
-      <div class="carrier-pill ghost small" id="carrier-allowed">—</div>
+      <div id="carrier-status">—</div>
+      <div id="carrier-allowed">—</div>
     </div>
 
     <div class="quick-metrics">
@@ -480,7 +480,7 @@
         const allowedEl = document.getElementById('carrier-allowed');
         allowedEl.textContent = allowedText;
 
-        if ((c.statuscode || '').toString().toUpperCase() === 'A') {
+        if ((c.statuscode || '').toString().toUpperCase(i don) === 'A') {
           statusEl.classList.add('pill-ok');
         } else {
           statusEl.classList.add('pill-warn');
