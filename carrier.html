@@ -42,30 +42,11 @@
         <div id="carrier-name" class="carrier-name">Loading…</div>
       </div>
 
-<div class="carrier-id-row">
-  <div class="carrier-id">
-    <span class="carrier-label">DOT</span>
-    <span class="carrier-value" id="carrier-dot">00108706</span>
-    <button class="copy-btn" data-copy="00108706" aria-label="Copy DOT">
-      <svg viewBox="0 0 24 24" width="14" height="14">
-        <path d="M16 1H8a2 2 0 0 0-2 2v2H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2h2a2 2 0 0 0 2-2V7l-4-6zM8 3h7l2 3H6V3zm8 17a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12v14z"/>
-      </svg>
-      <span class="tooltip">Copy</span>
-    </button>
-  </div>
-
-  <div class="carrier-id">
-    <span class="carrier-label">EIN</span>
-    <span class="carrier-value" id="carrier-ein">12-3456789</span>
-    <button class="copy-btn" data-copy="12-3456789" aria-label="Copy EIN">
-      <svg viewBox="0 0 24 24" width="14" height="14">
-        <path d="M16 1H8a2 2 0 0 0-2 2v2H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2h2a2 2 0 0 0 2-2V7l-4-6zM8 3h7l2 3H6V3zm8 17a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12v14z"/>
-      </svg>
-      <span class="tooltip">Copy</span>
-    </button>
-  </div>
-</div>
-
+      <div class="carrier-id-row">
+        <span class="carrier-ids">DOT <span id="carrier-dot">—</span></span>
+        <span class="carrier-ids">EIN <span id="carrier-ein">—</span></span>
+      </div>
+    </div>
 
     <!-- META INLINE BELOW NAME -->
     <div class="carrier-meta-inline">
@@ -486,11 +467,9 @@
         document.getElementById('carrier-zip').textContent = c.phyzipcode || '—';
 
         // Status pills
-        const statusText =
-          (c.statuscode && c.statuscode.toString().toUpperCase() === 'A')
-            ? 'DOT Status: Active'
-            : 'DOT Status: Inactive';
-        
+        const statusText = c.statuscode
+          ? `Status: ${c.statuscode}`
+          : 'Status: —';
         const allowedText =
           (c.allowedtooperate && c.allowedtooperate.toString().toUpperCase() === 'Y')
             ? 'Operating Status: Authorized'
@@ -601,24 +580,5 @@
 
     loadCarrier();
   </script>
-
-
-    <script>
-    document.addEventListener('click', async e => {
-      const btn = e.target.closest('.copy-btn');
-      if (!btn) return;
-      const text = btn.dataset.copy;
-      try {
-        await navigator.clipboard.writeText(text);
-        const tip = btn.querySelector('.tooltip');
-        tip.textContent = 'Copied!';
-        setTimeout(() => (tip.textContent = 'Copy'), 1200);
-      } catch {
-        alert('Failed to copy');
-      }
-    });
-    </script>
-
-  
 </body>
 </html>
