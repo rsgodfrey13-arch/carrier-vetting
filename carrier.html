@@ -601,5 +601,24 @@
 
     loadCarrier();
   </script>
+
+
+    <script>
+    document.addEventListener('click', async e => {
+      const btn = e.target.closest('.copy-btn');
+      if (!btn) return;
+      const text = btn.dataset.copy;
+      try {
+        await navigator.clipboard.writeText(text);
+        const tip = btn.querySelector('.tooltip');
+        tip.textContent = 'Copied!';
+        setTimeout(() => (tip.textContent = 'Copy'), 1200);
+      } catch {
+        alert('Failed to copy');
+      }
+    });
+    </script>
+
+  
 </body>
 </html>
