@@ -9,6 +9,26 @@
   <div class="page">
     <h1 class="page-title">Carrier Vetting</h1>
 
+    <!-- SEARCH SECTION -->
+    <section class="search-card">
+      <h2>Find a Carrier</h2>
+      <p class="help-text">Search by DOT number or carrier name.</p>
+
+      <div class="carrier-search-bar">
+        <input
+          id="carrier-search-input"
+          type="text"
+          placeholder="Start typing a DOT or carrier name..."
+          autocomplete="off"
+        />
+        <button id="carrier-search-btn">Open</button>
+      </div>
+
+      <!-- Autocomplete dropdown -->
+      <ul id="carrier-suggestions" class="carrier-suggestions"></ul>
+    </section>
+
+    <!-- LIST SECTION -->
     <section class="list-card">
       <h2>My Carriers</h2>
       <p class="help-text">Click a DOT number to open its profile page.</p>
@@ -30,6 +50,7 @@
   </div>
 
   <script>
+    // ---------- TABLE LOAD ----------
     async function loadCarriers() {
       try {
         const res = await fetch('/api/carriers');
@@ -49,18 +70,18 @@
         data.forEach(c => {
           const row = document.createElement('tr');
 
-          const dotVal = c.dot || c.id || '';
+          const dotVal = c.dot || c.dotnumber || c.id || '';
 
           const dotCell = document.createElement('td');
           const link = document.createElement('a');
           link.textContent = dotVal;
-          link.href = '/' + encodeURIComponent(dotVal);   // ← pretty URL
+          link.href = '/' + encodeURIComponent(dotVal);
           link.className = 'dot-link';
           dotCell.appendChild(link);
           row.appendChild(dotCell);
 
           const address1Cell = document.createElement('td');
-          address1Cell.textContent = c.address1 || '';
+          address1Cell.textContent = c.address1 || c.phy_street || '';
           row.appendChild(address1Cell);
 
           const address2Cell = document.createElement('td');
@@ -68,18 +89,17 @@
           row.appendChild(address2Cell);
 
           const cityCell = document.createElement('td');
-          cityCell.textContent = c.city || '';
+          cityCell.textContent = c.city || c.phycity || '';
           row.appendChild(cityCell);
 
           const stateCell = document.createElement('td');
-          stateCell.textContent = c.state || '';
+          stateCell.textContent = c.state || c.phystate || '';
           row.appendChild(stateCell);
 
           const zipCell = document.createElement('td');
-          zipCell.textContent = c.zip || '';
+          zipCell.textContent = c.zip || c.phyzipcode || '';
           row.appendChild(zipCell);
 
-          // click anywhere in the row
           row.addEventListener('click', (e) => {
             if (e.target.tagName.toLowerCase() !== 'a') {
               window.location.pathname = '/' + encodeURIComponent(dotVal);
@@ -92,6 +112,104 @@
         console.error('Error fetching carriers:', err);
       }
     }
+
+    // ---------- SEARCH / AUTOCOMPLETE ----------
+    const searchInput = document.getElementById('carrier-search-input');
+    const searchBtn = document.getElementById('carrier-search-btn');
+    const suggestionsEl = document.getElementById('carrier-suggestions');
+
+    let searchTimeout = null;
+
+    function clearSuggestions() {
+      suggestionsEl.innerHTML = '';
+      suggestionsEl.classList.remove('open');
+    }
+
+    function goToCarrier(dot) {
+      if (!dot) return;
+      window.location.pathname = '/' + encodeURIComponent(dot);
+    }
+
+    function renderSuggestions(results) {
+      clearSuggestions();
+      if (!Array.isArray(results) || results.length === 0) return;
+
+      results.forEach(item => {
+        const li = document.createElement('li');
+        li.className = 'carrier-suggestion-item';
+
+        const dotVal = item.dot || item.dotnumber || item.id || '';
+        const name = item.legalname || item.dbaname || '(No name)';
+        const city = item.city || item.phycity || '';
+        const state = item.state || item.phystate || '';
+
+        li.innerHTML = `
+          <div class="suggestion-main">${dotVal} – ${name}</div>
+          <div class="suggestion-sub">${city}${city && state ? ', ' : ''}${state}</div>
+        `;
+
+        li.addEventListener('click', () => goToCarrier(dotVal));
+        suggestionsEl.appendChild(li);
+      });
+
+      suggestionsEl.classList.add('open');
+    }
+
+    async function performSearch(query) {
+      const q = query.trim();
+      if (q.length < 2) {
+        clearSuggestions();
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/carriers/search?q=' + encodeURIComponent(q));
+        const data = await res.json();
+        renderSuggestions(data);
+      } catch (err) {
+        console.error('Error searching carriers:', err);
+      }
+    }
+
+    searchInput.addEventListener('input', () => {
+      const value = searchInput.value;
+      if (searchTimeout) clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => performSearch(value), 250); // debounce
+    });
+
+    // Enter key -> go to first match (if exists) or treat text as DOT
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const first = suggestionsEl.querySelector('.carrier-suggestion-item');
+        if (first) {
+          const text = first.querySelector('.suggestion-main').textContent || '';
+          const dot = text.split('–')[0].trim();
+          goToCarrier(dot);
+        } else {
+          goToCarrier(searchInput.value.trim());
+        }
+      }
+    });
+
+    // Button click: same as Enter
+    searchBtn.addEventListener('click', () => {
+      const first = suggestionsEl.querySelector('.carrier-suggestion-item');
+      if (first) {
+        const text = first.querySelector('.suggestion-main').textContent || '';
+        const dot = text.split('–')[0].trim();
+        goToCarrier(dot);
+      } else {
+        goToCarrier(searchInput.value.trim());
+      }
+    });
+
+    // Click outside closes dropdown
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.search-card')) {
+        clearSuggestions();
+      }
+    });
 
     loadCarriers();
   </script>
