@@ -470,9 +470,11 @@
         const statusText = c.statuscode
           ? `Status: ${c.statuscode}`
           : 'Status: —';
-        const allowedText = c.allowedtooperate
-          ? `Allowed to Operate: ${c.allowedtooperate}`
-          : 'Allowed to Operate: —';
+        const allowedText =
+          (c.allowedtooperate && c.allowedtooperate.toString().toUpperCase() === 'Y')
+            ? 'Operating Status: Authorized'
+            : 'Operating Status: Not Authorized';
+
 
         const statusEl = document.getElementById('carrier-status');
         statusEl.textContent = statusText;
