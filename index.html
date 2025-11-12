@@ -5,16 +5,24 @@
   <title>Carrier Vetting – Home</title>
   <link rel="stylesheet" href="style1.css">
 </head>
-<body>
+<body class="carrier-page">
+  <div class="bg-gradient"></div>
+  <div class="bg-grid"></div>
+
   <div class="page">
-    <h1 class="page-title">Carrier Vetting</h1>
+    <header class="page-header">
+      <div class="page-header-left">
+        <h1 class="page-title">Carrier Vetting</h1>
+        <p class="page-subtitle">Find and manage vetted carriers</p>
+      </div>
+    </header>
 
     <!-- SEARCH SECTION -->
-    <section class="search-card">
-      <h2>Find a Carrier</h2>
-      <p class="help-text">Search by DOT number or carrier name.</p>
+    <section class="glass-card search-card">
+      <h2 class="section-title">Search Carriers</h2>
+      <p class="help-text">Search by DOT number or carrier name</p>
 
-      <div class="carrier-search-bar">
+      <div class="search-bar">
         <input
           id="carrier-search-input"
           type="text"
@@ -24,12 +32,11 @@
         <button id="carrier-search-btn">Open</button>
       </div>
 
-      <!-- Autocomplete dropdown -->
       <ul id="carrier-suggestions" class="carrier-suggestions"></ul>
     </section>
 
     <!-- LIST SECTION -->
-    <section class="list-card">
+    <section class="glass-card list-card">
       <h2>My Carriers</h2>
       <p class="help-text">Click a DOT number to open its profile page.</p>
 
@@ -69,7 +76,6 @@
 
         data.forEach(c => {
           const row = document.createElement('tr');
-
           const dotVal = c.dot || c.dotnumber || c.id || '';
 
           const dotCell = document.createElement('td');
@@ -117,7 +123,6 @@
     const searchInput = document.getElementById('carrier-search-input');
     const searchBtn = document.getElementById('carrier-search-btn');
     const suggestionsEl = document.getElementById('carrier-suggestions');
-
     let searchTimeout = null;
 
     function clearSuggestions() {
@@ -137,7 +142,6 @@
       results.forEach(item => {
         const li = document.createElement('li');
         li.className = 'carrier-suggestion-item';
-
         const dotVal = item.dot || item.dotnumber || item.id || '';
         const name = item.legalname || item.dbaname || '(No name)';
         const city = item.city || item.phycity || '';
@@ -147,7 +151,6 @@
           <div class="suggestion-main">${dotVal} – ${name}</div>
           <div class="suggestion-sub">${city}${city && state ? ', ' : ''}${state}</div>
         `;
-
         li.addEventListener('click', () => goToCarrier(dotVal));
         suggestionsEl.appendChild(li);
       });
@@ -174,10 +177,9 @@
     searchInput.addEventListener('input', () => {
       const value = searchInput.value;
       if (searchTimeout) clearTimeout(searchTimeout);
-      searchTimeout = setTimeout(() => performSearch(value), 250); // debounce
+      searchTimeout = setTimeout(() => performSearch(value), 250);
     });
 
-    // Enter key -> go to first match (if exists) or treat text as DOT
     searchInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -192,7 +194,6 @@
       }
     });
 
-    // Button click: same as Enter
     searchBtn.addEventListener('click', () => {
       const first = suggestionsEl.querySelector('.carrier-suggestion-item');
       if (first) {
@@ -204,7 +205,6 @@
       }
     });
 
-    // Click outside closes dropdown
     document.addEventListener('click', (e) => {
       if (!e.target.closest('.search-card')) {
         clearSuggestions();
