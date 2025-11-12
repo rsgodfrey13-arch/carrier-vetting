@@ -241,3 +241,16 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   .carrier-header { padding-inline: 16px; }
   .info-card { padding-inline: 14px; }
 }
+
+
+.meta-value div {
+  line-height: 1.2em;
+}
+
+#carrier-location:not(:empty)::after {
+  content: ", ";
+}
+
+#carrier-zip:empty::before {
+  content: "";
+}
