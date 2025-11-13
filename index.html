@@ -150,23 +150,32 @@
           
           row.appendChild(allowedtooperateCell);
           
-                    
- 
-
           // COMMON
-          const commonCell = document.createElement('td');
-          applyStatusColor(commonCell, c.commonauthoritystatus);
-          row.appendChild(commonCell);
+            const commonCell = document.createElement('td');
+            commonCell.textContent = c.commonauthoritystatus || '—';
+            if (commonCell.textContent === 'A') {
+              commonCell.classList.add('status-ok');
+            }
+            row.appendChild(commonCell);
+
           
           // CONTRACT
-          const contractCell = document.createElement('td');
-          applyStatusColor(contractCell, c.contractauthoritystatus);
-          row.appendChild(contractCell);
+            const contractCell = document.createElement('td');
+            contractCell.textContent = c.contractauthoritystatus || '—';
+            if (contractCell.textContent === 'A') {
+              contractCell.classList.add('status-ok');
+            }  
+            row.appendChild(contractCell);
+
           
           // BROKER
-          const brokerCell = document.createElement('td');
-          applyStatusColor(brokerCell, c.brokerauthoritystatus);
-          row.appendChild(brokerCell);
+            const brokerCell = document.createElement('td');
+            brokerCell.textContent = c.brokerauthoritystatus || '—';
+            if (brokerCell.textContent === 'A') {
+              brokerCell.classList.add('status-ok');
+            }
+            row.appendChild(brokerCell);
+
 
           const safetyCell = document.createElement('td');
           safetyCell.textContent = c.safetyrating || 'Not Rated';
