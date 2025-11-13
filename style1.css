@@ -513,8 +513,8 @@ body.carrier-list .page-subtitle {
 .carriers-title {
   margin: 0;
   font-family: "Space Grotesk", system-ui, sans-serif;
-  font-size: .16rem;
-  letter-spacing: .16em;
+  font-size: .9rem;
+  letter-spacing: 1.4rem;
   text-transform: uppercase;
   color: #f9fafb;
 }
