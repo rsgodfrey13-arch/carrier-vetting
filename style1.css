@@ -7,6 +7,11 @@
   --card:       #0B1624;
   --border:     rgba(255,255,255,.15);
   --radius:     14px;
+  --accent-1: #38bdf8;
+  --accent-2: #22c55e;
+  --accent-warn: #f97316;
+  --text-main: #e5e7eb;
+  --text-muted: #9ca3af;
 }
 
 /* base layout */
