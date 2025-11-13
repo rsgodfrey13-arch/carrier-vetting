@@ -34,74 +34,75 @@
     </header>
 
     <!-- HERO HEADER CARD -->
-    <section id="carrier-header" class="carrier-header glass-card">
-      <div class="carrier-header-top">
-  <div class="carrier-left">
-    <div class="carrier-name-block">
-      <div class="carrier-name-row">
-        <div id="carrier-name" class="carrier-name">Loading…</div>
-      </div>
+<section id="carrier-header" class="carrier-header glass-card">
+  <div class="carrier-header-top">
+    <div class="carrier-left">
+      <div class="carrier-name-block">
+        <div class="carrier-name-row">
+          <div id="carrier-name" class="carrier-name">Loading…</div>
+        </div>
 
-      <div class="carrier-id-row">
-        <span class="carrier-ids">DOT <span id="carrier-dot">—</span></span>
-        <span class="carrier-ids">EIN <span id="carrier-ein">—</span></span>
-      </div>
-    </div>
-
-    <!-- META INLINE BELOW NAME -->
-    <div class="carrier-meta-inline">
-      <div class="meta-pair">
-        <div class="meta-label">Legal Name</div>
-        <div id="carrier-legalname" class="meta-value">—</div>
-      </div>
-
-      
-      <div class="meta-pair">
-        <div class="meta-label">Address</div>
-        <div class="meta-value">
-          <div id="carrier-address">—</div>
-          <div>
-            <span id="carrier-location">—</span><span id="carrier-zip"></span>
-          </div>
+        <div class="carrier-id-row">
+          <span class="carrier-ids">DOT <span id="carrier-dot">—</span></span>
+          <span class="carrier-ids">EIN <span id="carrier-ein">—</span></span>
         </div>
       </div>
 
-      <div class="meta-pair">
-        <div class="meta-label">DBA Name</div>
-        <div id="carrier-dbaname" class="meta-value">—</div>
-      </div>
-      
-      <div class="meta-pair">
-        <div class="meta-label">Last Verified</div>
-        <div id="field-retrieval_date_formatted" class="meta-value">—</div>
-      </div>
-    </div>
-  </div>
+      <!-- META INLINE BELOW NAME -->
+      <div class="carrier-meta-inline">
+        <div class="meta-pair">
+          <div class="meta-label">Legal Name</div>
+          <div id="carrier-legalname" class="meta-value">—</div>
+        </div>
 
-  <div class="carrier-right">
-    <div class="pill-group">
-      <div id="carrier-status" class="carrier-pill">—</div>
-      <div class="carrier-pill ghost small" id="carrier-allowed">—</div>
-    </div>
+        <div class="meta-pair">
+          <div class="meta-label">Address</div>
+          <div class="meta-value">
+            <div id="carrier-address">—</div>
+            <div>
+              <span id="carrier-location">—</span><span id="carrier-zip"></span>
+            </div>
+          </div>
+        </div>
 
-    <div class="quick-metrics">
-      <div class="metric-chip">
-        <span class="metric-label">Common Authority</span>
-        <span id="field-commonauthoritystatus" class="metric-value">—</span>
+        <div class="meta-pair">
+          <div class="meta-label">DBA Name</div>
+          <div id="carrier-dbaname" class="meta-value">—</div>
+        </div>
+
+        <div class="meta-pair">
+          <div class="meta-label">Last Verified</div>
+          <div id="field-retrieval_date_formatted" class="meta-value">—</div>
+        </div>
       </div>
-      <div class="metric-chip">
-        <span class="metric-label">Contract Authority</span>
-        <span id="field-contractauthoritystatus" class="metric-value">—</span>
+    </div> <!-- end .carrier-left -->
+
+    <div class="carrier-right">
+      <div class="pill-group">
+        <div id="carrier-status" class="carrier-pill">—</div>
+        <div class="carrier-pill ghost small" id="carrier-allowed">—</div>
       </div>
-      <div class="metric-chip">
-        <span class="metric-label">Broker Authority</span>
-        <span id="field-brokerauthoritystatus" class="metric-value">—</span>
+
+      <div class="quick-metrics">
+        <div class="metric-chip">
+          <span class="metric-label">Common Authority</span>
+          <span id="field-commonauthoritystatus" class="metric-value">—</span>
+        </div>
+        <div class="metric-chip">
+          <span class="metric-label">Contract Authority</span>
+          <span id="field-contractauthoritystatus" class="metric-value">—</span>
+        </div>
+        <div class="metric-chip">
+          <span class="metric-label">Broker Authority</span>
+          <span id="field-brokerauthoritystatus" class="metric-value">—</span>
+        </div>
+        <div class="metric-chip">
+          <span class="metric-label">Safety Rating</span>
+          <span id="field-safetyrating" class="metric-value">—</span>
+        </div>
       </div>
-      <div class="metric-chip">
-        <span class="metric-label">Safety Rating</span>
-        <span id="field-safetyrating" class="metric-value">—</span>
-      </div>
-      
+
+      <!-- ACTION BUTTONS, SEPARATE ROW -->
       <div class="carrier-actions">
         <button id="btn-add-carrier" class="pill-btn pill-add">
           + Add Carrier
@@ -110,12 +111,12 @@
           Remove Carrier
         </button>
       </div>
+    </div> <!-- end .carrier-right -->
+  </div> <!-- end .carrier-header-top -->
 
-    </div>
-    
+  <div class="hero-accent-line"></div>
+</section>
 
-      <div class="hero-accent-line"></div>
-    </section>
 
     <!-- MAIN GRID -->
     <section class="card-grid">
