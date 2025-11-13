@@ -368,54 +368,55 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
 /* (optional) keep all header chips aligned vertically */
 .header-meta-row{ display:flex; align-items:center; flex-wrap:wrap; gap:12px; }
 
+/* ACTION BUTTONS: make them feel like real buttons, not outline pills */
 
-.carrier-actions {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-}
-
-/* base pill button */
+/* base action button */
 .pill-btn {
   border-radius: 999px;
-  padding: 0.45rem 1.2rem;
+  padding: 0.55rem 1.3rem;
   font-size: 0.8rem;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  border: 1px solid rgba(148, 163, 184, 0.6);
-  background: rgba(15, 23, 42, 0.9);
-  color: var(--text-main);
+  font-weight: 600;
+  border: none;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease,
-    opacity 0.15s ease, transform 0.1s ease;
+  background: rgba(15, 23, 42, 0.9); /* fallback, overridden below */
+  color: var(--text-main);
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.1s ease,
+    opacity 0.15s ease;
 }
 
-.pill-btn:hover:not(.pill-disabled) {
+/* primary action – ADD CARRIER */
+.pill-add {
+  background: var(--accent-2);            /* solid neon green */
+  color: #020617;                         /* dark ink text */
+  box-shadow: 0 0 16px rgba(34, 197, 94, 0.45);
+}
+
+.pill-add:hover:not(.pill-disabled) {
+  box-shadow: 0 0 22px rgba(34, 197, 94, 0.65);
   transform: translateY(-1px);
 }
 
-/* ADD button default – bright */
-.pill-add {
-  border-color: var(--accent-2);
-  color: var(--accent-2);
-}
-
-/* ADD button when already added */
+/* when it's already in the list */
 .pill-add.added {
   background: var(--accent-2);
   color: #020617;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.3); /* a bit calmer */
 }
 
-/* REMOVE button default – greyed out */
+/* secondary action – REMOVE CARRIER */
 .pill-remove {
-  border-color: rgba(148, 163, 184, 0.6);
-  color: var(--text-muted);
+  background: rgba(248, 113, 113, 0.22);  /* soft red */
+  color: #fdecea;
 }
 
-/* REMOVE active (when carrier is in list) */
 .pill-remove.active {
-  border-color: var(--accent-warn);
-  color: var(--accent-warn);
+  background: rgba(248, 113, 113, 0.35);  /* stronger when active */
 }
 
 /* disabled state */
@@ -423,24 +424,16 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   opacity: 0.4;
   cursor: default;
   pointer-events: none;
+  box-shadow: none;
 }
 
-
-/* stack status / metrics / actions vertically on the right */
-.carrier-right {
+/* layout: keep this, plus your later carrier-actions override */
+.carrier-actions {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.5rem; /* space between pill-group, quick-metrics, actions */
+  gap: 0.75rem;
+  align-items: center;
 }
 
-/* keep authority/status chips tidy (if not already defined) */
-.pill-group,
-.quick-metrics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
 
 /* this is what pushes Add/Remove down + separates them */
 .carrier-actions {
@@ -450,3 +443,6 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   display: flex;
   gap: 0.75rem;
 }
+
+
+
