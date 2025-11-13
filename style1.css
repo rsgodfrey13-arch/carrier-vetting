@@ -597,6 +597,23 @@ body.carrier-list .page-subtitle {
   cursor: pointer;
 }
 
+.carriers-table td:nth-child(5),
+.carriers-table td:nth-child(6),
+.carriers-table td:nth-child(7),
+.carriers-table td:nth-child(8), 
+.carriers-table td:nth-child(9) {
+  text-align: center;
+}
+
+.carriers-table th:nth-child(5),
+.carriers-table th:nth-child(6),
+.carriers-table th:nth-child(7),
+.carriers-table th:nth-child(8),
+.carriers-table th:nth-child(9) {
+  text-align: center;
+}
+
+
 /* make table scrollable on small screens */
 
 @media (max-width: 800px) {
