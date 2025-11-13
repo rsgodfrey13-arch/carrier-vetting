@@ -116,9 +116,12 @@
           address1Cell.textContent = c.address1 || c.phy_street || '';
           row.appendChild(address1Cell);
 
-          const allowedtooperateCell = document.createElement('td');
-          allowedtooperateCell.textContent = c.allowedtooperate || '';
-          row.appendChild(allowedtooperateCell);
+const allowedtooperateCell = document.createElement('td');
+allowedtooperateCell.textContent = c.allowedtooperate === 'Y'
+  ? 'Authorized'
+  : 'Not Authorized';
+row.appendChild(allowedtooperateCell);
+
 
 const locationCell = document.createElement('td');
 locationCell.textContent = `${(c.city || c.phycity || '')}${
