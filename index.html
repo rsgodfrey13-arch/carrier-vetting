@@ -71,7 +71,7 @@
             <tr>
               <th>DOT</th>
               <th>Address 1</th>
-              <th>Address 2</th>
+              <th>Operating Status</th>
               <th>City</th>
               <th>State</th>
               <th>Zip</th>
@@ -117,9 +117,9 @@
           address1Cell.textContent = c.address1 || c.phy_street || '';
           row.appendChild(address1Cell);
 
-          const address2Cell = document.createElement('td');
-          address2Cell.textContent = c.address2 || '';
-          row.appendChild(address2Cell);
+          const allowedtooperateCell = document.createElement('td');
+          allowedtooperateCell.textContent = c.allowedtooperate || '';
+          row.appendChild(allowedtooperateCell);
 
           const cityCell = document.createElement('td');
           cityCell.textContent = c.city || c.phycity || '';
