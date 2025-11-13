@@ -329,8 +329,9 @@ tr:hover{
 
 body.carrier-list {
   min-height: 100vh;
+  display: block;                     /* override flex */
+  padding: 0;                         /* we'll pad .page instead */
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  /* add a light bloom on the right + soften the dark base */
   background:
     radial-gradient(circle at 80% 40%, rgba(56,189,248,0.32), transparent 60%),
     radial-gradient(circle at 10% 0%, rgba(56,189,248,0.18), transparent 55%),
@@ -339,6 +340,7 @@ body.carrier-list {
   position: relative;
   overflow-x: hidden;
 }
+
 
 /* reuse same background overlays as profile */
 body.carrier-list .bg-gradient,
@@ -631,7 +633,9 @@ body.carrier-list .page-subtitle {
   top: 0;
   z-index: 999;
   padding: 14px 0;
+  width: 100%;      /* full width bar */
 }
+
 
 .glass-nav {
   background: rgba(7,14,25,0.75);
