@@ -131,6 +131,12 @@
           const nameCell = document.createElement('td');
           nameCell.textContent = c.legalname || c.dbaname || c.name || '—';
           row.appendChild(nameCell);
+
+         const locationCell = document.createElement('td');
+          locationCell.textContent = `${(c.city || c.phycity || '')}${
+            (c.state || c.phystate) ? ', ' + (c.state || c.phystate) : ''
+          }`;
+          row.appendChild(locationCell);
           
           const allowedtooperateCell = document.createElement('td');
           allowedtooperateCell.textContent = c.allowedtooperate === 'Y'
@@ -139,11 +145,7 @@
           row.appendChild(allowedtooperateCell);
           
           
-          const locationCell = document.createElement('td');
-          locationCell.textContent = `${(c.city || c.phycity || '')}${
-            (c.state || c.phystate) ? ', ' + (c.state || c.phystate) : ''
-          }`;
-          row.appendChild(locationCell);
+ 
 
           const commonCell = document.createElement('td');
           nameCell.textContent = c.commonauthoritystatus || '—';
