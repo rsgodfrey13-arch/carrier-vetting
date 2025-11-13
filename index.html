@@ -121,11 +121,10 @@
           dotCell.appendChild(link);
           row.appendChild(dotCell);
 
-          const mcCell = document.createElement('td');
-          mcCell.textContent = '—';
-          mcCell.classList.add('blue-text');
-          row.appendChild(mcCell);
 
+          const mcCell = document.createElement('td');
+          nameCell.textContent = c.hazmatoosratenationalaverage || '—';
+          row.appendChild(mcCell)
 
           // --- 1) CARRIER NAME ---
           const nameCell = document.createElement('td');
@@ -149,19 +148,19 @@
 
           const commonCell = document.createElement('td');
           nameCell.textContent = c.commonauthoritystatus || '—';
-          row.appendChild(nameCell);
+          row.appendChild(commonCell);
           
           const contractCell = document.createElement('td');
           nameCell.textContent = c.contractauthoritystatus || '—';
-          row.appendChild(nameCell);
+          row.appendChild(contractCell);
 
           const brokerCell = document.createElement('td');
           nameCell.textContent = c.brokerauthoritystatus || '—';
-          row.appendChild(nameCell);
+          row.appendChild(brokerCell);
 
           const safetyCell = document.createElement('td');
           nameCell.textContent = c.safetyrating || 'Not Rated';
-          row.appendChild(nameCell);
+          row.appendChild(safetyCell);
 
 
           row.addEventListener('click', (e) => {
