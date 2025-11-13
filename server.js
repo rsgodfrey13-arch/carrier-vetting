@@ -99,6 +99,58 @@ app.post('/api/logout', (req, res) => {
   });
 });
 
+
+/** ---------- MY CARRIERS ROUTES ---------- **/
+
+// Get list of carriers saved by this user
+app.get('/api/my-carriers', requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.userId;
+
+    const sql = `
+      SELECT
+        c.dotnumber AS dot,
+        c.*
+      FROM user_carriers uc
+      JOIN carriers c
+        ON c.dotnumber = uc.carrier_dot
+      WHERE uc.user_id = $1
+      ORDER BY uc.added_at DESC;
+    `;
+
+    const result = await pool.query(sql, [userId]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error in GET /api/my-carriers:', err);
+    res.status(500).json({ error: 'Failed to load user carriers' });
+  }
+});
+
+// Save a new carrier for this user
+app.post('/api/my-carriers', requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.userId;
+    const { dot } = req.body;
+
+    if (!dot) {
+      return res.status(400).json({ error: 'Carrier DOT required' });
+    }
+
+    const sql = `
+      INSERT INTO user_carriers (user_id, carrier_dot)
+      VALUES ($1, $2)
+      ON CONFLICT (user_id, carrier_dot) DO NOTHING;
+    `;
+
+    await pool.query(sql, [userId, dot]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Error in POST /api/my-carriers:', err);
+    res.status(500).json({ error: 'Failed to add carrier' });
+  }
+});
+
+
 /** ---------- CARRIER ROUTES ---------- **/
 
 
