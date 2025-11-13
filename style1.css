@@ -520,7 +520,7 @@ body.carrier-list .page-subtitle {
 .carriers-subtitle {
   margin: 3px 0 0;
   font-size: .78rem;
-  color: var(--text-muted);
+  color: #f9fafb;
 }
 
 /* table wrapper with subtle border */
