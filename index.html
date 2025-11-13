@@ -72,8 +72,12 @@
               <th>DOT</th>
               <th>MC</th>
               <th>Carrier</th>
-              <th>Operating Status</th>
               <th>Location</th>
+              <th>Operating Status</th>
+              <th>Common</th>
+              <th>Contract</th>
+              <th>Broker</th>
+              <th>Safety Rating</th>
             </tr>
           </thead>
           <tbody id="carrier-table-body"></tbody>
@@ -128,19 +132,34 @@
           nameCell.textContent = c.legalname || c.dbaname || c.name || '—';
           row.appendChild(nameCell);
           
-const allowedtooperateCell = document.createElement('td');
-allowedtooperateCell.textContent = c.allowedtooperate === 'Y'
-  ? 'Authorized'
-  : 'Not Authorized';
-row.appendChild(allowedtooperateCell);
+          const allowedtooperateCell = document.createElement('td');
+          allowedtooperateCell.textContent = c.allowedtooperate === 'Y'
+            ? 'Authorized'
+            : 'Not Authorized';
+          row.appendChild(allowedtooperateCell);
+          
+          
+          const locationCell = document.createElement('td');
+          locationCell.textContent = `${(c.city || c.phycity || '')}${
+            (c.state || c.phystate) ? ', ' + (c.state || c.phystate) : ''
+          }`;
+          row.appendChild(locationCell);
 
+          const commonCell = document.createElement('td');
+          nameCell.textContent = c.commonauthoritystatus || '—';
+          row.appendChild(nameCell);
+          
+          const contractCell = document.createElement('td');
+          nameCell.textContent = c.contractauthoritystatus || '—';
+          row.appendChild(nameCell);
 
-const locationCell = document.createElement('td');
-locationCell.textContent = `${(c.city || c.phycity || '')}${
-  (c.state || c.phystate) ? ', ' + (c.state || c.phystate) : ''
-}`;
-row.appendChild(locationCell);
+          const brokerCell = document.createElement('td');
+          nameCell.textContent = c.brokerauthoritystatus || '—';
+          row.appendChild(nameCell);
 
+          const safetyCell = document.createElement('td');
+          nameCell.textContent = c.safetyrating || 'Not Rated';
+          row.appendChild(nameCell);
 
 
           row.addEventListener('click', (e) => {
