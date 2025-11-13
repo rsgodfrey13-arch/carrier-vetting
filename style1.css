@@ -376,7 +376,7 @@ body.carrier-list .page-title {
 body.carrier-list .page-subtitle {
   margin: 4px 0 0;
   font-size: .95rem;
-  color: var(--text-muted);
+  color: #f9fafb;
 }
 
 /* --- Search card --- */
@@ -420,7 +420,7 @@ body.carrier-list .page-subtitle {
 .search-subtitle {
   margin: 4px 0 0;
   font-size: .8rem;
-  color: var(--text-muted);
+  color: #f9fafb;
 }
 
 /* search row */
