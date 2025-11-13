@@ -92,12 +92,27 @@
 
   <script>
     // ---------- TABLE LOAD ----------
-    async function loadCarriers() {
-      try {
-        const res = await fetch('/api/carriers');
-        const data = await res.json();
-        const tbody = document.getElementById('carrier-table-body');
+async function loadCarriers() {
+  try {
+    const tbody = document.getElementById('carrier-table-body');
 
+    // ------------------------------------------
+    // 1) CHECK IF USER IS LOGGED IN
+    // ------------------------------------------
+    let endpoint = '/api/carriers'; // default for guests
+
+    try {
+      const me = await fetch('/api/me').then(r => r.json());
+      if (me.user) {
+        endpoint = '/api/my-carriers'; // logged in → use saved carriers
+      }
+    } catch (e) {
+      console.error("Error checking login:", e);
+    }
+    
+    const res = await fetch(endpoint);
+    const data = await res.json();
+    
         if (!Array.isArray(data) || data.length === 0) {
           const row = document.createElement('tr');
           const cell = document.createElement('td');
