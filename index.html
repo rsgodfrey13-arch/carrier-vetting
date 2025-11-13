@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <title>Carrier Vetting – Home</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="style1.css">
 </head>
-<body class="carrier-page">
+<body class="carrier-list">
   <div class="bg-gradient"></div>
   <div class="bg-grid"></div>
 
@@ -18,41 +19,52 @@
     </header>
 
     <!-- SEARCH SECTION -->
-    <section class="glass-card search-card">
-      <h2 class="section-title">Search Carriers</h2>
-      <p class="help-text">Search by DOT number or carrier name</p>
+    <section class="glass-card search-shell">
+      <div class="search-shell-header">
+        <div>
+          <h2 class="search-title">Search Carriers</h2>
+          <p class="search-subtitle">Search by DOT number or carrier name</p>
+        </div>
+      </div>
 
-      <div class="search-bar">
+      <div class="search-row">
         <input
-          id="carrier-search-input"
+          id="search-input"
+          class="search-input"
           type="text"
           placeholder="Start typing a DOT or carrier name..."
           autocomplete="off"
         />
-        <button id="carrier-search-btn">Open</button>
+        <button id="open-carrier-btn" class="search-btn">Open</button>
       </div>
 
       <ul id="carrier-suggestions" class="carrier-suggestions"></ul>
     </section>
 
     <!-- LIST SECTION -->
-    <section class="glass-card list-card">
-      <h2>My Carriers</h2>
-      <p class="help-text">Click a DOT number to open its profile page.</p>
+    <section class="glass-card carriers-card">
+      <header class="carriers-card-header">
+        <div>
+          <h2 class="carriers-title">My Carriers</h2>
+          <p class="carriers-subtitle">Click a DOT number to open its profile page.</p>
+        </div>
+      </header>
 
-      <table>
-        <thead>
-          <tr>
-            <th>DOT</th>
-            <th>Address 1</th>
-            <th>Address 2</th>
-            <th>City</th>
-            <th>State</th>
-            <th>Zip</th>
-          </tr>
-        </thead>
-        <tbody id="carrier-table-body"></tbody>
-      </table>
+      <div class="carriers-table-wrap">
+        <table class="carriers-table">
+          <thead>
+            <tr>
+              <th>DOT</th>
+              <th>Address 1</th>
+              <th>Address 2</th>
+              <th>City</th>
+              <th>State</th>
+              <th>Zip</th>
+            </tr>
+          </thead>
+          <tbody id="carrier-table-body"></tbody>
+        </table>
+      </div>
     </section>
   </div>
 
@@ -120,8 +132,8 @@
     }
 
     // ---------- SEARCH / AUTOCOMPLETE ----------
-    const searchInput = document.getElementById('carrier-search-input');
-    const searchBtn = document.getElementById('carrier-search-btn');
+    const searchInput = document.getElementById('search-input');
+    const searchBtn = document.getElementById('open-carrier-btn');
     const suggestionsEl = document.getElementById('carrier-suggestions');
     let searchTimeout = null;
 
@@ -206,7 +218,7 @@
     });
 
     document.addEventListener('click', (e) => {
-      if (!e.target.closest('.search-card')) {
+      if (!e.target.closest('.search-shell')) {
         clearSuggestions();
       }
     });
