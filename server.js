@@ -219,7 +219,7 @@ app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
 
-/** ---------- Removed ---------- 
+/** ---------- Removed ---------- -
 app.get('/api/carriers/search', async (req, res) => {
   const q = (req.query.q || '').trim();
 
