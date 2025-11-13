@@ -323,3 +323,290 @@ tr:hover{
   font-size: 0.78rem;
   color: var(--text-muted);
 }
+
+
+/* ========== LIST / HOME PAGE ========== */
+
+body.carrier-list {
+  min-height: 100vh;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: radial-gradient(circle at top left, #0ea5e9 0, #020617 45%, #020617 100%);
+  color: var(--text-main);
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* reuse same background overlays as profile */
+body.carrier-list .bg-gradient,
+body.carrier-list .bg-grid {
+  pointer-events: none;
+}
+
+/* --- Page spacing --- */
+
+body.carrier-list .page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 28px 18px 52px;
+}
+
+/* --- Header text matches profile vibe --- */
+
+body.carrier-list .page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 22px;
+}
+
+body.carrier-list .page-title {
+  margin: 0;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-size: clamp(1.8rem, 2.4vw, 2.1rem);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #f9fafb;
+}
+
+body.carrier-list .page-subtitle {
+  margin: 4px 0 0;
+  font-size: .95rem;
+  color: var(--text-muted);
+}
+
+/* --- Search card --- */
+
+.search-shell {
+  margin-bottom: 22px;
+  padding: 18px 20px 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.search-shell::before {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  opacity: .6;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(56,189,248,.18), transparent 55%),
+    radial-gradient(circle at 100% 0%, rgba(59,130,246,.16), transparent 55%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.search-shell-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 12px;
+}
+
+.search-title {
+  margin: 0;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-size: .95rem;
+  text-transform: uppercase;
+  letter-spacing: .16em;
+  color: #f9fafb;
+}
+
+.search-subtitle {
+  margin: 4px 0 0;
+  font-size: .8rem;
+  color: var(--text-muted);
+}
+
+/* search row */
+
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.search-input {
+  flex: 1 1 auto;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(15,23,42,.9);
+  background: radial-gradient(circle at top left, rgba(15,23,42,.9), rgba(15,23,42,.95));
+  padding: 0 18px;
+  color: var(--text-main);
+  font-size: .9rem;
+  outline: none;
+  box-shadow: inset 0 0 0 1px rgba(15,23,42,.85);
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+
+.search-input::placeholder {
+  color: rgba(148,163,184,.8);
+}
+
+.search-input:focus {
+  border-color: var(--accent-1);
+  box-shadow:
+    0 0 0 1px rgba(56,189,248,.6),
+    0 18px 40px rgba(15,23,42,.9);
+}
+
+/* button matches pills style */
+
+.search-btn {
+  flex: 0 0 auto;
+  height: 40px;
+  padding: 0 20px;
+  border-radius: 999px;
+  border: 1px solid rgba(56,189,248,.7);
+  background: radial-gradient(circle at top left, rgba(56,189,248,.3), rgba(15,23,42,1));
+  color: #e5e7eb;
+  font-size: .85rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px rgba(15,23,42,.8);
+  transition: background .15s ease, transform .12s ease, box-shadow .18s ease, border-color .18s ease;
+}
+
+.search-btn:hover {
+  border-color: var(--accent-2);
+  background: radial-gradient(circle at top left, rgba(34,197,94,.35), rgba(15,23,42,1));
+  transform: translateY(-1px);
+  box-shadow: 0 20px 45px rgba(15,23,42,.95);
+}
+
+.search-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 10px 28px rgba(15,23,42,.9);
+}
+
+/* --- Carriers table card --- */
+
+.carriers-card {
+  padding: 18px 0 16px;
+  overflow: hidden;
+}
+
+.carriers-card-header {
+  padding: 0 20px 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: .75rem;
+}
+
+.carriers-title {
+  margin: 0;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-size: .9rem;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: #f9fafb;
+}
+
+.carriers-subtitle {
+  margin: 3px 0 0;
+  font-size: .78rem;
+  color: var(--text-muted);
+}
+
+/* table wrapper with subtle border */
+
+.carriers-table-wrap {
+  border-top: 1px solid rgba(30,64,175,.7);
+  margin-top: 4px;
+  padding-top: 6px;
+  padding-inline: 4px;
+}
+
+/* table styling */
+
+.carriers-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .85rem;
+}
+
+.carriers-table thead {
+  background: linear-gradient(90deg, rgba(15,23,42,.96), rgba(15,23,42,.9));
+}
+
+.carriers-table thead th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: .7rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: rgba(148,163,184,.9);
+  border-bottom: 1px solid rgba(30,64,175,.9);
+}
+
+.carriers-table tbody tr {
+  background: rgba(15,23,42,.9);
+  border-bottom: 1px solid rgba(15,23,42,.85);
+  transition: background .14s ease, transform .08s ease, box-shadow .18s ease;
+}
+
+.carriers-table tbody tr:nth-child(even) {
+  background: rgba(15,23,42,.94);
+}
+
+.carriers-table tbody tr:hover {
+  background: radial-gradient(circle at left, rgba(56,189,248,.18), rgba(15,23,42,1));
+  transform: translateY(-1px);
+  box-shadow: 0 10px 26px rgba(15,23,42,.9);
+}
+
+.carriers-table td {
+  padding: 8px 14px;
+  color: #e5e7eb;
+  white-space: nowrap;
+}
+
+.carriers-table td:first-child {
+  font-weight: 600;
+  color: var(--accent-1);
+  cursor: pointer;
+}
+
+/* make table scrollable on small screens */
+
+@media (max-width: 800px) {
+  .carriers-table-wrap {
+    overflow-x: auto;
+  }
+
+  .carriers-table {
+    min-width: 640px;
+  }
+}
+
+/* --- responsiveness for header/search --- */
+
+@media (max-width: 700px) {
+  body.carrier-list .page {
+    padding-inline: 14px;
+  }
+
+  .search-shell {
+    padding-inline: 16px;
+  }
+
+  .carriers-card-header {
+    padding-inline: 16px;
+  }
+
+  .search-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
