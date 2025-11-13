@@ -705,3 +705,8 @@ body.carrier-list .page-subtitle {
   font-weight: 500;
 }
 
+/* status = A → green text (half bold) */
+.status-ok {
+  color: var(--accent-2);
+  font-weight: 550;   /* half-bold (between 500 and 600) */
+}
