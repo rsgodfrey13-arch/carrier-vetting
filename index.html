@@ -20,6 +20,8 @@
       <nav class="nav-links">
         <a href="/" class="nav-link">Home</a>
         <a href="/privacy" class="nav-link">Privacy Policy</a>
+        <a href="/login.html" id="login-link">Login</a>
+        <button id="logout-btn" style="display:none;">Logout</button>
       </nav>
     </div>
   </header>
@@ -318,9 +320,42 @@ document.getElementById("download-btn").addEventListener("click", () => {
   link.href = url;
   link.download = "carriers.csv";
   link.click();
-});
-
-    
+});  
   </script>
+
+<script>
+  async function initAuthUI() {
+    try {
+      const res = await fetch('/api/me');
+      const data = await res.json();
+
+      const loginLink = document.getElementById('login-link');
+      const logoutBtn = document.getElementById('logout-btn');
+
+      if (!loginLink || !logoutBtn) return;
+
+      if (data.user) {
+        // logged in
+        loginLink.style.display = 'none';
+        logoutBtn.style.display = 'inline-block';
+
+        logoutBtn.onclick = async () => {
+          await fetch('/api/logout', { method: 'POST' });
+          window.location.href = '/';
+        };
+      } else {
+        // not logged in
+        loginLink.style.display = 'inline-block';
+        logoutBtn.style.display = 'none';
+      }
+    } catch (err) {
+      console.error('auth ui error', err);
+    }
+  }
+
+  initAuthUI();
+</script>
+
+  
 </body>
 </html>
