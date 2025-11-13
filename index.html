@@ -69,8 +69,8 @@
         <table class="carriers-table">
           <thead>
             <tr>
-              <th>Carrier</th>
               <th>DOT</th>
+              <th>Carrier</th>
               <th>Operating Status</th>
               <th>Location</th>
             </tr>
@@ -103,10 +103,7 @@
           const row = document.createElement('tr');
           const dotVal = c.dot || c.dotnumber || c.id || '';
 
-          // --- 1) CARRIER NAME CELL (NEW FIRST COLUMN) ---
-          const nameCell = document.createElement('td');
-          nameCell.textContent = c.legalname || c.dbaname || c.name || '—';
-          row.appendChild(nameCell);
+
           
 
           const dotCell = document.createElement('td');
@@ -117,7 +114,11 @@
           dotCell.appendChild(link);
           row.appendChild(dotCell);
 
-
+          // --- 1) CARRIER NAME CELL (NEW FIRST COLUMN) ---
+          const nameCell = document.createElement('td');
+          nameCell.textContent = c.legalname || c.dbaname || c.name || '—';
+          row.appendChild(nameCell);
+          
 const allowedtooperateCell = document.createElement('td');
 allowedtooperateCell.textContent = c.allowedtooperate === 'Y'
   ? 'Authorized'
