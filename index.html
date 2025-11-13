@@ -116,7 +116,7 @@
           const dotCell = document.createElement('td');
           const link = document.createElement('a');
           link.textContent = dotVal;
-          link.href = '/' + encodieURIComponent(dotVal);
+          link.href = '/' + encodeURIComponent(dotVal);
           link.className = 'dot-link';
           dotCell.appendChild(link);
           row.appendChild(dotCell);
