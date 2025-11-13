@@ -69,15 +69,12 @@
         <table class="carriers-table">
           <thead>
             <tr>
-              <th>Carrier</th>
               <th>DOT</th>
-              <th>MC</th>
-              <th>Status</th>
-              <th>Authorized</th>
-              <th>Safety Rating</th>
-              <th>Common</th>
-              <th>Contract</th>
-              <th>Broker</th>
+              <th>Address 1</th>
+              <th>Address 2</th>
+              <th>City</th>
+              <th>State</th>
+              <th>Zip</th>
             </tr>
           </thead>
           <tbody id="carrier-table-body"></tbody>
@@ -120,9 +117,9 @@
           address1Cell.textContent = c.address1 || c.phy_street || '';
           row.appendChild(address1Cell);
 
-          const allowedtooperateCell = document.createElement('td');
-          allowedtooperate.textContent = c.allowedtooperate || '';
-          row.appendChild(allowedtooperate);
+          const address2Cell = document.createElement('td');
+          address2Cell.textContent = c.address2 || '';
+          row.appendChild(address2Cell);
 
           const cityCell = document.createElement('td');
           cityCell.textContent = c.city || c.phycity || '';
