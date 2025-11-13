@@ -698,3 +698,10 @@ body.carrier-list .page-subtitle {
   background: rgba(56,189,248,0.12);
   border: 1px solid rgba(56,189,248,0.25);
 }
+
+
+.blue-text {
+  color: var(--accent-1);
+  font-weight: 500;
+}
+
