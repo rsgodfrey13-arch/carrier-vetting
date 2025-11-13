@@ -584,6 +584,13 @@ body.carrier-list .page-subtitle {
   white-space: nowrap;
 }
 
+/* status = A → green text (half bold) */
+.carriers-table td.status-ok {
+  color: var(--accent-2);
+  font-weight: 550;
+}
+
+
 .carriers-table td:first-child {
   font-weight: 600;
   color: var(--accent-1);
@@ -708,10 +715,4 @@ body.carrier-list .page-subtitle {
 .blue-text {
   color: var(--accent-1);
   font-weight: 500;
-}
-
-/* status = A → green text (half bold) */
-.status-ok {
-  color: var(--accent-2);
-  font-weight: 550;   /* half-bold (between 500 and 600) */
 }
