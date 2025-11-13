@@ -733,3 +733,21 @@ body.carrier-list .page-subtitle {
   color: var(--accent-1);
   font-weight: 500;
 }
+
+/* Download CSV */
+
+.download-btn {
+  background: #0b78cf;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: 12px;
+  transition: 0.2s;
+}
+
+.download-btn:hover {
+  background: #00b7ff;
+}
