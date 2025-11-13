@@ -116,14 +116,14 @@
           const dotCell = document.createElement('td');
           const link = document.createElement('a');
           link.textContent = dotVal;
-          link.href = '/' + encodi eURIComponent(dotVal);
+          link.href = '/' + encodieURIComponent(dotVal);
           link.className = 'dot-link';
           dotCell.appendChild(link);
           row.appendChild(dotCell);
 
 
           const mcCell = document.createElement('td');
-          nameCell.textContent = c.hazmatoosratenationalaverage || '—';
+          mcCell.textContent = c.hazmatoosratenationalaverage || '—';
           row.appendChild(mcCell)
 
           // --- 1) CARRIER NAME ---
@@ -147,19 +147,19 @@
  
 
           const commonCell = document.createElement('td');
-          nameCell.textContent = c.commonauthoritystatus || '—';
+          commonCell.textContent = c.commonauthoritystatus || '—';
           row.appendChild(commonCell);
           
           const contractCell = document.createElement('td');
-          nameCell.textContent = c.contractauthoritystatus || '—';
+          contractCell.textContent = c.contractauthoritystatus || '—';
           row.appendChild(contractCell);
 
           const brokerCell = document.createElement('td');
-          nameCell.textContent = c.brokerauthoritystatus || '—';
+          brokerCell.textContent = c.brokerauthoritystatus || '—';
           row.appendChild(brokerCell);
 
           const safetyCell = document.createElement('td');
-          nameCell.textContent = c.safetyrating || 'Not Rated';
+          safetyCell.textContent = c.safetyrating || 'Not Rated';
           row.appendChild(safetyCell);
 
 
