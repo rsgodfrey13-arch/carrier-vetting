@@ -125,12 +125,12 @@
 
 
           const mcCell = document.createElement('td');
-          mcCell.textContent = c.hazmatoosratenationalaverage || '—';
+          mcCell.textContent = c.hazmatoosratenationalaverage || '-';
           row.appendChild(mcCell)
 
           // --- 1) CARRIER NAME ---
           const nameCell = document.createElement('td');
-          nameCell.textContent = c.legalname || c.dbaname || c.name || '—';
+          nameCell.textContent = c.legalname || c.dbaname || c.name || '-';
           row.appendChild(nameCell);
 
          const locationCell = document.createElement('td');
@@ -154,7 +154,7 @@
           
           // COMMON
             const commonCell = document.createElement('td');
-            commonCell.textContent = c.commonauthoritystatus || '—';
+            commonCell.textContent = c.commonauthoritystatus || '-';
             if (commonCell.textContent === 'A') {
               commonCell.classList.add('status-ok');
             }
@@ -163,7 +163,7 @@
           
           // CONTRACT
             const contractCell = document.createElement('td');
-            contractCell.textContent = c.contractauthoritystatus || '—';
+            contractCell.textContent = c.contractauthoritystatus || '-';
             if (contractCell.textContent === 'A') {
               contractCell.classList.add('status-ok');
             }  
@@ -172,7 +172,7 @@
           
           // BROKER
             const brokerCell = document.createElement('td');
-            brokerCell.textContent = c.brokerauthoritystatus || '—';
+            brokerCell.textContent = c.brokerauthoritystatus || '-';
             if (brokerCell.textContent === 'A') {
               brokerCell.classList.add('status-ok');
             }
