@@ -72,8 +72,7 @@
               <th>DOT</th>
               <th>Address 1</th>
               <th>Operating Status</th>
-              <th>City</th>
-              <th>State</th>
+              <th>Location</th>
               <th>Zip</th>
             </tr>
           </thead>
@@ -121,13 +120,12 @@
           allowedtooperateCell.textContent = c.allowedtooperate || '';
           row.appendChild(allowedtooperateCell);
 
-          const cityCell = document.createElement('td');
-          cityCell.textContent = c.city || c.phycity || '';
-          row.appendChild(cityCell);
+const locationCell = document.createElement('td');
+locationCell.textContent = `${(c.city || c.phycity || '')}${
+  (c.state || c.phystate) ? ', ' + (c.state || c.phystate) : ''
+}`;
+row.appendChild(locationCell);
 
-          const stateCell = document.createElement('td');
-          stateCell.textContent = c.state || c.phystate || '';
-          row.appendChild(stateCell);
 
           const zipCell = document.createElement('td');
           zipCell.textContent = c.zip || c.phyzipcode || '';
