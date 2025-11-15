@@ -897,7 +897,21 @@ body.carrier-list .page-subtitle {
   color: #9ca3af;
 }
 
+/* Search input container */
 .search-input-wrap {
-  position: relative;
-  flex: 1;
+  position: relative;   /* needed for dropdown positioning */
+  flex: 1 1 auto;       /* makes it stretch across the row */
 }
+
+/* Ensure alignment */
+.search-row {
+  align-items: center;
+}
+
+/* Make the search bubble stretch fully */
+.search-input {
+  width: 100%;
+  flex: 1 1 auto;
+  box-sizing: border-box;
+}
+
