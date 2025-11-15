@@ -73,6 +73,9 @@
         <table class="carriers-table">
           <thead>
             <tr>
+              <th class="col-select">
+                <input type="checkbox" id="select-all">
+              </th>
               <th>DOT</th>
               <th>MC</th>
               <th>Carrier</th>
@@ -86,6 +89,14 @@
           </thead>
           <tbody id="carrier-table-body"></tbody>
         </table>
+
+        <div id="bulk-actions" class="bulk-actions hidden">
+          <span id="selected-count">0</span> selected
+          <button id="bulk-remove-btn" class="bulk-remove-btn">
+            Remove selected from My Carriers
+          </button>
+        </div>
+
       </div>
     </section>
   </div>
@@ -129,7 +140,17 @@ async function loadCarriers() {
           const row = document.createElement('tr');
           const dotVal = c.dot || c.dotnumber || c.id || '';
 
-
+            //  NEW: checkbox cell
+          const selectCell = document.createElement('td');
+          selectCell.className = 'col-select';
+        
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.className = 'row-select';
+          checkbox.dataset.dot = dotVal;   // this is what we'll send to the API
+        
+          selectCell.appendChild(checkbox);
+          row.appendChild(selectCell);
           
 
           const dotCell = document.createElement('td');
@@ -369,6 +390,84 @@ document.getElementById("download-btn").addEventListener("click", () => {
   }
 
   initAuthUI();
+</script>
+
+<script>
+  const tbody = document.getElementById('carrier-table-body');
+  const selectAll = document.getElementById('select-all');
+  const bulkBar = document.getElementById('bulk-actions');
+  const selectedCountEl = document.getElementById('selected-count');
+  const bulkRemoveBtn = document.getElementById('bulk-remove-btn');
+
+  function updateBulkBar() {
+    const selected = document.querySelectorAll('.row-select:checked');
+    const count = selected.length;
+
+    if (count === 0) {
+      bulkBar.classList.add('hidden');
+      selectAll.checked = false;
+    } else {
+      bulkBar.classList.remove('hidden');
+      selectedCountEl.textContent = count;
+      // if all visible checkboxes are selected, tick the header
+      const allBoxes = document.querySelectorAll('.row-select');
+      selectAll.checked = (count === allBoxes.length && allBoxes.length > 0);
+    }
+  }
+
+  // When any row checkbox changes
+  tbody.addEventListener('change', (e) => {
+    if (e.target.classList.contains('row-select')) {
+      updateBulkBar();
+    }
+  });
+
+  // "Select All" toggle in header
+  selectAll.addEventListener('change', () => {
+    const allBoxes = document.querySelectorAll('.row-select');
+    allBoxes.forEach(cb => {
+      cb.checked = selectAll.checked;
+    });
+    updateBulkBar();
+  });
+
+  // Bulk Remove button
+  bulkRemoveBtn.addEventListener('click', async () => {
+    const selected = Array.from(document.querySelectorAll('.row-select:checked'));
+    if (!selected.length) return;
+
+    if (!confirm(`Remove ${selected.length} carriers from My Carriers?`)) {
+      return;
+    }
+
+    // Remove each selected carrier via your existing DELETE route
+    for (const cb of selected) {
+      const dot = cb.dataset.dot;
+      try {
+        const res = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}`, {
+          method: 'DELETE'
+        });
+
+        if (res.status === 401) {
+          alert('Your session expired. Please log in again.');
+          window.location.href = '/login.html';
+          return;
+        }
+
+        if (!res.ok) {
+          console.error('Failed to remove', dot, await res.text());
+        } else {
+          // Remove the row from the table
+          const row = cb.closest('tr');
+          if (row) row.remove();
+        }
+      } catch (err) {
+        console.error('Network error removing', dot, err);
+      }
+    }
+
+    updateBulkBar();
+  });
 </script>
 
   
