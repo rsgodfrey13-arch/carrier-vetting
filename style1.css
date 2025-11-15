@@ -896,3 +896,8 @@ body.carrier-list .page-subtitle {
   font-size: 0.75rem;
   color: #9ca3af;
 }
+
+.search-input-wrap {
+  position: relative;
+  flex: 1;
+}
