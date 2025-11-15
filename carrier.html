@@ -431,10 +431,7 @@
 
     async function loadCarrier() {
       const path = window.location.pathname.replace(/^\//, '');
-      const dot = decodeURIComponent(path);
-      const res = await fetch(`/api/carriers/${dot}`);
-      const data = await res.json();
-      
+      const dot = decodeURIComponent(path);     
       if (!dot) return;
 
       try {
