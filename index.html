@@ -105,6 +105,8 @@
   </div>
 
   <script>
+
+let carrierIndex = []; 
     // ---------- TABLE LOAD ----------
 async function loadCarriers() {
   try {
@@ -245,6 +247,19 @@ async function loadCarriers() {
       }
     }
 
+// ---------- BUILD AUTOCOMPLETE INDEX ----------
+async function buildCarrierIndex() {
+  try {
+    const res = await fetch('/api/carriers');   // always ALL carriers
+    const data = await res.json();
+    carrierIndex = Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.error("Error building search index:", err);
+    carrierIndex = [];
+  }
+}
+
+
     // ---------- SEARCH / AUTOCOMPLETE ----------
     const searchInput = document.getElementById('search-input');
     const searchBtn = document.getElementById('open-carrier-btn');
@@ -284,21 +299,33 @@ async function loadCarriers() {
       suggestionsEl.classList.add('open');
     }
 
-    async function performSearch(query) {
-      const q = query.trim();
-      if (q.length < 2) {
-        clearSuggestions();
-        return;
-      }
+function performSearch(query) {
+  const q = query.trim();
+  if (q.length < 2) {
+    clearSuggestions();
+    return;
+  }
 
-      try {
-        const res = await fetch('/api/carriers/search?q=' + encodeURIComponent(q));
-        const data = await res.json();
-        renderSuggestions(data);
-      } catch (err) {
-        console.error('Error searching carriers:', err);
-      }
-    }
+  // Make sure we have the global carrierIndex loaded
+  if (!Array.isArray(carrierIndex) || carrierIndex.length === 0) {
+    clearSuggestions();
+    return;
+  }
+
+  const qLower = q.toLowerCase();
+
+  const matches = carrierIndex
+    .filter(c => {
+      const dot = String(c.dot || c.dotnumber || c.id || '');
+      const name = (c.legalname || c.dbaname || c.name || '').toLowerCase();
+
+      return dot.startsWith(q) || name.includes(qLower);
+    })
+    .slice(0, 10);
+
+  renderSuggestions(matches);
+}
+
 
     searchInput.addEventListener('input', () => {
       const value = searchInput.value;
@@ -337,7 +364,9 @@ async function loadCarriers() {
       }
     });
 
-    loadCarriers();
+    loadCarriers();      // populates table (my carriers vs all)
+    buildCarrierIndex(); // populates search index (always ALL carriers)
+
 
 document.getElementById("download-btn").addEventListener("click", () => {
   const table = document.querySelector(".carriers-table");
