@@ -145,7 +145,7 @@ async function loadCarriers() {
 
             //  NEW: checkbox cell
           const selectCell = document.createElement('td');
-          selectCell.className = 'col-select';
+          selectCell.className = 'col-select select-cell';  // add select-cell
         
           const checkbox = document.createElement('input');
           checkbox.type = 'checkbox';
@@ -226,10 +226,17 @@ async function loadCarriers() {
 
 
           row.addEventListener('click', (e) => {
+            // If the click came from the checkbox column, do nothing
+            if (e.target.closest('.select-cell')) {
+              return;
+            }
+          
+            // Otherwise, treat it as a row click (unless it's the DOT link itself)
             if (e.target.tagName.toLowerCase() !== 'a') {
               window.location.pathname = '/' + encodeURIComponent(dotVal);
             }
           });
+
 
           tbody.appendChild(row);
         });
@@ -473,13 +480,7 @@ document.getElementById("download-btn").addEventListener("click", () => {
   });
 </script>
 
-<script>
-document.addEventListener("click", (e) => {
-  if (e.target.closest(".select-cell")) {
-    e.stopPropagation();
-  }
-});
-</script>
+
 
   
 </body>
