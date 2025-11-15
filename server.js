@@ -150,10 +150,49 @@ app.post('/api/my-carriers', requireAuth, async (req, res) => {
   }
 });
 
+// Check if THIS dot is already saved for this user
+app.get('/api/my-carriers/:dot', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const { dot } = req.params;
+
+  try {
+    const result = await pool.query(
+      'SELECT 1 FROM user_carriers WHERE user_id = $1 AND carrier_dot = $2',
+      [userId, dot]
+    );
+
+    if (result.rowCount > 0) {
+      return res.json({ saved: true });
+    } else {
+      // 404 lets the frontend treat it as "not saved"
+      return res.status(404).json({ saved: false });
+    }
+  } catch (err) {
+    console.error('Error in GET /api/my-carriers/:dot:', err);
+    res.status(500).json({ error: 'Failed to check carrier' });
+  }
+});
+
+// Remove a carrier from this user's list
+app.delete('/api/my-carriers/:dot', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const { dot } = req.params;
+
+  try {
+    const result = await pool.query(
+      'DELETE FROM user_carriers WHERE user_id = $1 AND carrier_dot = $2',
+      [userId, dot]
+    );
+
+    res.json({ ok: true, deleted: result.rowCount });
+  } catch (err) {
+    console.error('Error in DELETE /api/my-carriers/:dot:', err);
+    res.status(500).json({ error: 'Failed to remove carrier' });
+  }
+});
+
 
 /** ---------- CARRIER ROUTES ---------- **/
-
-
 
 app.get('/api/carriers', async (req, res) => {
   try {
