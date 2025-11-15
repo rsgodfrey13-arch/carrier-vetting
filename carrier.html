@@ -432,7 +432,9 @@
     async function loadCarrier() {
       const path = window.location.pathname.replace(/^\//, '');
       const dot = decodeURIComponent(path);
-
+      const res = await fetch(`/api/carriers/${dot}`);
+      const data = await res.json();
+      
       if (!dot) return;
 
       try {
@@ -567,6 +569,10 @@
         setLink('field-link_docket_numbers', c.link_docket_numbers);
         setLink('field-link_active_for_hire', c.link_active_for_hire);
         setLink('field-link_self', c.link_self);
+
+        // Await For Add Carrier Button
+        await initCarrierButtons(dot);
+        
       } catch (err) {
         console.error('Error fetching carrier:', err);
         document.getElementById('carrier-name').textContent = 'Error loading carrier';
@@ -574,6 +580,141 @@
     }
 
     loadCarrier();
+
+async function initCarrierButtons(dot) {
+  const addBtn = document.getElementById('btn-add-carrier');
+  const removeBtn = document.getElementById('btn-remove-carrier');
+
+  if (!addBtn || !removeBtn) return;
+
+  // Helper: set visual state
+  function setState({ isSaved, isLoggedIn }) {
+    if (!isLoggedIn) {
+      addBtn.textContent = 'Login to Save';
+      addBtn.classList.remove('added');
+      addBtn.classList.add('pill-disabled');
+
+      removeBtn.classList.add('pill-disabled');
+      removeBtn.classList.remove('active');
+      return;
+    }
+
+    if (isSaved) {
+      // Carrier is already in My Carriers
+      addBtn.textContent = 'Added';
+      addBtn.classList.add('added');
+      addBtn.classList.add('pill-disabled');
+
+      removeBtn.textContent = 'Remove Carrier';
+      removeBtn.classList.remove('pill-disabled');
+      removeBtn.classList.add('active');
+    } else {
+      // Not saved yet
+      addBtn.textContent = '+ Add Carrier';
+      addBtn.classList.remove('added');
+      addBtn.classList.remove('pill-disabled');
+
+      removeBtn.textContent = 'Remove Carrier';
+      removeBtn.classList.add('pill-disabled');
+      removeBtn.classList.remove('active');
+    }
+  }
+
+  // 1) Check if logged in
+  let loggedIn = false;
+  try {
+    const meRes = await fetch('/api/me');
+    const meData = await meRes.json();
+    loggedIn = !!meData.user;
+  } catch (err) {
+    console.error('auth check failed', err);
+  }
+
+  if (!loggedIn) {
+    setState({ isSaved: false, isLoggedIn: false });
+    addBtn.onclick = () => {
+      window.location.href = '/login.html';
+    };
+    // removeBtn stays disabled
+    return;
+  }
+
+  // 2) Check if this DOT is already saved
+  let isSaved = false;
+  try {
+    const checkRes = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}`);
+    if (checkRes.ok) {
+      const checkData = await checkRes.json();
+      isSaved = !!checkData.saved;
+    } else if (checkRes.status === 404) {
+      isSaved = false;
+    }
+  } catch (err) {
+    console.error('check saved failed', err);
+  }
+
+  setState({ isSaved, isLoggedIn: true });
+
+  // 3) Wire ADD
+  addBtn.onclick = async () => {
+    if (addBtn.classList.contains('pill-disabled')) return;
+
+    try {
+      const res = await fetch('/api/my-carriers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dot })
+      });
+
+      const body = await res.json();
+
+      if (res.status === 401) {
+        // session expired
+        window.location.href = '/login.html';
+        return;
+      }
+
+      if (res.ok && body.ok) {
+        setState({ isSaved: true, isLoggedIn: true });
+      } else {
+        alert(body.error || 'Failed to add carrier.');
+      }
+    } catch (err) {
+      console.error('add carrier failed', err);
+      alert('Network error adding carrier.');
+    }
+  };
+
+  // 4) Wire REMOVE
+  removeBtn.onclick = async () => {
+    if (removeBtn.classList.contains('pill-disabled')) return;
+
+    try {
+      const res = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}`, {
+        method: 'DELETE'
+      });
+
+      const body = await res.json();
+
+      if (res.status === 401) {
+        window.location.href = '/login.html';
+        return;
+      }
+
+      if (res.ok && body.ok) {
+        setState({ isSaved: false, isLoggedIn: true });
+      } else {
+        alert(body.error || 'Failed to remove carrier.');
+      }
+    } catch (err) {
+      console.error('remove carrier failed', err);
+      alert('Network error removing carrier.');
+    }
+  };
+}
+
+  document.addEventListener('DOMContentLoaded', loadCarrier);
+    
   </script>
 
   <script>
