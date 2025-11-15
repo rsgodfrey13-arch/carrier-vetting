@@ -81,7 +81,7 @@
         <table class="carriers-table">
           <thead>
             <tr>
-              <th class="col-select">
+              <th class="select-cell">
                 <input type="checkbox" id="select-all">
               </th>
               <th>DOT</th>
@@ -471,6 +471,14 @@ document.getElementById("download-btn").addEventListener("click", () => {
 
     updateBulkBar();
   });
+</script>
+
+<script>
+document.addEventListener("click", (e) => {
+  if (e.target.closest(".select-cell")) {
+    e.stopPropagation();
+  }
+});
 </script>
 
   
