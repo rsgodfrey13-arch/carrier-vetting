@@ -89,7 +89,7 @@
       <div class="quick-metrics">
         <div class="metric-chip">
           <span class="metric-label">Safety Rating</span>
-          <span id="field-safetyrating" class="metric-value">—</span>
+          <span id="field-safetyrating" class="carrier-pill ghost small">—</span>
         </div>
       </div>
 
@@ -525,6 +525,24 @@ document.getElementById('field-safetyrating').textContent = safetyRatingText;
           allowedEl.classList.add('pill-warn');
         }
 
+        if ((c.commonauthoritystatus || '').toString().toUpperCase() === 'A') {
+          common_El.classList.add('pill-ok');
+        } else if ((c.commonauthoritystatus || '').toString().toUpperCase() === 'I') {
+          common_El.classList.add('pill-purp');
+        }
+
+        if ((c.contractauthoritystatus || '').toString().toUpperCase() === 'A') {
+          contract_El.classList.add('pill-ok');
+        } else if ((c.contractauthoritystatus || '').toString().toUpperCase() === 'I') {
+          contract_El.classList.add('pill-purp');
+        }
+
+        if ((c.brokerauthoritystatus || '').toString().toUpperCase() === 'A') {
+          broker_El.classList.add('pill-ok');
+        } else if ((c.brokerauthoritystatus || '').toString().toUpperCase() === 'I') {
+          broker_El.classList.add('pill-purp');
+        }
+        
         // Header meta
         setText('carrier-legalname', c.legalname);
         setText('carrier-dbaname', c.dbaname);
