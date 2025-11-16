@@ -80,22 +80,13 @@
     <div class="carrier-right">
       <div class="pill-group">
         <div id="carrier-status" class="carrier-pill">—</div>
-        <div class="carrier-pill ghost small" id="carrier-allowed">—</div>
+        <div id="carrier-allowed" class "carrier-pill ghost small" >—</div>
+        <div id="carrier-commonauthoritystatus" class "carrier-pill ghost small" >—</div>
+        <div id="carrier-contractauthoritystatus" class "carrier-pill ghost small" >—</div>
+        <div id="carrier-brokerauthoritystatus" class "carrier-pill ghost small" >—</div>
       </div>
 
       <div class="quick-metrics">
-        <div class="metric-chip">
-          <span class="metric-label">Common Authority</span>
-          <span id="field-commonauthoritystatus" class="metric-value">—</span>
-        </div>
-        <div class="metric-chip">
-          <span class="metric-label">Contract Authority</span>
-          <span id="field-contractauthoritystatus" class="metric-value">—</span>
-        </div>
-        <div class="metric-chip">
-          <span class="metric-label">Broker Authority</span>
-          <span id="field-brokerauthoritystatus" class="metric-value">—</span>
-        </div>
         <div class="metric-chip">
           <span class="metric-label">Safety Rating</span>
           <span id="field-safetyrating" class="metric-value">—</span>
@@ -471,18 +462,29 @@
             ? 'Operating Status: Authorized'
             : 'Operating Status: Not Authorized';
 
-const mapAuthority = code => {
-  const v = (code || '').toString().toUpperCase();
+        const commonText =
+          c.commonauthoritystatus === 'A'
+            ? 'Common Authority: Active'
+            : c.commonauthoritystatus === 'I'
+              ? 'Common Authority: Interstate'
+              : '-';
 
-  if (v === 'A') return 'Active';
-  if (v === 'I') return 'Interstate';
-  // N or blank → show the dash
-  return '—';
-};
+        const contractTest =
+          c.contractauthoritystatus === 'A'
+            ? 'Contract Authority: Active'
+            : c.contractauthoritystatus === 'I'
+              ? 'Contract Authority: Interstate'
+              : '-';
 
-document.getElementById('field-commonauthoritystatus').textContent  = mapAuthority(c.commonauthoritystatus);
-document.getElementById('field-contractauthoritystatus').textContent = mapAuthority(c.contractauthoritystatus);
-document.getElementById('field-brokerauthoritystatus').textContent   = mapAuthority(c.brokerauthoritystatus);
+        const brokerTest =
+          c.brokerauthoritystatus === 'A'
+            ? 'Broker Authority: Active'
+            : c.brokerauthoritystatus === 'I'
+              ? 'Broker Authority: Interstate'
+              : '-';
+
+
+
 
 const r = (c.safetyrating || '').toString().toUpperCase();
 
@@ -502,6 +504,15 @@ document.getElementById('field-safetyrating').textContent = safetyRatingText;
         const allowedEl = document.getElementById('carrier-allowed');
         allowedEl.textContent = allowedText;
 
+        const common_El = document.getElementById('carrier-commonauthoritystatus');
+        allowedEl.textContent = allowedText;
+
+        const contract_El = document.getElementById('carrier-contractauthoritystatus');
+        allowedEl.textContent = allowedText;
+
+        const broker_El = document.getElementById('carrier-brokerauthoritystatus');
+        allowedEl.textContent = allowedText;
+        
         if ((c.statuscode || '').toString().toUpperCase() === 'A') {
           statusEl.classList.add('pill-ok');
         } else {
