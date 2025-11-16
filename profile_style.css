@@ -4,6 +4,7 @@
   --accent-1: #38bdf8;
   --accent-2: #22c55e;
   --accent-button: #10b981;
+  --accent-red-button #e11d48;
   --accent-warn: #f97316;
   --text-main: #e5e7eb;
   --text-muted: #9ca3af;
@@ -419,7 +420,7 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
 #B63E52
 
 .pill-remove.active {
-  background: rgba(248, 113, 113, 0.70);  /* stronger when active */
+  background: var(--accent-red-button);;  /* stronger when active */
 }
 
 /* disabled state */
