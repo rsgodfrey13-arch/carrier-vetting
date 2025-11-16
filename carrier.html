@@ -505,13 +505,13 @@ document.getElementById('field-safetyrating').textContent = safetyRatingText;
         allowedEl.textContent = allowedText;
 
         const common_El = document.getElementById('carrier-commonauthoritystatus');
-        allowedEl.textContent = commonText;
+        common_El.textContent = commonText;
 
         const contract_El = document.getElementById('carrier-contractauthoritystatus');
-        allowedEl.textContent = contractTest;
+        contract_El.textContent = contractTest;
 
         const broker_El = document.getElementById('carrier-brokerauthoritystatus');
-        allowedEl.textContent = brokerTest;
+        broker_El.textContent = brokerTest;
         
         if ((c.statuscode || '').toString().toUpperCase() === 'A') {
           statusEl.classList.add('pill-ok');
