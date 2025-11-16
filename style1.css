@@ -628,6 +628,15 @@ body.carrier-list .page-subtitle {
   text-align: center;
 }
 
+.carriers-table th:nth-child(6),
+.carriers-table th:nth-child(7),
+.carriers-table th:nth-child(8), 
+.carriers-table th:nth-child(9),
+.carriers-table th:nth-child(10) {
+  text-align: center;
+}
+
+
 
 
 .carriers-table th:nth-child(5),
