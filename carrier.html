@@ -462,8 +462,8 @@
 
         // Status pills
         const statusText =
-          c.statuscode === 'A' ? 'Status: Active' :
-          c.statuscode === 'I' ? 'Status: Inactive' :
+          c.statuscode === 'A' ? 'Status: ACTIVE' :
+          c.statuscode === 'I' ? 'Status: INACTIVE' :
           'Status: None';
         
         const allowedText =
@@ -474,8 +474,8 @@
 const mapAuthority = code => {
   const v = (code || '').toString().toUpperCase();
 
-  if (v === 'A') return 'Active';
-  if (v === 'I') return 'Interstate';
+  if (v === 'A') return 'ACTIVE';
+  if (v === 'I') return 'INTERSTATE';
   // N or blank → show the dash
   return '—';
 };
@@ -487,11 +487,11 @@ document.getElementById('field-brokerauthoritystatus').textContent   = mapAuthor
 const r = (c.safetyrating || '').toString().toUpperCase();
 
 const safetyRatingText =
-  r === ''  ? 'Not Rated'     :
-  r === 'C' ? 'Conditional'   :
-  r === 'S' ? 'Satisfactory'  :
-  r === 'U' ? 'Unsatisfactory':
-              'Not Rated';
+  r === ''  ? 'NOT RATED'     :
+  r === 'C' ? 'CONDITIONAL'   :
+  r === 'S' ? 'SATISFACTORY'  :
+  r === 'U' ? 'UNSATISFACTORY':
+              'NOT RATED';
 
 document.getElementById('field-safetyrating').textContent = safetyRatingText;
 
