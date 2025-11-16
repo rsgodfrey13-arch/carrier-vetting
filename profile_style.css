@@ -6,6 +6,7 @@
   --accent-button: #10b981;
   --accent-red-button: #e11d48;
   --accent-warn: #f97316;
+  --accent-purp: #7C3AED;
   --text-main: #e5e7eb;
   --text-muted: #9ca3af;
   --border-subtle: rgba(148, 163, 184, 0.25);
@@ -150,6 +151,7 @@ body.carrier-page {
 .carrier-pill.ghost { background: transparent; }
 .pill-ok { border-color: var(--accent-2); box-shadow: 0 0 14px rgba(34,197,94,.5); }
 .pill-warn { border-color: var(--accent-warn); box-shadow: 0 0 14px rgba(249,115,22,.45); }
+.pill-purp { border-color: var(--accent-purp); box-shadow: 0 0 14px rgba(249,115,22,.45); }
 
 .quick-metrics { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
 
