@@ -417,7 +417,6 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   color: #fdecea;
 }
 
-#B63E52
 
 .pill-remove.active {
   background: var(--accent-red-button);;  /* stronger when active */
