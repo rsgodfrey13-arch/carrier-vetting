@@ -508,14 +508,6 @@ contractEl.textContent = mapAuthority(c.contractauthoritystatus);
 brokerEl.textContent   = mapAuthority(c.brokerauthoritystatus);
 
 
-// Make quick metrics use the same pill styling as the header
-[commonEl, contractEl, brokerEl, safetyEl].forEach(el => {
-  if (!el) return;
-  el.classList.add('carrier-pill', 'ghost', 'small');
-  // optional: if metric-value styling fights you, drop it:
-  // el.classList.remove('metric-value');
-});
-
         
 const r = (c.safetyrating || '').toString().toUpperCase();
 
