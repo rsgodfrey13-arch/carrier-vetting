@@ -291,9 +291,10 @@ async function buildCarrierIndex() {
         const name = item.legalname || item.dbaname || '(No name)';
         const city = item.city || item.phycity || '';
         const state = item.state || item.phystate || '';
+        const mc     = item.mc_number || '-';
 
         li.innerHTML = `
-          <div class="suggestion-main">${dotVal} – ${name}</div>
+          <div class="suggestion-main">Carrier:${name} - DOT:${dotVal} – MC:${mc}</div>
           <div class="suggestion-sub">${city}${city && state ? ', ' : ''}${state}</div>
         `;
         li.addEventListener('click', () => goToCarrier(dotVal));
@@ -321,9 +322,10 @@ function performSearch(query) {
   const matches = carrierIndex
     .filter(c => {
       const dot = String(c.dot || c.dotnumber || c.id || '');
+      const mc   = String(c.mc_number || ''); 
       const name = (c.legalname || c.dbaname || c.name || '').toLowerCase();
 
-      return dot.startsWith(q) || name.includes(qLower);
+      return dot.startsWith(q) || mc.startsWith(q) || name.includes(qLower);
     })
     .slice(0, 10);
 
