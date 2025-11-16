@@ -597,7 +597,7 @@ body.carrier-list .page-subtitle {
 
 .carriers-table th:nth-child(1),
 .carriers-table td:nth-child(1) {
-  width: 3%;
+  width: 15%;
 }
 
 .carriers-table td:nth-child(3) {
