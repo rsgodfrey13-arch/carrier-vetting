@@ -91,6 +91,18 @@
           <span class="metric-label">Safety Rating</span>
           <span id="field-safetyrating" class="metric-value">—</span>
         </div>
+        <div class="metric-chip">
+          <span class="metric-label">Safety Rating</span>
+          <span id="field-safetyrating" class="metric-value">—</span>
+        </div>
+        <div class="metric-chip">
+          <span class="metric-label">Safety Rating</span>
+          <span id="field-safetyrating" class="metric-value">—</span>
+        </div>
+        <div class="metric-chip">
+          <span class="metric-label">Safety Rating</span>
+          <span id="field-safetyrating" class="metric-value">—</span>
+        </div>
       </div>
 
       <!-- ACTION BUTTONS, SEPARATE ROW -->
@@ -505,13 +517,13 @@ document.getElementById('field-safetyrating').textContent = safetyRatingText;
         allowedEl.textContent = allowedText;
 
         const common_El = document.getElementById('carrier-commonauthoritystatus');
-        allowedEl.textContent = allowedText;
+        allowedEl.textContent = commonText;
 
         const contract_El = document.getElementById('carrier-contractauthoritystatus');
-        allowedEl.textContent = allowedText;
+        allowedEl.textContent = contractTest;
 
         const broker_El = document.getElementById('carrier-brokerauthoritystatus');
-        allowedEl.textContent = allowedText;
+        allowedEl.textContent = brokerTest;
         
         if ((c.statuscode || '').toString().toUpperCase() === 'A') {
           statusEl.classList.add('pill-ok');
