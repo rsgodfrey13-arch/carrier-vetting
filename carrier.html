@@ -480,9 +480,32 @@ const mapAuthority = code => {
   return '—';
 };
 
-document.getElementById('field-commonauthoritystatus').textContent  = mapAuthority(c.commonauthoritystatus);
-document.getElementById('field-contractauthoritystatus').textContent = mapAuthority(c.contractauthoritystatus);
-document.getElementById('field-brokerauthoritystatus').textContent   = mapAuthority(c.brokerauthoritystatus);
+// set text for the 3 authority metrics
+const commonEl   = document.getElementById('field-commonauthoritystatus');
+const contractEl = document.getElementById('field-contractauthoritystatus');
+const brokerEl   = document.getElementById('field-brokerauthoritystatus');
+
+// add pill-ok / pill-warn based on code
+function applyAuthorityPill(el, code) {
+  if (!el) return;
+  el.classList.remove('pill-ok', 'pill-warn');  // reset
+
+  const v = (code || '').toString().toUpperCase();
+  if (v === 'A') {
+    el.classList.add('pill-ok');   // good
+  } else if (v === 'I') {
+    el.classList.add('pill-warn'); // meh / warning
+    // N or blank → no pill class (neutral)
+  }
+}
+
+applyAuthorityPill(commonEl,   c.commonauthoritystatus);
+applyAuthorityPill(contractEl, c.contractauthoritystatus);
+applyAuthorityPill(brokerEl,   c.brokerauthoritystatus);
+
+commonEl.textContent   = mapAuthority(c.commonauthoritystatus);
+contractEl.textContent = mapAuthority(c.contractauthoritystatus);
+brokerEl.textContent   = mapAuthority(c.brokerauthoritystatus);
 
 const r = (c.safetyrating || '').toString().toUpperCase();
 
