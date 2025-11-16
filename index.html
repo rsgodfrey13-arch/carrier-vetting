@@ -230,9 +230,17 @@ async function loadCarriers() {
             row.appendChild(brokerCell);
 
 
-          const safetyCell = document.createElement('td');
-          safetyCell.textContent = c.safetyrating || 'Not Rated';
-          row.appendChild(safetyCell);
+const ratingMap = {
+  'S': 'Satisfactory',
+  'C': 'Conditional',
+  'U': 'Unsatisfactory'
+};
+
+const rawRating = c.safetyrating ? c.safetyrating.trim().toUpperCase() : '';
+
+const safetyCell = document.createElement('td');
+safetyCell.textContent = ratingMap[rawRating] || 'Not Rated';
+row.appendChild(safetyCell);
 
 
           row.addEventListener('click', (e) => {
