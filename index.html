@@ -2,572 +2,767 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Carrier Shark – Home</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="style1.css">
+  <title>Carrier Profile</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap"
+    rel="stylesheet">
+
+  <link rel="stylesheet" href="profile_style.css">
 </head>
-<body class="carrier-list">
+<body class="carrier-page">
+  <!-- techy background layers -->
   <div class="bg-gradient"></div>
   <div class="bg-grid"></div>
-
-  <!-- 🔥 ADD HEADER HERE  -->
-  <header class="site-header glass-nav">
-    <div class="nav-inner">
-      <div class="nav-left">
-        <a href="/" class="nav-logo">CARRIER SHARK</a>
-      </div>
-
-      <nav class="nav-links">
-        <a href="/" class="nav-link">Home</a>
-        <a href="/privacy" class="nav-link">Privacy Policy</a>
-        <button id="login-btn">Login</button>
-        <button id="logout-btn" style="display:none;">Logout</button>
-      </nav>
-    </div>
-  </header>
-  <!-- 🔥 END ADDED HEADER -->
 
   <div class="page">
     <header class="page-header">
       <div class="page-header-left">
-        <h1 class="page-title">Carrier Shark</h1>
-        <p class="page-subtitle">Find and manage vetted carriers</p>
+        <h1 class="page-title">Carrier Profile</h1>
+        <p class="page-subtitle">Live FMCSA-powered risk snapshot</p>
+      </div>
+      <div class="page-header-right">
+        <a href="/" class="ghost-link">
+          <span class="ghost-link-icon">←</span>
+          Back to all carriers
+        </a>
       </div>
     </header>
 
-    <!-- SEARCH SECTION -->
-    <section class="glass-card search-shell">
-      <div class="search-shell-header">
-        <div>
-          <h2 class="search-title">Search Carriers</h2>
-          <p class="search-subtitle">Search by DOT number or carrier name</p>
+    <!-- HERO HEADER CARD -->
+<section id="carrier-header" class="carrier-header glass-card">
+  <div class="carrier-header-top">
+    <div class="carrier-left">
+      <div class="carrier-name-block">
+        <div class="carrier-name-row">
+          <div id="carrier-name" class="carrier-name">Loading…</div>
+        </div>
+
+        <div class="carrier-id-row">
+          <span class="carrier-ids">DOT <span id="carrier-dot">—</span></span>
+          <span class="carrier-ids">EIN <span id="carrier-ein">—</span></span>
         </div>
       </div>
 
-<div class="search-row">
-  <div class="search-input-wrap">
-    <input
-      id="search-input"
-      class="search-input"
-      type="text"
-      placeholder="Start typing a DOT, MC, or Carrier Name..."
-      autocomplete="off"
-    />
-    <ul id="carrier-suggestions" class="carrier-suggestions"></ul>
-  </div>
-
-  <button id="open-carrier-btn" class="search-btn">Search</button>
-</div>
-
-
-    </section>
-
-    <!-- LIST SECTION -->
-    <section class="glass-card carriers-card">
-      <header class="carriers-card-header">
-        <div>
-          <h2 class="carriers-title">My Carriers</h2>
-          <p class="carriers-subtitle">Click a DOT number to open its profile page.</p>
+      <!-- META INLINE BELOW NAME -->
+      <div class="carrier-meta-inline">
+        <div class="meta-pair">
+          <div class="meta-label">Legal Name</div>
+          <div id="carrier-legalname" class="meta-value">—</div>
         </div>
-        <button id="download-btn" class="download-btn">Download CSV</button>
-      </header>
 
-
-      <div class="carriers-table-wrap">
-        
-            <div id="bulk-actions" class="bulk-actions hidden">
-              <span id="selected-count">0</span> selected
-              <button id="bulk-remove-btn" class="bulk-remove-btn">
-                Remove selected from My Carriers
-              </button>
+        <div class="meta-pair">
+          <div class="meta-label">Address</div>
+          <div class="meta-value">
+            <div id="carrier-address">—</div>
+            <div>
+              <span id="carrier-location">—</span><span id="carrier-zip"></span>
             </div>
-              
-        <table class="carriers-table">
-          <thead>
-            <tr>
-              <th class="select-cell">
-                <input type="checkbox" id="select-all">
-              </th>
-              <th>DOT</th>
-              <th>MC</th>
-              <th>Carrier</th>
-              <th>Location</th>
-              <th>Operating</th>
-              <th>Common</th>
-              <th>Contract</th>
-              <th>Broker</th>
-              <th>Safety Rating</th>
-            </tr>
-          </thead>
-          <tbody id="carrier-table-body"></tbody>
-        </table>
+          </div>
+        </div>
 
+        <div class="meta-pair">
+          <div class="meta-label">DBA Name</div>
+          <div id="carrier-dbaname" class="meta-value">—</div>
+        </div>
 
-
+        <div class="meta-pair">
+          <div class="meta-label">Last Verified</div>
+          <div id="field-retrieval_date_formatted" class="meta-value">—</div>
+        </div>
       </div>
+    </div> <!-- end .carrier-left -->
+
+    <div class="carrier-right">
+      <div class="pill-group">
+        <div id="carrier-status" class="carrier-pill">—</div>
+        <div class="carrier-pill ghost small" id="carrier-allowed">—</div>
+      </div>
+
+      <div class="quick-metrics">
+        <div class="metric-chip">
+          <span class="metric-label">Common Authority</span>
+          <span id="field-commonauthoritystatus" class="metric-value">—</span>
+        </div>
+        <div class="metric-chip">
+          <span class="metric-label">Contract Authority</span>
+          <span id="field-contractauthoritystatus" class="metric-value">—</span>
+        </div>
+        <div class="metric-chip">
+          <span class="metric-label">Broker Authority</span>
+          <span id="field-brokerauthoritystatus" class="metric-value">—</span>
+        </div>
+        <div class="metric-chip">
+          <span class="metric-label">Safety Rating</span>
+          <span id="field-safetyrating" class="metric-value">—</span>
+        </div>
+      </div>
+
+      <!-- ACTION BUTTONS, SEPARATE ROW -->
+      <div class="carrier-actions">
+        <button id="btn-add-carrier" class="pill-btn pill-add">
+          + Add Carrier
+        </button>
+        <button id="btn-remove-carrier" class="pill-btn pill-remove pill-disabled">
+          Remove Carrier
+        </button>
+      </div>
+    </div> <!-- end .carrier-right -->
+  </div> <!-- end .carrier-header-top -->
+
+  <div class="hero-accent-line"></div>
+</section>
+
+
+    <!-- MAIN GRID -->
+    <section class="card-grid">
+
+      <!-- Equipment Summary -->
+      <article class="info-card glass-card">
+        <div class="card-header">
+          <h2>Equipment Summary</h2>
+          <span class="card-tag">Assets</span>
+        </div>
+        <dl>
+          <div class="row">
+            <dt>Total Drivers</dt>
+            <dd id="field-totaldrivers">—</dd>
+          </div>
+          <div class="row">
+            <dt>Total Power Units</dt>
+            <dd id="field-totalpowerunits">—</dd>
+          </div>
+        </dl>
+      </article>
+      
+      <!-- Safety Rating -->
+      <article class="info-card glass-card">
+        <div class="card-header">
+          <h2>Safety Rating</h2>
+          <span class="card-tag">Snapshot</span>
+        </div>
+        <dl>
+          <div class="row">
+            <dt>Safety Rating</dt>
+            <dd id="field-safetyrating">—</dd>
+          </div>
+          <div class="row">
+            <dt>Safety Rating Date</dt>
+            <dd id="field-safetyratingdate">—</dd>
+          </div>
+          <div class="row">
+            <dt>Safety Review Date</dt>
+            <dd id="field-safetyreviewdate">—</dd>
+          </div>
+          <div class="row">
+            <dt>Safety Review Type</dt>
+            <dd id="field-safetyreviewtype">—</dd>
+          </div>
+          <div class="row">
+            <dt>MCS-150 Outdated</dt>
+            <dd id="field-mcs150outdated-dup">—</dd>
+          </div>
+        </dl>
+      </article>
+
+      <!-- Operations & Authority -->
+      <article class="info-card glass-card">
+        <div class="card-header">
+          <h2>Operations &amp; Authority</h2>
+          <span class="card-tag">Profile</span>
+        </div>
+        <dl>
+          <div class="row">
+            <dt>Common Authority Status</dt>
+            <dd id="field-commonauthoritystatus">—</dd>
+          </div>
+          <div class="row">
+            <dt>Contract Authority Status</dt>
+            <dd id="field-contractauthoritystatus">—</dd>
+          </div>
+          <div class="row">
+            <dt>Broker Authority Status</dt>
+            <dd id="field-brokerauthoritystatus">—</dd>
+          </div>
+          <div class="row">
+            <dt>Carrier Operation Code</dt>
+            <dd id="field-carrieroperation_carrieroperationcode">—</dd>
+          </div>
+          <div class="row">
+            <dt>Carrier Operation Description</dt>
+            <dd id="field-carrieroperation_carrieroperationdesc">—</dd>
+          </div>
+        </dl>
+      </article>
+
+      <!-- 
+      
+        Insurance & Financial
+      <article class="info-card glass-card">
+        <div class="card-header">
+          <h2>Insurance &amp; Financial</h2>
+          <span class="card-tag">Coverage</span>
+        </div>
+        <dl>
+          <div class="row">
+            <dt>BIPD Insurance On File</dt>
+            <dd id="field-bipdinsuranceonfile">—</dd>
+          </div>
+          <div class="row">
+            <dt>BIPD Insurance Required</dt>
+            <dd id="field-bipdinsurancerequired">—</dd>
+          </div>
+          <div class="row">
+            <dt>BIPD Required Amount</dt>
+            <dd id="field-bipdrequiredamount">—</dd>
+          </div>
+          <div class="row">
+            <dt>Bond Insurance On File</dt>
+            <dd id="field-bondinsuranceonfile">—</dd>
+          </div>
+          <div class="row">
+            <dt>Bond Insurance Required</dt>
+            <dd id="field-bondinsurancerequired">—</dd>
+          </div>
+          <div class="row">
+            <dt>Cargo Insurance On File</dt>
+            <dd id="field-cargoinsuranceonfile">—</dd>
+          </div>
+          <div class="row">
+            <dt>Cargo Insurance Required</dt>
+            <dd id="field-cargoinsurancerequired">—</dd>
+          </div>
+ 
+        </dl>
+      </article>
+ -->
+
+      
+      <!-- Crashes -->
+      <article class="info-card glass-card">
+        <div class="card-header">
+          <h2>Crashes</h2>
+          <span class="card-tag">Events</span>
+        </div>
+        <dl>
+          <div class="row">
+            <dt>Total Crashes</dt>
+            <dd id="field-crashtotal">—</dd>
+          </div>
+          <div class="row">
+            <dt>Fatal Crashes</dt>
+            <dd id="field-fatalcrash">—</dd>
+          </div>
+          <div class="row">
+            <dt>Injury Crashes</dt>
+            <dd id="field-injcrash">—</dd>
+          </div>
+          <div class="row">
+            <dt>Towaway Crashes</dt>
+            <dd id="field-towawaycrash">—</dd>
+          </div>
+        </dl>
+      </article>
+
+      <!-- Inspections & OOS -->
+      <article class="info-card wide glass-card">
+        <div class="card-header">
+          <h2>Inspections &amp; OOS</h2>
+          <span class="card-tag">Roadside</span>
+        </div>
+        <dl class="two-column">
+          <div class="row">
+            <dt>Driver Inspections</dt>
+            <dd id="field-driverinsp">—</dd>
+          </div>
+          <div class="row">
+            <dt>Driver OOS Inspections</dt>
+            <dd id="field-driveroosinsp">—</dd>
+          </div>
+          <div class="row">
+            <dt>Driver OOS Rate</dt>
+            <dd id="field-driveroosrate">—</dd>
+          </div>
+          <div class="row">
+            <dt>Driver OOS Rate National Avg</dt>
+            <dd id="field-driveroosratenationalaverage">—</dd>
+          </div>
+
+          <div class="row">
+            <dt>HazMat Inspections</dt>
+            <dd id="field-hazmatinsp">—</dd>
+          </div>
+          <div class="row">
+            <dt>HazMat OOS Inspections</dt>
+            <dd id="field-hazmatoosinsp">—</dd>
+          </div>
+          <div class="row">
+            <dt>HazMat OOS Rate</dt>
+            <dd id="field-hazmatoosrate">—</dd>
+          </div>
+          <div class="row">
+            <dt>HazMat OOS Rate National Avg</dt>
+            <dd id="field-hazmatoosratenationalaverage">—</dd>
+          </div>
+
+          <div class="row">
+            <dt>Vehicle Inspections</dt>
+            <dd id="field-vehicleinsp">—</dd>
+          </div>
+          <div class="row">
+            <dt>Vehicle OOS Inspections</dt>
+            <dd id="field-vehicleoosinsp">—</dd>
+          </div>
+          <div class="row">
+            <dt>Vehicle OOS Rate</dt>
+            <dd id="field-vehicleoosrate">—</dd>
+          </div>
+          <div class="row">
+            <dt>Vehicle OOS Rate National Avg</dt>
+            <dd id="field-vehicleoosratenationalaverage">—</dd>
+          </div>
+
+          <div class="row">
+            <dt>OOS Date</dt>
+            <dd id="field-oosdate">—</dd>
+          </div>
+          <div class="row">
+            <dt>OOS Rate National Avg Year</dt>
+            <dd id="field-oosratenationalaverageyear">—</dd>
+          </div>
+        </dl>
+      </article>
+
+      <!-- 
+      
+      Counts & Flags 
+      <article class="info-card glass-card">
+        <div class="card-header">
+          <h2>Counts &amp; Flags</h2>
+          <span class="card-tag">Status</span>
+        </div>
+        <dl>
+          <div class="row">
+            <dt>Status Code</dt>
+            <dd id="field-statuscode-dup">—</dd>
+          </div>
+          <div class="row">
+            <dt>Snapshot Date</dt>
+            <dd id="field-snapshotdate-dup">—</dd>
+          </div>
+        </dl>
+      </article>
+
+      -->
+
+      <!-- 
+      
+      FMCSA Links 
+      <article class="info-card glass-card">
+        <div class="card-header">
+          <h2>FMCSA Source Links</h2>
+          <span class="card-tag">Raw Data</span>
+        </div>
+        <dl>
+          <div class="row">
+            <dt>Basics</dt>
+            <dd>
+              <a id="field-link_basics" class="data-link" href="#" target="_blank">—</a>
+            </dd>
+          </div>
+          <div class="row">
+            <dt>Cargo Carried</dt>
+            <dd>
+              <a id="field-link_cargo_carried" class="data-link" href="#" target="_blank">—</a>
+            </dd>
+          </div>
+          <div class="row">
+            <dt>Operation Classification</dt>
+            <dd>
+              <a id="field-link_operation_classification" class="data-link" href="#" target="_blank">—</a>
+            </dd>
+          </div>
+          <div class="row">
+            <dt>Docket Numbers</dt>
+            <dd>
+              <a id="field-link_docket_numbers" class="data-link" href="#" target="_blank">—</a>
+            </dd>
+          </div>
+          <div class="row">
+            <dt>Active For Hire</dt>
+            <dd>
+              <a id="field-link_active_for_hire" class="data-link" href="#" target="_blank">—</a>
+            </dd>
+          </div>
+          <div class="row">
+            <dt>Self Link</dt>
+            <dd>
+              <a id="field-link_self" class="data-link" href="#" target="_blank">—</a>
+            </dd>
+          </div>
+        </dl>
+      </article>
+      -->
     </section>
   </div>
 
   <script>
-
-let carrierIndex = []; 
-let myCarrierDots = new Set();
-
-    
-    // ---------- TABLE LOAD ----------
-async function loadCarriers() {
-  try {
-    const tbody = document.getElementById('carrier-table-body');
-
-    // ------------------------------------------
-    // 1) CHECK IF USER IS LOGGED IN
-    // ------------------------------------------
-    let endpoint = '/api/carriers'; // default for guests
-
-    try {
-      const me = await fetch('/api/me').then(r => r.json());
-      if (me.user) {
-        endpoint = '/api/my-carriers'; // logged in → use saved carriers
-      }
-    } catch (e) {
-      console.error("Error checking login:", e);
+    function setText(id, value) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = (value !== null && value !== undefined && value !== '') ? value : '—';
     }
-    
-    const res = await fetch(endpoint);
-    const data = await res.json();
-    
-        if (!Array.isArray(data) || data.length === 0) {
-          const row = document.createElement('tr');
-          const cell = document.createElement('td');
-          cell.colSpan = 6;
-          cell.textContent = 'No carriers found.';
-          row.appendChild(cell);
-          tbody.appendChild(row);
+
+    function setLink(id, url) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (url) {
+        el.textContent = 'Open';
+        el.href = url;
+      } else {
+        el.textContent = '—';
+        el.removeAttribute('href');
+      }
+    }
+
+    async function loadCarrier() {
+      const path = window.location.pathname.replace(/^\//, '');
+      const dot = decodeURIComponent(path);     
+      if (!dot) return;
+
+      try {
+        const res = await fetch('/api/carriers/' + encodeURIComponent(dot));
+
+        if (!res.ok) {
+          console.error('Carrier fetch failed:', res.status, await res.text());
+          document.getElementById('carrier-name').textContent = 'Carrier not found';
+          document.getElementById('carrier-dot').textContent = dot;
           return;
         }
 
+        const c = await res.json();
+
+        // Top-level header stuff
+        const name = (c.legalname || c.dbaname || `Carrier ${c.dotnumber || ''}`).trim();
+        document.getElementById('carrier-name').textContent = name || '—';
+        document.getElementById('carrier-dot').textContent = c.dotnumber || '—';
+        document.getElementById('carrier-ein').textContent = c.ein || '—';
+
+        const addr = [c.phystreet].filter(Boolean).join(', ');
+        document.getElementById('carrier-address').textContent = addr || '—';
+
+        const loc = [c.phycity, c.phystate, c.phycountry].filter(Boolean).join(', ');
+        document.getElementById('carrier-location').textContent = loc || '—';
+
+        document.getElementById('carrier-zip').textContent = c.phyzipcode || '—';
+
+        // Status pills
+        const statusText =
+          c.statuscode === 'A' ? 'Status: ACTIVE' :
+          c.statuscode === 'I' ? 'Status: INACTIVE' :
+          'Status: None';
         
+        const allowedText =
+          (c.allowedtooperate && c.allowedtooperate.toString().toUpperCase() === 'Y')
+            ? 'Operating Status: Authorized'
+            : 'Operating Status: Not Authorized';
 
-        data.forEach(c => {
-          const row = document.createElement('tr');
-          const dotVal = c.dot || c.dotnumber || c.id || '';
+const mapAuthority = code => {
+  const v = (code || '').toString().toUpperCase();
 
-            //  NEW: checkbox cell
-          const selectCell = document.createElement('td');
-          selectCell.className = 'col-select select-cell';  // add select-cell
-        
-          const checkbox = document.createElement('input');
-          checkbox.type = 'checkbox';
-          checkbox.className = 'row-select';
-          checkbox.dataset.dot = dotVal;   // this is what we'll send to the API
-        
-          selectCell.appendChild(checkbox);
-          row.appendChild(selectCell);
-          
-
-          const dotCell = document.createElement('td');
-          const link = document.createElement('a');
-          link.textContent = dotVal;
-          link.href = '/' + encodeURIComponent(dotVal);
-          link.className = 'dot-link';
-          dotCell.appendChild(link);
-          row.appendChild(dotCell);
-
-
-          const mcCell = document.createElement('td');
-          mcCell.textContent = c.mc_number || '-';
-          row.appendChild(mcCell)
-
-          // --- 1) CARRIER NAME ---
-          const nameCell = document.createElement('td');
-          nameCell.textContent = c.legalname || c.dbaname || c.name || '-';
-          nameCell.title = c.legalname || c.dbaname || c.name || '-';   
-          row.appendChild(nameCell);
-
-         const locationCell = document.createElement('td');
-          locationCell.textContent = `${(c.city || c.phycity || '')}${
-            (c.state || c.phystate) ? ', ' + (c.state || c.phystate) : ''
-          }`;
-          row.appendChild(locationCell);
-          
-          const allowedtooperateCell = document.createElement('td');
-          const isAuthorized = c.allowedtooperate === 'Y';
-          
-          allowedtooperateCell.textContent = isAuthorized
-            ? 'Authorized'
-            : 'Not Authorized';
-          
-          if (isAuthorized) {
-            allowedtooperateCell.classList.add('status-ok');
-          }
-          
-          row.appendChild(allowedtooperateCell);
-          
-          // COMMON
-            const commonCell = document.createElement('td');
-            commonCell.textContent = c.commonauthoritystatus || '-';
-            if (commonCell.textContent === 'A') {
-              commonCell.classList.add('status-ok');
-            }
-            row.appendChild(commonCell);
-
-          
-          // CONTRACT
-            const contractCell = document.createElement('td');
-            contractCell.textContent = c.contractauthoritystatus || '-';
-            if (contractCell.textContent === 'A') {
-              contractCell.classList.add('status-ok');
-            }  
-            row.appendChild(contractCell);
-
-          
-          // BROKER
-            const brokerCell = document.createElement('td');
-            brokerCell.textContent = c.brokerauthoritystatus || '-';
-            if (brokerCell.textContent === 'A') {
-              brokerCell.classList.add('status-ok');
-            }
-            row.appendChild(brokerCell);
-
-
-const ratingMap = {
-  'S': 'Satisfactory',
-  'C': 'Conditional',
-  'U': 'Unsatisfactory'
+  if (v === 'A') return 'ACTIVE';
+  if (v === 'I') return 'INTERSTATE';
+  // N or blank → show the dash
+  return '—';
 };
 
-const rawRating = c.safetyrating ? c.safetyrating.trim().toUpperCase() : '';
+document.getElementById('field-commonauthoritystatus').textContent  = mapAuthority(c.commonauthoritystatus);
+document.getElementById('field-contractauthoritystatus').textContent = mapAuthority(c.contractauthoritystatus);
+document.getElementById('field-brokerauthoritystatus').textContent   = mapAuthority(c.brokerauthoritystatus);
 
-const safetyCell = document.createElement('td');
-safetyCell.textContent = ratingMap[rawRating] || 'Not Rated';
-row.appendChild(safetyCell);
+const r = (c.safetyrating || '').toString().toUpperCase();
 
+const safetyRatingText =
+  r === ''  ? 'NOT RATED'     :
+  r === 'C' ? 'CONDITIONAL'   :
+  r === 'S' ? 'SATISFACTORY'  :
+  r === 'U' ? 'UNSATISFACTORY':
+              'NOT RATED';
 
-          row.addEventListener('click', (e) => {
-            // If the click came from the checkbox column, do nothing
-            if (e.target.closest('.select-cell')) {
-              return;
-            }
-          
-            // Otherwise, treat it as a row click (unless it's the DOT link itself)
-            if (e.target.tagName.toLowerCase() !== 'a') {
-              window.location.pathname = '/' + encodeURIComponent(dotVal);
-            }
-          });
+document.getElementById('field-safetyrating').textContent = safetyRatingText;
 
+        
+        const statusEl = document.getElementById('carrier-status');
+        statusEl.textContent = statusText;
 
-          tbody.appendChild(row);
-        });
-      } catch (err) {
-        console.error('Error fetching carriers:', err);
-      }
-    }
+        const allowedEl = document.getElementById('carrier-allowed');
+        allowedEl.textContent = allowedText;
 
-// ---------- BUILD AUTOCOMPLETE INDEX ----------
-async function buildCarrierIndex() {
-  try {
-    // all carriers + my carriers in parallel
-    const [allRes, myRes] = await Promise.all([
-      fetch('/api/carriers'),
-      fetch('/api/my-carriers').catch(() => null)
-    ]);
-
-    const allData = await allRes.json();
-    carrierIndex = Array.isArray(allData) ? allData : [];
-
-    // build "my carriers" DOT set if logged in
-    if (myRes && myRes.ok) {
-      const myData = await myRes.json();
-      myCarrierDots = new Set(
-        (Array.isArray(myData) ? myData : []).map(c =>
-          String(c.dot || c.dotnumber || c.id || '')
-        )
-      );
-    } else {
-      myCarrierDots = new Set();
-    }
-  } catch (err) {
-    console.error("Error building search index:", err);
-    carrierIndex = [];
-    myCarrierDots = new Set();
-  }
-}
-
-
-
-    // ---------- SEARCH / AUTOCOMPLETE ----------
-    const searchInput = document.getElementById('search-input');
-    const searchBtn = document.getElementById('open-carrier-btn');
-    const suggestionsEl = document.getElementById('carrier-suggestions');
-    let searchTimeout = null;
-
-    function clearSuggestions() {
-      suggestionsEl.innerHTML = '';
-      suggestionsEl.classList.remove('open');
-    }
-
-    function goToCarrier(dot) {
-      if (!dot) return;
-      window.location.pathname = '/' + encodeURIComponent(dot);
-    }
-
-function renderSuggestions(results) {
-  clearSuggestions();
-  if (!Array.isArray(results) || results.length === 0) return;
-
-  results.forEach(item => {
-    const li = document.createElement('li');
-    li.className = 'carrier-suggestion-item';
-
-    const dotVal = item.dot || item.dotnumber || item.id || '';
-    const name   = item.legalname || item.dbaname || '(No name)';
-    const city   = item.city || item.phycity || '';
-    const state  = item.state || item.phystate || '';
-    const mc     = item.mc_number || '-';
-
-    const isMine = myCarrierDots.has(String(dotVal)); // 🔥 check if it's your carrier
-
-    li.innerHTML = `
-      <div class="suggestion-main">
-        <span class="suggestion-title-text">
-          ${dotVal} – ${name}
-        </span>
-        ${isMine ? '<span class="my-carrier-pill">MY CARRIER</span>' : ''}
-      </div>
-      <div class="suggestion-sub">
-        MC: ${mc} • ${city}${city && state ? ', ' : ''}${state}
-      </div>
-    `;
-
-    li.addEventListener('click', () => goToCarrier(dotVal));
-    suggestionsEl.appendChild(li);
-  });
-
-  suggestionsEl.classList.add('open');
-}
-
-
-function performSearch(query) {
-  const q = query.trim();
-  if (q.length < 2) {
-    clearSuggestions();
-    return;
-  }
-
-  // Make sure we have the global carrierIndex loaded
-  if (!Array.isArray(carrierIndex) || carrierIndex.length === 0) {
-    clearSuggestions();
-    return;
-  }
-
-  const qLower = q.toLowerCase();
-
-  const matches = carrierIndex
-    .filter(c => {
-      const dot = String(c.dot || c.dotnumber || c.id || '');
-      const mc   = String(c.mc_number || ''); 
-      const name = (c.legalname || c.dbaname || c.name || '').toLowerCase();
-
-      return dot.startsWith(q) || mc.startsWith(q) || name.includes(qLower);
-    })
-    .slice(0, 10);
-
-  renderSuggestions(matches);
-}
-
-
-    searchInput.addEventListener('input', () => {
-      const value = searchInput.value;
-      if (searchTimeout) clearTimeout(searchTimeout);
-      searchTimeout = setTimeout(() => performSearch(value), 250);
-    });
-
-    searchInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const first = suggestionsEl.querySelector('.carrier-suggestion-item');
-        if (first) {
-          const text = first.querySelector('.suggestion-main').textContent || '';
-          const dot = text.split('–')[0].trim();
-          goToCarrier(dot);
+        if ((c.statuscode || '').toString().toUpperCase() === 'A') {
+          statusEl.classList.add('pill-ok');
         } else {
-          goToCarrier(searchInput.value.trim());
+          statusEl.classList.add('pill-warn');
         }
+
+        if ((c.allowedtooperate || '').toString().toUpperCase() === 'Y') {
+          allowedEl.classList.add('pill-ok');
+        } else {
+          allowedEl.classList.add('pill-warn');
+        }
+
+        // Header meta
+        setText('carrier-legalname', c.legalname);
+        setText('carrier-dbaname', c.dbaname);
+        setText('field-snapshotdate', c.snapshotdate);
+        setText('field-issscore', c.issscore);
+        //setText('field-safetyrating', c.safetyrating);
+        setText('field-mcs150outdated', c.mcs150outdated);
+
+        // Basics & meta
+        setText('field-retrieval_date_formatted', c.retrieval_date_formatted);
+        setText('field-statuscode', c.statuscode);
+        setText('field-reviewdate', c.reviewdate);
+        setText('field-reviewtype', c.reviewtype);
+        setText('field-safetyratingdate', c.safetyratingdate);
+        setText('field-safetyreviewdate', c.safetyreviewdate);
+        setText('field-safetyreviewtype', c.safetyreviewtype);
+        setText('field-oosdate', c.oosdate);
+        setText('field-oosratenationalaverageyear', c.oosratenationalaverageyear);
+
+        // Operations & authority
+        //setText('field-commonauthoritystatus', c.commonauthoritystatus);
+        //setText('field-contractauthoritystatus', c.contractauthoritystatus);
+        //setText('field-brokerauthoritystatus', c.brokerauthoritystatus);
+        setText('field-carrieroperation_carrieroperationcode', c.carrieroperation_carrieroperationcode);
+        setText('field-carrieroperation_carrieroperationdesc', c.carrieroperation_carrieroperationdesc);
+        setText('field-censustypeid_censustype', c.censustypeid_censustype);
+        setText('field-censustypeid_censustypedesc', c.censustypeid_censustypedesc);
+        setText('field-censustypeid_censustypeid', c.censustypeid_censustypeid);
+        setText('field-ispassengercarrier', c.ispassengercarrier);
+
+        // Insurance & financial
+        setText('field-bipdinsuranceonfile', c.bipdinsuranceonfile);
+        setText('field-bipdinsurancerequired', c.bipdinsurancerequired);
+        setText('field-bipdrequiredamount', c.bipdrequiredamount);
+        setText('field-bondinsuranceonfile', c.bondinsuranceonfile);
+        setText('field-bondinsurancerequired', c.bondinsurancerequired);
+        setText('field-cargoinsuranceonfile', c.cargoinsuranceonfile);
+        setText('field-cargoinsurancerequired', c.cargoinsurancerequired);
+        setText('field-allowedtooperate', c.allowedtooperate);
+        setText('field-ein', c.ein);
+
+        // Crashes
+        setText('field-crashtotal', c.crashtotal);
+        setText('field-fatalcrash', c.fatalcrash);
+        setText('field-injcrash', c.injcrash);
+        setText('field-towawaycrash', c.towawaycrash);
+
+        // Inspections & OOS
+        setText('field-driverinsp', c.driverinsp);
+        setText('field-driveroosinsp', c.driveroosinsp);
+        setText('field-driveroosrate', c.driveroosrate);
+        setText('field-driveroosratenationalaverage', c.driveroosratenationalaverage);
+
+        setText('field-hazmatinsp', c.hazmatinsp);
+        setText('field-hazmatoosinsp', c.hazmatoosinsp);
+        setText('field-hazmatoosrate', c.hazmatoosrate);
+        setText('field-hazmatoosratenationalaverage', c.hazmatoosratenationalaverage);
+
+        setText('field-vehicleinsp', c.vehicleinsp);
+        setText('field-vehicleoosinsp', c.vehicleoosinsp);
+        setText('field-vehicleoosrate', c.vehicleoosrate);
+        setText('field-vehicleoosratenationalaverage', c.vehicleoosratenationalaverage);
+
+        setText('field-totaldrivers', c.totaldrivers);
+        setText('field-totalpowerunits', c.totalpowerunits);
+
+        // Counts & flags (dup view)
+        setText('field-statuscode-dup', c.statuscode);
+        setText('field-mcs150outdated-dup', c.mcs150outdated);
+        setText('field-snapshotdate-dup', c.snapshotdate);
+
+        // FMCSA links
+        setLink('field-link_basics', c.link_basics);
+        setLink('field-link_cargo_carried', c.link_cargo_carried);
+        setLink('field-link_operation_classification', c.link_operation_classification);
+        setLink('field-link_docket_numbers', c.link_docket_numbers);
+        setLink('field-link_active_for_hire', c.link_active_for_hire);
+        setLink('field-link_self', c.link_self);
+
+        // Await For Add Carrier Button
+        await initCarrierButtons(dot);
+        
+      } catch (err) {
+        console.error('Error fetching carrier:', err);
+        document.getElementById('carrier-name').textContent = 'Error loading carrier';
       }
-    });
-
-    searchBtn.addEventListener('click', () => {
-      const first = suggestionsEl.querySelector('.carrier-suggestion-item');
-      if (first) {
-        const text = first.querySelector('.suggestion-main').textContent || '';
-        const dot = text.split('–')[0].trim();
-        goToCarrier(dot);
-      } else {
-        goToCarrier(searchInput.value.trim());
-      }
-    });
-
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.search-shell')) {
-        clearSuggestions();
-      }
-    });
-
-    loadCarriers();      // populates table (my carriers vs all)
-    buildCarrierIndex(); // populates search index (always ALL carriers)
-
-
-document.getElementById("download-btn").addEventListener("click", () => {
-  const table = document.querySelector(".carriers-table");
-  const rows = table.querySelectorAll("tr");
-
-  let csv = [];
-
-  rows.forEach(row => {
-    const cells = row.querySelectorAll("th, td");
-    let rowData = [];
-
-    cells.forEach(cell => {
-      let text = cell.innerText.replace(/,/g, ""); // remove commas
-      rowData.push(text);
-    });
-
-    csv.push(rowData.join(","));
-  });
-
-  const csvString = csv.join("\n");
-
-  const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "carriers.csv";
-  link.click();
-});  
-
-    
-  </script>
-
-<script>
-  async function initAuthUI() {
-    try {
-      const res = await fetch('/api/me');
-      const data = await res.json();
-
-      const loginBtn = document.getElementById('login-btn');
-      const logoutBtn = document.getElementById('logout-btn');
-
-      if (!loginBtn || !logoutBtn) return;
-
-      if (data.user) {
-        // Logged in
-        loginBtn.style.display = 'none';
-        logoutBtn.style.display = 'inline-block';
-
-        logoutBtn.onclick = async () => {
-          await fetch('/api/logout', { method: 'POST' });
-          window.location.href = '/';
-        };
-      } else {
-        // Not logged in
-        loginBtn.style.display = 'inline-block';
-        logoutBtn.style.display = 'none';
-      }
-    } catch (err) {
-      console.error('auth ui error', err);
     }
-  }
 
-  // Make the login button act like a link
-  document.getElementById("login-btn")?.addEventListener("click", () => {
-    window.location.href = "/login.html";
-  });
+    loadCarrier();
 
-  initAuthUI();
-</script>
+async function initCarrierButtons(dot) {
+  const addBtn = document.getElementById('btn-add-carrier');
+  const removeBtn = document.getElementById('btn-remove-carrier');
 
+  if (!addBtn || !removeBtn) return;
 
-<script>
-  const tbody = document.getElementById('carrier-table-body');
-  const selectAll = document.getElementById('select-all');
-  const bulkBar = document.getElementById('bulk-actions');
-  const selectedCountEl = document.getElementById('selected-count');
-  const bulkRemoveBtn = document.getElementById('bulk-remove-btn');
+  // Helper: set visual state
+  function setState({ isSaved, isLoggedIn }) {
+    if (!isLoggedIn) {
+      addBtn.textContent = 'Login to Save';
+      addBtn.classList.remove('added');
+      addBtn.classList.add('pill-disabled');
 
-  function updateBulkBar() {
-    const selected = document.querySelectorAll('.row-select:checked');
-    const count = selected.length;
-
-    if (count === 0) {
-      bulkBar.classList.add('hidden');
-      selectAll.checked = false;
-    } else {
-      bulkBar.classList.remove('hidden');
-      selectedCountEl.textContent = count;
-      // if all visible checkboxes are selected, tick the header
-      const allBoxes = document.querySelectorAll('.row-select');
-      selectAll.checked = (count === allBoxes.length && allBoxes.length > 0);
-    }
-  }
-
-  // When any row checkbox changes
-  tbody.addEventListener('change', (e) => {
-    if (e.target.classList.contains('row-select')) {
-      updateBulkBar();
-    }
-  });
-
-  // "Select All" toggle in header
-  selectAll.addEventListener('change', () => {
-    const allBoxes = document.querySelectorAll('.row-select');
-    allBoxes.forEach(cb => {
-      cb.checked = selectAll.checked;
-    });
-    updateBulkBar();
-  });
-
-  // Bulk Remove button
-  bulkRemoveBtn.addEventListener('click', async () => {
-    const selected = Array.from(document.querySelectorAll('.row-select:checked'));
-    if (!selected.length) return;
-
-    if (!confirm(`Remove ${selected.length} carriers from My Carriers?`)) {
+      removeBtn.classList.add('pill-disabled');
+      removeBtn.classList.remove('active');
       return;
     }
 
-    // Remove each selected carrier via your existing DELETE route
-    for (const cb of selected) {
-      const dot = cb.dataset.dot;
-      try {
-        const res = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}`, {
-          method: 'DELETE'
-        });
+    if (isSaved) {
+      // Carrier is already in My Carriers
+      addBtn.textContent = 'Added';
+      addBtn.classList.add('added');
+      addBtn.classList.add('pill-disabled');
 
-        if (res.status === 401) {
-          alert('Your session expired. Please log in again.');
-          window.location.href = '/login.html';
-          return;
-        }
+      removeBtn.textContent = 'Remove Carrier';
+      removeBtn.classList.remove('pill-disabled');
+      removeBtn.classList.add('active');
+    } else {
+      // Not saved yet
+      addBtn.textContent = '+ Add Carrier';
+      addBtn.classList.remove('added');
+      addBtn.classList.remove('pill-disabled');
 
-        if (!res.ok) {
-          console.error('Failed to remove', dot, await res.text());
-        } else {
-          // Remove the row from the table
-          const row = cb.closest('tr');
-          if (row) row.remove();
-        }
-      } catch (err) {
-        console.error('Network error removing', dot, err);
-      }
+      removeBtn.textContent = 'Remove Carrier';
+      removeBtn.classList.add('pill-disabled');
+      removeBtn.classList.remove('active');
     }
+  }
 
-    updateBulkBar();
-  });
-</script>
+  // 1) Check if logged in
+  let loggedIn = false;
+  try {
+    const meRes = await fetch('/api/me');
+    const meData = await meRes.json();
+    loggedIn = !!meData.user;
+  } catch (err) {
+    console.error('auth check failed', err);
+  }
 
+  if (!loggedIn) {
+    setState({ isSaved: false, isLoggedIn: false });
+    addBtn.onclick = () => {
+      window.location.href = '/login.html';
+    };
+    // removeBtn stays disabled
+    return;
+  }
 
+  // 2) Check if this DOT is already saved
+  let isSaved = false;
+  try {
+    const checkRes = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}`);
+    if (checkRes.ok) {
+      const checkData = await checkRes.json();
+      isSaved = !!checkData.saved;
+    } else if (checkRes.status === 404) {
+      isSaved = false;
+    }
+  } catch (err) {
+    console.error('check saved failed', err);
+  }
 
+  setState({ isSaved, isLoggedIn: true });
+
+  // 3) Wire ADD
+  addBtn.onclick = async () => {
+    if (addBtn.classList.contains('pill-disabled')) return;
+
+    try {
+      const res = await fetch('/api/my-carriers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dot })
+      });
+
+      const body = await res.json();
+
+      if (res.status === 401) {
+        // session expired
+        window.location.href = '/login.html';
+        return;
+      }
+
+      if (res.ok && body.ok) {
+        setState({ isSaved: true, isLoggedIn: true });
+      } else {
+        alert(body.error || 'Failed to add carrier.');
+      }
+    } catch (err) {
+      console.error('add carrier failed', err);
+      alert('Network error adding carrier.');
+    }
+  };
+
+  // 4) Wire REMOVE
+  removeBtn.onclick = async () => {
+    if (removeBtn.classList.contains('pill-disabled')) return;
+
+    try {
+      const res = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}`, {
+        method: 'DELETE'
+      });
+
+      const body = await res.json();
+
+      if (res.status === 401) {
+        window.location.href = '/login.html';
+        return;
+      }
+
+      if (res.ok && body.ok) {
+        setState({ isSaved: false, isLoggedIn: true });
+      } else {
+        alert(body.error || 'Failed to remove carrier.');
+      }
+    } catch (err) {
+      console.error('remove carrier failed', err);
+      alert('Network error removing carrier.');
+    }
+  };
+}
+
+  document.addEventListener('DOMContentLoaded', loadCarrier);
+    
+  </script>
+
+  <script>
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.copy-btn');
+    if (!btn) return;
   
+    const targetId = btn.dataset.target;
+    const el = document.getElementById(targetId);
+    if (!el) return;
+  
+    const text = (el.textContent || '').trim();
+    if (!text || text === '—') return;
+  
+    try {
+      await navigator.clipboard.writeText(text);
+      const prev = btn.getAttribute('data-tip') || 'Copy';
+      btn.setAttribute('data-tip', 'Copied!');
+      setTimeout(() => btn.setAttribute('data-tip', prev), 900);
+    } catch {
+      // optional: show error
+    }
+  });
+  </script>
+
+
 </body>
 </html>
