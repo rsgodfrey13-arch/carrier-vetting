@@ -294,7 +294,7 @@ async function buildCarrierIndex() {
         const mc     = item.mc_number || '-';
 
         li.innerHTML = `
-          <div class="suggestion-main">Carrier:${name} - DOT:${dotVal} – MC:${mc}</div>
+          <div class="suggestion-main">${name} - DOT: ${dotVal} – MC: ${mc}</div>
           <div class="suggestion-sub">${city}${city && state ? ', ' : ''}${state}</div>
         `;
         li.addEventListener('click', () => goToCarrier(dotVal));
