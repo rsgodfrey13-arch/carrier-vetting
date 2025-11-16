@@ -591,20 +591,27 @@ body.carrier-list .page-subtitle {
   font-weight: 600;
   color: var(--accent-1);
   cursor: pointer;
+  width: 8%; 
 }
 
-
+/* MC (3) */
+.carriers-table th:nth-child(1),
+.carriers-table td:nth-child(1) {
+  width: 3%;
+}
 
 .carriers-table td:nth-child(3) {
   font-weight: 600;
   color: var(--accent-1);
   cursor: pointer;
+  width: 8%; 
 }
 
 /* Carrier name column (4th column) */
 .carriers-table th:nth-child(4),
 .carriers-table td:nth-child(4) {
   max-width: 260px;     
+  width: 30%; 
 }
 
 .carriers-table td:nth-child(4) {
@@ -613,20 +620,30 @@ body.carrier-list .page-subtitle {
   text-overflow: ellipsis;
 }
 
-.carriers-table td:nth-child(5),
+
 .carriers-table td:nth-child(6),
 .carriers-table td:nth-child(7),
 .carriers-table td:nth-child(8), 
-.carriers-table td:nth-child(9) {
+.carriers-table td:nth-child(9),
+.carriers-table td:nth-child(10) {
   text-align: center;
 }
 
-.carriers-table th:nth-child(5),
+
+.carriers-table th:nth-child(5), {
+ width: 20%; 
+}
+
 .carriers-table th:nth-child(6),
-.carriers-table th:nth-child(7),
-.carriers-table th:nth-child(8),
-.carriers-table th:nth-child(9) {
-  text-align: center;
+.carriers-table th:nth-child(10) {
+ width: 8%; 
+}
+
+
+.carriers-table td:nth-child(7),
+.carriers-table td:nth-child(8), 
+.carriers-table td:nth-child(9) {
+ width: 5%; 
 }
 
 
