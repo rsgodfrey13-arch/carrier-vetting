@@ -471,7 +471,31 @@
             ? 'Operating Status: Authorized'
             : 'Operating Status: Not Authorized';
 
+const mapAuthority = code => {
+  const v = (code || '').toString().toUpperCase();
 
+  if (v === 'A') return 'Active';
+  if (v === 'I') return 'Interstate';
+  // N or blank → show the dash
+  return '—';
+};
+
+document.getElementById('field-commonauthoritystatus').textContent  = mapAuthority(c.commonauthoritystatus);
+document.getElementById('field-contractauthoritystatus').textContent = mapAuthority(c.contractauthoritystatus);
+document.getElementById('field-brokerauthoritystatus').textContent   = mapAuthority(c.brokerauthoritystatus);
+
+const r = (c.safetyrating || '').toString().toUpperCase();
+
+const safetyRatingText =
+  r === ''  ? 'Not Rated'     :
+  r === 'C' ? 'Conditional'   :
+  r === 'S' ? 'Satisfactory'  :
+  r === 'U' ? 'Unsatisfactory':
+              'Not Rated';
+
+document.getElementById('field-safetyrating').textContent = safetyRatingText;
+
+        
         const statusEl = document.getElementById('carrier-status');
         statusEl.textContent = statusText;
 
