@@ -44,6 +44,7 @@
 
         <div class="carrier-id-row">
           <span class="carrier-ids">DOT <span id="carrier-dot">—</span></span>
+          <span class="carrier-ids">MC <span id="carrier-mc">—</span></span>
           <span class="carrier-ids">EIN <span id="carrier-ein">—</span></span>
         </div>
       </div>
@@ -84,15 +85,17 @@
         <div id="carrier-commonauthoritystatus" class="carrier-pill ghost small" >—</div>
         <div id="carrier-contractauthoritystatus" class="carrier-pill ghost small" >—</div>
         <div id="carrier-brokerauthoritystatus" class="carrier-pill ghost small" >—</div>
+        <div id="carrier-safetyrating" class="carrier-pill ghost small" >—</div>
       </div>
 
+      <!--
       <div class="quick-metrics">
         <div class="metric-chip">
           <span class="metric-label">Safety Rating</span>
           <span id="field-safetyrating" class="carrier-pill ghost small">—</span>
         </div>
       </div>
-
+      -->
       <!-- ACTION BUTTONS, SEPARATE ROW -->
       <div class="carrier-actions">
         <button id="btn-add-carrier" class="pill-btn pill-add">
@@ -441,6 +444,7 @@
         const name = (c.legalname || c.dbaname || `Carrier ${c.dotnumber || ''}`).trim();
         document.getElementById('carrier-name').textContent = name || '—';
         document.getElementById('carrier-dot').textContent = c.dotnumber || '—';
+        document.getElementById('carrier-mc').textContent = c.mc_number || '—';
         document.getElementById('carrier-ein').textContent = c.ein || '—';
 
         const addr = [c.phystreet].filter(Boolean).join(', ');
@@ -512,6 +516,9 @@ document.getElementById('field-safetyrating').textContent = safetyRatingText;
 
         const broker_El = document.getElementById('carrier-brokerauthoritystatus');
         broker_El.textContent = brokerTest;
+
+        const safety_El = document.getElementById('carrier-safetyrating');
+        safety_El.textContent = safetyRatingText;
         
         if ((c.statuscode || '').toString().toUpperCase() === 'A') {
           statusEl.classList.add('pill-ok');
