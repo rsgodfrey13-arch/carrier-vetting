@@ -111,6 +111,9 @@
   <script>
 
 let carrierIndex = []; 
+let myCarrierDots = new Set();
+
+    
     // ---------- TABLE LOAD ----------
 async function loadCarriers() {
   try {
@@ -254,14 +257,33 @@ async function loadCarriers() {
 // ---------- BUILD AUTOCOMPLETE INDEX ----------
 async function buildCarrierIndex() {
   try {
-    const res = await fetch('/api/carriers');   // always ALL carriers
-    const data = await res.json();
-    carrierIndex = Array.isArray(data) ? data : [];
+    // all carriers + my carriers in parallel
+    const [allRes, myRes] = await Promise.all([
+      fetch('/api/carriers'),
+      fetch('/api/my-carriers').catch(() => null)
+    ]);
+
+    const allData = await allRes.json();
+    carrierIndex = Array.isArray(allData) ? allData : [];
+
+    // build "my carriers" DOT set if logged in
+    if (myRes && myRes.ok) {
+      const myData = await myRes.json();
+      myCarrierDots = new Set(
+        (Array.isArray(myData) ? myData : []).map(c =>
+          String(c.dot || c.dotnumber || c.id || '')
+        )
+      );
+    } else {
+      myCarrierDots = new Set();
+    }
   } catch (err) {
     console.error("Error building search index:", err);
     carrierIndex = [];
+    myCarrierDots = new Set();
   }
 }
+
 
 
     // ---------- SEARCH / AUTOCOMPLETE ----------
@@ -280,29 +302,41 @@ async function buildCarrierIndex() {
       window.location.pathname = '/' + encodeURIComponent(dot);
     }
 
-    function renderSuggestions(results) {
-      clearSuggestions();
-      if (!Array.isArray(results) || results.length === 0) return;
+function renderSuggestions(results) {
+  clearSuggestions();
+  if (!Array.isArray(results) || results.length === 0) return;
 
-      results.forEach(item => {
-        const li = document.createElement('li');
-        li.className = 'carrier-suggestion-item';
-        const dotVal = item.dot || item.dotnumber || item.id || '';
-        const name = item.legalname || item.dbaname || '(No name)';
-        const city = item.city || item.phycity || '';
-        const state = item.state || item.phystate || '';
-        const mc     = item.mc_number || '-';
+  results.forEach(item => {
+    const li = document.createElement('li');
+    li.className = 'carrier-suggestion-item';
 
-        li.innerHTML = `
-          <div class="suggestion-main">${name} - DOT: ${dotVal} – MC: ${mc}</div>
-          <div class="suggestion-sub">${city}${city && state ? ', ' : ''}${state}</div>
-        `;
-        li.addEventListener('click', () => goToCarrier(dotVal));
-        suggestionsEl.appendChild(li);
-      });
+    const dotVal = item.dot || item.dotnumber || item.id || '';
+    const name   = item.legalname || item.dbaname || '(No name)';
+    const city   = item.city || item.phycity || '';
+    const state  = item.state || item.phystate || '';
+    const mc     = item.mc_number || '-';
 
-      suggestionsEl.classList.add('open');
-    }
+    const isMine = myCarrierDots.has(String(dotVal)); // 🔥 check if it's your carrier
+
+    li.innerHTML = `
+      <div class="suggestion-main">
+        <span class="suggestion-title-text">
+          ${dotVal} – ${name}
+        </span>
+        ${isMine ? '<span class="my-carrier-pill">MY CARRIER</span>' : ''}
+      </div>
+      <div class="suggestion-sub">
+        MC: ${mc} • ${city}${city && state ? ', ' : ''}${state}
+      </div>
+    `;
+
+    li.addEventListener('click', () => goToCarrier(dotVal));
+    suggestionsEl.appendChild(li);
+  });
+
+  suggestionsEl.classList.add('open');
+}
+
 
 function performSearch(query) {
   const q = query.trim();
