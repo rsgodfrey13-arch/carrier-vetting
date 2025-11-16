@@ -597,7 +597,7 @@ body.carrier-list .page-subtitle {
 
 .carriers-table th:nth-child(1),
 .carriers-table td:nth-child(1) {
-  width: 15%;
+  width: 1%;
 }
 
 .carriers-table td:nth-child(3) {
@@ -610,7 +610,7 @@ body.carrier-list .page-subtitle {
 /* Carrier name column (4th column) */
 .carriers-table th:nth-child(4),
 .carriers-table td:nth-child(4) { 
-  width: 30%; 
+  width: 28%; 
 }
 
 .carriers-table td:nth-child(4) {
@@ -632,7 +632,7 @@ body.carrier-list .page-subtitle {
 
 .carriers-table th:nth-child(5),
 .carriers-table td:nth-child(5) {
-  width: 15%; 
+  width: 12%; 
 }
 
 .carriers-table td:nth-child(5) {
@@ -651,7 +651,7 @@ body.carrier-list .page-subtitle {
 .carriers-table td:nth-child(7),
 .carriers-table td:nth-child(8), 
 .carriers-table td:nth-child(9) {
- width: 8%; 
+ width: 10%; 
 }
 
 
