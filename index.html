@@ -20,7 +20,7 @@
       <nav class="nav-links">
         <a href="/" class="nav-link">Home</a>
         <a href="/privacy" class="nav-link">Privacy Policy</a>
-        <a href="/login.html" id="login-link">Login</a>
+        <button id="login-btn">Login</button>
         <button id="logout-btn" style="display:none;">Logout</button>
       </nav>
     </div>
@@ -445,6 +445,8 @@ document.getElementById("download-btn").addEventListener("click", () => {
   link.download = "carriers.csv";
   link.click();
 });  
+
+    
   </script>
 
 <script>
@@ -453,14 +455,14 @@ document.getElementById("download-btn").addEventListener("click", () => {
       const res = await fetch('/api/me');
       const data = await res.json();
 
-      const loginLink = document.getElementById('login-link');
+      const loginBtn = document.getElementById('login-btn');
       const logoutBtn = document.getElementById('logout-btn');
 
-      if (!loginLink || !logoutBtn) return;
+      if (!loginBtn || !logoutBtn) return;
 
       if (data.user) {
-        // logged in
-        loginLink.style.display = 'none';
+        // Logged in
+        loginBtn.style.display = 'none';
         logoutBtn.style.display = 'inline-block';
 
         logoutBtn.onclick = async () => {
@@ -468,8 +470,8 @@ document.getElementById("download-btn").addEventListener("click", () => {
           window.location.href = '/';
         };
       } else {
-        // not logged in
-        loginLink.style.display = 'inline-block';
+        // Not logged in
+        loginBtn.style.display = 'inline-block';
         logoutBtn.style.display = 'none';
       }
     } catch (err) {
@@ -477,8 +479,14 @@ document.getElementById("download-btn").addEventListener("click", () => {
     }
   }
 
+  // Make the login button act like a link
+  document.getElementById("login-btn")?.addEventListener("click", () => {
+    window.location.href = "/login.html";
+  });
+
   initAuthUI();
 </script>
+
 
 <script>
   const tbody = document.getElementById('carrier-table-body');
