@@ -181,6 +181,7 @@ async function loadCarriers() {
           // --- 1) CARRIER NAME ---
           const nameCell = document.createElement('td');
           nameCell.textContent = c.legalname || c.dbaname || c.name || '-';
+          nameCell.title = c.legalname || c.dbaname || c.name || '-';   
           row.appendChild(nameCell);
 
          const locationCell = document.createElement('td');
