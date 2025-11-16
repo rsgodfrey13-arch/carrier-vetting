@@ -540,6 +540,7 @@ body.carrier-list .page-subtitle {
   width: 100%;
   border-collapse: collapse;
   font-size: .85rem;
+  table-layout: fixed;
 }
 
 .carriers-table thead {
@@ -600,7 +601,17 @@ body.carrier-list .page-subtitle {
   cursor: pointer;
 }
 
+/* Carrier name column (4th column) */
+.carriers-table th:nth-child(4),
+.carriers-table td:nth-child(4) {
+  max-width: 260px;     
+}
 
+.carriers-table td:nth-child(4) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 .carriers-table td:nth-child(5),
 .carriers-table td:nth-child(6),
@@ -942,3 +953,16 @@ body.carrier-list .page-subtitle {
   box-sizing: border-box;
 }
 
+
+
+/* Carrier name column — truncate long names */
+.carriers-table th:nth-child(4),
+.carriers-table td:nth-child(4) {
+  max-width: 260px;          /* adjust if you want slightly wider/narrower */
+}
+
+.carriers-table td:nth-child(4) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;   /* adds the "..." */
+}
