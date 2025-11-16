@@ -1000,3 +1000,10 @@ body.carrier-list .page-subtitle {
   overflow: hidden;
   text-overflow: ellipsis;   /* adds the "..." */
 }
+
+/* Make all clickable elements use the pointer cursor */
+button,
+a,
+.nav-btn {
+  cursor: pointer;
+}
