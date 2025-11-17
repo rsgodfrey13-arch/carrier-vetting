@@ -291,6 +291,24 @@ app.get('/api/carriers/:dot', async (req, res) => {
       return res.status(404).json({ error: 'Carrier not found' });
     }
 
+    const carrier = carrierResult.rows[0];
+
+
+    // 2) Get cargo carried rows
+    const cargoResult = await pool.query(
+      `SELECT cargo_class_desc
+       FROM carrier_cargo
+       WHERE dot_number = $1
+       ORDER BY cargo_class_desc;`,
+      [dot]
+    );
+
+    // Convert row list → array of strings
+    const cargoList = cargoResult.rows.map(r => r.cargo_class_desc);
+
+    // 3) Attach it to the carrier object
+    carrier.cargo_carried = cargoList;    
+    
     res.json(result.rows[0]);
   } catch (err) {
     console.error('Error in GET /api/carriers/:dot:', err);
