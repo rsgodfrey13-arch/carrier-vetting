@@ -291,7 +291,7 @@ app.get('/api/carriers/:dot', async (req, res) => {
       return res.status(404).json({ error: 'Carrier not found' });
     }
 
-    const carrier = carrierResult.rows[0];
+    const carrier = result.rows[0];
 
 
     // 2) Get cargo carried rows
@@ -309,7 +309,7 @@ app.get('/api/carriers/:dot', async (req, res) => {
     // 3) Attach it to the carrier object
     carrier.cargo_carried = cargoList;    
     
-    res.json(result.rows[0]);
+    res.json(carrier);
   } catch (err) {
     console.error('Error in GET /api/carriers/:dot:', err);
     res.status(500).json({ error: 'Database query failed' });
