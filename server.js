@@ -267,16 +267,17 @@ app.get('/api/carriers/search', async (req, res) => {
 
 /**
  * SINGLE CARRIER – used by /12345 page (carrier.html)
- * We look up by id, but still alias id -> dot in the response.
  */
 app.get('/api/carriers/:dot', async (req, res) => {
   try {
     const dot = req.params.dot;
+    console.log('Looking up carrier dot:', dot);
 
-    const result = await pool.query(`
+    // 1) Get base carrier row
+    const carrierResult = await pool.query(`
       SELECT
         dotnumber        AS dot,
-        phyStreet as address1,
+        phystreet as address1,
         null as address2,
         phycity as city,
         phystate as state,
@@ -287,12 +288,11 @@ app.get('/api/carriers/:dot', async (req, res) => {
       WHERE dotnumber = $1;
     `, [dot]);
 
-    if (result.rows.length === 0) {
+    if (carrierResult.rows.length === 0) {
       return res.status(404).json({ error: 'Carrier not found' });
     }
 
-    const carrier = result.rows[0];
-
+    const carrier = carrierResult.rows[0];
 
     // 2) Get cargo carried rows
     const cargoResult = await pool.query(
@@ -307,14 +307,17 @@ app.get('/api/carriers/:dot', async (req, res) => {
     const cargoList = cargoResult.rows.map(r => r.cargo_class_desc);
 
     // 3) Attach it to the carrier object
-    carrier.cargo_carried = cargoList;    
-    
+    carrier.cargo_carried = cargoList;
+
+    // 4) Return combined carrier object
     res.json(carrier);
+
   } catch (err) {
     console.error('Error in GET /api/carriers/:dot:', err);
     res.status(500).json({ error: 'Database query failed' });
   }
 });
+
 
 /**
  * PRETTY URL: /12345 → serve carrier.html
