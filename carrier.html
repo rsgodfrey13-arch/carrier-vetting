@@ -164,34 +164,35 @@
       </article>
 
       <!-- Operations & Authority -->
-      <article class="info-card glass-card">
-        <div class="card-header">
-          <h2>Operations &amp; Authority</h2>
-          <span class="card-tag">Profile</span>
-        </div>
-        <dl>
-          <div class="row">
-            <dt>Common Authority Status</dt>
-            <dd id="carrier-commonauthoritystatus">—</dd>
-          </div>
-          <div class="row">
-            <dt>Contract Authority Status</dt>
-            <dd id="carrier-contractauthoritystatus">—</dd>
-          </div>
-          <div class="row">
-            <dt>Broker Authority Status</dt>
-            <dd id="carrier-brokerauthoritystatus">—</dd>
-          </div>
-          <div class="row">
-            <dt>Carrier Operation Code</dt>
-            <dd id="field-carrieroperation_carrieroperationcode">—</dd>
-          </div>
-          <div class="row">
-            <dt>Carrier Operation Description</dt>
-            <dd id="field-carrieroperation_carrieroperationdesc">—</dd>
-          </div>
-        </dl>
-      </article>
+<article class="info-card glass-card">
+  <div class="card-header">
+    <h2>Operations &amp; Authority</h2>
+    <span class="card-tag">Profile</span>
+  </div>
+  <dl>
+    <div class="row">
+      <dt>Common Authority Status</dt>
+      <dd id="field-commonauthoritystatus">—</dd>
+    </div>
+    <div class="row">
+      <dt>Contract Authority Status</dt>
+      <dd id="field-contractauthoritystatus">—</dd>
+    </div>
+    <div class="row">
+      <dt>Broker Authority Status</dt>
+      <dd id="field-brokerauthoritystatus">—</dd>
+    </div>
+    <div class="row">
+      <dt>Carrier Operation Code</dt>
+      <dd id="field-carrieroperation_carrieroperationcode">—</dd>
+    </div>
+    <div class="row">
+      <dt>Carrier Operation Description</dt>
+      <dd id="field-carrieroperation_carrieroperationdesc">—</dd>
+    </div>
+  </dl>
+</article>
+
 
       <!-- 
       
@@ -505,6 +506,10 @@
               : '-';
 
 
+// set body values to the text versions (no single-letter codes)
+document.getElementById('field-commonauthoritystatus').textContent = commonText;
+document.getElementById('field-contractauthoritystatus').textContent = contractTest;
+document.getElementById('field-brokerauthoritystatus').textContent = brokerTest;
 
 
 const r = (c.safetyrating || '').toString().toUpperCase();
@@ -590,9 +595,9 @@ document.getElementById('field-safetyrating').textContent = safetyRatingText;
         setText('field-oosratenationalaverageyear', c.oosratenationalaverageyear);
 
         // Operations & authority
-        setText('field-commonauthoritystatus', c.commonauthoritystatus);
-        setText('field-contractauthoritystatus', c.contractauthoritystatus);
-        setText('field-brokerauthoritystatus', c.brokerauthoritystatus);
+        //setText('field-commonauthoritystatus', c.commonauthoritystatus);
+        //setText('field-contractauthoritystatus', c.contractauthoritystatus);
+        //setText('field-brokerauthoritystatus', c.brokerauthoritystatus);
         setText('field-carrieroperation_carrieroperationcode', c.carrieroperation_carrieroperationcode);
         setText('field-carrieroperation_carrieroperationdesc', c.carrieroperation_carrieroperationdesc);
         setText('field-censustypeid_censustype', c.censustypeid_censustype);
