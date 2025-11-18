@@ -264,7 +264,6 @@ app.get('/api/carriers/search', async (req, res) => {
   }
 });
 
-
 /**
  * SINGLE CARRIER – used by /12345 page (carrier.html)
  */
