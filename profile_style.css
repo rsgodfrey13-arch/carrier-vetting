@@ -450,4 +450,24 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
 }
 
 
+.cargo-body {
+  padding: 8px 0 4px;
+}
+
+.cargo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cargo-list li {
+  white-space: nowrap;
+}
 
