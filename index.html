@@ -324,7 +324,7 @@ function renderPagination() {
 
   // Prev
   container.appendChild(
-    makeButton('<', Math.max(1, currentPage - 1), currentPage === 1)
+    makeButton('⟨', Math.max(1, currentPage - 1), currentPage === 1)
   );
 
   const maxButtons = 7; // 1 2 3 ... 18 style
@@ -370,7 +370,7 @@ function renderPagination() {
 
   // Next
   container.appendChild(
-    makeButton('>', Math.min(totalPages, currentPage + 1), currentPage === totalPages)
+    makeButton('⟩', Math.min(totalPages, currentPage + 1), currentPage === totalPages)
   );
 }
 
