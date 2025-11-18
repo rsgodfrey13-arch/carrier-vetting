@@ -172,15 +172,15 @@
         <dl>
           <div class="row">
             <dt>Common Authority Status</dt>
-            <dd id="field-commonauthoritystatus">—</dd>
+            <dd id="carrier-commonauthoritystatus">—</dd>
           </div>
           <div class="row">
             <dt>Contract Authority Status</dt>
-            <dd id="field-contractauthoritystatus">—</dd>
+            <dd id="carrier-contractauthoritystatus">—</dd>
           </div>
           <div class="row">
             <dt>Broker Authority Status</dt>
-            <dd id="field-brokerauthoritystatus">—</dd>
+            <dd id="carrier-brokerauthoritystatus">—</dd>
           </div>
           <div class="row">
             <dt>Carrier Operation Code</dt>
@@ -485,10 +485,10 @@
 
         const commonText =
           c.commonauthoritystatus === 'A'
-            ? 'Common Authority: Active'
+            ? 'Active'
             : c.commonauthoritystatus === 'I'
-              ? 'Common Authority: Interstate'
-              : 'Common Authority: -';
+              ? 'Interstate'
+              : ' -';
 
         const contractTest =
           c.contractauthoritystatus === 'A'
