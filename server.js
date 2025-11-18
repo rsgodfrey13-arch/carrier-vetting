@@ -102,12 +102,16 @@ app.post('/api/logout', (req, res) => {
 
 /** ---------- MY CARRIERS ROUTES ---------- **/
 
-// Get list of carriers saved by this user
+// Get list of carriers saved by this user (paginated)
 app.get('/api/my-carriers', requireAuth, async (req, res) => {
   try {
-    const userId = req.session.userId;
+    const userId   = req.session.userId;
 
-    const sql = `
+    const page     = parseInt(req.query.page, 10)     || 1;
+    const pageSize = parseInt(req.query.pageSize, 10) || 25;
+    const offset   = (page - 1) * pageSize;
+
+    const dataSql = `
       SELECT
         c.dotnumber AS dot,
         c.*
@@ -115,16 +119,35 @@ app.get('/api/my-carriers', requireAuth, async (req, res) => {
       JOIN carriers c
         ON c.dotnumber = uc.carrier_dot
       WHERE uc.user_id = $1
-      ORDER BY uc.added_at DESC;
+      ORDER BY uc.added_at DESC
+      LIMIT $2 OFFSET $3;
     `;
 
-    const result = await pool.query(sql, [userId]);
-    res.json(result.rows);
+    const countSql = `
+      SELECT COUNT(*)::int AS count
+      FROM user_carriers
+      WHERE user_id = $1;
+    `;
+
+    const [dataResult, countResult] = await Promise.all([
+      pool.query(dataSql,  [userId, pageSize, offset]),
+      pool.query(countSql, [userId])
+    ]);
+
+    const total = countResult.rows[0].count;
+
+    res.json({
+      rows: dataResult.rows,
+      total,
+      page,
+      pageSize
+    });
   } catch (err) {
     console.error('Error in GET /api/my-carriers:', err);
     res.status(500).json({ error: 'Failed to load user carriers' });
   }
 });
+
 
 // Save a new carrier for this user
 app.post('/api/my-carriers', requireAuth, async (req, res) => {
@@ -196,28 +219,46 @@ app.delete('/api/my-carriers/:dot', requireAuth, async (req, res) => {
 
 app.get('/api/carriers', async (req, res) => {
   try {
-    const result = await pool.query(`
+    const page     = parseInt(req.query.page, 10)     || 1;
+    const pageSize = parseInt(req.query.pageSize, 10) || 25;
+    const offset   = (page - 1) * pageSize;
+
+    const dataQuery = `
       SELECT
         dotnumber        AS dot,
-        phyStreet as address1,
-        null as address2,
-        phycity as city,
-        phystate as state,
-        phyzipcode as zip,
+        phystreet        AS address1,
+        NULL             AS address2,
+        phycity          AS city,
+        phystate         AS state,
+        phyzipcode       AS zip,
         TO_CHAR(retrieval_date::timestamp, 'Mon DD, YYYY HH12:MI AM EST') AS retrieval_date_formatted,
         *
       FROM public.carriers
       ORDER BY dotnumber
-      LIMIT 50;
-    `);
+      LIMIT $1 OFFSET $2
+    `;
 
-    console.log('Rows from DB:', result.rows); // debug
-    res.json(result.rows);
+    const countQuery = `SELECT COUNT(*)::int AS count FROM public.carriers`;
+
+    const [dataResult, countResult] = await Promise.all([
+      pool.query(dataQuery, [pageSize, offset]),
+      pool.query(countQuery)
+    ]);
+
+    const total = countResult.rows[0].count;
+
+    res.json({
+      rows: dataResult.rows,
+      total,
+      page,
+      pageSize
+    });
   } catch (err) {
     console.error('Error in GET /api/carriers:', err);
     res.status(500).json({ error: 'Database query failed' });
   }
 });
+
 
 /**
  * SEARCH – used by the autocomplete
