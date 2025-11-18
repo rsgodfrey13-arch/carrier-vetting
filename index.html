@@ -82,25 +82,40 @@
               </button>
             </div>
               
-        <table class="carriers-table">
-          <thead>
-            <tr>
-              <th class="select-cell">
-                <input type="checkbox" id="select-all">
-              </th>
-              <th>DOT</th>
-              <th>MC</th>
-              <th>Carrier</th>
-              <th>Location</th>
-              <th>Operating</th>
-              <th>Common</th>
-              <th>Contract</th>
-              <th>Broker</th>
-              <th>Safety Rating</th>
-            </tr>
-          </thead>
-          <tbody id="carrier-table-body"></tbody>
-        </table>
+      <table class="carriers-table">
+        <thead>
+          <tr>
+            <th class="select-cell">
+              <input type="checkbox" id="select-all">
+            </th>
+            <th>DOT</th>
+            <th>MC</th>
+            <th>Carrier</th>
+            <th>Location</th>
+            <th>Operating</th>
+            <th>Common</th>
+            <th>Contract</th>
+            <th>Broker</th>
+            <th>Safety Rating</th>
+          </tr>
+        </thead>
+        <tbody id="carrier-table-body"></tbody>
+      </table>
+
+      <!-- 🔻 New footer: rows-per-page + pagination -->
+      <div class="table-footer">
+        <div class="rows-per-page">
+          Rows per page:
+          <select id="rows-per-page">
+            <option value="25" selected>25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
+      
+        <div class="pagination" id="pagination-controls"></div>
+      </div>
+
 
 
 
@@ -113,11 +128,17 @@
 let carrierIndex = []; 
 let myCarrierDots = new Set();
 
-    
-    // ---------- TABLE LOAD ----------
+// -------- PAGINATION STATE --------
+let currentPage = 1;
+let pageSize = 25;       // default 25
+let totalRows = 0;
+let totalPages = 0;
+
+ // ---------- TABLE LOAD ----------
 async function loadCarriers() {
   try {
     const tbody = document.getElementById('carrier-table-body');
+    tbody.innerHTML = ''; // clear before re-render
 
     // ------------------------------------------
     // 1) CHECK IF USER IS LOGGED IN
@@ -132,136 +153,235 @@ async function loadCarriers() {
     } catch (e) {
       console.error("Error checking login:", e);
     }
+
+    // ------------------------------------------
+    // 2) BUILD URL WITH PAGINATION PARAMS
+    // ------------------------------------------
+    const url = new URL(endpoint, window.location.origin);
+    url.searchParams.set('page', currentPage);
+    url.searchParams.set('pageSize', pageSize);
+
+    const res = await fetch(url);
+    const result = await res.json();
+
+    // API now returns: { rows, total, page, pageSize }
+    const data = Array.isArray(result) ? result : result.rows;
+    totalRows   = result.total ?? data.length;
+    totalPages  = Math.max(1, Math.ceil(totalRows / pageSize));
+
+    if (!Array.isArray(data) || data.length === 0) {
+      const row = document.createElement('tr');
+      const cell = document.createElement('td');
+      cell.colSpan = 10; // full width
+      cell.textContent = 'No carriers found.';
+      row.appendChild(cell);
+      tbody.appendChild(row);
+
+      renderPagination(); // still update controls
+      return;
+    }
+
+    data.forEach(c => {
+      const row = document.createElement('tr');
+      const dotVal = c.dot || c.dotnumber || c.id || '';
+
+      //  NEW: checkbox cell
+      const selectCell = document.createElement('td');
+      selectCell.className = 'col-select select-cell';  // add select-cell
     
-    const res = await fetch(endpoint);
-    const data = await res.json();
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'row-select';
+      checkbox.dataset.dot = dotVal;   // this is what we'll send to the API
     
-        if (!Array.isArray(data) || data.length === 0) {
-          const row = document.createElement('tr');
-          const cell = document.createElement('td');
-          cell.colSpan = 6;
-          cell.textContent = 'No carriers found.';
-          row.appendChild(cell);
-          tbody.appendChild(row);
+      selectCell.appendChild(checkbox);
+      row.appendChild(selectCell);
+      
+
+      const dotCell = document.createElement('td');
+      const link = document.createElement('a');
+      link.textContent = dotVal;
+      link.href = '/' + encodeURIComponent(dotVal);
+      link.className = 'dot-link';
+      dotCell.appendChild(link);
+      row.appendChild(dotCell);
+
+
+      const mcCell = document.createElement('td');
+      mcCell.textContent = c.mc_number || '-';
+      row.appendChild(mcCell)
+
+      // --- 1) CARRIER NAME ---
+      const nameCell = document.createElement('td');
+      nameCell.textContent = c.legalname || c.dbaname || c.name || '-';
+      nameCell.title = c.legalname || c.dbaname || c.name || '-';   
+      row.appendChild(nameCell);
+
+      const locationCell = document.createElement('td');
+      locationCell.textContent = `${(c.city || c.phycity || '')}${
+        (c.state || c.phystate) ? ', ' + (c.state || c.phystate) : ''
+      }`;
+      row.appendChild(locationCell);
+      
+      const allowedtooperateCell = document.createElement('td');
+      const isAuthorized = c.allowedtooperate === 'Y';
+      
+      allowedtooperateCell.textContent = isAuthorized
+        ? 'Authorized'
+        : 'Not Authorized';
+      
+      if (isAuthorized) {
+        allowedtooperateCell.classList.add('status-ok');
+      }
+      
+      row.appendChild(allowedtooperateCell);
+      
+      // COMMON
+      const commonCell = document.createElement('td');
+      commonCell.textContent = c.commonauthoritystatus || '-';
+      if (commonCell.textContent === 'A') {
+        commonCell.classList.add('status-ok');
+      }
+      row.appendChild(commonCell);
+
+      // CONTRACT
+      const contractCell = document.createElement('td');
+      contractCell.textContent = c.contractauthoritystatus || '-';
+      if (contractCell.textContent === 'A') {
+        contractCell.classList.add('status-ok');
+      }  
+      row.appendChild(contractCell);
+
+      // BROKER
+      const brokerCell = document.createElement('td');
+      brokerCell.textContent = c.brokerauthoritystatus || '-';
+      if (brokerCell.textContent === 'A') {
+        brokerCell.classList.add('status-ok');
+      }
+      row.appendChild(brokerCell);
+
+      const ratingMap = {
+        'S': 'Satisfactory',
+        'C': 'Conditional',
+        'U': 'Unsatisfactory'
+      };
+
+      const rawRating = c.safetyrating ? c.safetyrating.trim().toUpperCase() : '';
+
+      const safetyCell = document.createElement('td');
+      safetyCell.textContent = ratingMap[rawRating] || 'Not Rated';
+      row.appendChild(safetyCell);
+
+      row.addEventListener('click', (e) => {
+        // If the click came from the checkbox column, do nothing
+        if (e.target.closest('.select-cell')) {
           return;
         }
+      
+        // Otherwise, treat it as a row click (unless it's the DOT link itself)
+        if (e.target.tagName.toLowerCase() !== 'a') {
+          window.location.pathname = '/' + encodeURIComponent(dotVal);
+        }
+      });
 
-        
+      tbody.appendChild(row);
+    });
 
-        data.forEach(c => {
-          const row = document.createElement('tr');
-          const dotVal = c.dot || c.dotnumber || c.id || '';
-
-            //  NEW: checkbox cell
-          const selectCell = document.createElement('td');
-          selectCell.className = 'col-select select-cell';  // add select-cell
-        
-          const checkbox = document.createElement('input');
-          checkbox.type = 'checkbox';
-          checkbox.className = 'row-select';
-          checkbox.dataset.dot = dotVal;   // this is what we'll send to the API
-        
-          selectCell.appendChild(checkbox);
-          row.appendChild(selectCell);
-          
-
-          const dotCell = document.createElement('td');
-          const link = document.createElement('a');
-          link.textContent = dotVal;
-          link.href = '/' + encodeURIComponent(dotVal);
-          link.className = 'dot-link';
-          dotCell.appendChild(link);
-          row.appendChild(dotCell);
+    // After rows are rendered, render pagination controls
+    renderPagination();
+  } catch (err) {
+    console.error('Error fetching carriers:', err);
+  }
+}
 
 
-          const mcCell = document.createElement('td');
-          mcCell.textContent = c.mc_number || '-';
-          row.appendChild(mcCell)
+function renderPagination() {
+  const container = document.getElementById('pagination-controls');
+  if (!container) return;
 
-          // --- 1) CARRIER NAME ---
-          const nameCell = document.createElement('td');
-          nameCell.textContent = c.legalname || c.dbaname || c.name || '-';
-          nameCell.title = c.legalname || c.dbaname || c.name || '-';   
-          row.appendChild(nameCell);
+  container.innerHTML = '';
 
-         const locationCell = document.createElement('td');
-          locationCell.textContent = `${(c.city || c.phycity || '')}${
-            (c.state || c.phystate) ? ', ' + (c.state || c.phystate) : ''
-          }`;
-          row.appendChild(locationCell);
-          
-          const allowedtooperateCell = document.createElement('td');
-          const isAuthorized = c.allowedtooperate === 'Y';
-          
-          allowedtooperateCell.textContent = isAuthorized
-            ? 'Authorized'
-            : 'Not Authorized';
-          
-          if (isAuthorized) {
-            allowedtooperateCell.classList.add('status-ok');
-          }
-          
-          row.appendChild(allowedtooperateCell);
-          
-          // COMMON
-            const commonCell = document.createElement('td');
-            commonCell.textContent = c.commonauthoritystatus || '-';
-            if (commonCell.textContent === 'A') {
-              commonCell.classList.add('status-ok');
-            }
-            row.appendChild(commonCell);
+  if (totalPages <= 1) {
+    return; // nothing to show
+  }
 
-          
-          // CONTRACT
-            const contractCell = document.createElement('td');
-            contractCell.textContent = c.contractauthoritystatus || '-';
-            if (contractCell.textContent === 'A') {
-              contractCell.classList.add('status-ok');
-            }  
-            row.appendChild(contractCell);
-
-          
-          // BROKER
-            const brokerCell = document.createElement('td');
-            brokerCell.textContent = c.brokerauthoritystatus || '-';
-            if (brokerCell.textContent === 'A') {
-              brokerCell.classList.add('status-ok');
-            }
-            row.appendChild(brokerCell);
-
-
-const ratingMap = {
-  'S': 'Satisfactory',
-  'C': 'Conditional',
-  'U': 'Unsatisfactory'
-};
-
-const rawRating = c.safetyrating ? c.safetyrating.trim().toUpperCase() : '';
-
-const safetyCell = document.createElement('td');
-safetyCell.textContent = ratingMap[rawRating] || 'Not Rated';
-row.appendChild(safetyCell);
-
-
-          row.addEventListener('click', (e) => {
-            // If the click came from the checkbox column, do nothing
-            if (e.target.closest('.select-cell')) {
-              return;
-            }
-          
-            // Otherwise, treat it as a row click (unless it's the DOT link itself)
-            if (e.target.tagName.toLowerCase() !== 'a') {
-              window.location.pathname = '/' + encodeURIComponent(dotVal);
-            }
-          });
-
-
-          tbody.appendChild(row);
-        });
-      } catch (err) {
-        console.error('Error fetching carriers:', err);
-      }
+  const makeButton = (label, page, disabled = false, active = false) => {
+    const btn = document.createElement('button');
+    btn.textContent = label;
+    btn.className = 'page-btn';
+    if (active) btn.classList.add('active');
+    if (disabled) {
+      btn.disabled = true;
+    } else if (page !== null) {
+      btn.addEventListener('click', () => {
+        if (page === currentPage) return;
+        currentPage = page;
+        loadCarriers();
+      });
     }
+    return btn;
+  };
+
+  // Prev
+  container.appendChild(
+    makeButton('<', Math.max(1, currentPage - 1), currentPage === 1)
+  );
+
+  const maxButtons = 7; // 1 2 3 ... 18 style
+
+  if (totalPages <= maxButtons) {
+    // show all
+    for (let p = 1; p <= totalPages; p++) {
+      container.appendChild(makeButton(String(p), p, false, p === currentPage));
+    }
+  } else {
+    // Always show 1
+    container.appendChild(makeButton('1', 1, false, currentPage === 1));
+
+    // Left ellipsis
+    if (currentPage > 4) {
+      const span = document.createElement('span');
+      span.textContent = '...';
+      span.className = 'page-ellipsis';
+      container.appendChild(span);
+    }
+
+    // Middle window (currentPage -1 to +1)
+    const start = Math.max(2, currentPage - 1);
+    const end   = Math.min(totalPages - 1, currentPage + 1);
+
+    for (let p = start; p <= end; p++) {
+      container.appendChild(makeButton(String(p), p, false, p === currentPage));
+    }
+
+    // Right ellipsis
+    if (currentPage < totalPages - 3) {
+      const span = document.createElement('span');
+      span.textContent = '...';
+      span.className = 'page-ellipsis';
+      container.appendChild(span);
+    }
+
+    // Last page
+    container.appendChild(
+      makeButton(String(totalPages), totalPages, false, currentPage === totalPages)
+    );
+  }
+
+  // Next
+  container.appendChild(
+    makeButton('>', Math.min(totalPages, currentPage + 1), currentPage === totalPages)
+  );
+}
+
+// Rows-per-page selector
+document.getElementById('rows-per-page')?.addEventListener('change', (e) => {
+  pageSize = parseInt(e.target.value, 10) || 25;
+  currentPage = 1; // reset to first page when page size changes
+  loadCarriers();
+});
+
+
 
 // ---------- BUILD AUTOCOMPLETE INDEX ----------
 async function buildCarrierIndex() {
