@@ -303,7 +303,7 @@ app.get('/api/carriers/:dot', async (req, res) => {
     );
 
     // Convert row list → array of strings
-    const cargoList = cargoResult.rows.map(r => r.cargo_class_desc);
+    const cargoList = cargoResult.rows.map(r => r.cargo_desc);
 
     // 3) Attach it to the carrier object
     carrier.cargo_carried = cargoList;
