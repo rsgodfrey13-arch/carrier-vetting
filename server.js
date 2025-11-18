@@ -296,10 +296,10 @@ app.get('/api/carriers/:dot', async (req, res) => {
 
     // 2) Get cargo carried rows
     const cargoResult = await pool.query(
-      `SELECT cargo_class_desc
-       FROM carrier_cargo
+      `SELECT cargo_desc, cargo_class
+       FROM public.cargo
        WHERE dot_number = $1
-       ORDER BY cargo_class_desc;`,
+       ORDER BY cargo_desc;`,
       [dot]
     );
 
