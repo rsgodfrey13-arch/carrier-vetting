@@ -646,6 +646,23 @@ document.getElementById('field-safetyrating').textContent = safetyRatingText;
         setLink('field-link_active_for_hire', c.link_active_for_hire);
         setLink('field-link_self', c.link_self);
 
+        // CARGO CARRIED
+        const cargoListEl = document.getElementById('cargo-list');
+        console.log('cargo_carried from API:', c.cargo_carried);
+
+        if (c.cargo_carried && c.cargo_carried.length > 0) {
+          cargoListEl.innerHTML = '';
+          c.cargo_carried.forEach(desc => {
+            if (!desc) return;
+            const li = document.createElement('li');
+            li.textContent = desc;
+            cargoListEl.appendChild(li);
+          });
+        } else {
+          cargoListEl.innerHTML = '<li>—</li>';
+        }
+
+        
         // Await For Add Carrier Button
         await initCarrierButtons(dot);
         
