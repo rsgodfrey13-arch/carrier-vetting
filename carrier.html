@@ -474,14 +474,14 @@
 
         // Status pills
         const statusText =
-          c.statuscode === 'A' ? 'Status: Active' :
-          c.statuscode === 'I' ? 'Status: Inactive' :
-          'Status: None';
+          c.statuscode === 'A' ? 'Active' :
+          c.statuscode === 'I' ? 'Inactive' :
+          'None';
         
         const allowedText =
           (c.allowedtooperate && c.allowedtooperate.toString().toUpperCase() === 'Y')
-            ? 'Operating Status: Authorized'
-            : 'Operating Status: Not Authorized';
+            ? 'Authorized'
+            : 'Not Authorized';
 
         const commonText =
           c.commonauthoritystatus === 'A'
@@ -492,50 +492,53 @@
 
         const contractTest =
           c.contractauthoritystatus === 'A'
-            ? 'Contract Authority: Active'
+            ? 'Active'
             : c.contractauthoritystatus === 'I'
-              ? 'Contract Authority: Interstate'
-              : 'Contract Authority: -';
+              ? 'Interstate'
+              : '-';
 
         const brokerTest =
           c.brokerauthoritystatus === 'A'
-            ? 'Broker Authority: Active'
+            ? 'Active'
             : c.brokerauthoritystatus === 'I'
-              ? 'Broker Authority: Interstate'
-              : 'Broker Authority: -';
+              ? 'Interstate'
+              : '-';
 
 
 
 
 const r = (c.safetyrating || '').toString().toUpperCase();
 
-const safetyRatingText =
-  r === ''  ? 'Safety Rating: Not Rated'     :
-  r === 'C' ? 'Safety Rating: Conditional'   :
-  r === 'S' ? 'Safety Rating: Satisfactory'  :
-  r === 'U' ? 'Safety Rating: Unsatisfactory':
-              'Safety Rating: Not Rated';
+// pure VALUE for the body card
+const safetyRating_value =
+  r === ''  ? 'Not Rated'        :
+  r === 'C' ? 'Conditional'      :
+  r === 'S' ? 'Satisfactory'     :
+  r === 'U' ? 'Unsatisfactory'   :
+              'Not Rated';
 
+// body row uses just the value
 document.getElementById('field-safetyrating').textContent = safetyRatingText;
+
 
         
         const statusEl = document.getElementById('carrier-status');
-        statusEl.textContent = statusText;
+        statusEl.textContent = `STATUS: ${statusText}`;
 
         const allowedEl = document.getElementById('carrier-allowed');
-        allowedEl.textContent = allowedText;
+        allowedEl.textContent = `OPERATING STATUS: ${allowedText}`;
 
         const common_El = document.getElementById('carrier-commonauthoritystatus');
-        common_El.textContent = commonText;
+        common_El.textContent = `COMMON AUTHORITY: ${commonText}`;
 
         const contract_El = document.getElementById('carrier-contractauthoritystatus');
-        contract_El.textContent = contractTest;
+        contract_El.textContent = `CONTRACT AUTHORITY: ${contractTest}`;
 
         const broker_El = document.getElementById('carrier-brokerauthoritystatus');
-        broker_El.textContent = brokerTest;
+        broker_El.textContent = `BROKER AUTHORITY: ${brokerTest}`;
 
         const safety_El = document.getElementById('carrier-safetyrating');
-        safety_El.textContent = safetyRatingText;
+        safety_El.textContent = `Safety Rating: ${safetyRatingText}`;
         
         if ((c.statuscode || '').toString().toUpperCase() === 'A') {
           statusEl.classList.add('pill-ok');
