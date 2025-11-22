@@ -601,85 +601,61 @@ function performSearch(query) {
     buildCarrierIndex(); // populates search index (always ALL carriers)
 
 
-document.getElementById("download-btn").addEventListener("click", () => {
-  const table = document.querySelector(".carriers-table");
-  const rows = table.querySelectorAll("tr");
-
-  let csv = [];
-
-  rows.forEach(row => {
-    const cells = row.querySelectorAll("th, td");
-    let rowData = [];
-
-    cells.forEach(cell => {
-      let text = cell.innerText.replace(/,/g, ""); // remove commas
-      rowData.push(text);
-    });
-
-    csv.push(rowData.join(","));
-  });
-
-  const csvString = csv.join("\n");
-
-  const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "carriers.csv";
-  link.click();
-});  
-
 document.addEventListener('DOMContentLoaded', function () {
-    const table = document.getElementById('carriers-table');
-    if (!table) return;
+  const table = document.getElementById('carriers-table');
+  if (!table) return;
 
-    const tbody = table.querySelector('tbody');
-    const headers = Array.from(table.querySelectorAll('th.sortable'));
+  const tbody = table.querySelector('tbody');
+  const headers = Array.from(table.querySelectorAll('th.sortable'));
 
-    let sortState = { index: null, direction: 'asc' };
+  let sortState = { colIndex: null, direction: 'asc' };
 
-    headers.forEach((th, index) => {
-      th.addEventListener('click', () => {
-        const direction =
-          sortState.index === index && sortState.direction === 'asc'
-            ? 'desc'
-            : 'asc';
+  headers.forEach(th => {
+    const colIndex = th.cellIndex; // real column index in the row
 
-        sortState = { index, direction };
+    th.addEventListener('click', () => {
+      const direction =
+        sortState.colIndex === colIndex && sortState.direction === 'asc'
+          ? 'desc'
+          : 'asc';
 
-        headers.forEach(h => h.classList.remove('sorted-asc', 'sorted-desc'));
-        th.classList.add(direction === 'asc' ? 'sorted-asc' : 'sorted-desc');
+      sortState = { colIndex, direction };
 
-        const rows = Array.from(tbody.querySelectorAll('tr'));
+      // reset header classes
+      headers.forEach(h => h.classList.remove('sorted-asc', 'sorted-desc'));
+      th.classList.add(direction === 'asc' ? 'sorted-asc' : 'sorted-desc');
 
-        rows.sort((rowA, rowB) => {
-          const cellA = rowA.children[index];
-          const cellB = rowB.children[index];
+      const rows = Array.from(tbody.querySelectorAll('tr'));
 
-          const rawA = (cellA.dataset.value || cellA.textContent || '').trim();
-          const rawB = (cellB.dataset.value || cellB.textContent || '').trim();
+      rows.sort((rowA, rowB) => {
+        const cellA = rowA.children[colIndex];
+        const cellB = rowB.children[colIndex];
 
-          const numA = parseFloat(rawA.replace(/,/g, ''));
-          const numB = parseFloat(rawB.replace(/,/g, ''));
+        const rawA = (cellA?.dataset.value || cellA?.textContent || '').trim();
+        const rawB = (cellB?.dataset.value || cellB?.textContent || '').trim();
 
-          let comparison;
-          if (!Number.isNaN(numA) && !Number.isNaN(numB)) {
-            comparison = numA - numB;
-          } else {
-            comparison = rawA.localeCompare(rawB, undefined, {
-              numeric: true,
-              sensitivity: 'base'
-            });
-          }
+        const numA = parseFloat(rawA.replace(/,/g, ''));
+        const numB = parseFloat(rawB.replace(/,/g, ''));
 
-          return direction === 'asc' ? comparison : -comparison;
-        });
+        let comparison;
+        if (!Number.isNaN(numA) && !Number.isNaN(numB)) {
+          comparison = numA - numB;
+        } else {
+          comparison = rawA.localeCompare(rawB, undefined, {
+            numeric: true,
+            sensitivity: 'base'
+          });
+        }
 
-        rows.forEach(row => tbody.appendChild(row));
+        return direction === 'asc' ? comparison : -comparison;
       });
+
+      // re-attach rows in new order
+      rows.forEach(row => tbody.appendChild(row));
     });
+  });
 });
+
     
   </script>
 
