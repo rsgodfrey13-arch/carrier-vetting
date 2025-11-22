@@ -1102,3 +1102,92 @@ a,
   color: var(--text-muted);
   opacity: 0.7;
 }
+
+
+/* sortable headers */
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: rgba(226, 232, 240, 0.75);
+  padding-right: 26px;
+}
+
+th.sortable .th-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+th.sortable .sort-icon {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  opacity: 0.35;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+th.sortable:hover .sort-icon {
+  opacity: 0.8;
+  transform: translateY(-50%) translateY(-1px);
+}
+
+.sort-icon .arrow-up,
+.sort-icon .arrow-down {
+  width: 7px;
+  height: 4px;
+  border-left: 1px solid rgba(148, 163, 184, 0.8);
+  border-right: 1px solid rgba(148, 163, 184, 0.8);
+}
+
+.sort-icon .arrow-up {
+  border-top: 1px solid rgba(148, 163, 184, 0.8);
+  border-bottom: none;
+  border-radius: 3px 3px 0 0;
+}
+
+.sort-icon .arrow-down {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.8);
+  border-top: none;
+  border-radius: 0 0 3px 3px;
+}
+
+/* active sorted column state */
+th.sortable.sorted-asc,
+th.sortable.sorted-desc {
+  color: var(--accent-1);
+}
+
+th.sortable.sorted-asc::after,
+th.sortable.sorted-desc::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.55);
+}
+
+th.sortable.sorted-asc .sort-icon,
+th.sortable.sorted-desc .sort-icon {
+  opacity: 1;
+}
+
+/* highlight which arrow is active */
+th.sortable.sorted-asc .arrow-up {
+  border-color: var(--accent-1);
+}
+
+th.sortable.sorted-desc .arrow-down {
+  border-color: var(--accent-1);
+}
+
