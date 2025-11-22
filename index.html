@@ -88,17 +88,81 @@
             <th class="select-cell">
               <input type="checkbox" id="select-all">
             </th>
-            <th>DOT</th>
-            <th>MC</th>
-            <th>Carrier</th>
-            <th>Location</th>
-            <th>Operating</th>
-            <th>Common</th>
-            <th>Contract</th>
-            <th>Broker</th>
-            <th>Safety Rating</th>
+        
+            <th class="sortable" data-col="dot">
+              <span class="th-label">DOT</span>
+              <span class="sort-icon">
+                <span class="arrow-up"></span>
+                <span class="arrow-down"></span>
+              </span>
+            </th>
+        
+            <th class="sortable" data-col="mc">
+              <span class="th-label">MC</span>
+              <span class="sort-icon">
+                <span class="arrow-up"></span>
+                <span class="arrow-down"></span>
+              </span>
+            </th>
+        
+            <th class="sortable" data-col="carrier">
+              <span class="th-label">Carrier</span>
+              <span class="sort-icon">
+                <span class="arrow-up"></span>
+                <span class="arrow-down"></span>
+              </span>
+            </th>
+        
+            <th class="sortable" data-col="location">
+              <span class="th-label">Location</span>
+              <span class="sort-icon">
+                <span class="arrow-up"></span>
+                <span class="arrow-down"></span>
+              </span>
+            </th>
+        
+            <th class="sortable" data-col="operating">
+              <span class="th-label">Operating</span>
+              <span class="sort-icon">
+                <span class="arrow-up"></span>
+                <span class="arrow-down"></span>
+              </span>
+            </th>
+        
+            <th class="sortable" data-col="common">
+              <span class="th-label">Common</span>
+              <span class="sort-icon">
+                <span class="arrow-up"></span>
+                <span class="arrow-down"></span>
+              </span>
+            </th>
+        
+            <th class="sortable" data-col="contract">
+              <span class="th-label">Contract</span>
+              <span class="sort-icon">
+                <span class="arrow-up"></span>
+                <span class="arrow-down"></span>
+              </span>
+            </th>
+        
+            <th class="sortable" data-col="broker">
+              <span class="th-label">Broker</span>
+              <span class="sort-icon">
+                <span class="arrow-up"></span>
+                <span class="arrow-down"></span>
+              </span>
+            </th>
+        
+            <th class="sortable" data-col="safety">
+              <span class="th-label">Safety Rating</span>
+              <span class="sort-icon">
+                <span class="arrow-up"></span>
+                <span class="arrow-down"></span>
+              </span>
+            </th>
           </tr>
         </thead>
+
         <tbody id="carrier-table-body"></tbody>
       </table>
 
@@ -566,6 +630,60 @@ document.getElementById("download-btn").addEventListener("click", () => {
   link.click();
 });  
 
+  (function () {
+    const table = document.getElementById('my-carriers-table');
+    if (!table) return;
+
+    const tbody = table.querySelector('tbody');
+    const headers = Array.from(table.querySelectorAll('th.sortable'));
+
+    let sortState = { index: null, direction: 'asc' };
+
+    headers.forEach((th, index) => {
+      th.addEventListener('click', () => {
+        // toggle direction if same column
+        const direction =
+          sortState.index === index && sortState.direction === 'asc'
+            ? 'desc'
+            : 'asc';
+
+        sortState = { index, direction };
+
+        // reset header classes
+        headers.forEach(h => h.classList.remove('sorted-asc', 'sorted-desc'));
+        th.classList.add(direction === 'asc' ? 'sorted-asc' : 'sorted-desc');
+
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+
+        rows.sort((rowA, rowB) => {
+          const cellA = rowA.children[index];
+          const cellB = rowB.children[index];
+
+          const rawA = (cellA.dataset.value || cellA.textContent || '').trim();
+          const rawB = (cellB.dataset.value || cellB.textContent || '').trim();
+
+          // try numeric sort first
+          const numA = parseFloat(rawA.replace(/,/g, ''));
+          const numB = parseFloat(rawB.replace(/,/g, ''));
+
+          let comparison;
+          if (!Number.isNaN(numA) && !Number.isNaN(numB)) {
+            comparison = numA - numB;
+          } else {
+            comparison = rawA.localeCompare(rawB, undefined, {
+              numeric: true,
+              sensitivity: 'base'
+            });
+          }
+
+          return direction === 'asc' ? comparison : -comparison;
+        });
+
+        // re-attach rows in new order
+        rows.forEach(row => tbody.appendChild(row));
+      });
+    });
+  })();
     
   </script>
 
