@@ -1247,3 +1247,52 @@ th.sortable.sorted-desc::after {
   background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
   box-shadow: 0 0 12px rgba(56, 189, 248, 0.55);
 }
+
+th.sortable {
+  cursor: pointer;
+  position: relative;
+  transition: color 0.15s ease;
+}
+th.sortable:hover {
+  color: var(--accent-1);
+}
+
+th.sortable::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 0;
+  background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+  opacity: 0;
+  transition: opacity 0.15s ease, height 0.15s ease;
+}
+
+th.sortable:hover::after {
+  opacity: 0.8;
+  height: 2px;
+}
+
+
+th.sortable .sort-icon {
+  opacity: 0;               /* hidden by default */
+  font-size: 10px;
+  margin-left: 6px;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+th.sortable:hover .sort-icon {
+  opacity: 0.4;
+  transform: translateY(-1px);
+}
+
+th.sortable.sorted-asc .sort-icon,
+th.sortable.sorted-desc .sort-icon {
+  opacity: 1;
+}
+
+th.sortable.sorted-asc .sort-icon::before { content: "▲"; }
+th.sortable.sorted-desc .sort-icon::before { content: "▼"; }
+
+
