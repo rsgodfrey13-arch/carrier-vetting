@@ -1296,3 +1296,78 @@ th.sortable.sorted-asc .sort-icon::before { content: "▲"; }
 th.sortable.sorted-desc .sort-icon::before { content: "▼"; }
 
 
+/* ---------- Sortable table headers ---------- */
+
+th.sortable {
+  cursor: pointer;
+  position: relative;
+  white-space: nowrap;
+  transition: color 0.15s ease;
+}
+
+/* Slight color pop on hover */
+th.sortable:hover {
+  color: var(--accent-1);
+}
+
+/* Underline for active sorted column */
+th.sortable::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 0;
+  background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+  opacity: 0;
+  transition: opacity 0.15s ease, height 0.15s ease;
+}
+
+th.sortable.sorted-asc::after,
+th.sortable.sorted-desc::after {
+  opacity: 0.9;
+  height: 2px;
+  box-shadow: 0 0 10px rgba(56,189,248,0.6);
+}
+
+/* Sort icon behavior */
+th.sortable .sort-icon {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 10px;
+  line-height: 1;
+}
+
+/* Base state: invisible */
+th.sortable .sort-icon::before {
+  content: "";
+  opacity: 0;
+  transform: translateY(-1px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+/* Hover state: faint arrow hint (only if not already active) */
+th.sortable:hover:not(.sorted-asc):not(.sorted-desc) .sort-icon::before {
+  content: "▲";
+  opacity: 0.3;
+}
+
+/* Active sort: bright arrow direction */
+th.sortable.sorted-asc .sort-icon::before {
+  content: "▲";
+  opacity: 1;
+}
+
+th.sortable.sorted-desc .sort-icon::before {
+  content: "▼";
+  opacity: 1;
+}
+
+
+.table-tip {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+  opacity: 0.8;
+}
