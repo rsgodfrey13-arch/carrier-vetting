@@ -1191,3 +1191,59 @@ th.sortable.sorted-desc .arrow-down {
   border-color: var(--accent-1);
 }
 
+/* base state: no icon showing */
+th.sortable .sort-icon {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+/* hide the old mini bars if they exist */
+th.sortable .sort-icon .arrow-up,
+th.sortable .sort-icon .arrow-down {
+  display: none;
+}
+
+/* show faint chevron on hover */
+th.sortable:hover .sort-icon {
+  opacity: 0.4;
+  transform: translateY(-50%) translateY(-1px);
+}
+
+/* when sorted ascending */
+th.sortable.sorted-asc .sort-icon {
+  opacity: 1;
+}
+th.sortable.sorted-asc .sort-icon::before {
+  content: "▲";
+}
+
+/* when sorted descending */
+th.sortable.sorted-desc .sort-icon {
+  opacity: 1;
+}
+th.sortable.sorted-desc .sort-icon::before {
+  content: "▼";
+}
+
+/* active header color + underline glow */
+th.sortable.sorted-asc,
+th.sortable.sorted-desc {
+  color: var(--accent-1);
+}
+
+th.sortable.sorted-asc::after,
+th.sortable.sorted-desc::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.55);
+}
