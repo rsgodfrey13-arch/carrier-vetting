@@ -179,10 +179,8 @@
       
         <div class="pagination" id="pagination-controls"></div>
       </div>
-
-
-
-
+        <div class="table-tip">
+  Tip: Click a column header to sort.
       </div>
     </section>
   </div>
@@ -199,8 +197,10 @@ let totalRows = 0;
 let totalPages = 0;
 
 // -------- SORT STATE (server-side) --------
-let sortBy = null;       // 'dot', 'mc', 'carrier', etc.
+// default: sort by Carrier ascending
+let sortBy = 'carrier';  // 'dot', 'mc', 'carrier', etc.
 let sortDir = 'asc';     // 'asc' or 'desc'
+
 
  // ---------- TABLE LOAD ----------
 async function loadCarriers() {
@@ -640,17 +640,16 @@ document.addEventListener('DOMContentLoaded', function () {
         sortDir = 'asc';
       }
 
-      currentPage = 1;     // reset to first page when sort changes
-      updateSortHeaderClasses();
-      loadCarriers();      // API will now get ?sortBy=...&sortDir=...
+      currentPage = 1;            // reset to first page when sort changes
+      updateSortHeaderClasses();  // update arrow / underline classes
+      loadCarriers();             // API will now get ?sortBy=...&sortDir=...
     });
   });
 
-  // optional: if you want default sort (e.g. DOT asc)
-  // sortBy = 'dot';
-  // sortDir = 'asc';
-  // updateSortHeaderClasses();
+  // 🔥 apply default state (Carrier ASC) when page first loads
+  updateSortHeaderClasses();
 });
+
 
 
 
