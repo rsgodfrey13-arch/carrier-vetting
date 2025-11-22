@@ -102,15 +102,38 @@ app.post('/api/logout', (req, res) => {
 
 /** ---------- MY CARRIERS ROUTES ---------- **/
 
-// Get list of carriers saved by this user (paginated)
+// Get list of carriers saved by this user (paginated + sortable)
 app.get('/api/my-carriers', requireAuth, async (req, res) => {
   try {
-    const userId   = req.session.userId;
+    const userId = req.session.userId;
 
     const page     = parseInt(req.query.page, 10)     || 1;
     const pageSize = parseInt(req.query.pageSize, 10) || 25;
     const offset   = (page - 1) * pageSize;
 
+    // ----- NEW: read sort params -----
+    const sortBy = req.query.sortBy || null;
+    const sortDir = (req.query.sortDir || 'asc').toLowerCase() === 'desc'
+      ? 'DESC'
+      : 'ASC';
+
+    // ----- NEW: map UI columns → real database columns safely -----
+    const sortMap = {
+      dot:      'c.dotnumber',
+      mc:       'c.mc_number',
+      carrier:  "COALESCE(c.legalname, c.dbaname)", 
+      location: "COALESCE(c.phycity,'') || ', ' || COALESCE(c.phystate,'')",
+      operating: "c.allowedtooperate",
+      common:    "c.commonauthoritystatus",
+      contract:  "c.contractauthoritystatus",
+      broker:    "c.brokerauthoritystatus",
+      safety:    "c.safetyrating"
+    };
+
+    // fallback if missing or invalid
+    const orderColumn = sortMap[sortBy] || 'uc.added_at';
+
+    // ----- FINAL SQL (paginated + sorted) -----
     const dataSql = `
       SELECT
         c.dotnumber AS dot,
@@ -119,7 +142,7 @@ app.get('/api/my-carriers', requireAuth, async (req, res) => {
       JOIN carriers c
         ON c.dotnumber = uc.carrier_dot
       WHERE uc.user_id = $1
-      ORDER BY uc.added_at DESC
+      ORDER BY ${orderColumn} ${sortDir}
       LIMIT $2 OFFSET $3;
     `;
 
@@ -130,23 +153,23 @@ app.get('/api/my-carriers', requireAuth, async (req, res) => {
     `;
 
     const [dataResult, countResult] = await Promise.all([
-      pool.query(dataSql,  [userId, pageSize, offset]),
+      pool.query(dataSql, [userId, pageSize, offset]),
       pool.query(countSql, [userId])
     ]);
 
-    const total = countResult.rows[0].count;
-
     res.json({
       rows: dataResult.rows,
-      total,
+      total: countResult.rows[0].count,
       page,
       pageSize
     });
+
   } catch (err) {
     console.error('Error in GET /api/my-carriers:', err);
     res.status(500).json({ error: 'Failed to load user carriers' });
   }
 });
+
 
 
 // Save a new carrier for this user
@@ -223,6 +246,27 @@ app.get('/api/carriers', async (req, res) => {
     const pageSize = parseInt(req.query.pageSize, 10) || 25;
     const offset   = (page - 1) * pageSize;
 
+    // ----- NEW: sorting -----
+    const sortBy = req.query.sortBy || null;
+    const sortDir = (req.query.sortDir || 'asc').toLowerCase() === 'desc'
+      ? 'DESC'
+      : 'ASC';
+
+    // match UI → DB columns
+    const sortMap = {
+      dot:      'dotnumber',
+      mc:       'mc_number',
+      carrier:  "COALESCE(legalname, dbaname)",
+      location: "COALESCE(phycity,'') || ', ' || COALESCE(phystate,'')",
+      operating: "allowedtooperate",
+      common:    "commonauthoritystatus",
+      contract:  "contractauthoritystatus",
+      broker:    "brokerauthoritystatus",
+      safety:    "safetyrating"
+    };
+
+    const orderColumn = sortMap[sortBy] || 'dotnumber';
+
     const dataQuery = `
       SELECT
         dotnumber        AS dot,
@@ -234,7 +278,7 @@ app.get('/api/carriers', async (req, res) => {
         TO_CHAR(retrieval_date::timestamp, 'Mon DD, YYYY HH12:MI AM EST') AS retrieval_date_formatted,
         *
       FROM public.carriers
-      ORDER BY dotnumber
+      ORDER BY ${orderColumn} ${sortDir}
       LIMIT $1 OFFSET $2
     `;
 
@@ -245,11 +289,9 @@ app.get('/api/carriers', async (req, res) => {
       pool.query(countQuery)
     ]);
 
-    const total = countResult.rows[0].count;
-
     res.json({
       rows: dataResult.rows,
-      total,
+      total: countResult.rows[0].count,
       page,
       pageSize
     });
@@ -258,6 +300,7 @@ app.get('/api/carriers', async (req, res) => {
     res.status(500).json({ error: 'Database query failed' });
   }
 });
+
 
 
 /**
