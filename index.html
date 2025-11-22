@@ -198,6 +198,10 @@ let pageSize = 25;       // default 25
 let totalRows = 0;
 let totalPages = 0;
 
+// -------- SORT STATE (server-side) --------
+let sortBy = null;       // 'dot', 'mc', 'carrier', etc.
+let sortDir = 'asc';     // 'asc' or 'desc'
+
  // ---------- TABLE LOAD ----------
 async function loadCarriers() {
   try {
@@ -221,9 +225,16 @@ async function loadCarriers() {
     // ------------------------------------------
     // 2) BUILD URL WITH PAGINATION PARAMS
     // ------------------------------------------
-    const url = new URL(endpoint, window.location.origin);
-    url.searchParams.set('page', currentPage);
-    url.searchParams.set('pageSize', pageSize);
+const url = new URL(endpoint, window.location.origin);
+url.searchParams.set('page', currentPage);
+url.searchParams.set('pageSize', pageSize);
+
+// add sort params if we have a sort chosen
+if (sortBy) {
+  url.searchParams.set('sortBy', sortBy);
+  url.searchParams.set('sortDir', sortDir);
+}
+
 
     const res = await fetch(url);
     const result = await res.json();
@@ -600,61 +611,48 @@ function performSearch(query) {
     loadCarriers();      // populates table (my carriers vs all)
     buildCarrierIndex(); // populates search index (always ALL carriers)
 
-
+// ---------- SERVER-SIDE SORT HEADER HANDLERS ----------
 document.addEventListener('DOMContentLoaded', function () {
   const table = document.getElementById('carriers-table');
   if (!table) return;
 
-  const tbody = table.querySelector('tbody');
   const headers = Array.from(table.querySelectorAll('th.sortable'));
 
-  let sortState = { colIndex: null, direction: 'asc' };
+  function updateSortHeaderClasses() {
+    headers.forEach(h => {
+      h.classList.remove('sorted-asc', 'sorted-desc');
+      if (h.dataset.col === sortBy) {
+        h.classList.add(sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+      }
+    });
+  }
 
   headers.forEach(th => {
-    const colIndex = th.cellIndex; // real column index in the row
+    const colKey = th.dataset.col; // 'dot', 'mc', 'carrier', etc.
 
     th.addEventListener('click', () => {
-      const direction =
-        sortState.colIndex === colIndex && sortState.direction === 'asc'
-          ? 'desc'
-          : 'asc';
+      if (sortBy === colKey) {
+        // toggle direction if clicking the same column
+        sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        // new column: start ascending
+        sortBy = colKey;
+        sortDir = 'asc';
+      }
 
-      sortState = { colIndex, direction };
-
-      // reset header classes
-      headers.forEach(h => h.classList.remove('sorted-asc', 'sorted-desc'));
-      th.classList.add(direction === 'asc' ? 'sorted-asc' : 'sorted-desc');
-
-      const rows = Array.from(tbody.querySelectorAll('tr'));
-
-      rows.sort((rowA, rowB) => {
-        const cellA = rowA.children[colIndex];
-        const cellB = rowB.children[colIndex];
-
-        const rawA = (cellA?.dataset.value || cellA?.textContent || '').trim();
-        const rawB = (cellB?.dataset.value || cellB?.textContent || '').trim();
-
-        const numA = parseFloat(rawA.replace(/,/g, ''));
-        const numB = parseFloat(rawB.replace(/,/g, ''));
-
-        let comparison;
-        if (!Number.isNaN(numA) && !Number.isNaN(numB)) {
-          comparison = numA - numB;
-        } else {
-          comparison = rawA.localeCompare(rawB, undefined, {
-            numeric: true,
-            sensitivity: 'base'
-          });
-        }
-
-        return direction === 'asc' ? comparison : -comparison;
-      });
-
-      // re-attach rows in new order
-      rows.forEach(row => tbody.appendChild(row));
+      currentPage = 1;     // reset to first page when sort changes
+      updateSortHeaderClasses();
+      loadCarriers();      // API will now get ?sortBy=...&sortDir=...
     });
   });
+
+  // optional: if you want default sort (e.g. DOT asc)
+  // sortBy = 'dot';
+  // sortDir = 'asc';
+  // updateSortHeaderClasses();
 });
+
+
 
     
   </script>
