@@ -899,7 +899,7 @@ document.addEventListener('DOMContentLoaded', function () {
       <div>
         <h2 class="import-modal-title">Carrier Import Wizard</h2>
         <p class="import-modal-subtitle">
-          Add carriers in bulk from a CSV or by pasting DOT numbers.
+          Upload a CSV or paste DOTs, then review and confirm before importing.
         </p>
       </div>
       <button class="import-modal-close" id="import-modal-close" aria-label="Close">
@@ -907,77 +907,152 @@ document.addEventListener('DOMContentLoaded', function () {
       </button>
     </header>
 
-    <!-- Step indicator (for later steps when you add preview/confirm) -->
+    <!-- Step indicator -->
     <div class="import-steps">
-      <div class="import-step import-step-active">
+      <div class="import-step import-step-1 import-step-active">
         <span class="import-step-number">1</span>
         <span class="import-step-label">Upload</span>
       </div>
-      <div class="import-step">
+      <div class="import-step import-step-2">
         <span class="import-step-number">2</span>
         <span class="import-step-label">Review</span>
       </div>
-      <div class="import-step">
+      <div class="import-step import-step-3">
         <span class="import-step-number">3</span>
-        <span class="import-step-label">Confirm</span>
+        <span class="import-step-label">Done</span>
       </div>
     </div>
 
-    <!-- Method toggle -->
-    <div class="import-method-toggle">
-      <button class="import-method-btn import-method-active"
-              type="button"
-              data-import-method="csv">
-        Upload CSV
-      </button>
-      <button class="import-method-btn"
-              type="button"
-              data-import-method="paste">
-        Paste DOT list
-      </button>
-    </div>
+    <!-- STEP 1: Upload -->
+    <div class="import-step-body import-step-body-1 active">
+      <!-- Method toggle -->
+      <div class="import-method-toggle">
+        <button class="import-method-btn import-method-active"
+                type="button"
+                data-import-method="csv">
+          Upload CSV
+        </button>
+        <button class="import-method-btn"
+                type="button"
+                data-import-method="paste">
+          Paste DOT list
+        </button>
+      </div>
 
-    <!-- Panels -->
-    <div class="import-panels">
-      <!-- CSV panel -->
-      <div id="import-panel-csv" class="import-panel active">
-        <div id="csv-dropzone" class="dropzone">
-          <input id="csv-file-input" type="file" accept=".csv" hidden>
-          <div class="dropzone-inner">
-            <p class="dropzone-title">Drop your CSV here</p>
-            <p class="dropzone-subtitle">or click to browse files</p>
-            <p class="dropzone-hint">
-              Expecting a column named <code>DOT</code> or <code>dotnumber</code>.
+      <div class="import-panels">
+        <!-- CSV panel -->
+        <div id="import-panel-csv" class="import-panel active">
+          <div id="csv-dropzone" class="dropzone">
+            <input id="csv-file-input" type="file" accept=".csv" hidden>
+            <div class="dropzone-inner">
+              <p class="dropzone-title">Drop your CSV here</p>
+              <p class="dropzone-subtitle">or click to browse files</p>
+              <p class="dropzone-hint">
+                Expecting a column named <code>DOT</code> or <code>dotnumber</code>.
+              </p>
+            </div>
+          </div>
+
+          <div class="import-help-row">
+            <button id="browse-csv-btn" class="btn-secondary btn-xs" type="button">
+              Choose file…
+            </button>
+
+            <a href="/sample-carrier-import.csv"
+               class="import-sample-link"
+               download>
+              Download sample CSV
+            </a>
+          </div>
+
+          <!-- After-upload status -->
+          <div id="csv-upload-summary" class="csv-upload-summary hidden">
+            <p class="csv-upload-title">
+              ✓ CSV loaded<span id="csv-file-name"></span>
+            </p>
+            <p class="csv-upload-meta">
+              Detected <span id="csv-dot-count">0</span> DOT numbers after cleaning.
             </p>
           </div>
         </div>
 
-        <div class="import-help-row">
-          <button id="browse-csv-btn" class="btn-secondary btn-xs" type="button">
-            Choose file…
-          </button>
+        <!-- Paste panel -->
+        <div id="import-panel-paste" class="import-panel">
+          <label for="dot-paste-textarea" class="paste-label">
+            Paste one DOT per line
+          </label>
+          <textarea id="dot-paste-textarea"
+                    class="paste-textarea"
+                    rows="8"
+                    placeholder="517125&#10;97615&#10;356489"></textarea>
+          <p class="paste-hint">
+            We’ll validate each DOT against FMCSA and your existing My Carriers list.
+          </p>
+        </div>
+      </div>
+    </div>
 
-          <a href="/sample-carrier-import.csv"
-             class="import-sample-link"
-             download>
-            Download sample CSV
-          </a>
+    <!-- STEP 2: Review -->
+    <div class="import-step-body import-step-body-2">
+      <div class="import-summary" id="import-summary">
+        <div class="summary-pill summary-new">
+          <span class="summary-count" id="summary-new-count">0</span>
+          New carriers
+        </div>
+        <div class="summary-pill summary-dup">
+          <span class="summary-count" id="summary-dup-count">0</span>
+          Duplicates
+        </div>
+        <div class="summary-pill summary-invalid">
+          <span class="summary-count" id="summary-invalid-count">0</span>
+          Invalid DOTs
         </div>
       </div>
 
-      <!-- Paste panel -->
-      <div id="import-panel-paste" class="import-panel">
-        <label for="dot-paste-textarea" class="paste-label">
-          Paste one DOT per line
-        </label>
-        <textarea id="dot-paste-textarea"
-                  class="paste-textarea"
-                  rows="8"
-                  placeholder="517125&#10;97615&#10;356489">
-        </textarea>
-        <p class="paste-hint">
-          We’ll validate each DOT and ignore duplicates you already have.
+      <div class="import-loading" id="import-loading">
+        <div class="spinner"></div>
+        <p>Validating carriers…</p>
+        <p class="import-loading-sub">
+          Checking FMCSA data and your My Carriers list.
         </p>
+      </div>
+
+      <div class="import-results hidden" id="import-results">
+        <table class="import-results-table">
+          <thead>
+            <tr>
+              <th>DOT</th>
+              <th>Carrier</th>
+              <th>Location</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="import-results-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- STEP 3: Done -->
+    <div class="import-step-body import-step-body-3">
+      <div class="import-done-icon">🎉</div>
+      <h3 class="import-done-title">Import complete</h3>
+      <p class="import-done-subtitle">
+        Your carriers have been added to My Carriers.
+      </p>
+
+      <div class="import-done-stats">
+        <div class="done-stat">
+          <span class="done-label">Added</span>
+          <span class="done-value" id="done-inserted">0</span>
+        </div>
+        <div class="done-stat">
+          <span class="done-label">Duplicates</span>
+          <span class="done-value" id="done-duplicates">0</span>
+        </div>
+        <div class="done-stat">
+          <span class="done-label">Invalid</span>
+          <span class="done-value" id="done-invalid">0</span>
+        </div>
       </div>
     </div>
 
@@ -985,9 +1060,18 @@ document.addEventListener('DOMContentLoaded', function () {
     <footer class="import-modal-footer">
       <button type="button"
               class="btn-ghost btn-sm"
+              id="import-back-btn">
+        Back
+      </button>
+
+      <div class="import-footer-spacer"></div>
+
+      <button type="button"
+              class="btn-ghost btn-sm"
               id="import-cancel-btn">
         Cancel
       </button>
+
       <button type="button"
               class="btn-primary btn-sm"
               id="import-next-btn">
