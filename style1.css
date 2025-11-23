@@ -1674,3 +1674,237 @@ th.sortable.sorted-desc .sort-icon::before {
   background: #0ea5e9;
   box-shadow: 0 0 14px rgba(56, 189, 248, 0.4);
 }
+
+
+/* Step bodies */
+.import-step-body {
+  display: none;
+  margin-top: 8px;
+}
+
+.import-step-body.active {
+  display: block;
+}
+
+/* Step indicator tweaks */
+.import-step {
+  opacity: 0.5;
+}
+
+.import-step.import-step-active {
+  opacity: 1;
+}
+
+/* CSV upload summary */
+.csv-upload-summary {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md, 14px);
+  background: rgba(22,163,74,0.08);
+  border: 1px solid rgba(34,197,94,0.4);
+  font-size: 0.8rem;
+  color: var(--text-main);
+}
+
+.csv-upload-summary.hidden {
+  display: none;
+}
+
+.csv-upload-title {
+  font-weight: 500;
+}
+
+.csv-upload-title #csv-file-name {
+  margin-left: 6px;
+  color: var(--text-muted);
+}
+
+.csv-upload-meta {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+/* Summary bar */
+.import-summary {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.summary-pill {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: var(--radius-md, 14px);
+  font-size: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.summary-count {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.summary-new {
+  background: rgba(34,197,94,0.12);
+  border: 1px solid rgba(34,197,94,0.5);
+}
+
+.summary-dup {
+  background: rgba(234,179,8,0.12);
+  border: 1px solid rgba(234,179,8,0.5);
+}
+
+.summary-invalid {
+  background: rgba(248,113,113,0.12);
+  border: 1px solid rgba(248,113,113,0.5);
+}
+
+/* Loading state */
+.import-loading {
+  margin-top: 12px;
+  padding: 18px 12px;
+  border-radius: var(--radius-md, 14px);
+  background: rgba(15,23,42,0.9);
+  border: 1px dashed rgba(148,163,184,0.5);
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.import-loading.hidden {
+  display: none;
+}
+
+.spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 2px solid rgba(148,163,184,0.4);
+  border-top-color: var(--accent-1, #38bdf8);
+  margin: 0 auto 8px;
+  animation: spin 0.75s linear infinite;
+}
+
+.import-loading-sub {
+  margin-top: 2px;
+  font-size: 0.78rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Results table */
+.import-results.hidden {
+  display: none;
+}
+
+.import-results-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 0.8rem;
+}
+
+.import-results-table thead {
+  background: rgba(15,23,42,0.9);
+}
+
+.import-results-table th,
+.import-results-table td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(30,41,59,0.9);
+}
+
+.import-results-table tbody tr:nth-child(even) {
+  background: rgba(15,23,42,0.7);
+}
+
+/* Status badge */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+.status-new {
+  background: rgba(34,197,94,0.12);
+  color: #bbf7d0;
+}
+
+.status-duplicate {
+  background: rgba(234,179,8,0.12);
+  color: #fef9c3;
+}
+
+.status-invalid {
+  background: rgba(248,113,113,0.12);
+  color: #fee2e2;
+}
+
+/* Done step */
+.import-done-icon {
+  font-size: 2rem;
+  text-align: center;
+  margin-top: 10px;
+}
+
+.import-done-title {
+  margin-top: 8px;
+  text-align: center;
+  font-size: 1.1rem;
+  color: var(--text-main);
+}
+
+.import-done-subtitle {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+
+.import-done-stats {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.done-stat {
+  padding: 8px 12px;
+  border-radius: var(--radius-md, 14px);
+  background: rgba(15,23,42,0.9);
+  border: 1px solid rgba(148,163,184,0.45);
+  text-align: center;
+  font-size: 0.8rem;
+}
+
+.done-label {
+  display: block;
+  color: var(--text-muted);
+}
+
+.done-value {
+  display: block;
+  margin-top: 3px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+/* Footer tweaks */
+.import-footer-spacer {
+  flex: 1;
+}
+
+#import-back-btn {
+  visibility: hidden; /* hidden on step 1, shown later via JS */
+}
