@@ -1083,22 +1083,85 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 <script>
-  // --- Bulk Import modal wiring ---
+  // --- Bulk Import wizard ---
 
+  // Basic refs
   const bulkImportBtn   = document.getElementById('bulk-import-btn');
   const importModal     = document.getElementById('import-modal');
   const importCloseBtn  = document.getElementById('import-modal-close');
   const importCancelBtn = document.getElementById('import-cancel-btn');
   const importNextBtn   = document.getElementById('import-next-btn');
+  const importBackBtn   = document.getElementById('import-back-btn');
+
+  const stepEls = {
+    1: document.querySelector('.import-step-body-1'),
+    2: document.querySelector('.import-step-body-2'),
+    3: document.querySelector('.import-step-body-3')
+  };
+
+  const stepTabs = {
+    1: document.querySelector('.import-step-1'),
+    2: document.querySelector('.import-step-2'),
+    3: document.querySelector('.import-step-3')
+  };
+
+  let currentStep = 1;
+  let importMethod = 'csv';
+  let parsedDotsFromCsv = [];
+  let previewResult = null; // data from /bulk/preview
+  let lastImportSummary = null; // summary from /bulk
+
+  // UI refs for step 2/3
+  const loadingEl   = document.getElementById('import-loading');
+  const resultsEl   = document.getElementById('import-results');
+  const resultsBody = document.getElementById('import-results-body');
+
+  const summaryNewCount  = document.getElementById('summary-new-count');
+  const summaryDupCount  = document.getElementById('summary-dup-count');
+  const summaryInvCount  = document.getElementById('summary-invalid-count');
+
+  const doneInsertedEl   = document.getElementById('done-inserted');
+  const doneDuplicatesEl = document.getElementById('done-duplicates');
+  const doneInvalidEl    = document.getElementById('done-invalid');
+
+  // Step 1 elements
+  const methodButtons = document.querySelectorAll('.import-method-btn');
+  const csvPanel      = document.getElementById('import-panel-csv');
+  const pastePanel    = document.getElementById('import-panel-paste');
+
+  const dropzone       = document.getElementById('csv-dropzone');
+  const fileInput      = document.getElementById('csv-file-input');
+  const browseCsvBtn   = document.getElementById('browse-csv-btn');
+  const csvSummaryEl   = document.getElementById('csv-upload-summary');
+  const csvFileNameEl  = document.getElementById('csv-file-name');
+  const csvDotCountEl  = document.getElementById('csv-dot-count');
+
+  const dotPasteTextarea = document.getElementById('dot-paste-textarea');
+
+  // --- Modal open/close ---
 
   function openImportModal() {
     if (!importModal) return;
     importModal.classList.remove('hidden');
+    goToStep(1);
   }
 
   function closeImportModal() {
     if (!importModal) return;
     importModal.classList.add('hidden');
+    currentStep = 1;
+    previewResult = null;
+    lastImportSummary = null;
+    parsedDotsFromCsv = [];
+    // clear minimal state
+    if (csvSummaryEl) {
+      csvSummaryEl.classList.add('hidden');
+      csvFileNameEl.textContent = '';
+      csvDotCountEl.textContent = '0';
+    }
+    if (dotPasteTextarea) {
+      dotPasteTextarea.value = '';
+    }
   }
 
   if (bulkImportBtn) {
@@ -1119,12 +1182,47 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  // --- Method toggle (CSV vs Paste) ---
+  // --- Step handling ---
 
-  const methodButtons = document.querySelectorAll('.import-method-btn');
-  const csvPanel      = document.getElementById('import-panel-csv');
-  const pastePanel    = document.getElementById('import-panel-paste');
-  let importMethod    = 'csv'; // track current method
+  function goToStep(step) {
+    currentStep = step;
+
+    // Bodies
+    Object.entries(stepEls).forEach(([num, el]) => {
+      if (!el) return;
+      el.classList.toggle('active', Number(num) === step);
+    });
+
+    // Tabs
+    Object.entries(stepTabs).forEach(([num, el]) => {
+      if (!el) return;
+      el.classList.toggle('import-step-active', Number(num) === step);
+    });
+
+    // Buttons state & labels
+    if (step === 1) {
+      if (importBackBtn) importBackBtn.style.visibility = 'hidden';
+      if (importNextBtn) importNextBtn.textContent = 'Next';
+    } else if (step === 2) {
+      if (importBackBtn) importBackBtn.style.visibility = 'visible';
+      if (importNextBtn) importNextBtn.textContent = 'Import carriers';
+    } else if (step === 3) {
+      if (importBackBtn) importBackBtn.style.visibility = 'hidden';
+      if (importNextBtn) importNextBtn.textContent = 'Finish';
+    }
+  }
+
+  if (importBackBtn) {
+    importBackBtn.addEventListener('click', () => {
+      if (currentStep === 2) {
+        goToStep(1);
+      } else if (currentStep === 3) {
+        goToStep(2);
+      }
+    });
+  }
+
+  // --- Method toggle (CSV vs paste) ---
 
   function setImportMethod(method) {
     importMethod = method;
@@ -1148,32 +1246,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
   setImportMethod('csv');
 
-  // --- CSV handling ---
+  // --- CSV parsing ---
 
-  const dropzone     = document.getElementById('csv-dropzone');
-  const fileInput    = document.getElementById('csv-file-input');
-  const browseCsvBtn = document.getElementById('browse-csv-btn');
-
-  let parsedDotsFromCsv = [];
-
-  function parseDotsFromCsv(text) {
+  function parseDotsFromCsvText(text) {
     const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     if (!lines.length) return [];
 
     const header = lines[0].split(',').map(h => h.trim().toLowerCase());
 
-    // Look for a DOT column
     const dotIndex = header.findIndex(h =>
       ['dot', 'dotnumber', 'dot_number'].includes(h)
     );
 
     if (dotIndex === -1) {
-      alert('Could not find a DOT column in the CSV header. Expected "DOT" or "dotnumber".');
+      alert('Could not find a DOT column in the CSV header. Expect "DOT" or "dotnumber".');
       return [];
     }
 
     const dots = [];
-
     for (let i = 1; i < lines.length; i++) {
       const cols = lines[i].split(',');
       const value = (cols[dotIndex] || '').trim();
@@ -1182,7 +1272,6 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     }
 
-    // dedupe
     return [...new Set(dots)];
   }
 
@@ -1192,17 +1281,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const reader = new FileReader();
     reader.onload = e => {
-      parsedDotsFromCsv = parseDotsFromCsv(e.target.result);
-      if (parsedDotsFromCsv.length) {
-        console.log('Parsed DOTs from CSV:', parsedDotsFromCsv);
-        alert(`Found ${parsedDotsFromCsv.length} DOT numbers in the CSV.`);
-      } else {
-        alert('No valid DOT numbers found in the CSV.');
+      const text = e.target.result;
+      const dots = parseDotsFromCsvText(text);
+      parsedDotsFromCsv = dots;
+
+      if (csvSummaryEl) {
+        if (dots.length > 0) {
+          csvSummaryEl.classList.remove('hidden');
+          if (csvFileNameEl) csvFileNameEl.textContent = ' – ' + file.name;
+          if (csvDotCountEl) csvDotCountEl.textContent = String(dots.length);
+        } else {
+          csvSummaryEl.classList.add('hidden');
+          alert('No valid DOT numbers found in the CSV.');
+        }
       }
     };
     reader.readAsText(file);
-
-    console.log('Selected file:', file.name);
   }
 
   if (browseCsvBtn && fileInput) {
@@ -1239,9 +1333,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  // --- Paste method handling ---
-
-  const dotPasteTextarea = document.getElementById('dot-paste-textarea');
+  // --- Paste method ---
 
   function getDotsFromPaste() {
     if (!dotPasteTextarea) return [];
@@ -1251,20 +1343,86 @@ document.addEventListener('DOMContentLoaded', function () {
     return [...new Set(dots)];
   }
 
-  // --- Next button: send to backend ---
+  // --- Step 2 rendering ---
 
-  async function submitDotsToServer(dots) {
+  function setSummaryCounts(newCount, dupCount, invCount) {
+    if (summaryNewCount) summaryNewCount.textContent = String(newCount);
+    if (summaryDupCount) summaryDupCount.textContent = String(dupCount);
+    if (summaryInvCount) summaryInvCount.textContent = String(invCount);
+  }
+
+  function renderPreviewTable(preview) {
+    if (!resultsBody) return;
+
+    resultsBody.innerHTML = '';
+
+    const allRows = [
+      ...(preview.new || []),
+      ...(preview.duplicates || []),
+      ...(preview.invalid || [])
+    ];
+
+    allRows.forEach(row => {
+      const tr = document.createElement('tr');
+
+      const tdDot = document.createElement('td');
+      tdDot.textContent = row.dot || '';
+
+      const tdName = document.createElement('td');
+      tdName.textContent = row.name || '—';
+
+      const tdLoc = document.createElement('td');
+      if (row.city || row.state) {
+        tdLoc.textContent = `${row.city || ''}${row.city && row.state ? ', ' : ''}${row.state || ''}`;
+      } else {
+        tdLoc.textContent = '—';
+      }
+
+      const tdStatus = document.createElement('td');
+      const span = document.createElement('span');
+      span.classList.add('status-badge');
+
+      if (row.status === 'new') {
+        span.classList.add('status-new');
+        span.textContent = 'New';
+      } else if (row.status === 'duplicate') {
+        span.classList.add('status-duplicate');
+        span.textContent = 'Duplicate';
+      } else if (row.status === 'invalid') {
+        span.classList.add('status-invalid');
+        span.textContent = 'Invalid';
+      } else {
+        span.textContent = row.status || '—';
+      }
+
+      tdStatus.appendChild(span);
+
+      tr.appendChild(tdDot);
+      tr.appendChild(tdName);
+      tr.appendChild(tdLoc);
+      tr.appendChild(tdStatus);
+
+      resultsBody.appendChild(tr);
+    });
+  }
+
+  // --- Call backend preview ---
+
+  async function runPreview(dots) {
     if (!dots.length) {
       alert('No valid DOT numbers to import.');
       return;
     }
 
+    // Show loading, hide results
+    if (loadingEl) loadingEl.classList.remove('hidden');
+    if (resultsEl) resultsEl.classList.add('hidden');
+    setSummaryCounts(0, 0, 0);
+
     try {
-      const res = await fetch('/api/my-carriers/bulk', {
+      const res = await fetch('/api/my-carriers/bulk/preview', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dots })
       });
 
@@ -1275,45 +1433,116 @@ document.addEventListener('DOMContentLoaded', function () {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        console.error('Bulk import failed:', errData);
-        alert('Bulk import failed. Please try again.');
+        console.error('Preview failed:', errData);
+        alert('Preview failed. Please try again.');
         return;
       }
 
       const data = await res.json();
-      const s = data.summary || {};
-      alert(
-        `Import complete.\n\n` +
-        `Submitted: ${s.totalSubmitted ?? dots.length}\n` +
-        `Added: ${s.inserted ?? 0}\n` +
-        `Duplicates: ${s.duplicates ?? 0}\n` +
-        `Invalid: ${s.invalid ?? 0}`
-      );
+      previewResult = data;
 
-      closeImportModal();
-      // Refresh the page so "My Carriers" shows new rows
-      window.location.reload();
+      const s = data.summary || {};
+      setSummaryCounts(s.new || 0, s.duplicates || 0, s.invalid || 0);
+
+      renderPreviewTable(data);
+
+      // show results
+      if (loadingEl) loadingEl.classList.add('hidden');
+      if (resultsEl) resultsEl.classList.remove('hidden');
 
     } catch (err) {
-      console.error('Error calling bulk import:', err);
-      alert('Bulk import failed due to a network error.');
+      console.error('Error calling preview:', err);
+      alert('Preview failed due to a network error.');
+    } finally {
+      if (loadingEl) loadingEl.classList.add('hidden');
     }
   }
 
-  if (importNextBtn) {
-    importNextBtn.addEventListener('click', () => {
-      let dots = [];
+  // --- Final import ---
 
-      if (importMethod === 'csv') {
-        dots = parsedDotsFromCsv || [];
-      } else if (importMethod === 'paste') {
-        dots = getDotsFromPaste();
+  async function runImportFromPreview() {
+    if (!previewResult || !previewResult.new || !previewResult.new.length) {
+      alert('No new carriers to import.');
+      return;
+    }
+
+    const dots = previewResult.new.map(r => r.dot).filter(Boolean);
+    if (!dots.length) {
+      alert('No DOTs found to import.');
+      return;
+    }
+
+    try {
+      importNextBtn.disabled = true;
+
+      const res = await fetch('/api/my-carriers/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dots })
+      });
+
+      if (res.status === 401) {
+        alert('You must be logged in to import carriers.');
+        importNextBtn.disabled = false;
+        return;
       }
 
-      submitDotsToServer(dots);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        console.error('Bulk import failed:', errData);
+        alert('Bulk import failed. Please try again.');
+        importNextBtn.disabled = false;
+        return;
+      }
+
+      const data = await res.json();
+      lastImportSummary = data.summary || null;
+
+      const s = data.summary || {};
+      if (doneInsertedEl)   doneInsertedEl.textContent   = String(s.inserted || 0);
+      if (doneDuplicatesEl) doneDuplicatesEl.textContent = String(s.duplicates || 0);
+      if (doneInvalidEl)    doneInvalidEl.textContent    = String(s.invalid || 0);
+
+      goToStep(3);
+    } catch (err) {
+      console.error('Error in bulk import:', err);
+      alert('Bulk import failed due to a network error.');
+    } finally {
+      importNextBtn.disabled = false;
+    }
+  }
+
+  // --- Next button behavior ---
+
+  if (importNextBtn) {
+    importNextBtn.addEventListener('click', () => {
+      if (currentStep === 1) {
+        // gather dots from chosen method
+        let dots = [];
+        if (importMethod === 'csv') {
+          dots = parsedDotsFromCsv || [];
+        } else {
+          dots = getDotsFromPaste();
+        }
+
+        if (!dots.length) {
+          alert('Please upload a CSV with DOTs or paste DOT numbers first.');
+          return;
+        }
+
+        goToStep(2);
+        runPreview(dots);
+      } else if (currentStep === 2) {
+        runImportFromPreview();
+      } else if (currentStep === 3) {
+        // close + refresh My Carriers
+        closeImportModal();
+        window.location.reload();
+      }
     });
   }
 </script>
+
 
 
 </body>
