@@ -1512,57 +1512,63 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // --- Final import ---
 
-  async function runImportFromPreview() {
-    if (!previewResult || !previewResult.new || !previewResult.new.length) {
-      alert('No new carriers to import.');
-      return;
-    }
+async function runImportFromPreview() {
+  // 🚀 If NO new carriers → still show success screen (0 added)
+  if (!previewResult || !previewResult.new || previewResult.new.length === 0) {
+    // Prepare a summary for the “Done” screen
+    const summary = previewResult?.summary || {};
+    doneInsertedEl.textContent   = '0';
+    doneDuplicatesEl.textContent = String(summary.duplicates || 0);
+    doneInvalidEl.textContent    = String(summary.invalid || 0);
+
+    // Jump straight to step 3
+    goToStep(3);
+    return;
+  }
+
+  // --- Existing import behavior for new carriers ---
+  try {
+    importNextBtn.disabled = true;
 
     const dots = previewResult.new.map(r => r.dot).filter(Boolean);
-    if (!dots.length) {
-      alert('No DOTs found to import.');
+
+    const res = await fetch('/api/my-carriers/bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dots })
+    });
+
+    if (res.status === 401) {
+      alert('You must be logged in to import carriers.');
+      importNextBtn.disabled = false;
       return;
     }
 
-    try {
-      importNextBtn.disabled = true;
-
-      const res = await fetch('/api/my-carriers/bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dots })
-      });
-
-      if (res.status === 401) {
-        alert('You must be logged in to import carriers.');
-        importNextBtn.disabled = false;
-        return;
-      }
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        console.error('Bulk import failed:', errData);
-        alert('Bulk import failed. Please try again.');
-        importNextBtn.disabled = false;
-        return;
-      }
-
-      const data = await res.json();
-      lastImportSummary = data.summary || null;
-
-      const s = data.summary || {};
-      if (doneInsertedEl)   doneInsertedEl.textContent   = String(s.inserted || 0);
-      if (doneDuplicatesEl) doneDuplicatesEl.textContent = String(s.duplicates || 0);
-      if (doneInvalidEl)    doneInvalidEl.textContent    = String(s.invalid || 0);
-
-      goToStep(3);
-    } catch (err) {
-      console.error('Error in bulk import:', err);
-      alert('Bulk import failed due to a network error.');
-    } finally {
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      console.error('Bulk import failed:', errData);
+      alert('Bulk import failed. Please try again.');
       importNextBtn.disabled = false;
+      return;
     }
+
+    const data = await res.json();
+    lastImportSummary = data.summary || null;
+
+    const s = data.summary || {};
+    doneInsertedEl.textContent   = String(s.inserted || 0);
+    doneDuplicatesEl.textContent = String(s.duplicates || 0);
+    doneInvalidEl.textContent    = String(s.invalid || 0);
+
+    goToStep(3);
+  } catch (err) {
+    console.error('Error in bulk import:', err);
+    alert('Bulk import failed due to a network error.');
+  } finally {
+    importNextBtn.disabled = false;
   }
+}
+
 
   // --- Next button behavior ---
 
