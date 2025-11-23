@@ -1001,7 +1001,7 @@ document.addEventListener('DOMContentLoaded', function () {
         </div>
         <div class="summary-pill summary-dup">
           <span class="summary-count" id="summary-dup-count">0</span>
-          Duplicates
+          Current Carriers
         </div>
         <div class="summary-pill summary-invalid">
           <span class="summary-count" id="summary-invalid-count">0</span>
@@ -1031,7 +1031,7 @@ document.addEventListener('DOMContentLoaded', function () {
   <!-- Duplicates section -->
   <div class="import-section" data-status="duplicate">
     <button class="import-section-header" type="button">
-      <span class="import-section-title">Duplicates</span>
+      <span class="import-section-title">Current Carriers</span>
       <span class="import-section-count" id="section-dup-count">0</span>
       <span class="import-section-toggle">▾</span>
     </button>
@@ -1064,7 +1064,7 @@ document.addEventListener('DOMContentLoaded', function () {
           <span class="done-value" id="done-inserted">0</span>
         </div>
         <div class="done-stat">
-          <span class="done-label">Duplicates</span>
+          <span class="done-label">Current Carriers</span>
           <span class="done-value" id="done-duplicates">0</span>
         </div>
         <div class="done-stat">
@@ -1438,7 +1438,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const span = document.createElement('span');
       span.classList.add('status-badge', statusClass);
       if (statusClass === 'status-new') span.textContent = 'New';
-      if (statusClass === 'status-duplicate') span.textContent = 'Duplicate';
+      if (statusClass === 'status-duplicate') span.textContent = 'Current Carrier';
       if (statusClass === 'status-invalid') span.textContent = 'Invalid';
 
       tdStatus.appendChild(span);
