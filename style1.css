@@ -1908,3 +1908,25 @@ th.sortable.sorted-desc .sort-icon::before {
 #import-back-btn {
   visibility: hidden; /* hidden on step 1, shown later via JS */
 }
+
+
+/* Make the modal a flex column and clamp height */
+.import-modal-dialog {
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Step bodies become the scrollable region */
+.import-step-body {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+
+/* Header, steps and footer don't shrink away */
+.import-modal-header,
+.import-steps,
+.import-modal-footer {
+  flex-shrink: 0;
+}
