@@ -1992,3 +1992,75 @@ th.sortable.sorted-desc .sort-icon::before {
   font-size: 0.78rem;
   color: var(--text-muted);
 }
+
+
+/* Dialog fills up to 90% of viewport height and flexes vertically */
+.import-modal-dialog {
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Step bodies scroll, header/footer stay pinned */
+.import-step-body {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+
+.import-modal-header,
+.import-steps,
+.import-modal-footer {
+  flex-shrink: 0;
+}
+
+.import-footer-spacer {
+  flex: 1;
+}
+
+/* Back hidden on step 1, shown by script on later steps */
+#import-back-btn {
+  visibility: hidden;
+}
+
+.btn-primary {
+  border-radius: 999px;
+  padding: 6px 16px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+  color: #0b1120;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.75);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.9);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-ghost {
+  border-radius: 999px;
+  padding: 6px 14px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.btn-ghost:hover {
+  background: rgba(15, 23, 42, 0.9);
+  color: var(--text-main);
+  border-color: rgba(148, 163, 184, 0.7);
+}
