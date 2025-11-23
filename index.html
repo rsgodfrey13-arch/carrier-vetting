@@ -1017,20 +1017,38 @@ document.addEventListener('DOMContentLoaded', function () {
         </p>
       </div>
 
-      <div class="import-results hidden" id="import-results">
-        <table class="import-results-table">
-          <thead>
-            <tr>
-              <th>DOT</th>
-              <th>Carrier</th>
-              <th>Location</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="import-results-body"></tbody>
-        </table>
-      </div>
-    </div>
+<div class="import-results hidden" id="import-results">
+  <!-- New carriers section -->
+  <div class="import-section" data-status="new">
+    <button class="import-section-header" type="button">
+      <span class="import-section-title">New carriers</span>
+      <span class="import-section-count" id="section-new-count">0</span>
+      <span class="import-section-toggle">▾</span>
+    </button>
+    <div class="import-section-body" id="section-new-body"></div>
+  </div>
+
+  <!-- Duplicates section -->
+  <div class="import-section" data-status="duplicate">
+    <button class="import-section-header" type="button">
+      <span class="import-section-title">Duplicates</span>
+      <span class="import-section-count" id="section-dup-count">0</span>
+      <span class="import-section-toggle">▾</span>
+    </button>
+    <div class="import-section-body" id="section-dup-body"></div>
+  </div>
+
+  <!-- Invalid section -->
+  <div class="import-section" data-status="invalid">
+    <button class="import-section-header" type="button">
+      <span class="import-section-title">Invalid DOTs</span>
+      <span class="import-section-count" id="section-invalid-count">0</span>
+      <span class="import-section-toggle">▾</span>
+    </button>
+    <div class="import-section-body" id="section-invalid-body"></div>
+  </div>
+</div>
+
 
     <!-- STEP 3: Done -->
     <div class="import-step-body import-step-body-3">
