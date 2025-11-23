@@ -269,6 +269,107 @@ app.post('/api/my-carriers/bulk', requireAuth, async (req, res) => {
   }
 });
 
+// Preview bulk import (no DB writes)
+app.post('/api/my-carriers/bulk/preview', requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.userId;
+    let { dots } = req.body || {};
+
+    if (!Array.isArray(dots) || dots.length === 0) {
+      return res.status(400).json({ error: 'dots array required' });
+    }
+
+    // clean + dedupe
+    dots = dots
+      .map(d => String(d).trim())
+      .filter(d => d && /^\d+$/.test(d));
+
+    const uniqueDots = [...new Set(dots)];
+
+    if (uniqueDots.length === 0) {
+      return res.status(400).json({ error: 'No valid DOT numbers found' });
+    }
+
+    // Get which dots exist in carriers
+    const carriersRes = await pool.query(
+      `
+      SELECT dotnumber,
+             COALESCE(legalname, dbaname) AS name,
+             phycity,
+             phystate
+      FROM carriers
+      WHERE dotnumber = ANY($1::text[]);
+      `,
+      [uniqueDots]
+    );
+
+    const carriersMap = new Map();
+    carriersRes.rows.forEach(r => {
+      carriersMap.set(r.dotnumber, {
+        dot: r.dotnumber,
+        name: r.name,
+        city: r.phycity,
+        state: r.phystate
+      });
+    });
+
+    // Get which of those dots user already has
+    const userRes = await pool.query(
+      `
+      SELECT carrier_dot
+      FROM user_carriers
+      WHERE user_id = $1
+        AND carrier_dot = ANY($2::text[]);
+      `,
+      [userId, uniqueDots]
+    );
+
+    const userSet = new Set(userRes.rows.map(r => r.carrier_dot));
+
+    const newList = [];
+    const duplicates = [];
+    const invalid = [];
+
+    for (const dot of uniqueDots) {
+      const carrier = carriersMap.get(dot);
+
+      if (!carrier) {
+        invalid.push({
+          dot,
+          status: 'invalid',
+          name: null,
+          city: null,
+          state: null
+        });
+      } else if (userSet.has(dot)) {
+        duplicates.push({
+          ...carrier,
+          status: 'duplicate'
+        });
+      } else {
+        newList.push({
+          ...carrier,
+          status: 'new'
+        });
+      }
+    }
+
+    res.json({
+      summary: {
+        totalSubmitted: uniqueDots.length,
+        new: newList.length,
+        duplicates: duplicates.length,
+        invalid: invalid.length
+      },
+      new: newList,
+      duplicates,
+      invalid
+    });
+  } catch (err) {
+    console.error('Error in POST /api/my-carriers/bulk/preview:', err);
+    res.status(500).json({ error: 'Failed to preview bulk import' });
+  }
+});
 
 
 
