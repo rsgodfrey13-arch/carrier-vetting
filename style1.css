@@ -2064,3 +2064,82 @@ th.sortable.sorted-desc .sort-icon::before {
   color: var(--text-main);
   border-color: rgba(148, 163, 184, 0.7);
 }
+/* --------------------------------------------- */
+/* FIX REVIEW STEP SCROLLING + TABLE FIT         */
+/* --------------------------------------------- */
+
+/* Let Step 2 body be the only scrolling region */
+.import-step-body {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 12px;
+}
+
+/* Remove the tiny inner scrollbars from accordion bodies */
+.import-section-body {
+  max-height: none !important;    /* allow full expansion */
+  overflow-y: visible !important; /* no inner scrolling */
+  border-top: 1px solid rgba(30, 41, 59, 0.7);
+  padding-bottom: 6px;
+}
+
+/* Collapse behavior still works */
+.import-section.collapsed .import-section-body {
+  display: none;
+}
+
+/* --------------------------------------------- */
+/* Improve table layout inside accordion         */
+/* --------------------------------------------- */
+
+.import-results-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;             /* prevents sideways scroll */
+  margin-top: 6px;
+}
+
+.import-results-table th,
+.import-results-table td {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;         /* cuts overflow nicely */
+}
+
+.import-results-table th {
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.import-results-table td {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+/* Column widths tuned for DOT import data */
+.import-results-table th:nth-child(1),
+.import-results-table td:nth-child(1) {
+  width: 90px;     /* DOT */
+}
+
+.import-results-table th:nth-child(4),
+.import-results-table td:nth-child(4) {
+  width: 100px;    /* Status */
+  text-align: right;
+}
+
+/* --------------------------------------------- */
+/* Make the accordion header look clickable      */
+/* --------------------------------------------- */
+
+.import-section-header {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.import-section-header:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
