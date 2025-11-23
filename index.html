@@ -997,6 +997,7 @@ document.addEventListener('DOMContentLoaded', function () {
   </div>
 </div>
 
+
 <script>
   // --- Bulk Import modal wiring ---
 
@@ -1035,11 +1036,15 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // --- Method toggle (CSV vs Paste) ---
+
   const methodButtons = document.querySelectorAll('.import-method-btn');
   const csvPanel      = document.getElementById('import-panel-csv');
   const pastePanel    = document.getElementById('import-panel-paste');
+  let importMethod    = 'csv'; // track current method
 
   function setImportMethod(method) {
+    importMethod = method;
+
     methodButtons.forEach(btn => {
       const isActive = btn.dataset.importMethod === method;
       btn.classList.toggle('import-method-active', isActive);
@@ -1059,14 +1064,60 @@ document.addEventListener('DOMContentLoaded', function () {
 
   setImportMethod('csv');
 
-  // Dropzone UI
-  const dropzone       = document.getElementById('csv-dropzone');
-  const fileInput      = document.getElementById('csv-file-input');
-  const browseCsvBtn   = document.getElementById('browse-csv-btn');
+  // --- CSV handling ---
+
+  const dropzone     = document.getElementById('csv-dropzone');
+  const fileInput    = document.getElementById('csv-file-input');
+  const browseCsvBtn = document.getElementById('browse-csv-btn');
+
+  let parsedDotsFromCsv = [];
+
+  function parseDotsFromCsv(text) {
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (!lines.length) return [];
+
+    const header = lines[0].split(',').map(h => h.trim().toLowerCase());
+
+    // Look for a DOT column
+    const dotIndex = header.findIndex(h =>
+      ['dot', 'dotnumber', 'dot_number'].includes(h)
+    );
+
+    if (dotIndex === -1) {
+      alert('Could not find a DOT column in the CSV header. Expected "DOT" or "dotnumber".');
+      return [];
+    }
+
+    const dots = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',');
+      const value = (cols[dotIndex] || '').trim();
+      if (value && /^\d+$/.test(value)) {
+        dots.push(value);
+      }
+    }
+
+    // dedupe
+    return [...new Set(dots)];
+  }
 
   function handleFiles(files) {
     if (!files || !files.length) return;
     const file = files[0];
+
+    const reader = new FileReader();
+    reader.onload = e => {
+      parsedDotsFromCsv = parseDotsFromCsv(e.target.result);
+      if (parsedDotsFromCsv.length) {
+        console.log('Parsed DOTs from CSV:', parsedDotsFromCsv);
+        alert(`Found ${parsedDotsFromCsv.length} DOT numbers in the CSV.`);
+      } else {
+        alert('No valid DOT numbers found in the CSV.');
+      }
+    };
+    reader.readAsText(file);
+
     console.log('Selected file:', file.name);
   }
 
@@ -1104,13 +1155,82 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  // --- Paste method handling ---
+
+  const dotPasteTextarea = document.getElementById('dot-paste-textarea');
+
+  function getDotsFromPaste() {
+    if (!dotPasteTextarea) return [];
+    const raw = dotPasteTextarea.value || '';
+    const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const dots = lines.filter(v => /^\d+$/.test(v));
+    return [...new Set(dots)];
+  }
+
+  // --- Next button: send to backend ---
+
+  async function submitDotsToServer(dots) {
+    if (!dots.length) {
+      alert('No valid DOT numbers to import.');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/my-carriers/bulk', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ dots })
+      });
+
+      if (res.status === 401) {
+        alert('You must be logged in to import carriers.');
+        return;
+      }
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        console.error('Bulk import failed:', errData);
+        alert('Bulk import failed. Please try again.');
+        return;
+      }
+
+      const data = await res.json();
+      const s = data.summary || {};
+      alert(
+        `Import complete.\n\n` +
+        `Submitted: ${s.totalSubmitted ?? dots.length}\n` +
+        `Added: ${s.inserted ?? 0}\n` +
+        `Duplicates: ${s.duplicates ?? 0}\n` +
+        `Invalid: ${s.invalid ?? 0}`
+      );
+
+      closeImportModal();
+      // Refresh the page so "My Carriers" shows new rows
+      window.location.reload();
+
+    } catch (err) {
+      console.error('Error calling bulk import:', err);
+      alert('Bulk import failed due to a network error.');
+    }
+  }
+
   if (importNextBtn) {
     importNextBtn.addEventListener('click', () => {
-      console.log('Next clicked – Step 2 later');
+      let dots = [];
+
+      if (importMethod === 'csv') {
+        dots = parsedDotsFromCsv || [];
+      } else if (importMethod === 'paste') {
+        dots = getDotsFromPaste();
+      }
+
+      submitDotsToServer(dots);
     });
   }
 </script>
 
-  
+
 </body>
 </html>
