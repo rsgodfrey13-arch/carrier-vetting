@@ -656,6 +656,118 @@ document.addEventListener('DOMContentLoaded', function () {
     
   </script>
 
+
+<script>
+  // Download ALL carriers for the current view (My Carriers or All),
+  // using the current sortBy / sortDir.
+  document.getElementById('download-btn')?.addEventListener('click', async () => {
+    try {
+      // 1) Decide which endpoint to hit
+      let endpoint = '/api/carriers';
+      try {
+        const me = await fetch('/api/me').then(r => r.json());
+        if (me.user) endpoint = '/api/my-carriers';
+      } catch (e) {
+        console.warn('me check failed, defaulting to /api/carriers');
+      }
+
+      if (!totalRows || totalRows <= 0) {
+        alert('No carriers to export.');
+        return;
+      }
+
+      // 2) Fetch ALL rows with current sort
+      const url = new URL(endpoint, window.location.origin);
+      url.searchParams.set('page', 1);
+      url.searchParams.set('pageSize', totalRows);  // grab everything
+
+      if (sortBy) {
+        url.searchParams.set('sortBy', sortBy);
+        url.searchParams.set('sortDir', sortDir);
+      }
+
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`Export request failed: ${res.status}`);
+      }
+
+      const result = await res.json();
+      const data = Array.isArray(result) ? result : result.rows;
+
+      if (!data || !data.length) {
+        alert('No carriers to export.');
+        return;
+      }
+
+      // 3) Build CSV
+      const lines = [];
+
+      // Header row
+      lines.push([
+        'DOT',
+        'MC',
+        'Carrier',
+        'Location',
+        'Operating',
+        'Common',
+        'Contract',
+        'Broker',
+        'Safety Rating'
+      ].join(','));
+
+      const ratingMap = {
+        'S': 'Satisfactory',
+        'C': 'Conditional',
+        'U': 'Unsatisfactory'
+      };
+
+      data.forEach(c => {
+        const dotVal    = c.dot || c.dotnumber || c.id || '';
+        const mc        = c.mc_number || '';
+        const name      = c.legalname || c.dbaname || c.name || '';
+        const location  = `${(c.city || c.phycity || '')}${
+          (c.state || c.phystate) ? ', ' + (c.state || c.phystate) : ''
+        }`;
+        const operating = c.allowedtooperate === 'Y' ? 'Authorized' : 'Not Authorized';
+        const common    = c.commonauthoritystatus || '';
+        const contract  = c.contractauthoritystatus || '';
+        const broker    = c.brokerauthoritystatus || '';
+        const rawRating = c.safetyrating ? c.safetyrating.trim().toUpperCase() : '';
+        const safety    = ratingMap[rawRating] || 'Not Rated';
+
+        const cols = [dotVal, mc, name, location, operating, common, contract, broker, safety]
+          .map(val => {
+            let t = String(val ?? '').replace(/\s+/g, ' ').trim();
+            // Escape commas/quotes/newlines for CSV
+            if (/[",\n]/.test(t)) {
+              t = '"' + t.replace(/"/g, '""') + '"';
+            }
+            return t;
+          });
+
+        lines.push(cols.join(','));
+      });
+
+      // 4) Trigger download
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const blobUrl = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = 'carriers.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error('CSV download failed', err);
+      alert('Sorry, something went wrong generating the CSV.');
+    }
+  });
+</script>
+ 
+
+  
 <script>
   async function initAuthUI() {
     try {
