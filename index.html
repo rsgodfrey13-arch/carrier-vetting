@@ -1099,9 +1099,8 @@ document.addEventListener('DOMContentLoaded', function () {
   </div>
 </div>
 
-
 <script>
-  // --- Bulk Import wizard ---
+  // --- Bulk Import wizard (accordion version) ---
 
   // Basic refs
   const bulkImportBtn   = document.getElementById('bulk-import-btn');
@@ -1126,13 +1125,12 @@ document.addEventListener('DOMContentLoaded', function () {
   let currentStep = 1;
   let importMethod = 'csv';
   let parsedDotsFromCsv = [];
-  let previewResult = null; // data from /bulk/preview
-  let lastImportSummary = null; // summary from /bulk
+  let previewResult = null;      // data from /bulk/preview
+  let lastImportSummary = null;  // summary from /bulk
 
   // UI refs for step 2/3
   const loadingEl   = document.getElementById('import-loading');
   const resultsEl   = document.getElementById('import-results');
-  const resultsBody = document.getElementById('import-results-body');
 
   const summaryNewCount  = document.getElementById('summary-new-count');
   const summaryDupCount  = document.getElementById('summary-dup-count');
@@ -1141,6 +1139,14 @@ document.addEventListener('DOMContentLoaded', function () {
   const doneInsertedEl   = document.getElementById('done-inserted');
   const doneDuplicatesEl = document.getElementById('done-duplicates');
   const doneInvalidEl    = document.getElementById('done-invalid');
+
+  // Step 2 accordion section refs
+  const sectionNewBody        = document.getElementById('section-new-body');
+  const sectionDupBody        = document.getElementById('section-dup-body');
+  const sectionInvalidBody    = document.getElementById('section-invalid-body');
+  const sectionNewCountEl     = document.getElementById('section-new-count');
+  const sectionDupCountEl     = document.getElementById('section-dup-count');
+  const sectionInvalidCountEl = document.getElementById('section-invalid-count');
 
   // Step 1 elements
   const methodButtons = document.querySelectorAll('.import-method-btn');
@@ -1164,22 +1170,36 @@ document.addEventListener('DOMContentLoaded', function () {
     goToStep(1);
   }
 
-  function closeImportModal() {
-    if (!importModal) return;
-    importModal.classList.add('hidden');
+  function resetWizardState() {
     currentStep = 1;
     previewResult = null;
     lastImportSummary = null;
     parsedDotsFromCsv = [];
-    // clear minimal state
+
     if (csvSummaryEl) {
       csvSummaryEl.classList.add('hidden');
-      csvFileNameEl.textContent = '';
-      csvDotCountEl.textContent = '0';
+      if (csvFileNameEl) csvFileNameEl.textContent = '';
+      if (csvDotCountEl) csvDotCountEl.textContent = '0';
     }
+
     if (dotPasteTextarea) {
       dotPasteTextarea.value = '';
     }
+
+    // Clear preview sections
+    if (sectionNewBody) sectionNewBody.innerHTML = '';
+    if (sectionDupBody) sectionDupBody.innerHTML = '';
+    if (sectionInvalidBody) sectionInvalidBody.innerHTML = '';
+    setSummaryCounts(0, 0, 0);
+
+    if (loadingEl) loadingEl.classList.add('hidden');
+    if (resultsEl) resultsEl.classList.add('hidden');
+  }
+
+  function closeImportModal() {
+    if (!importModal) return;
+    importModal.classList.add('hidden');
+    resetWizardState();
   }
 
   if (bulkImportBtn) {
@@ -1187,9 +1207,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   [importCloseBtn, importCancelBtn].forEach(btn => {
-    if (btn) {
-      btn.addEventListener('click', closeImportModal);
-    }
+    if (btn) btn.addEventListener('click', closeImportModal);
   });
 
   if (importModal) {
@@ -1271,7 +1289,6 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!lines.length) return [];
 
     const header = lines[0].split(',').map(h => h.trim().toLowerCase());
-
     const dotIndex = header.findIndex(h =>
       ['dot', 'dotnumber', 'dot_number'].includes(h)
     );
@@ -1361,26 +1378,47 @@ document.addEventListener('DOMContentLoaded', function () {
     return [...new Set(dots)];
   }
 
-  // --- Step 2 rendering ---
+  // --- Step 2 rendering (summary + accordion sections) ---
 
   function setSummaryCounts(newCount, dupCount, invCount) {
     if (summaryNewCount) summaryNewCount.textContent = String(newCount);
     if (summaryDupCount) summaryDupCount.textContent = String(dupCount);
     if (summaryInvCount) summaryInvCount.textContent = String(invCount);
+
+    if (sectionNewCountEl) sectionNewCountEl.textContent     = `${newCount} rows`;
+    if (sectionDupCountEl) sectionDupCountEl.textContent     = `${dupCount} rows`;
+    if (sectionInvalidCountEl) sectionInvalidCountEl.textContent = `${invCount} rows`;
   }
 
-  function renderPreviewTable(preview) {
-    if (!resultsBody) return;
+  function renderSectionTable(container, rows, statusClass, emptyLabel) {
+    if (!container) return;
+    container.innerHTML = '';
 
-    resultsBody.innerHTML = '';
+    if (!rows || !rows.length) {
+      const p = document.createElement('p');
+      p.className = 'import-empty';
+      p.textContent = `No ${emptyLabel}.`;
+      container.appendChild(p);
+      return;
+    }
 
-    const allRows = [
-      ...(preview.new || []),
-      ...(preview.duplicates || []),
-      ...(preview.invalid || [])
-    ];
+    const table = document.createElement('table');
+    table.className = 'import-results-table';
 
-    allRows.forEach(row => {
+    const thead = document.createElement('thead');
+    thead.innerHTML = `
+      <tr>
+        <th>DOT</th>
+        <th>Carrier</th>
+        <th>Location</th>
+        <th>Status</th>
+      </tr>
+    `;
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+
+    rows.forEach(row => {
       const tr = document.createElement('tr');
 
       const tdDot = document.createElement('td');
@@ -1398,20 +1436,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
       const tdStatus = document.createElement('td');
       const span = document.createElement('span');
-      span.classList.add('status-badge');
-
-      if (row.status === 'new') {
-        span.classList.add('status-new');
-        span.textContent = 'New';
-      } else if (row.status === 'duplicate') {
-        span.classList.add('status-duplicate');
-        span.textContent = 'Duplicate';
-      } else if (row.status === 'invalid') {
-        span.classList.add('status-invalid');
-        span.textContent = 'Invalid';
-      } else {
-        span.textContent = row.status || '—';
-      }
+      span.classList.add('status-badge', statusClass);
+      if (statusClass === 'status-new') span.textContent = 'New';
+      if (statusClass === 'status-duplicate') span.textContent = 'Duplicate';
+      if (statusClass === 'status-invalid') span.textContent = 'Invalid';
 
       tdStatus.appendChild(span);
 
@@ -1420,8 +1448,17 @@ document.addEventListener('DOMContentLoaded', function () {
       tr.appendChild(tdLoc);
       tr.appendChild(tdStatus);
 
-      resultsBody.appendChild(tr);
+      tbody.appendChild(tr);
     });
+
+    table.appendChild(tbody);
+    container.appendChild(table);
+  }
+
+  function renderPreviewTable(preview) {
+    renderSectionTable(sectionNewBody, preview.new || [],       'status-new',      'new carriers');
+    renderSectionTable(sectionDupBody, preview.duplicates || [], 'status-duplicate', 'duplicates');
+    renderSectionTable(sectionInvalidBody, preview.invalid || [], 'status-invalid',   'invalid DOTs');
   }
 
   // --- Call backend preview ---
@@ -1432,7 +1469,6 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
-    // Show loading, hide results
     if (loadingEl) loadingEl.classList.remove('hidden');
     if (resultsEl) resultsEl.classList.add('hidden');
     setSummaryCounts(0, 0, 0);
@@ -1461,10 +1497,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
       const s = data.summary || {};
       setSummaryCounts(s.new || 0, s.duplicates || 0, s.invalid || 0);
-
       renderPreviewTable(data);
 
-      // show results
       if (loadingEl) loadingEl.classList.add('hidden');
       if (resultsEl) resultsEl.classList.remove('hidden');
 
@@ -1535,7 +1569,6 @@ document.addEventListener('DOMContentLoaded', function () {
   if (importNextBtn) {
     importNextBtn.addEventListener('click', () => {
       if (currentStep === 1) {
-        // gather dots from chosen method
         let dots = [];
         if (importMethod === 'csv') {
           dots = parsedDotsFromCsv || [];
@@ -1553,15 +1586,28 @@ document.addEventListener('DOMContentLoaded', function () {
       } else if (currentStep === 2) {
         runImportFromPreview();
       } else if (currentStep === 3) {
-        // close + refresh My Carriers
         closeImportModal();
         window.location.reload();
       }
     });
   }
+
+  // --- Accordion toggle for result sections ---
+
+  document.querySelectorAll('.import-section-header').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const section = btn.closest('.import-section');
+      if (!section) return;
+      section.classList.toggle('collapsed');
+    });
+  });
+
+  // Default: collapse duplicates + invalid to keep view compact
+  document.querySelectorAll('.import-section[data-status="duplicate"], .import-section[data-status="invalid"]').forEach(sec => {
+    sec.classList.add('collapsed');
+  });
 </script>
 
-
-
+  
 </body>
 </html>
