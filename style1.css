@@ -1651,3 +1651,26 @@ th.sortable.sorted-desc .sort-icon::before {
   border-color: rgba(148,163,184,0.5);
   color: var(--text-main);
 }
+
+.carriers-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px; /* spacing between Bulk Import & Download CSV */
+}
+
+/* Match your existing button aesthetic */
+.bulk-import-btn {
+  background: var(--accent-1, #38bdf8);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.bulk-import-btn:hover {
+  background: #0ea5e9;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.4);
+}
