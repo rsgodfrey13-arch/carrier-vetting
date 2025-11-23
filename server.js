@@ -196,6 +196,83 @@ app.post('/api/my-carriers', requireAuth, async (req, res) => {
   }
 });
 
+
+// Bulk add carriers for this user
+app.post('/api/my-carriers/bulk', requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.userId;
+    let { dots } = req.body || {};
+
+    if (!Array.isArray(dots) || dots.length === 0) {
+      return res.status(400).json({ error: 'dots array required' });
+    }
+
+    // clean + dedupe
+    dots = dots
+      .map(d => String(d).trim())
+      .filter(d => d && /^\d+$/.test(d)); // only numeric DOTs
+
+    const uniqueDots = [...new Set(dots)];
+
+    if (uniqueDots.length === 0) {
+      return res.status(400).json({ error: 'No valid DOT numbers found' });
+    }
+
+    let inserted = 0;
+    let duplicates = 0;
+    let invalid = 0;
+    const details = [];
+
+    for (const dot of uniqueDots) {
+      // Check that this DOT exists in carriers table
+      const carrierExists = await pool.query(
+        'SELECT 1 FROM carriers WHERE dotnumber = $1 LIMIT 1;',
+        [dot]
+      );
+
+      if (carrierExists.rowCount === 0) {
+        invalid++;
+        details.push({ dot, status: 'invalid' });
+        continue;
+      }
+
+      const result = await pool.query(
+        `
+        INSERT INTO user_carriers (user_id, carrier_dot)
+        VALUES ($1, $2)
+        ON CONFLICT (user_id, carrier_dot) DO NOTHING;
+        `,
+        [userId, dot]
+      );
+
+      if (result.rowCount === 1) {
+        inserted++;
+        details.push({ dot, status: 'inserted' });
+      } else {
+        duplicates++;
+        details.push({ dot, status: 'duplicate' });
+      }
+    }
+
+    res.json({
+      summary: {
+        totalSubmitted: uniqueDots.length,
+        inserted,
+        duplicates,
+        invalid
+      },
+      details
+    });
+  } catch (err) {
+    console.error('Error in POST /api/my-carriers/bulk:', err);
+    res.status(500).json({ error: 'Failed to bulk add carriers' });
+  }
+});
+
+
+
+
+
 // Check if THIS dot is already saved for this user
 app.get('/api/my-carriers/:dot', requireAuth, async (req, res) => {
   const userId = req.session.userId;
