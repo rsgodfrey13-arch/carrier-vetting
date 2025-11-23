@@ -1930,3 +1930,65 @@ th.sortable.sorted-desc .sort-icon::before {
 .import-modal-footer {
   flex-shrink: 0;
 }
+
+
+
+/* Accordion-style result sections */
+.import-section {
+  margin-top: 8px;
+  border-radius: var(--radius-md, 14px);
+  background: rgba(15,23,42,0.9);
+  border: 1px solid rgba(30,41,59,0.9);
+}
+
+.import-section-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  color: var(--text-main);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.import-section-title {
+  font-weight: 500;
+}
+
+.import-section-count {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-left: 6px;
+}
+
+.import-section-toggle {
+  font-size: 0.8rem;
+  opacity: 0.8;
+  transition: transform 0.15s ease;
+}
+
+.import-section-body {
+  max-height: 260px;
+  overflow-y: auto;
+  border-top: 1px solid rgba(30,41,59,0.9);
+  padding-bottom: 4px;
+}
+
+/* Collapsed state */
+.import-section.collapsed .import-section-body {
+  display: none;
+}
+
+.import-section.collapsed .import-section-toggle {
+  transform: rotate(-90deg);
+}
+
+/* Optional: smaller "no rows" text */
+.import-empty {
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
