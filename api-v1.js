@@ -46,12 +46,111 @@ function createApiV1(pool, requireAuth) {
     }
   });
 
-  // later you'll add:
-  // router.get('/carriers', ...)            // search/list
-  // router.get('/carriers/:dot/alerts', ...)
-  // router.get('/alerts', ...)
-  // router.post('/me/carriers', requireAuth, ...)
-  // etc.
+// ---------------------------------------------
+// GET /api/v1/carriers — Search / list carriers
+// ---------------------------------------------
+app.get('/api/v1/carriers', async (req, res) => {
+  try {
+    const {
+      q,
+      dot,
+      mc,
+      state,
+      city,
+      page = 1,
+      pageSize = 25
+    } = req.query;
+
+    const limit = Math.min(parseInt(pageSize, 10) || 25, 100);  
+    const offset = (parseInt(page, 10) - 1) * limit;
+
+    // Require at least one filter
+    if (!q && !dot && !mc && !state && !city) {
+      return res.status(400).json({
+        error: "At least one search parameter is required (q, dot, mc, state, city)"
+      });
+    }
+
+    // Build WHERE clause dynamically
+    const conditions = [];
+    const params = [];
+    let i = 1;
+
+    if (q) {
+      conditions.push(`(dotnumber ILIKE $${i} OR legalname ILIKE $${i} OR dbaname ILIKE $${i})`);
+      params.push(`%${q}%`);
+      i++;
+    }
+
+    if (dot) {
+      conditions.push(`dotnumber = $${i}`);
+      params.push(dot);
+      i++;
+    }
+
+    if (mc) {
+      conditions.push(`mc_number = $${i}`);
+      params.push(mc);
+      i++;
+    }
+
+    if (state) {
+      conditions.push(`phystate ILIKE $${i}`);
+      params.push(state);
+      i++;
+    }
+
+    if (city) {
+      conditions.push(`phycity ILIKE $${i}`);
+      params.push(city);
+      i++;
+    }
+
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const sql = `
+      SELECT
+        dotnumber AS dot,
+        legalname,
+        dbaname,
+        phycity AS city,
+        phystate AS state,
+        allowedtooperate,
+        safetyrating
+      FROM carriers
+      ${whereClause}
+      ORDER BY legalname
+      LIMIT ${limit} OFFSET ${offset};
+    `;
+
+    const countSql = `
+      SELECT COUNT(*)::int AS count
+      FROM carriers
+      ${whereClause};
+    `;
+
+    const [dataResult, countResult] = await Promise.all([
+      pool.query(sql, params),
+      pool.query(countSql, params)
+    ]);
+
+    res.json({
+      rows: dataResult.rows,
+      total: countResult.rows[0].count,
+      page: parseInt(page, 10),
+      pageSize: limit
+    });
+
+  } catch (err) {
+    console.error('Error in GET /api/v1/carriers:', err);
+    res.status(500).json({ error: 'Search failed' });
+  }
+});
+
+  
+
+  
+  // Add More Routes Above this line
 
   return router;
 }
