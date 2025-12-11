@@ -466,22 +466,24 @@ document.getElementById('rows-per-page')?.addEventListener('change', (e) => {
 // ---------- BUILD AUTOCOMPLETE INDEX ----------
 async function buildCarrierIndex() {
   try {
-    // all carriers + my carriers in parallel
     const [allRes, myRes] = await Promise.all([
+      // you can also add page/pageSize here if you want more control
       fetch('/api/carriers'),
       fetch('/api/my-carriers').catch(() => null)
     ]);
 
-    const allData = await allRes.json();
-    carrierIndex = Array.isArray(allData) ? allData : [];
+    // ---- All carriers ----
+    const allJson = await allRes.json();
+    const allData = Array.isArray(allJson) ? allJson : (allJson.rows || []);
+    carrierIndex = allData;
 
-    // build "my carriers" DOT set if logged in
+    // ---- My carriers for the "MY CARRIER" pill ----
     if (myRes && myRes.ok) {
-      const myData = await myRes.json();
+      const myJson = await myRes.json();
+      const myData = Array.isArray(myJson) ? myJson : (myJson.rows || []);
+
       myCarrierDots = new Set(
-        (Array.isArray(myData) ? myData : []).map(c =>
-          String(c.dot || c.dotnumber || c.id || '')
-        )
+        myData.map(c => String(c.dot || c.dotnumber || c.id || ''))
       );
     } else {
       myCarrierDots = new Set();
