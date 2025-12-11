@@ -48,108 +48,112 @@ function createApiV1(pool, requireAuth) {
     }
   });
 
-  // ---------------------------------------------
-  // GET /api/v1/carriers — Search / list carriers
-  // (mounted as /carriers here)
-  // ---------------------------------------------
-  router.get('/carriers', async (req, res) => {
-    try {
-      const {
-        q,
-        dot,
-        mc,
-        state,
-        city,
-        page = 1,
-        pageSize = 25
-      } = req.query;
+// ---------------------------------------------
+// GET /api/v1/carriers — field-based search / list
+// ---------------------------------------------
+router.get('/carriers', async (req, res) => {
+  try {
+    const {
+      dot,
+      mc,
+      legalname,
+      dbaname,
+      city,
+      state,
+      page = 1,
+      pageSize = 25
+    } = req.query;
 
-      const limit = Math.min(parseInt(pageSize, 10) || 25, 100);
-      const offset = (parseInt(page, 10) - 1) * limit;
+    const limit = Math.min(parseInt(pageSize, 10) || 25, 100);
+    const offset = (parseInt(page, 10) - 1) * limit;
 
-      // Require at least one filter
-      if (!q && !dot && !mc && !state && !city) {
-        return res.status(400).json({
-          error: "At least one search parameter is required (q, dot, mc, state, city)"
-        });
-      }
-
-      // Build WHERE clause dynamically
-      const conditions = [];
-      const params = [];
-      let i = 1;
-
-      if (q) {
-        conditions.push(
-          `(dotnumber ILIKE $${i} OR legalname ILIKE $${i} OR dbaname ILIKE $${i})`
-        );
-        params.push(`%${q}%`);
-        i++;
-      }
-
-      if (dot) {
-        conditions.push(`dotnumber = $${i}`);
-        params.push(dot);
-        i++;
-      }
-
-      if (mc) {
-        conditions.push(`mc_number = $${i}`);
-        params.push(mc);
-        i++;
-      }
-
-      if (state) {
-        conditions.push(`phystate ILIKE $${i}`);
-        params.push(state);
-        i++;
-      }
-
-      if (city) {
-        conditions.push(`phycity ILIKE $${i}`);
-        params.push(city);
-        i++;
-      }
-
-      const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-
-      const sql = `
-        SELECT
-          dotnumber AS dot,
-          legalname,
-          dbaname,
-          phycity AS city,
-          phystate AS state,
-          allowedtooperate,
-          safetyrating
-        FROM carriers
-        ${whereClause}
-        ORDER BY legalname
-        LIMIT ${limit} OFFSET ${offset};
-      `;
-
-      const countSql = `
-        SELECT COUNT(*)::int AS count
-        FROM carriers
-        ${whereClause};
-      `;
-
-      const [dataResult, countResult] = await Promise.all([
-        pool.query(sql, params),
-        pool.query(countSql, params)
-      ]);
-
-      res.json({
-        rows: dataResult.rows,
-        total: countResult.rows[0].count,
-        page: parseInt(page, 10),
-        pageSize: limit
+    // Require at least one filter
+    if (!dot && !mc && !legalname && !dbaname && !city && !state) {
+      return res.status(400).json({
+        error: "At least one search parameter is required (dot, mc, legalname, dbaname, city, state)"
       });
-    } catch (err) {
-      console.error('Error in GET /api/v1/carriers:', err);
-      res.status(500).json({ error: 'Search failed' });
     }
-  });
+
+    const conditions = [];
+    const params = [];
+    let i = 1;
+
+    if (dot) {
+      conditions.push(`dotnumber = $${i}`);
+      params.push(dot);
+      i++;
+    }
+
+    if (mc) {
+      conditions.push(`mc_number = $${i}`);
+      params.push(mc);
+      i++;
+    }
+
+    if (legalname) {
+      conditions.push(`legalname ILIKE $${i}`);
+      params.push(`%${legalname}%`);
+      i++;
+    }
+
+    if (dbaname) {
+      conditions.push(`dbaname ILIKE $${i}`);
+      params.push(`%${dbaname}%`);
+      i++;
+    }
+
+    if (city) {
+      conditions.push(`phycity ILIKE $${i}`);
+      params.push(`%${city}%`);
+      i++;
+    }
+
+    if (state) {
+      conditions.push(`phystate ILIKE $${i}`);
+      params.push(`%${state}%`);
+      i++;
+    }
+
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+
+    const sql = `
+      SELECT
+        dotnumber AS dot,
+        legalname,
+        dbaname,
+        phycity AS city,
+        phystate AS state,
+        allowedtooperate,
+        safetyrating
+      FROM carriers
+      ${whereClause}
+      ORDER BY legalname
+      LIMIT ${limit} OFFSET ${offset};
+    `;
+
+    const countSql = `
+      SELECT COUNT(*)::int AS count
+      FROM carriers
+      ${whereClause};
+    `;
+
+    const [dataResult, countResult] = await Promise.all([
+      pool.query(sql, params),
+      pool.query(countSql, params)
+    ]);
+
+    res.json({
+      rows: dataResult.rows,
+      total: countResult.rows[0].count,
+      page: parseInt(page, 10),
+      pageSize: limit
+    });
+  } catch (err) {
+    console.error('Error in GET /api/v1/carriers:', err);
+    res.status(500).json({ error: 'Search failed' });
+  }
+});
+
 
   // Add more v1 routes above this line
   return router;
