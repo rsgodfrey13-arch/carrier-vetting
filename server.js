@@ -130,8 +130,11 @@ async function apiAuth(req, res, next) {
 
 /** ---------- API v1 Router ---------- **/
 const createApiV1 = require('./api-v1');
-const apiV1 = createApiV1(pool, null);
-app.use('/api/v1', apiV1);
+const apiV1 = createApiV1(pool);        // only pass pool now
+
+// protect all /api/v1 routes with API key auth
+app.use('/api/v1', apiAuth, apiV1);
+
 
 
 // GET /api/carrier-search?q=...
