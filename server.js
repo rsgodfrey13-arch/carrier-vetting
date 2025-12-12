@@ -108,6 +108,67 @@ const apiV1 = createApiV1(pool, null);
 // mount at /api/v1
 app.use('/api/v1', apiV1);
 
+// GET /api/carrier-search?q=...
+// Returns top 10 matches for DOT / MC / name
+router.get('/carrier-search', async (req, res) => {
+  const q = (req.query.q || '').trim();
+
+  // Require at least 2 chars, like the front-end
+  if (q.length < 2) {
+    return res.json([]);
+  }
+
+  // Decide how to search
+  const isNumeric = /^\d+$/.test(q);
+  const likePrefix = q + '%';
+  const nameLike = '%' + q.toLowerCase() + '%';
+
+  try {
+    const result = await pool.query(
+      `
+      SELECT
+        dotnumber AS dot,
+        mc_number,
+        legalname,
+        dbaname,
+        phycity,
+        phystate
+      FROM public.carriers
+      WHERE
+        -- numeric search hits DOT / MC prefixes
+        (
+          $1::boolean
+          AND (
+            dotnumber::text ILIKE $2
+            OR mc_number::text ILIKE $2
+          )
+        )
+        OR
+        -- text search hits carrier names
+        (
+          NOT $1::boolean
+          AND (
+            lower(legalname) LIKE $3
+            OR lower(dbaname)  LIKE $3
+          )
+        )
+      ORDER BY legalname
+      LIMIT 10;
+      `,
+      [
+        isNumeric,     // $1
+        likePrefix,    // $2
+        nameLike       // $3
+      ]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('carrier-search error', err);
+    res.status(500).json({ error: 'Search failed' });
+  }
+});
+
 
 /** ---------- MY CARRIERS ROUTES ---------- **/
 
