@@ -550,51 +550,6 @@ app.get('/api/carriers', async (req, res) => {
 
 
 /**
- * SEARCH – used by the autocomplete
- */
-app.get('/api/carriers/search', async (req, res) => {
-  const q = (req.query.q || '').trim();
-
-  if (!q) {
-    return res.json([]);
-  }
-
-  try {
-    const result = await pool.query(
-      `
-      SELECT
-        dotnumber,
-        legalname,
-        dbaname,
-        phycity,
-        phystate
-      FROM carriers
-      WHERE
-        dotnumber ILIKE $1
-        OR legalname ILIKE $1
-        OR dbaname ILIKE $1
-      ORDER BY legalname
-      LIMIT 15;
-      `,
-      ['%' + q + '%']
-    );
-
-    res.json(
-      result.rows.map(r => ({
-        dot: r.dotnumber,
-        legalname: r.legalname,
-        dbaname: r.dbaname,
-        city: r.phycity,
-        state: r.phystate
-      }))
-    );
-  } catch (err) {
-    console.error('Error in GET /api/carriers/search:', err);
-    res.status(500).json({ error: 'Search failed' });
-  }
-});
-
-/**
  * SINGLE CARRIER – used by /12345 page (carrier.html)
  */
 app.get('/api/carriers/:dot', async (req, res) => {
