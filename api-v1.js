@@ -267,7 +267,7 @@ router.get('/me/carriers', async (req, res) => {
 
 
 // ---------------------------------------------
-// POST /api/v1/me/carriers — Add carrier to saved list
+// POST /api/v1/me/carriers — Add 1 or many carriers
 // ---------------------------------------------
 router.post('/me/carriers', async (req, res) => {
   try {
@@ -278,56 +278,79 @@ router.post('/me/carriers', async (req, res) => {
 
     let { dot } = req.body || {};
 
+    // Normalize into an array:
+    // "336075" → ["336075"]
+    // ["336075", "123456"] → ["336075", "123456"]
     if (!dot) {
-      return res.status(400).json({ error: 'Carrier DOT required' });
+      return res.status(400).json({ error: 'dot is required' });
     }
 
-    dot = String(dot).trim();
+    let dots = Array.isArray(dot) ? dot : [dot];
 
-    if (!/^\d+$/.test(dot)) {
-      return res.status(400).json({ error: 'DOT must be numeric' });
+    // Clean + numeric validation + dedupe
+    dots = dots
+      .map(d => String(d).trim())
+      .filter(d => /^\d+$/.test(d));
+
+    const uniqueDots = [...new Set(dots)];
+
+    if (uniqueDots.length === 0) {
+      return res.status(400).json({ error: 'No valid DOT numbers provided' });
     }
 
-    // 1) Ensure carrier exists
-    const carrierExists = await pool.query(
-      'SELECT 1 FROM carriers WHERE dotnumber = $1 LIMIT 1;',
-      [dot]
-    );
+    let inserted = 0;
+    let duplicates = 0;
+    let invalid = 0;
+    const details = [];
 
-    if (carrierExists.rowCount === 0) {
-      return res.status(404).json({ error: 'Carrier not found' });
+    for (const d of uniqueDots) {
+      // Carrier must exist
+      const exists = await pool.query(
+        'SELECT 1 FROM carriers WHERE dotnumber = $1 LIMIT 1;',
+        [d]
+      );
+
+      if (exists.rowCount === 0) {
+        invalid++;
+        details.push({ dot: d, status: 'invalid' });
+        continue;
+      }
+
+      // Insert (idempotent)
+      const result = await pool.query(
+        `
+        INSERT INTO user_carriers (user_id, carrier_dot)
+        VALUES ($1, $2)
+        ON CONFLICT (user_id, carrier_dot) DO NOTHING;
+        `,
+        [userId, d]
+      );
+
+      if (result.rowCount === 1) {
+        inserted++;
+        details.push({ dot: d, status: 'inserted' });
+      } else {
+        duplicates++;
+        details.push({ dot: d, status: 'already_saved' });
+      }
     }
 
-    // 2) Insert into user_carriers (idempotent)
-    const insertResult = await pool.query(
-      `
-      INSERT INTO user_carriers (user_id, carrier_dot)
-      VALUES ($1, $2)
-      ON CONFLICT (user_id, carrier_dot) DO NOTHING;
-      `,
-      [userId, dot]
-    );
-
-    if (insertResult.rowCount === 0) {
-      // already there
-      return res.json({
-        ok: true,
-        dot,
-        status: 'already_saved'
-      });
-    }
-
-    // successfully added
     res.json({
-      ok: true,
-      dot,
-      status: 'inserted'
+      summary: {
+        totalSubmitted: uniqueDots.length,
+        inserted,
+        duplicates,
+        invalid
+      },
+      details
     });
+
   } catch (err) {
     console.error('Error in POST /api/v1/me/carriers:', err);
-    res.status(500).json({ error: 'Failed to add carrier' });
+    res.status(500).json({ error: 'Failed to add carriers' });
   }
 });
+
 
 
   
