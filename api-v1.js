@@ -266,6 +266,71 @@ router.get('/me/carriers', async (req, res) => {
 });
 
 
+// ---------------------------------------------
+// POST /api/v1/me/carriers — Add carrier to saved list
+// ---------------------------------------------
+router.post('/me/carriers', async (req, res) => {
+  try {
+    const userId = req.user && req.user.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Not authorized' });
+    }
+
+    let { dot } = req.body || {};
+
+    if (!dot) {
+      return res.status(400).json({ error: 'Carrier DOT required' });
+    }
+
+    dot = String(dot).trim();
+
+    if (!/^\d+$/.test(dot)) {
+      return res.status(400).json({ error: 'DOT must be numeric' });
+    }
+
+    // 1) Ensure carrier exists
+    const carrierExists = await pool.query(
+      'SELECT 1 FROM carriers WHERE dotnumber = $1 LIMIT 1;',
+      [dot]
+    );
+
+    if (carrierExists.rowCount === 0) {
+      return res.status(404).json({ error: 'Carrier not found' });
+    }
+
+    // 2) Insert into user_carriers (idempotent)
+    const insertResult = await pool.query(
+      `
+      INSERT INTO user_carriers (user_id, carrier_dot)
+      VALUES ($1, $2)
+      ON CONFLICT (user_id, carrier_dot) DO NOTHING;
+      `,
+      [userId, dot]
+    );
+
+    if (insertResult.rowCount === 0) {
+      // already there
+      return res.json({
+        ok: true,
+        dot,
+        status: 'already_saved'
+      });
+    }
+
+    // successfully added
+    res.json({
+      ok: true,
+      dot,
+      status: 'inserted'
+    });
+  } catch (err) {
+    console.error('Error in POST /api/v1/me/carriers:', err);
+    res.status(500).json({ error: 'Failed to add carrier' });
+  }
+});
+
+
+  
   // Add more v1 routes above this line
   return router;
 }
