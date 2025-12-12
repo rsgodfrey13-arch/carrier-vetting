@@ -110,7 +110,7 @@ app.use('/api/v1', apiV1);
 
 // GET /api/carrier-search?q=...
 // Returns top 10 matches for DOT / MC / name
-router.get('/carrier-search', async (req, res) => {
+app.get('/api/carrier-search', async (req, res) => {
   const q = (req.query.q || '').trim();
 
   // Require at least 2 chars, like the front-end
@@ -118,10 +118,9 @@ router.get('/carrier-search', async (req, res) => {
     return res.json([]);
   }
 
-  // Decide how to search
-  const isNumeric = /^\d+$/.test(q);
+  const isNumeric  = /^\d+$/.test(q);
   const likePrefix = q + '%';
-  const nameLike = '%' + q.toLowerCase() + '%';
+  const nameLike   = '%' + q.toLowerCase() + '%';
 
   try {
     const result = await pool.query(
@@ -135,7 +134,6 @@ router.get('/carrier-search', async (req, res) => {
         phystate
       FROM public.carriers
       WHERE
-        -- numeric search hits DOT / MC prefixes
         (
           $1::boolean
           AND (
@@ -144,7 +142,6 @@ router.get('/carrier-search', async (req, res) => {
           )
         )
         OR
-        -- text search hits carrier names
         (
           NOT $1::boolean
           AND (
@@ -156,9 +153,9 @@ router.get('/carrier-search', async (req, res) => {
       LIMIT 10;
       `,
       [
-        isNumeric,     // $1
-        likePrefix,    // $2
-        nameLike       // $3
+        isNumeric,   // $1
+        likePrefix,  // $2
+        nameLike     // $3
       ]
     );
 
@@ -168,6 +165,7 @@ router.get('/carrier-search', async (req, res) => {
     res.status(500).json({ error: 'Search failed' });
   }
 });
+
 
 
 /** ---------- MY CARRIERS ROUTES ---------- **/
