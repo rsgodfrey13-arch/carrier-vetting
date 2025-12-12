@@ -1,7 +1,7 @@
 // api-v1.js
 const express = require('express');
 
-function createApiV1(pool, requireAuth) {
+function createApiV1(pool) {
   const router = express.Router();
 
   // ---------------------------------------------
@@ -160,7 +160,7 @@ router.get('/carriers', async (req, res) => {
 router.get('/me/carriers', async (req, res) => {
   try {
     // using existing session-based auth for now
-    const userId = req.session && req.session.userId;
+    const userId = req.session && req.userId;
     if (!userId) {
       return res.status(401).json({ error: 'Not logged in' });
     }
