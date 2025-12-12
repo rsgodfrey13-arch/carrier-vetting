@@ -352,6 +352,72 @@ router.post('/me/carriers', async (req, res) => {
 });
 
 
+// ---------------------------------------------
+// DELETE /api/v1/me/carriers — Remove 1 or many carriers
+// ---------------------------------------------
+router.delete('/me/carriers', async (req, res) => {
+  try {
+    const userId = req.user && req.user.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Not authorized' });
+    }
+
+    let { dot } = req.body || {};
+
+    if (!dot) {
+      return res.status(400).json({ error: 'dot is required' });
+    }
+
+    // Normalize to array
+    let dots = Array.isArray(dot) ? dot : [dot];
+
+    // Clean + numeric-only + dedupe
+    dots = dots
+      .map(d => String(d).trim())
+      .filter(d => /^\d+$/.test(d));
+
+    const uniqueDots = [...new Set(dots)];
+
+    if (uniqueDots.length === 0) {
+      return res.status(400).json({ error: 'No valid DOT numbers provided' });
+    }
+
+    // Delete in bulk and see what was actually removed
+    const deleteResult = await pool.query(
+      `
+      DELETE FROM user_carriers
+      WHERE user_id = $1
+        AND carrier_dot = ANY($2::text[])
+      RETURNING carrier_dot;
+      `,
+      [userId, uniqueDots]
+    );
+
+    const deletedDots = deleteResult.rows.map(r => r.carrier_dot);
+    const deletedSet = new Set(deletedDots);
+
+    const details = uniqueDots.map(d => ({
+      dot: d,
+      status: deletedSet.has(d) ? 'deleted' : 'not_found'
+    }));
+
+    const deleted = deletedDots.length;
+    const notFound = uniqueDots.length - deleted;
+
+    res.json({
+      summary: {
+        totalSubmitted: uniqueDots.length,
+        deleted,
+        notFound
+      },
+      details
+    });
+  } catch (err) {
+    console.error('Error in DELETE /api/v1/me/carriers:', err);
+    res.status(500).json({ error: 'Failed to remove carriers' });
+  }
+});
+
 
   
   // Add more v1 routes above this line
