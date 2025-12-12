@@ -159,11 +159,11 @@ router.get('/carriers', async (req, res) => {
 // ---------------------------------------------
 router.get('/me/carriers', async (req, res) => {
   try {
-    // using existing session-based auth for now
-    const userId = req.session && req.userId;
-    if (!userId) {
-      return res.status(401).json({ error: 'Not logged in' });
-    }
+      // API key auth user
+      const userId = req.user && req.user.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Not authorized' });
+      }
 
     const {
       dot,
