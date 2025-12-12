@@ -192,7 +192,7 @@
 
   <script>
 
-let carrierIndex = []; 
+
 let myCarrierDots = new Set();
 
 // -------- PAGINATION STATE --------
@@ -464,33 +464,35 @@ document.getElementById('rows-per-page')?.addEventListener('change', (e) => {
 
 
 // ---------- BUILD AUTOCOMPLETE INDEX ----------
-async function buildCarrierIndex() {
+let myCarrierDots = new Set();
+
+// only needed for the "MY CARRIER" pill
+async function buildMyCarrierDots() {
   try {
-    const [allRes, myRes] = await Promise.all([
-      // you can also add page/pageSize here if you want more control
-      fetch('/api/carriers'),
-      fetch('/api/my-carriers').catch(() => null)
-    ]);
-
-    // ---- All carriers ----
-    const allJson = await allRes.json();
-    const allData = Array.isArray(allJson) ? allJson : (allJson.rows || []);
-    carrierIndex = allData;
-
-    // ---- My carriers for the "MY CARRIER" pill ----
-    if (myRes && myRes.ok) {
-      const myJson = await myRes.json();
-      const myData = Array.isArray(myJson) ? myJson : (myJson.rows || []);
-
-      myCarrierDots = new Set(
-        myData.map(c => String(c.dot || c.dotnumber || c.id || ''))
-      );
-    } else {
+    const me = await fetch('/api/me').then(r => r.json());
+    if (!me.user) {
       myCarrierDots = new Set();
+      return;
     }
+
+    const url = new URL('/api/my-carriers', window.location.origin);
+    url.searchParams.set('page', 1);
+    url.searchParams.set('pageSize', 5000); // your carriers, not the whole world
+
+    const res = await fetch(url);
+    if (!res.ok) {
+      myCarrierDots = new Set();
+      return;
+    }
+
+    const json = await res.json();
+    const rows = Array.isArray(json) ? json : (json.rows || []);
+
+    myCarrierDots = new Set(
+      rows.map(c => String(c.dot || c.dotnumber || c.id || ''))
+    );
   } catch (err) {
-    console.error("Error building search index:", err);
-    carrierIndex = [];
+    console.error('buildMyCarrierDots error', err);
     myCarrierDots = new Set();
   }
 }
@@ -523,11 +525,11 @@ function renderSuggestions(results) {
 
     const dotVal = item.dot || item.dotnumber || item.id || '';
     const name   = item.legalname || item.dbaname || '(No name)';
-    const city   = item.city || item.phycity || '';
-    const state  = item.state || item.phystate || '';
+    const city   = item.phycity || item.city || '';
+    const state  = item.phystate || item.state || '';
     const mc     = item.mc_number || '-';
 
-    const isMine = myCarrierDots.has(String(dotVal)); // 🔥 check if it's your carrier
+    const isMine = myCarrierDots.has(String(dotVal));
 
     li.innerHTML = `
       <div class="suggestion-main">
@@ -549,33 +551,31 @@ function renderSuggestions(results) {
 }
 
 
-function performSearch(query) {
+async function performSearch(query) {
   const q = query.trim();
   if (q.length < 2) {
     clearSuggestions();
     return;
   }
 
-  // Make sure we have the global carrierIndex loaded
-  if (!Array.isArray(carrierIndex) || carrierIndex.length === 0) {
+  try {
+    const url = new URL('/api/carrier-search', window.location.origin);
+    url.searchParams.set('q', q);
+
+    const res = await fetch(url);
+    if (!res.ok) {
+      clearSuggestions();
+      return;
+    }
+
+    const results = await res.json();
+    renderSuggestions(results);
+  } catch (e) {
+    console.error('search error', e);
     clearSuggestions();
-    return;
   }
-
-  const qLower = q.toLowerCase();
-
-  const matches = carrierIndex
-    .filter(c => {
-      const dot = String(c.dot || c.dotnumber || c.id || '');
-      const mc   = String(c.mc_number || ''); 
-      const name = (c.legalname || c.dbaname || c.name || '').toLowerCase();
-
-      return dot.startsWith(q) || mc.startsWith(q) || name.includes(qLower);
-    })
-    .slice(0, 10);
-
-  renderSuggestions(matches);
 }
+
 
 
     searchInput.addEventListener('input', () => {
@@ -616,7 +616,7 @@ function performSearch(query) {
     });
 
     loadCarriers();      // populates table (my carriers vs all)
-    buildCarrierIndex(); // populates search index (always ALL carriers)
+    buildMyCarrierDots(); // just for the pill
 
 // ---------- SERVER-SIDE SORT HEADER HANDLERS ----------
 document.addEventListener('DOMContentLoaded', function () {
