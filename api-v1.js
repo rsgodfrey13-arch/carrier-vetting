@@ -154,6 +154,117 @@ router.get('/carriers', async (req, res) => {
   }
 });
 
+  // ---------------------------------------------
+// GET /api/v1/me/carriers — user's carriers
+// ---------------------------------------------
+router.get('/me/carriers', async (req, res) => {
+  try {
+    // using existing session-based auth for now
+    const userId = req.session && req.session.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Not logged in' });
+    }
+
+    const {
+      dot,
+      mc,
+      legalname,
+      dbaname,
+      city,
+      state,
+      page = 1,
+      pageSize = 25
+    } = req.query;
+
+    const limit = Math.min(parseInt(pageSize, 10) || 25, 100);
+    const offset = (parseInt(page, 10) - 1) * limit;
+
+    // Base condition: this user's saved carriers
+    const conditions = ['uc.user_id = $1'];
+    const params = [userId];
+    let i = 2; // start at $2 because $1 is user_id
+
+    if (dot) {
+      conditions.push(`c.dotnumber = $${i}`);
+      params.push(dot);
+      i++;
+    }
+
+    if (mc) {
+      conditions.push(`c.mc_number = $${i}`);
+      params.push(mc);
+      i++;
+    }
+
+    if (legalname) {
+      conditions.push(`c.legalname ILIKE $${i}`);
+      params.push(`%${legalname}%`);
+      i++;
+    }
+
+    if (dbaname) {
+      conditions.push(`c.dbaname ILIKE $${i}`);
+      params.push(`%${dbaname}%`);
+      i++;
+    }
+
+    if (city) {
+      conditions.push(`c.phycity ILIKE $${i}`);
+      params.push(`%${city}%`);
+      i++;
+    }
+
+    if (state) {
+      conditions.push(`c.phystate ILIKE $${i}`);
+      params.push(`%${state}%`);
+      i++;
+    }
+
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+
+    const sql = `
+      SELECT
+        c.dotnumber AS dot,
+        c.legalname,
+        c.dbaname,
+        c.phycity  AS city,
+        c.phystate AS state,
+        c.allowedtooperate,
+        c.safetyrating,
+        uc.added_at
+      FROM user_carriers uc
+      JOIN carriers c
+        ON c.dotnumber = uc.carrier_dot
+      ${whereClause}
+      ORDER BY c.legalname
+      LIMIT ${limit} OFFSET ${offset};
+    `;
+
+    const countSql = `
+      SELECT COUNT(*)::int AS count
+      FROM user_carriers uc
+      JOIN carriers c
+        ON c.dotnumber = uc.carrier_dot
+      ${whereClause};
+    `;
+
+    const [dataResult, countResult] = await Promise.all([
+      pool.query(sql, params),
+      pool.query(countSql, params)
+    ]);
+
+    res.json({
+      rows: dataResult.rows,
+      total: countResult.rows[0].count,
+      page: parseInt(page, 10),
+      pageSize: limit
+    });
+  } catch (err) {
+    console.error('Error in GET /api/v1/me/carriers:', err);
+    res.status(500).json({ error: 'Failed to load user carriers' });
+  }
+});
+
 
   // Add more v1 routes above this line
   return router;
