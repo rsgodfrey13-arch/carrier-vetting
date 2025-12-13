@@ -466,7 +466,7 @@ router.get('/carriers/:dot/alerts', async (req, res) => {
     ]);
 
     res.json({
-      rows: dataResult.rows,
+      alerts: dataResult.rows,
       total: countResult.rows[0].count,
       page: parseInt(page, 10),
       pageSize: limit
