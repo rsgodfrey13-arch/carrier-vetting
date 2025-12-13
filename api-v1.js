@@ -418,10 +418,10 @@ router.delete('/me/carriers', async (req, res) => {
   }
 });
 
-
 // ---------------------------------------------
-// GET /api/v1/carriers/:dot/alerts — payload objects for one carrier
-// (filterable & paginated; returns any status unless filtered)
+// GET /api/v1/carriers/:dot/alerts
+// Returns payload objects (info -> changes -> carrier)
+// Includes ALL statuses except NEW (not ready yet)
 // ---------------------------------------------
 router.get('/carriers/:dot/alerts', async (req, res) => {
   try {
@@ -432,7 +432,7 @@ router.get('/carriers/:dot/alerts', async (req, res) => {
 
     const {
       id,        // alert_id (optional)
-      status,    // NEW / PROCESSED (optional)
+      status,    // optional filter; if provided, applies (except NEW is always excluded)
       page = 1,
       pageSize = 25
     } = req.query;
@@ -443,7 +443,8 @@ router.get('/carriers/:dot/alerts', async (req, res) => {
     const conditions = [
       'ra.user_id = $1',
       "ra.channel = 'API'",
-      `ra.dotnumber = $2`
+      'ra.dotnumber = $2',
+      "ra.status <> 'NEW'"
     ];
     const params = [userId, dot];
     let i = 3;
@@ -454,6 +455,7 @@ router.get('/carriers/:dot/alerts', async (req, res) => {
       i++;
     }
 
+    // optional status filter (still blocks NEW by base condition)
     if (status) {
       conditions.push(`ra.status = $${i}`);
       params.push(status);
@@ -463,7 +465,7 @@ router.get('/carriers/:dot/alerts', async (req, res) => {
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
 
     const sql = `
-      SELECT ra.payload
+      SELECT ra.alert_id, ra.dotnumber, ra.payload, ra.created_at, ra.status
       FROM rest_alerts ra
       ${whereClause}
       ORDER BY ra.created_at DESC
@@ -481,12 +483,22 @@ router.get('/carriers/:dot/alerts', async (req, res) => {
       pool.query(countSql, params)
     ]);
 
-    // JSONB returns object; TEXT returns string -> parse it
-    const rows = dataResult.rows.map(r => {
-      if (typeof r.payload === 'string') {
-        try { return JSON.parse(r.payload); } catch { return r.payload; }
-      }
-      return r.payload;
+    const rows = dataResult.rows.map(row => {
+      const p = (typeof row.payload === 'string') ? JSON.parse(row.payload) : row.payload;
+
+      return {
+        info: {
+          alert_id: row.alert_id,
+          event_id: p.event_id,
+          event_type: p.event_type,
+          dotnumber: row.dotnumber,
+          occurred_at: p.occurred_at,
+          status: row.status,
+          created_at: row.created_at
+        },
+        changes: p.changes,
+        carrier: p.carrier
+      };
     });
 
     res.json({
@@ -500,6 +512,7 @@ router.get('/carriers/:dot/alerts', async (req, res) => {
     res.status(500).json({ error: 'Failed to load carrier alerts' });
   }
 });
+
 
 
 // ---------------------------------------------
@@ -602,8 +615,13 @@ router.patch('/alerts/unprocessed', async (req, res) => {
   }
 });
 
+
+
 // ---------------------------------------------
-// GET /api/v1/alerts — returns payload objects (filterable & paginated)
+// GET /api/v1/alerts
+// Returns payload objects (info -> changes -> carrier)
+// Includes ALL statuses except NEW (not ready yet)
+// Filterable by: id, status, dotnumber
 // ---------------------------------------------
 router.get('/alerts', async (req, res) => {
   try {
@@ -611,9 +629,9 @@ router.get('/alerts', async (req, res) => {
     if (!userId) return res.status(401).json({ error: 'Not authorized' });
 
     const {
-      id,          // alert_id
-      status,      // NEW / PROCESSED
-      dotnumber,   // carrier dot
+      id,        // alert_id
+      status,    // ALERT / PROCESSED / etc (optional; NEW still excluded)
+      dotnumber, // optional
       page = 1,
       pageSize = 25
     } = req.query;
@@ -623,7 +641,8 @@ router.get('/alerts', async (req, res) => {
 
     const conditions = [
       'ra.user_id = $1',
-      "ra.channel = 'API'"
+      "ra.channel = 'API'",
+      "ra.status <> 'NEW'"
     ];
     const params = [userId];
     let i = 2;
@@ -649,7 +668,7 @@ router.get('/alerts', async (req, res) => {
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
 
     const sql = `
-      SELECT ra.payload
+      SELECT ra.alert_id, ra.dotnumber, ra.payload, ra.created_at, ra.status
       FROM rest_alerts ra
       ${whereClause}
       ORDER BY ra.created_at DESC
@@ -667,12 +686,22 @@ router.get('/alerts', async (req, res) => {
       pool.query(countSql, params)
     ]);
 
-    // If payload is JSONB, pg returns an object. If it's TEXT, parse it.
-    const rows = dataResult.rows.map(r => {
-      if (typeof r.payload === 'string') {
-        try { return JSON.parse(r.payload); } catch { return r.payload; }
-      }
-      return r.payload;
+    const rows = dataResult.rows.map(row => {
+      const p = (typeof row.payload === 'string') ? JSON.parse(row.payload) : row.payload;
+
+      return {
+        info: {
+          alert_id: row.alert_id,
+          event_id: p.event_id,
+          event_type: p.event_type,
+          dotnumber: row.dotnumber,
+          occurred_at: p.occurred_at,
+          status: row.status,
+          created_at: row.created_at
+        },
+        changes: p.changes,
+        carrier: p.carrier
+      };
     });
 
     res.json({
@@ -686,6 +715,99 @@ router.get('/alerts', async (req, res) => {
     res.status(500).json({ error: 'Failed to load alerts' });
   }
 });
+
+
+
+// ---------------------------------------------
+// GET /api/v1/alerts/new
+// Returns ONLY status = 'ALERT' (ready-to-process items)
+// ---------------------------------------------
+router.get('/alerts/new', async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+
+    const {
+      id,
+      dotnumber,
+      page = 1,
+      pageSize = 25
+    } = req.query;
+
+    const limit  = Math.min(parseInt(pageSize, 10) || 25, 100);
+    const offset = (parseInt(page, 10) - 1) * limit;
+
+    const conditions = [
+      'ra.user_id = $1',
+      "ra.channel = 'API'",
+      "ra.status = 'ALERT'"
+    ];
+    const params = [userId];
+    let i = 2;
+
+    if (id) {
+      conditions.push(`ra.alert_id = $${i}`);
+      params.push(id);
+      i++;
+    }
+
+    if (dotnumber) {
+      conditions.push(`ra.dotnumber = $${i}`);
+      params.push(dotnumber);
+      i++;
+    }
+
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+
+    const sql = `
+      SELECT ra.alert_id, ra.dotnumber, ra.payload, ra.created_at, ra.status
+      FROM rest_alerts ra
+      ${whereClause}
+      ORDER BY ra.created_at DESC
+      LIMIT $${i} OFFSET $${i + 1};
+    `;
+
+    const countSql = `
+      SELECT COUNT(*)::int AS count
+      FROM rest_alerts ra
+      ${whereClause};
+    `;
+
+    const [dataResult, countResult] = await Promise.all([
+      pool.query(sql, [...params, limit, offset]),
+      pool.query(countSql, params)
+    ]);
+
+    const rows = dataResult.rows.map(row => {
+      const p = (typeof row.payload === 'string') ? JSON.parse(row.payload) : row.payload;
+
+      return {
+        info: {
+          alert_id: row.alert_id,
+          event_id: p.event_id,
+          event_type: p.event_type,
+          dotnumber: row.dotnumber,
+          occurred_at: p.occurred_at,
+          status: row.status,
+          created_at: row.created_at
+        },
+        changes: p.changes,
+        carrier: p.carrier
+      };
+    });
+
+    res.json({
+      rows,
+      total: countResult.rows[0].count,
+      page: parseInt(page, 10),
+      pageSize: limit
+    });
+  } catch (err) {
+    console.error('Error in GET /api/v1/alerts/new:', err);
+    res.status(500).json({ error: 'Failed to load NEW alerts' });
+  }
+});
+
 
   
   
