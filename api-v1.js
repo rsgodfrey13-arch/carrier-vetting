@@ -419,6 +419,66 @@ router.delete('/me/carriers', async (req, res) => {
 });
 
 
+// ---------------------------------------------
+// GET /api/v1/carriers/:dot/alerts — Alerts for a single carrier
+// ---------------------------------------------
+router.get('/carriers/:dot/alerts', async (req, res) => {
+  try {
+    const userId = req.user && req.user.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Not authorized' });
+    }
+
+    const dot = String(req.params.dot || '').trim();
+    if (!/^\d+$/.test(dot)) {
+      return res.status(400).json({ error: 'DOT must be numeric' });
+    }
+
+    const { page = 1, pageSize = 25 } = req.query;
+    const limit = Math.min(parseInt(pageSize, 10) || 25, 100);
+    const offset = (parseInt(page, 10) - 1) * limit;
+
+    const whereSql = `
+      WHERE ao.status = 'NEW'
+        AND ao.channel = 'API'
+        AND ao.user_id = $1
+        AND ao.dotnumber = $2
+    `;
+
+    const dataSql = `
+      SELECT
+        ao.*
+      FROM alerts_outbox ao
+      ${whereSql}
+      ORDER BY ao.created_at DESC
+      LIMIT $3 OFFSET $4;
+    `;
+
+    const countSql = `
+      SELECT COUNT(*)::int AS count
+      FROM alerts_outbox ao
+      ${whereSql};
+    `;
+
+    const [dataResult, countResult] = await Promise.all([
+      pool.query(dataSql, [userId, dot, limit, offset]),
+      pool.query(countSql, [userId, dot])
+    ]);
+
+    res.json({
+      rows: dataResult.rows,
+      total: countResult.rows[0].count,
+      page: parseInt(page, 10),
+      pageSize: limit
+    });
+  } catch (err) {
+    console.error('Error in GET /api/v1/carriers/:dot/alerts:', err);
+    res.status(500).json({ error: 'Failed to load carrier alerts' });
+  }
+});
+
+
+  
   
   // Add more v1 routes above this line
   return router;
