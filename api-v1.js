@@ -444,7 +444,7 @@ router.get('/carriers/:dot/alerts', async (req, res) => {
       'ra.user_id = $1',
       "ra.channel = 'API'",
       'ra.dotnumber = $2',
-      "ra.status <> 'NEW'"
+      "ra.status <> 'ERROR'"
     ];
     const params = [userId, dot];
     let i = 3;
@@ -532,7 +532,7 @@ router.patch('/alerts/processed', async (req, res) => {
 
     const updateResult = await pool.query(
       `
-      UPDATE alerts_outbox
+      UPDATE rest_alerts
       SET status = 'PROCESSED',
           sent_at = COALESCE(sent_at, NOW())
       WHERE user_id = $1
@@ -582,7 +582,7 @@ router.patch('/alerts/unprocessed', async (req, res) => {
 
     const updateResult = await pool.query(
       `
-      UPDATE alerts_outbox
+      UPDATE rest_alerts
       SET status = 'NEW',
           sent_at = NULL
       WHERE user_id = $1
@@ -642,7 +642,7 @@ router.get('/alerts', async (req, res) => {
     const conditions = [
       'ra.user_id = $1',
       "ra.channel = 'API'",
-      "ra.status <> 'NEW'"
+      "ra.status <> 'ERROR'"
     ];
     const params = [userId];
     let i = 2;
@@ -740,7 +740,7 @@ router.get('/alerts/new', async (req, res) => {
     const conditions = [
       'ra.user_id = $1',
       "ra.channel = 'API'",
-      "ra.status = 'ALERT'"
+      "ra.status = 'NEW'"
     ];
     const params = [userId];
     let i = 2;
