@@ -420,53 +420,77 @@ router.delete('/me/carriers', async (req, res) => {
 
 
 // ---------------------------------------------
-// GET /api/v1/carriers/:dot/alerts — Alerts for a single carrier
+// GET /api/v1/carriers/:dot/alerts — payload objects for one carrier
+// (filterable & paginated; returns any status unless filtered)
 // ---------------------------------------------
 router.get('/carriers/:dot/alerts', async (req, res) => {
   try {
-    const userId = req.user && req.user.id;
-    if (!userId) {
-      return res.status(401).json({ error: 'Not authorized' });
-    }
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Not authorized' });
 
     const dot = String(req.params.dot || '').trim();
-    if (!/^\d+$/.test(dot)) {
-      return res.status(400).json({ error: 'DOT must be numeric' });
-    }
 
-    const { page = 1, pageSize = 25 } = req.query;
-    const limit = Math.min(parseInt(pageSize, 10) || 25, 100);
+    const {
+      id,        // alert_id (optional)
+      status,    // NEW / PROCESSED (optional)
+      page = 1,
+      pageSize = 25
+    } = req.query;
+
+    const limit  = Math.min(parseInt(pageSize, 10) || 25, 100);
     const offset = (parseInt(page, 10) - 1) * limit;
 
-    const whereSql = `
-      WHERE ao.status = 'NEW'
-        AND ao.channel = 'API'
-        AND ao.user_id = $1
-        AND ao.dotnumber = $2
-    `;
+    const conditions = [
+      'ra.user_id = $1',
+      "ra.channel = 'API'",
+      `ra.dotnumber = $2`
+    ];
+    const params = [userId, dot];
+    let i = 3;
 
-    const dataSql = `
-      SELECT
-        ao.*
-      FROM alerts_outbox ao
-      ${whereSql}
-      ORDER BY ao.created_at DESC
-      LIMIT $3 OFFSET $4;
+    if (id) {
+      conditions.push(`ra.alert_id = $${i}`);
+      params.push(id);
+      i++;
+    }
+
+    if (status) {
+      conditions.push(`ra.status = $${i}`);
+      params.push(status);
+      i++;
+    }
+
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+
+    const sql = `
+      SELECT ra.payload
+      FROM rest_alerts ra
+      ${whereClause}
+      ORDER BY ra.created_at DESC
+      LIMIT $${i} OFFSET $${i + 1};
     `;
 
     const countSql = `
       SELECT COUNT(*)::int AS count
-      FROM alerts_outbox ao
-      ${whereSql};
+      FROM rest_alerts ra
+      ${whereClause};
     `;
 
     const [dataResult, countResult] = await Promise.all([
-      pool.query(dataSql, [userId, dot, limit, offset]),
-      pool.query(countSql, [userId, dot])
+      pool.query(sql, [...params, limit, offset]),
+      pool.query(countSql, params)
     ]);
 
+    // JSONB returns object; TEXT returns string -> parse it
+    const rows = dataResult.rows.map(r => {
+      if (typeof r.payload === 'string') {
+        try { return JSON.parse(r.payload); } catch { return r.payload; }
+      }
+      return r.payload;
+    });
+
     res.json({
-      alerts: dataResult.rows,
+      rows,
       total: countResult.rows[0].count,
       page: parseInt(page, 10),
       pageSize: limit
@@ -477,15 +501,6 @@ router.get('/carriers/:dot/alerts', async (req, res) => {
   }
 });
 
-
-function normalizeAlertIds(alerts) {
-  if (!Array.isArray(alerts)) return [];
-  return [...new Set(
-    alerts
-      .map(a => String(a).trim())
-      .filter(a => /^\d+$/.test(a))
-  )];
-}
 
 // ---------------------------------------------
 // PATCH /api/v1/alerts/processed — bulk mark processed
@@ -588,45 +603,45 @@ router.patch('/alerts/unprocessed', async (req, res) => {
 });
 
 // ---------------------------------------------
-// GET /api/v1/alerts — global alerts (paginated & filterable)
+// GET /api/v1/alerts — returns payload objects (filterable & paginated)
 // ---------------------------------------------
 router.get('/alerts', async (req, res) => {
   try {
-    const userId = req.user && req.user.id;
+    const userId = req.user?.id;
     if (!userId) return res.status(401).json({ error: 'Not authorized' });
 
     const {
-      id,
-      status,
-      dotnumber,
+      id,          // alert_id
+      status,      // NEW / PROCESSED
+      dotnumber,   // carrier dot
       page = 1,
       pageSize = 25
     } = req.query;
 
-    const limit = Math.min(parseInt(pageSize, 10) || 25, 100);
+    const limit  = Math.min(parseInt(pageSize, 10) || 25, 100);
     const offset = (parseInt(page, 10) - 1) * limit;
 
     const conditions = [
-      'ao.user_id = $1',
-      "ao.channel = 'API'"
+      'ra.user_id = $1',
+      "ra.channel = 'API'"
     ];
     const params = [userId];
     let i = 2;
 
     if (id) {
-      conditions.push(`ao.id = $${i}`);
+      conditions.push(`ra.alert_id = $${i}`);
       params.push(id);
       i++;
     }
 
     if (status) {
-      conditions.push(`ao.status = $${i}`);
+      conditions.push(`ra.status = $${i}`);
       params.push(status);
       i++;
     }
 
     if (dotnumber) {
-      conditions.push(`ao.dotnumber = $${i}`);
+      conditions.push(`ra.dotnumber = $${i}`);
       params.push(dotnumber);
       i++;
     }
@@ -634,32 +649,34 @@ router.get('/alerts', async (req, res) => {
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
 
     const sql = `
-      SELECT
-        ao.id,
-        ao.dotnumber,
-        ao.event_id,
-        ao.status,
-        ao.created_at,
-        ao.sent_at
-      FROM alerts_outbox ao
+      SELECT ra.payload
+      FROM rest_alerts ra
       ${whereClause}
-      ORDER BY ao.created_at DESC
-      LIMIT ${limit} OFFSET ${offset};
+      ORDER BY ra.created_at DESC
+      LIMIT $${i} OFFSET $${i + 1};
     `;
 
     const countSql = `
       SELECT COUNT(*)::int AS count
-      FROM alerts_outbox ao
+      FROM rest_alerts ra
       ${whereClause};
     `;
 
     const [dataResult, countResult] = await Promise.all([
-      pool.query(sql, params),
+      pool.query(sql, [...params, limit, offset]),
       pool.query(countSql, params)
     ]);
 
+    // If payload is JSONB, pg returns an object. If it's TEXT, parse it.
+    const rows = dataResult.rows.map(r => {
+      if (typeof r.payload === 'string') {
+        try { return JSON.parse(r.payload); } catch { return r.payload; }
+      }
+      return r.payload;
+    });
+
     res.json({
-      rows: dataResult.rows,
+      rows,
       total: countResult.rows[0].count,
       page: parseInt(page, 10),
       pageSize: limit
