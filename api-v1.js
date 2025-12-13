@@ -1,6 +1,21 @@
 // api-v1.js
 const express = require('express');
 
+function normalizeAlertIds(input) {
+  if (!input) return [];
+
+  const arr = Array.isArray(input) ? input : [input];
+
+  // numeric strings -> ints, dedupe
+  return [...new Set(
+    arr
+      .map(x => String(x).trim())
+      .filter(x => /^\d+$/.test(x))
+      .map(x => parseInt(x, 10))
+  )];
+}
+
+
 function createApiV1(pool) {
   const router = express.Router();
 
