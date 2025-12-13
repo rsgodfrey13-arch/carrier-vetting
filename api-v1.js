@@ -478,6 +478,116 @@ router.get('/carriers/:dot/alerts', async (req, res) => {
 });
 
 
+function normalizeAlertIds(alerts) {
+  if (!Array.isArray(alerts)) return [];
+  return [...new Set(
+    alerts
+      .map(a => String(a).trim())
+      .filter(a => /^\d+$/.test(a))
+  )];
+}
+
+// ---------------------------------------------
+// PATCH /api/v1/alerts/processed — bulk mark processed
+// Body: { "alerts": ["111", "222"] }
+// ---------------------------------------------
+router.patch('/alerts/processed', async (req, res) => {
+  try {
+    const userId = req.user && req.user.id;
+    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+
+    const alertIds = normalizeAlertIds(req.body && req.body.alerts);
+
+    if (alertIds.length === 0) {
+      return res.status(400).json({ error: 'alerts array is required (numeric ids)' });
+    }
+
+    const updateResult = await pool.query(
+      `
+      UPDATE alerts_outbox
+      SET status = 'PROCESSED',
+          sent_at = COALESCE(sent_at, NOW())
+      WHERE user_id = $1
+        AND channel = 'API'
+        AND id = ANY($2::int[])
+      RETURNING id;
+      `,
+      [userId, alertIds]
+    );
+
+    const updatedIds = updateResult.rows.map(r => String(r.id));
+    const updatedSet = new Set(updatedIds);
+
+    const details = alertIds.map(id => ({
+      id,
+      status: updatedSet.has(id) ? 'processed' : 'not_found'
+    }));
+
+    res.json({
+      summary: {
+        totalSubmitted: alertIds.length,
+        updated: updatedIds.length,
+        notFound: alertIds.length - updatedIds.length
+      },
+      details
+    });
+  } catch (err) {
+    console.error('Error in PATCH /api/v1/alerts/processed:', err);
+    res.status(500).json({ error: 'Failed to mark alerts processed' });
+  }
+});
+
+// ---------------------------------------------
+// PATCH /api/v1/alerts/unprocessed — bulk mark unprocessed
+// Body: { "alerts": ["111", "222"] }
+// ---------------------------------------------
+router.patch('/alerts/unprocessed', async (req, res) => {
+  try {
+    const userId = req.user && req.user.id;
+    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+
+    const alertIds = normalizeAlertIds(req.body && req.body.alerts);
+
+    if (alertIds.length === 0) {
+      return res.status(400).json({ error: 'alerts array is required (numeric ids)' });
+    }
+
+    const updateResult = await pool.query(
+      `
+      UPDATE alerts_outbox
+      SET status = 'NEW',
+          sent_at = NULL
+      WHERE user_id = $1
+        AND channel = 'API'
+        AND id = ANY($2::int[])
+      RETURNING id;
+      `,
+      [userId, alertIds]
+    );
+
+    const updatedIds = updateResult.rows.map(r => String(r.id));
+    const updatedSet = new Set(updatedIds);
+
+    const details = alertIds.map(id => ({
+      id,
+      status: updatedSet.has(id) ? 'unprocessed' : 'not_found'
+    }));
+
+    res.json({
+      summary: {
+        totalSubmitted: alertIds.length,
+        updated: updatedIds.length,
+        notFound: alertIds.length - updatedIds.length
+      },
+      details
+    });
+  } catch (err) {
+    console.error('Error in PATCH /api/v1/alerts/unprocessed:', err);
+    res.status(500).json({ error: 'Failed to mark alerts unprocessed' });
+  }
+});
+
+
   
   
   // Add more v1 routes above this line
