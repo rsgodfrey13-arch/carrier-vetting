@@ -798,7 +798,58 @@ router.get('/alerts/new', async (req, res) => {
 });
 
 
-  
+  router.patch('/alerts/processed', async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const alertIds = normalizeAlertIds(req.body?.alerts);
+
+    // quick debug snapshot
+    console.log('PATCH /api/v1/alerts/processed debug:', {
+      userId,
+      alertIds,
+      authHeader: req.header('Authorization') ? 'present' : 'missing'
+    });
+
+    if (!userId) return res.status(401).json({ error: 'Not authorized', debug: { userId } });
+    if (alertIds.length === 0) return res.status(400).json({ error: 'alerts array required' });
+
+    // 1) show what rows EXIST before update
+    const pre = await pool.query(
+      `
+      SELECT alert_id, user_id, status, channel
+      FROM rest_alerts
+      WHERE alert_id = ANY($1::int[])
+      ORDER BY alert_id;
+      `,
+      [alertIds]
+    );
+
+    // 2) try update with a slightly safer channel compare
+    const updateResult = await pool.query(
+      `
+      UPDATE rest_alerts
+      SET status = 'PROCESSED'
+      WHERE user_id = $1
+        AND UPPER(channel) = 'API'
+        AND alert_id = ANY($2::int[])
+      RETURNING alert_id;
+      `,
+      [userId, alertIds]
+    );
+
+    res.json({
+      debug: {
+        userId,
+        foundBeforeUpdate: pre.rows,          // <-- this tells us if the IDs even exist
+        updatedIds: updateResult.rows
+      }
+    });
+  } catch (err) {
+    console.error('Error in PATCH /api/v1/alerts/processed:', err);
+    res.status(500).json({ error: 'Failed', detail: err.message });
+  }
+});
+
   
   // Add more v1 routes above this line
   return router;
