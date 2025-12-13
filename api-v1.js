@@ -602,7 +602,7 @@ router.patch('/alerts/unprocessed', async (req, res) => {
       UPDATE rest_alerts
       SET status = 'NEW'
       WHERE user_id = $1
-        AND channel = 'API'
+        AND UPPER(channel) = 'API'
         AND alert_id = ANY($2::int[])
       RETURNING alert_id;
       `,
@@ -628,6 +628,7 @@ router.patch('/alerts/unprocessed', async (req, res) => {
     res.status(500).json({ error: 'Failed to mark alerts unprocessed' });
   }
 });
+
 
 
 
