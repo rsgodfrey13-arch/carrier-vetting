@@ -516,45 +516,56 @@ router.get('/carriers/:dot/alerts', async (req, res) => {
 
 // PATCH /api/v1/alerts/processed
 // Body: { "alerts": ["46","47"] }
-router.patch('/alerts/processed', async (req, res) => {
+
+  router.patch('/alerts/processed', async (req, res) => {
   try {
     const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: 'Not authorized' });
-
     const alertIds = normalizeAlertIds(req.body?.alerts);
-    if (alertIds.length === 0) {
-      return res.status(400).json({ error: 'alerts array is required (numeric ids)' });
-    }
 
+    // quick debug snapshot
+    console.log('PATCH /api/v1/alerts/processed debug:', {
+      userId,
+      alertIds,
+      authHeader: req.header('Authorization') ? 'present' : 'missing'
+    });
+
+    if (!userId) return res.status(401).json({ error: 'Not authorized', debug: { userId } });
+    if (alertIds.length === 0) return res.status(400).json({ error: 'alerts array required' });
+
+    // 1) show what rows EXIST before update
+    const pre = await pool.query(
+      `
+      SELECT alert_id, user_id, status, channel
+      FROM rest_alerts
+      WHERE alert_id = ANY($1::int[])
+      ORDER BY alert_id;
+      `,
+      [alertIds]
+    );
+
+    // 2) try update with a slightly safer channel compare
     const updateResult = await pool.query(
       `
       UPDATE rest_alerts
       SET status = 'PROCESSED'
       WHERE user_id = $1
-        AND channel = 'API'
+        AND UPPER(channel) = 'API'
         AND alert_id = ANY($2::int[])
       RETURNING alert_id;
       `,
       [userId, alertIds]
     );
 
-    const updatedIds = updateResult.rows.map(r => String(r.alert_id));
-    const updatedSet = new Set(updatedIds);
-
     res.json({
-      summary: {
-        totalSubmitted: alertIds.length,
-        updated: updatedIds.length,
-        notFound: alertIds.length - updatedIds.length
-      },
-      details: alertIds.map(id => ({
-        id: String(id),
-        status: updatedSet.has(String(id)) ? 'processed' : 'not_found'
-      }))
+      debug: {
+        userId,
+        foundBeforeUpdate: pre.rows,          // <-- this tells us if the IDs even exist
+        updatedIds: updateResult.rows
+      }
     });
   } catch (err) {
     console.error('Error in PATCH /api/v1/alerts/processed:', err);
-    res.status(500).json({ error: 'Failed to mark alerts processed' });
+    res.status(500).json({ error: 'Failed', detail: err.message });
   }
 });
 
@@ -798,57 +809,6 @@ router.get('/alerts/new', async (req, res) => {
 });
 
 
-  router.patch('/alerts/processed', async (req, res) => {
-  try {
-    const userId = req.user?.id;
-    const alertIds = normalizeAlertIds(req.body?.alerts);
-
-    // quick debug snapshot
-    console.log('PATCH /api/v1/alerts/processed debug:', {
-      userId,
-      alertIds,
-      authHeader: req.header('Authorization') ? 'present' : 'missing'
-    });
-
-    if (!userId) return res.status(401).json({ error: 'Not authorized', debug: { userId } });
-    if (alertIds.length === 0) return res.status(400).json({ error: 'alerts array required' });
-
-    // 1) show what rows EXIST before update
-    const pre = await pool.query(
-      `
-      SELECT alert_id, user_id, status, channel
-      FROM rest_alerts
-      WHERE alert_id = ANY($1::int[])
-      ORDER BY alert_id;
-      `,
-      [alertIds]
-    );
-
-    // 2) try update with a slightly safer channel compare
-    const updateResult = await pool.query(
-      `
-      UPDATE rest_alerts
-      SET status = 'PROCESSED'
-      WHERE user_id = $1
-        AND UPPER(channel) = 'API'
-        AND alert_id = ANY($2::int[])
-      RETURNING alert_id;
-      `,
-      [userId, alertIds]
-    );
-
-    res.json({
-      debug: {
-        userId,
-        foundBeforeUpdate: pre.rows,          // <-- this tells us if the IDs even exist
-        updatedIds: updateResult.rows
-      }
-    });
-  } catch (err) {
-    console.error('Error in PATCH /api/v1/alerts/processed:', err);
-    res.status(500).json({ error: 'Failed', detail: err.message });
-  }
-});
 
   
   // Add more v1 routes above this line
