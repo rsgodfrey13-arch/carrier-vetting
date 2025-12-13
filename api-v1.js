@@ -587,6 +587,88 @@ router.patch('/alerts/unprocessed', async (req, res) => {
   }
 });
 
+// ---------------------------------------------
+// GET /api/v1/alerts — global alerts (paginated & filterable)
+// ---------------------------------------------
+router.get('/alerts', async (req, res) => {
+  try {
+    const userId = req.user && req.user.id;
+    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+
+    const {
+      id,
+      status,
+      dotnumber,
+      page = 1,
+      pageSize = 25
+    } = req.query;
+
+    const limit = Math.min(parseInt(pageSize, 10) || 25, 100);
+    const offset = (parseInt(page, 10) - 1) * limit;
+
+    const conditions = [
+      'ao.user_id = $1',
+      "ao.channel = 'API'"
+    ];
+    const params = [userId];
+    let i = 2;
+
+    if (id) {
+      conditions.push(`ao.id = $${i}`);
+      params.push(id);
+      i++;
+    }
+
+    if (status) {
+      conditions.push(`ao.status = $${i}`);
+      params.push(status);
+      i++;
+    }
+
+    if (dotnumber) {
+      conditions.push(`ao.dotnumber = $${i}`);
+      params.push(dotnumber);
+      i++;
+    }
+
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+
+    const sql = `
+      SELECT
+        ao.id,
+        ao.dotnumber,
+        ao.event_id,
+        ao.status,
+        ao.created_at,
+        ao.sent_at
+      FROM alerts_outbox ao
+      ${whereClause}
+      ORDER BY ao.created_at DESC
+      LIMIT ${limit} OFFSET ${offset};
+    `;
+
+    const countSql = `
+      SELECT COUNT(*)::int AS count
+      FROM alerts_outbox ao
+      ${whereClause};
+    `;
+
+    const [dataResult, countResult] = await Promise.all([
+      pool.query(sql, params),
+      pool.query(countSql, params)
+    ]);
+
+    res.json({
+      rows: dataResult.rows,
+      total: countResult.rows[0].count,
+      page: parseInt(page, 10),
+      pageSize: limit
+    });
+  } catch (err) {
+    console.error('Error in GET /api/v1/alerts:', err);
+    res.status(500).json({ error: 'Failed to load alerts' });
+  }
+});
 
   
   
