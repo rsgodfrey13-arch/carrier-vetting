@@ -311,6 +311,47 @@ app.post('/api/my-carriers/bulk', requireAuth, async (req, res) => {
 
     const uniqueDots = [...new Set(dots)];
 
+    const sql = `
+WITH input(dot) AS (
+  SELECT UNNEST($2::text[])
+),
+valid AS (
+  SELECT i.dot
+  FROM input i
+  JOIN carriers c ON c.dotnumber = i.dot
+),
+ins AS (
+  INSERT INTO user_carriers (user_id, carrier_dot, added_at)
+  SELECT $1, v.dot, NOW()
+  FROM valid v
+  ON CONFLICT (user_id, carrier_dot) DO NOTHING
+  RETURNING carrier_dot
+)
+SELECT
+  (SELECT COUNT(*) FROM input)                    AS submitted,
+  (SELECT COUNT(*) FROM valid)                    AS valid,
+  (SELECT COUNT(*) FROM ins)                      AS inserted,
+  (SELECT COUNT(*) FROM valid) - (SELECT COUNT(*) FROM ins) AS duplicates,
+  (SELECT COUNT(*) FROM input) - (SELECT COUNT(*) FROM valid) AS invalid;
+`;
+
+const result = await pool.query(sql, [
+  userId,        // $1
+  uniqueDots     // $2
+]);
+
+const summary = result.rows[0];
+
+res.json({
+  summary: {
+    totalSubmitted: Number(summary.submitted),
+    inserted: Number(summary.inserted),
+    duplicates: Number(summary.duplicates),
+    invalid: Number(summary.invalid)
+  }
+});
+
+    
     if (uniqueDots.length === 0) {
       return res.status(400).json({ error: 'No valid DOT numbers found' });
     }
@@ -320,36 +361,7 @@ app.post('/api/my-carriers/bulk', requireAuth, async (req, res) => {
     let invalid = 0;
     const details = [];
 
-    for (const dot of uniqueDots) {
-      // Check that this DOT exists in carriers table
-      const carrierExists = await pool.query(
-        'SELECT 1 FROM carriers WHERE dotnumber = $1 LIMIT 1;',
-        [dot]
-      );
-
-      if (carrierExists.rowCount === 0) {
-        invalid++;
-        details.push({ dot, status: 'invalid' });
-        continue;
-      }
-
-      const result = await pool.query(
-        `
-        INSERT INTO user_carriers (user_id, carrier_dot)
-        VALUES ($1, $2)
-        ON CONFLICT (user_id, carrier_dot) DO NOTHING;
-        `,
-        [userId, dot]
-      );
-
-      if (result.rowCount === 1) {
-        inserted++;
-        details.push({ dot, status: 'inserted' });
-      } else {
-        duplicates++;
-        details.push({ dot, status: 'duplicate' });
-      }
-    }
+    
 
     res.json({
       summary: {
