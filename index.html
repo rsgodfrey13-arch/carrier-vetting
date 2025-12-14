@@ -190,6 +190,10 @@
     </section>
   </div>
 
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+
+  
   <script>
 
 
@@ -1284,31 +1288,47 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // --- CSV parsing ---
 
-  function parseDotsFromCsvText(text) {
-    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-    if (!lines.length) return [];
+function parseDotsFromCsvText(text) {
+  const parsed = Papa.parse(text, {
+    header: true,
+    skipEmptyLines: true,
+    transformHeader: h => String(h || '').trim().toLowerCase()
+  });
 
-    const header = lines[0].split(',').map(h => h.trim().toLowerCase());
-    const dotIndex = header.findIndex(h =>
-      ['dot', 'dotnumber', 'dot_number'].includes(h)
-    );
-
-    if (dotIndex === -1) {
-      alert('Could not find a DOT column in the CSV header. Expect "DOT" or "dotnumber".');
-      return [];
-    }
-
-    const dots = [];
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(',');
-      const value = (cols[dotIndex] || '').trim();
-      if (value && /^\d+$/.test(value)) {
-        dots.push(value);
-      }
-    }
-
-    return [...new Set(dots)];
+  if (parsed.errors?.length) {
+    console.warn('CSV parse warnings:', parsed.errors);
   }
+
+  const rows = parsed.data || [];
+  if (!rows.length) return [];
+
+  // Find the DOT column by name (flexible)
+  const dotKeys = ['dot', 'dotnumber', 'dot_number', 'usd_dot', 'dot #'];
+  let dotKey = null;
+
+  const sample = rows[0];
+  for (const k of Object.keys(sample)) {
+    if (dotKeys.includes(k)) { dotKey = k; break; }
+  }
+
+  if (!dotKey) {
+    alert('Could not find a DOT column. Expect a header like DOT or dotnumber.');
+    return [];
+  }
+
+  const dots = [];
+  for (const r of rows) {
+    const raw = String(r[dotKey] ?? '').trim();
+    if (!raw) continue;
+
+    // keep digits only (handles "DOT: 336075")
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length >= 1 && digits.length <= 7) dots.push(digits);
+  }
+
+  return [...new Set(dots)];
+}
+
 
   function handleFiles(files) {
     if (!files || !files.length) return;
