@@ -1,5 +1,7 @@
 // api-v1.js
 const express = require('express');
+const { getPolicyForUser } = require('./importPolicy');
+
 
 function normalizeAlertIds(input) {
   if (!input) return [];
@@ -36,9 +38,170 @@ function normalizeDotArray(input) {
   )];
 }
 
+function normalizeDotsWithInvalid(input) {
+  const invalid = [];
+  const cleaned = [];
+
+  const arr = Array.isArray(input) ? input : [input];
+
+  for (const raw of arr) {
+    const s = String(raw ?? '').trim();
+    if (!s) continue;
+
+    // keep digits only
+    const digits = s.replace(/\D/g, '');
+
+    // DOT is typically up to 7 digits
+    if (digits.length < 1 || digits.length > 7) {
+      invalid.push(s);
+      continue;
+    }
+
+    cleaned.push(digits);
+  }
+
+  const unique = [...new Set(cleaned)];
+  return { unique, invalid };
+}
+
 
 function createApiV1(pool) {
   const router = express.Router();
+
+// ---------------------------------------------
+// GET /api/v1/me/carriers/import-limits
+// tells UI the limits + current usage
+// ---------------------------------------------
+router.get('/me/carriers/import-limits', async (req, res) => {
+  try {
+    const userId = req.user && req.user.id;
+    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+
+    // TODO: replace this with real plan lookup later
+    const user = { id: userId, plan: 'FREE' };
+    const policy = getPolicyForUser(user);
+
+    const countRes = await pool.query(
+      `SELECT COUNT(*)::int AS current_total
+       FROM user_carriers
+       WHERE user_id = $1;`,
+      [userId]
+    );
+
+    res.json({
+      plan: user.plan,
+      max_total: policy.MAX_TOTAL,
+      max_per_import: policy.MAX_PER_IMPORT,
+      chunk_size: policy.CHUNK_SIZE,
+      current_total: countRes.rows[0].current_total
+    });
+  } catch (err) {
+    console.error('Error in GET /api/v1/me/carriers/import-limits:', err);
+    res.status(500).json({ error: 'Failed to load import limits' });
+  }
+});
+
+// ---------------------------------------------
+// POST /api/v1/me/carriers/import
+// Body: { "dots": ["336075","123456", ...] }
+// Bulk add carriers to My Carriers with plan caps
+// ---------------------------------------------
+router.post('/me/carriers/import', async (req, res) => {
+  try {
+    const userId = req.user && req.user.id;
+    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+
+    // TODO: replace this with real plan lookup later
+    const user = { id: userId, plan: 'FREE' };
+    const policy = getPolicyForUser(user);
+
+    // Client sends { dots: [...] }
+    const { unique, invalid } = normalizeDotsWithInvalid(req.body?.dots);
+
+    // Enforce per-import cap
+    let accepted = unique;
+    let rejected_due_to_import_limit = 0;
+
+    if (accepted.length > policy.MAX_PER_IMPORT) {
+      rejected_due_to_import_limit = accepted.length - policy.MAX_PER_IMPORT;
+      accepted = accepted.slice(0, policy.MAX_PER_IMPORT);
+    }
+
+    // Enforce max total carriers cap (FREE_MAX_TOTAL etc.)
+    const countRes = await pool.query(
+      `SELECT COUNT(*)::int AS current_total
+       FROM user_carriers
+       WHERE user_id = $1;`,
+      [userId]
+    );
+
+    const currentTotal = countRes.rows[0].current_total;
+    const remainingCapacity = Math.max(0, policy.MAX_TOTAL - currentTotal);
+
+    let rejected_due_to_plan_limit = 0;
+    if (accepted.length > remainingCapacity) {
+      rejected_due_to_plan_limit = accepted.length - remainingCapacity;
+      accepted = accepted.slice(0, remainingCapacity);
+    }
+
+    // If nothing can be inserted, return summary
+    if (accepted.length === 0) {
+      return res.json({
+        received: unique.length,
+        valid_unique: unique.length,
+        attempted: 0,
+        inserted: 0,
+        already_had: 0,
+        rejected_due_to_import_limit,
+        rejected_due_to_plan_limit,
+        invalid_count: invalid.length,
+        invalid_sample: invalid.slice(0, policy.MAX_INVALID_TO_RETURN)
+      });
+    }
+
+    // IMPORTANT: Your current /me/carriers endpoint requires carriers exist.
+    // For "lenient", we will NOT check carriers table here.
+    // We'll just insert into user_carriers and let your UI join show what exists.
+    //
+    // Ensure you have a UNIQUE constraint on (user_id, carrier_dot)
+
+    const insertRes = await pool.query(
+      `
+      WITH input(d) AS (
+        SELECT UNNEST($2::text[])
+      )
+      INSERT INTO user_carriers (user_id, carrier_dot, added_at)
+      SELECT $1, d, NOW()
+      FROM input
+      ON CONFLICT (user_id, carrier_dot) DO NOTHING
+      RETURNING carrier_dot;
+      `,
+      [userId, accepted]
+    );
+
+    const inserted = insertRes.rowCount;
+    const already_had = accepted.length - inserted;
+
+    res.json({
+      received: unique.length,
+      valid_unique: unique.length,
+      attempted: accepted.length,
+      inserted,
+      already_had,
+      rejected_due_to_import_limit,
+      rejected_due_to_plan_limit,
+      invalid_count: invalid.length,
+      invalid_sample: invalid.slice(0, policy.MAX_INVALID_TO_RETURN)
+    });
+  } catch (err) {
+    console.error('Error in POST /api/v1/me/carriers/import:', err);
+    res.status(500).json({ error: 'Failed to import carriers' });
+  }
+});
+
+
+  
+  
 
   // ---------------------------------------------
   // GET /api/v1/carriers/:dot  (mounted as /carriers/:dot here)
