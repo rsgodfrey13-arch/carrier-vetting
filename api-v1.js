@@ -910,7 +910,7 @@ router.get('/contracts/new', async (req, res) => {
     ]);
 
     res.json({
-      rows: dataResult.rows.map(r => ({
+      contracts: dataResult.rows.map(r => ({
         contract: {
           contract_id: r.contract_id,
           dotnumber: r.dotnumber,
@@ -971,7 +971,7 @@ router.get('/carriers/:dot/contracts', async (req, res) => {
     ]);
 
     res.json({
-      rows: dataResult.rows.map(r => ({
+      contracts: dataResult.rows.map(r => ({
         contract: {
           contract_id: r.contract_id,
           dotnumber: r.dotnumber,
@@ -1220,7 +1220,7 @@ router.get('/contracts', async (req, res) => {
     ]);
 
     res.json({
-      rows: dataResult.rows.map(r => ({
+      contracts: dataResult.rows.map(r => ({
         contract: {
           contract_id: r.contract_id,
           dotnumber: r.dotnumber,
