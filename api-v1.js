@@ -15,6 +15,27 @@ function normalizeAlertIds(input) {
   )];
 }
 
+function normalizeIdArray(input) {
+  if (!input) return [];
+  const arr = Array.isArray(input) ? input : [input];
+  return [...new Set(
+    arr
+      .map(x => String(x).trim())
+      .filter(x => /^\d+$/.test(x))
+      .map(x => parseInt(x, 10))
+  )];
+}
+
+function normalizeDotArray(input) {
+  if (!input) return [];
+  const arr = Array.isArray(input) ? input : [input];
+  return [...new Set(
+    arr
+      .map(d => String(d).trim())
+      .filter(d => /^\d+$/.test(d))
+  )];
+}
+
 
 function createApiV1(pool) {
   const router = express.Router();
@@ -825,6 +846,454 @@ router.get('/alerts/new', async (req, res) => {
 });
 
 
+
+// =============================
+// CONTRACT ROUTES (v1)
+// Status lifecycle:
+// SENT -> COMPLETED -> PROCESSED
+// =============================
+
+// helper to select a contract + carrier
+function contractSelectSql(whereClause) {
+  return `
+    SELECT
+      c.contract_id,
+      c.user_id,
+      c.dotnumber,
+      c.status,
+      c.created_at,
+      c.updated_at,
+      c.sent_at,
+      c.signed_at,
+      c.provider,
+      c.external_id,
+      c.payload,
+      to_jsonb(car) AS carrier
+    FROM contracts c
+    JOIN carriers car
+      ON car.dotnumber = c.dotnumber
+    ${whereClause}
+  `;
+}
+
+// ---------------------------------------------
+// GET /api/v1/contracts/new
+// "new" = COMPLETED (ready for broker), NOT PROCESSED yet
+// ---------------------------------------------
+router.get('/contracts/new', async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+
+    const page = parseInt(req.query.page, 10) || 1;
+    const pageSizeRaw = parseInt(req.query.pageSize, 10) || 25;
+    const limit = Math.min(pageSizeRaw, 100);
+    const offset = (page - 1) * limit;
+
+    const whereClause = `WHERE c.user_id = $1 AND c.status = 'COMPLETED'`;
+
+    const sql = `
+      ${contractSelectSql(whereClause)}
+      ORDER BY c.created_at DESC
+      LIMIT $2 OFFSET $3;
+    `;
+
+    const countSql = `
+      SELECT COUNT(*)::int AS count
+      FROM contracts c
+      ${whereClause};
+    `;
+
+    const [dataResult, countResult] = await Promise.all([
+      pool.query(sql, [userId, limit, offset]),
+      pool.query(countSql, [userId])
+    ]);
+
+    res.json({
+      rows: dataResult.rows.map(r => ({
+        contract: {
+          contract_id: r.contract_id,
+          dotnumber: r.dotnumber,
+          status: r.status,
+          created_at: r.created_at,
+          updated_at: r.updated_at,
+          sent_at: r.sent_at,
+          signed_at: r.signed_at,
+          provider: r.provider,
+          external_id: r.external_id,
+          payload: r.payload
+        },
+        carrier: r.carrier
+      })),
+      total: countResult.rows[0].count,
+      page,
+      pageSize: limit
+    });
+  } catch (err) {
+    console.error('Error in GET /api/v1/contracts/new:', err);
+    res.status(500).json({ error: 'Failed to load new contracts' });
+  }
+});
+
+// ---------------------------------------------
+// GET /api/v1/carriers/:dot/contracts
+// ---------------------------------------------
+router.get('/carriers/:dot/contracts', async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+
+    const dot = String(req.params.dot || '').trim();
+    if (!/^\d+$/.test(dot)) return res.status(400).json({ error: 'Invalid DOT' });
+
+    const page = parseInt(req.query.page, 10) || 1;
+    const pageSizeRaw = parseInt(req.query.pageSize, 10) || 25;
+    const limit = Math.min(pageSizeRaw, 100);
+    const offset = (page - 1) * limit;
+
+    const whereClause = `WHERE c.user_id = $1 AND c.dotnumber = $2`;
+
+    const sql = `
+      ${contractSelectSql(whereClause)}
+      ORDER BY c.created_at DESC
+      LIMIT $3 OFFSET $4;
+    `;
+
+    const countSql = `
+      SELECT COUNT(*)::int AS count
+      FROM contracts c
+      ${whereClause};
+    `;
+
+    const [dataResult, countResult] = await Promise.all([
+      pool.query(sql, [userId, dot, limit, offset]),
+      pool.query(countSql, [userId, dot])
+    ]);
+
+    res.json({
+      rows: dataResult.rows.map(r => ({
+        contract: {
+          contract_id: r.contract_id,
+          dotnumber: r.dotnumber,
+          status: r.status,
+          created_at: r.created_at,
+          updated_at: r.updated_at,
+          sent_at: r.sent_at,
+          signed_at: r.signed_at,
+          provider: r.provider,
+          external_id: r.external_id,
+          payload: r.payload
+        },
+        carrier: r.carrier
+      })),
+      total: countResult.rows[0].count,
+      page,
+      pageSize: limit
+    });
+  } catch (err) {
+    console.error('Error in GET /api/v1/carriers/:dot/contracts:', err);
+    res.status(500).json({ error: 'Failed to load carrier contracts' });
+  }
+});
+
+// ---------------------------------------------
+// PATCH /api/v1/contracts/processed
+// Body: { "contracts": ["12","13"] }
+// only COMPLETED -> PROCESSED
+// ---------------------------------------------
+router.patch('/contracts/processed', async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+
+    const ids = normalizeIdArray(req.body?.contracts);
+    if (ids.length === 0) {
+      return res.status(400).json({ error: 'contracts array is required (numeric ids)' });
+    }
+
+    const updateResult = await pool.query(
+      `
+      UPDATE contracts
+      SET status = 'PROCESSED',
+          updated_at = NOW()
+      WHERE user_id = $1
+        AND contract_id = ANY($2::bigint[])
+        AND status = 'COMPLETED'
+      RETURNING contract_id;
+      `,
+      [userId, ids]
+    );
+
+    const updated = updateResult.rows.map(r => String(r.contract_id));
+    const updatedSet = new Set(updated);
+
+    res.json({
+      summary: {
+        totalSubmitted: ids.length,
+        updated: updated.length,
+        notFoundOrNotCompleted: ids.length - updated.length
+      },
+      details: ids.map(id => ({
+        contract_id: String(id),
+        status: updatedSet.has(String(id)) ? 'processed' : 'not_found_or_not_completed'
+      }))
+    });
+  } catch (err) {
+    console.error('Error in PATCH /api/v1/contracts/processed:', err);
+    res.status(500).json({ error: 'Failed to mark contracts processed' });
+  }
+});
+
+// ---------------------------------------------
+// PATCH /api/v1/contracts/unprocessed
+// Body: { "contracts": ["12","13"] }
+// only PROCESSED -> COMPLETED
+// ---------------------------------------------
+router.patch('/contracts/unprocessed', async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+
+    const ids = normalizeIdArray(req.body?.contracts);
+    if (ids.length === 0) {
+      return res.status(400).json({ error: 'contracts array is required (numeric ids)' });
+    }
+
+    const updateResult = await pool.query(
+      `
+      UPDATE contracts
+      SET status = 'COMPLETED',
+          updated_at = NOW()
+      WHERE user_id = $1
+        AND contract_id = ANY($2::bigint[])
+        AND status = 'PROCESSED'
+      RETURNING contract_id;
+      `,
+      [userId, ids]
+    );
+
+    const updated = updateResult.rows.map(r => String(r.contract_id));
+    const updatedSet = new Set(updated);
+
+    res.json({
+      summary: {
+        totalSubmitted: ids.length,
+        updated: updated.length,
+        notFoundOrNotProcessed: ids.length - updated.length
+      },
+      details: ids.map(id => ({
+        contract_id: String(id),
+        status: updatedSet.has(String(id)) ? 'unprocessed' : 'not_found_or_not_processed'
+      }))
+    });
+  } catch (err) {
+    console.error('Error in PATCH /api/v1/contracts/unprocessed:', err);
+    res.status(500).json({ error: 'Failed to mark contracts unprocessed' });
+  }
+});
+
+// ---------------------------------------------
+// POST /api/v1/contracts/send
+// Body: { "dot": ["336075","123456"] }  (array or single)
+// creates contracts in SENT
+// ---------------------------------------------
+router.post('/contracts/send', async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+
+    const dots = normalizeDotArray(req.body?.dot);
+    if (dots.length === 0) {
+      return res.status(400).json({ error: 'dot is required (numeric DOT or array of DOTs)' });
+    }
+
+    // validate DOTs exist
+    const carriersRes = await pool.query(
+      `SELECT dotnumber FROM carriers WHERE dotnumber = ANY($1::text[])`,
+      [dots]
+    );
+    const validSet = new Set(carriersRes.rows.map(r => String(r.dotnumber)));
+    const validDots = dots.filter(d => validSet.has(d));
+    const invalidDots = dots.filter(d => !validSet.has(d));
+
+    if (validDots.length === 0) {
+      return res.status(400).json({ error: 'No valid DOTs found in carriers table', invalidDots });
+    }
+
+    const insertRes = await pool.query(
+      `
+      INSERT INTO contracts (user_id, dotnumber, status, payload, sent_at)
+      SELECT $1, unnest($2::text[]), 'SENT', '{}'::jsonb, NOW()
+      RETURNING contract_id, dotnumber, status, created_at, sent_at;
+      `,
+      [userId, validDots]
+    );
+
+    res.json({
+      summary: {
+        totalSubmitted: dots.length,
+        created: insertRes.rowCount,
+        invalidDots: invalidDots.length
+      },
+      created: insertRes.rows,
+      invalidDots
+    });
+  } catch (err) {
+    console.error('Error in POST /api/v1/contracts/send:', err);
+    res.status(500).json({ error: 'Failed to send contracts' });
+  }
+});
+
+// ---------------------------------------------
+// GET /api/v1/contracts
+// filterable + paginated: status, dotnumber, contract_id, created_after, created_before
+// ---------------------------------------------
+router.get('/contracts', async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+
+    const {
+      status,
+      dotnumber,
+      contract_id,
+      created_after,
+      created_before,
+      page = 1,
+      pageSize = 25
+    } = req.query;
+
+    const limit = Math.min(parseInt(pageSize, 10) || 25, 100);
+    const offset = (parseInt(page, 10) - 1) * limit;
+
+    const conditions = ['c.user_id = $1'];
+    const params = [userId];
+    let i = 2;
+
+    if (contract_id && /^\d+$/.test(String(contract_id))) {
+      conditions.push(`c.contract_id = $${i}`);
+      params.push(String(contract_id));
+      i++;
+    }
+
+    if (status) {
+      conditions.push(`c.status = $${i}`);
+      params.push(String(status).trim().toUpperCase());
+      i++;
+    }
+
+    if (dotnumber) {
+      conditions.push(`c.dotnumber = $${i}`);
+      params.push(String(dotnumber).trim());
+      i++;
+    }
+
+    if (created_after) {
+      conditions.push(`c.created_at >= $${i}`);
+      params.push(created_after);
+      i++;
+    }
+
+    if (created_before) {
+      conditions.push(`c.created_at <= $${i}`);
+      params.push(created_before);
+      i++;
+    }
+
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+
+    const sql = `
+      ${contractSelectSql(whereClause)}
+      ORDER BY c.created_at DESC
+      LIMIT $${i} OFFSET $${i + 1};
+    `;
+
+    const countSql = `
+      SELECT COUNT(*)::int AS count
+      FROM contracts c
+      ${whereClause};
+    `;
+
+    const [dataResult, countResult] = await Promise.all([
+      pool.query(sql, [...params, limit, offset]),
+      pool.query(countSql, params)
+    ]);
+
+    res.json({
+      rows: dataResult.rows.map(r => ({
+        contract: {
+          contract_id: r.contract_id,
+          dotnumber: r.dotnumber,
+          status: r.status,
+          created_at: r.created_at,
+          updated_at: r.updated_at,
+          sent_at: r.sent_at,
+          signed_at: r.signed_at,
+          provider: r.provider,
+          external_id: r.external_id,
+          payload: r.payload
+        },
+        carrier: r.carrier
+      })),
+      total: countResult.rows[0].count,
+      page: parseInt(page, 10),
+      pageSize: limit
+    });
+  } catch (err) {
+    console.error('Error in GET /api/v1/contracts:', err);
+    res.status(500).json({ error: 'Failed to load contracts' });
+  }
+});
+
+// ---------------------------------------------
+// GET /api/v1/contracts/:contract_id
+// ---------------------------------------------
+router.get('/contracts/:contract_id', async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+
+    const contractId = String(req.params.contract_id || '').trim();
+    if (!/^\d+$/.test(contractId)) {
+      return res.status(400).json({ error: 'Invalid contract_id' });
+    }
+
+    const whereClause = `WHERE c.user_id = $1 AND c.contract_id = $2`;
+
+    const sql = `
+      ${contractSelectSql(whereClause)}
+      LIMIT 1;
+    `;
+
+    const result = await pool.query(sql, [userId, contractId]);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Contract not found' });
+    }
+
+    const r = result.rows[0];
+
+    res.json({
+      contract: {
+        contract_id: r.contract_id,
+        dotnumber: r.dotnumber,
+        status: r.status,
+        created_at: r.created_at,
+        updated_at: r.updated_at,
+        sent_at: r.sent_at,
+        signed_at: r.signed_at,
+        provider: r.provider,
+        external_id: r.external_id,
+        payload: r.payload
+      },
+      carrier: r.carrier
+    });
+  } catch (err) {
+    console.error('Error in GET /api/v1/contracts/:contract_id:', err);
+    res.status(500).json({ error: 'Failed to load contract' });
+  }
+});
+
+  
 
   
   // Add more v1 routes above this line
