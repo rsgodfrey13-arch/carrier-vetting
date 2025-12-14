@@ -621,7 +621,7 @@ async function performSearch(query) {
     buildMyCarrierDots(); // just for the pill
 
 // ---------- SERVER-SIDE SORT HEADER HANDLERS ----------
-document.addEventListener('DOMContentLoaded', function () {
+(() => {
   const table = document.getElementById('carriers-table');
   if (!table) return;
 
