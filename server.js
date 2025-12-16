@@ -7,6 +7,15 @@ const path = require('path');
 const app = express();
 const port = process.env.PORT || 3000;
 
+
+// Mailgun Stuff
+const { sendContractEmail } = require("./mailgun");
+const crypto = require("crypto");
+function makeToken() {
+  return crypto.randomBytes(24).toString("hex");
+}
+
+
 // If you're behind a proxy (DigitalOcean App Platform), this helps cookies work correctly
 app.set('trust proxy', 1);
 
@@ -98,6 +107,61 @@ app.post('/api/logout', (req, res) => {
     res.json({ ok: true });
   });
 });
+
+
+/** ---------- CONTRACT SEND ROUTE ---------- **/
+app.post("/api/contracts/send/:dot", requireAuth, async (req, res) => {
+  const dotnumber = req.params.dot;
+  const { user_contract_id, email_to } = req.body || {};
+
+  const user_id = req.session.userId; // <-- YOUR session stores userId
+  if (!user_id) return res.status(401).json({ error: "Not authenticated" });
+
+  if (!user_contract_id || !email_to) {
+    return res.status(400).json({ error: "user_contract_id and email_to are required" });
+  }
+
+  const token = makeToken();
+  const token_expires_at = new Date(Date.now() + 72 * 60 * 60 * 1000);
+  const link = `https://carriershark.com/contract/${token}`;
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const insertSql = `
+      INSERT INTO public.contracts
+        (user_id, dotnumber, status, channel, provider, payload, sent_at, token, token_expires_at, email_to, user_contract_id)
+      VALUES
+        ($1, $2, 'SENT', 'EMAIL', 'MAILGUN', '{}'::jsonb, NOW(), $3, $4, $5, $6)
+      RETURNING contract_id;
+    `;
+
+    const { rows } = await client.query(insertSql, [
+      user_id,
+      dotnumber,
+      token,
+      token_expires_at.toISOString(),
+      email_to,
+      user_contract_id
+    ]);
+
+    const contract_id = rows[0].contract_id;
+
+    await sendContractEmail({ to: email_to, dotnumber, link });
+
+    await client.query("COMMIT");
+
+    return res.json({ ok: true, contract_id, status: "SENT", link });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error(err);
+    return res.status(500).json({ error: "Failed to send contract" });
+  } finally {
+    client.release();
+  }
+});
+
 
 // API key auth for /api/v1
 async function apiAuth(req, res, next) {
