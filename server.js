@@ -114,7 +114,7 @@ app.post("/api/contracts/send/:dot", requireAuth, async (req, res) => {
   const dotnumber = req.params.dot;
   const { user_contract_id, email_to } = req.body || {};
 
-  const user_id = req.session.userId; // <-- YOUR session stores userId
+  const user_id = req.session.userId;
   if (!user_id) return res.status(401).json({ error: "Not authenticated" });
 
   if (!user_contract_id || !email_to) {
@@ -146,24 +146,34 @@ app.post("/api/contracts/send/:dot", requireAuth, async (req, res) => {
       user_contract_id
     ]);
 
-    const contract_id = rows[0].contract_id;
+    const contract_id = rows[0]?.contract_id;
+    if (!contract_id) {
+      throw new Error("Insert succeeded but no contract_id returned");
+    }
 
     await sendContractEmail({ to: email_to, dotnumber, link });
 
     await client.query("COMMIT");
-
     return res.json({ ok: true, contract_id, status: "SENT", link });
   } catch (err) {
-    await client.query("ROLLBACK");
+    try {
+      await client.query("ROLLBACK");
+    } catch (rbErr) {
+      console.error("ROLLBACK ERROR:", rbErr);
+    }
+
     console.error("SEND CONTRACT ERROR:", err?.message, err?.detail, err);
+
     return res.status(500).json({
       error: "Failed to send contract",
-      message: err?.message,
-      detail: err?.detail
+      message: err?.message || String(err),
+      detail: err?.detail || null
     });
   } finally {
     client.release();
   }
+});
+
 
 
 // API key auth for /api/v1
