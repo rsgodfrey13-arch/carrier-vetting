@@ -258,6 +258,110 @@ app.post("/api/contracts/send/:dot", requireAuth, async (req, res) => {
 
 
 
+/** ---------- CONTRACT ACK (token-gated) ---------- **/
+app.post("/contract/:token/ack", async (req, res) => {
+  const token = String(req.params.token || "").trim();
+  if (!token) return res.status(400).json({ error: "Missing token" });
+
+  const { ack, name, title, email } = req.body || {};
+
+  // basic validation
+  if (ack !== true) {
+    return res.status(400).json({ error: "ack must be true" });
+  }
+  if (!name || !String(name).trim()) {
+    return res.status(400).json({ error: "name is required" });
+  }
+  if (!title || !String(title).trim()) {
+    return res.status(400).json({ error: "title is required" });
+  }
+
+  const accepted_name = String(name).trim();
+  const accepted_title = String(title).trim();
+  const accepted_email = email ? String(email).trim() : null;
+
+  // capture audit info
+  const accepted_ip =
+    (req.headers["x-forwarded-for"] ? String(req.headers["x-forwarded-for"]).split(",")[0].trim() : null)
+    || req.ip
+    || null;
+
+  const accepted_user_agent = req.get("user-agent") || null;
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // 1) validate token + not expired, get contract_id
+    const contractRes = await client.query(
+      `
+      SELECT contract_id, token_expires_at
+      FROM public.contracts
+      WHERE token = $1
+      LIMIT 1;
+      `,
+      [token]
+    );
+
+    if (contractRes.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Invalid link" });
+    }
+
+    const contract_id = contractRes.rows[0].contract_id;
+    const token_expires_at = contractRes.rows[0].token_expires_at;
+
+    if (token_expires_at && new Date(token_expires_at) < new Date()) {
+      await client.query("ROLLBACK");
+      return res.status(410).json({ error: "This link has expired" });
+    }
+
+    // 2) insert acceptance (idempotent per contract_id)
+    await client.query(
+      `
+      INSERT INTO public.contract_acceptances
+        (contract_id, method, accepted_name, accepted_title, accepted_email, accepted_ip, accepted_user_agent)
+      VALUES
+        ($1, 'ACK', $2, $3, $4, $5, $6)
+      ON CONFLICT (contract_id) DO UPDATE
+        SET method = EXCLUDED.method,
+            accepted_name = EXCLUDED.accepted_name,
+            accepted_title = EXCLUDED.accepted_title,
+            accepted_email = EXCLUDED.accepted_email,
+            accepted_at = NOW(),
+            accepted_ip = EXCLUDED.accepted_ip,
+            accepted_user_agent = EXCLUDED.accepted_user_agent;
+      `,
+      [contract_id, accepted_name, accepted_title, accepted_email, accepted_ip, accepted_user_agent]
+    );
+
+    // 3) update contract status
+    await client.query(
+      `
+      UPDATE public.contracts
+      SET status = 'ACKNOWLEDGED',
+          signed_at = NOW(),
+          updated_at = NOW()
+      WHERE contract_id = $1;
+      `,
+      [contract_id]
+    );
+
+    await client.query("COMMIT");
+    return res.json({ ok: true, contract_id, status: "ACKNOWLEDGED" });
+  } catch (err) {
+    try { await client.query("ROLLBACK"); } catch {}
+    console.error("POST /contract/:token/ack error:", err?.message, err);
+    return res.status(500).json({ error: "Failed to acknowledge contract" });
+  } finally {
+    client.release();
+  }
+});
+
+
+
+
+
 // API key auth for /api/v1
 async function apiAuth(req, res, next) {
   try {
@@ -779,6 +883,12 @@ app.get('/api/carriers/:dot', async (req, res) => {
     res.status(500).json({ error: 'Database query failed' });
   }
 });
+
+
+
+
+
+
 
 
 /**
