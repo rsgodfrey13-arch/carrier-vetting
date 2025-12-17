@@ -10,12 +10,13 @@ const port = process.env.PORT || 3000;
 const AWS = require("aws-sdk");
 
 const spaces = new AWS.S3({
-  endpoint: `https://${process.env.atl1}.digitaloceanspaces.com`,
-  accessKeyId: process.env.DO801KDUHJUCXHU6J22U,
-  secretAccessKey: process.env.MR0uLRL6qLDyotrscQ9Ri4fn4nkqsakw3uNfpYfzF6M,
+  endpoint: `https://${process.env.SPACES_REGION}.digitaloceanspaces.com`,
+  accessKeyId: process.env.SPACES_KEY,
+  secretAccessKey: process.env.SPACES_SECRET,
   s3ForcePathStyle: true,
   signatureVersion: "v4"
 });
+
 
 
 
@@ -162,7 +163,7 @@ app.get("/contract/:token/pdf", async (req, res) => {
     }
 
     // 4) Stream PDF from Spaces
-    const Bucket = process.env.carriershark-contracts;
+const Bucket = process.env.SPACES_BUCKET;
     const Key = row.storage_key;
 
     const obj = spaces.getObject({ Bucket, Key }).createReadStream();
@@ -788,9 +789,6 @@ app.get('/:dot(\\d+)', (req, res) => {
   res.sendFile(path.join(__dirname, 'carrier.html'));
 });
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
 
 
 app.get("/api/_debug/spaces", async (req, res) => {
@@ -817,6 +815,9 @@ app.get("/api/_debug/spaces", async (req, res) => {
   }
 });
 
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
 
 
 /** ---------- Removed ---------- -
