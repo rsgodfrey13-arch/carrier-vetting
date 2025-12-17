@@ -711,6 +711,33 @@ app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
 
+
+app.get("/api/_debug/spaces", async (req, res) => {
+  try {
+    const AWS = require("aws-sdk");
+
+    const s3 = new AWS.S3({
+      endpoint: `https://${process.env.SPACES_REGION}.digitaloceanspaces.com`,
+      accessKeyId: process.env.SPACES_KEY,
+      secretAccessKey: process.env.SPACES_SECRET,
+      s3ForcePathStyle: true,
+      signatureVersion: "v4"
+    });
+
+    const result = await s3.listObjectsV2({
+      Bucket: process.env.SPACES_BUCKET,
+      MaxKeys: 5
+    }).promise();
+
+    res.json({ ok: true, objects: result.Contents || [] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+
 /** ---------- Removed ---------- -
 app.get('/api/carriers/search', async (req, res) => {
   const q = (req.query.q || '').trim();
