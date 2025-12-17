@@ -153,15 +153,17 @@ app.post("/api/contracts/send/:dot", requireAuth, async (req, res) => {
     await client.query("COMMIT");
 
     return res.json({ ok: true, contract_id, status: "SENT", link });
-} catch (err) {
-  await client.query("ROLLBACK");
-  console.error("SEND CONTRACT ERROR:", err?.message, err?.detail, err);
-  return res.status(500).json({
-    error: "Failed to send contract",
-    message: err?.message,
-    detail: err?.detail
-  });
-}
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("SEND CONTRACT ERROR:", err?.message, err?.detail, err);
+    return res.status(500).json({
+      error: "Failed to send contract",
+      message: err?.message,
+      detail: err?.detail
+    });
+  } finally {
+    client.release();
+  }
 
 
 // API key auth for /api/v1
