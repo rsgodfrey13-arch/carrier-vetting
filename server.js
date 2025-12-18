@@ -107,17 +107,18 @@ app.post(
       // Store a stable reference:
       const file_url = `s3://${process.env.SPACES_BUCKET}/${key}`;
 
-      // Insert into Postgres
-      const result = await pool.query(
-        `
-        INSERT INTO insurance_documents
-          (dot_number, uploaded_by, file_url, file_type, document_type, status)
-        VALUES
-          ($1, $2, $3, 'PDF', $4, 'ON_FILE')
-        RETURNING id, dot_number, uploaded_by, file_url, file_type, document_type, status, uploaded_at
-        `,
-        [dot_number, uploaded_by, file_url, document_type]
-      );
+// Insert into Postgres
+const result = await pool.query(
+  `
+  INSERT INTO insurance_documents
+    (dot_number, uploaded_by, file_url, spaces_key, file_type, document_type, status)
+  VALUES
+    ($1, $2, $3, $4, 'PDF', $5, 'ON_FILE')
+  RETURNING id, dot_number, uploaded_by, file_url, spaces_key, file_type, document_type, status, uploaded_at
+  `,
+  [dot_number, uploaded_by, file_url, key, document_type]
+);
+
 
       return res.status(201).json({
         ok: true,
