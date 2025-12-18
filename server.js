@@ -21,6 +21,53 @@ const { GetObjectCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 
 
+
+// Ideal Route - Get Latest DOT
+
+app.get("/api/insurance/latest", async (req, res) => {
+  try {
+    const dot = String(req.query.dot || "").replace(/\D/g, "");
+    if (!dot) throw new Error("dot query param is required (numbers only).");
+
+    const r = await pool.query(
+      `
+      SELECT id, dot_number, uploaded_by, document_type, status, uploaded_at, spaces_key
+      FROM insurance_documents
+      WHERE dot_number = $1
+      ORDER BY uploaded_at DESC
+      LIMIT 1
+      `,
+      [dot]
+    );
+
+    if (r.rowCount === 0) {
+      return res.json({ ok: true, dot_number: dot, document: null });
+    }
+
+    const doc = r.rows[0];
+    if (!doc.spaces_key) throw new Error("spaces_key is missing for this document.");
+
+    const command = new GetObjectCommand({
+      Bucket: process.env.SPACES_BUCKET,
+      Key: doc.spaces_key,
+      ResponseContentType: "application/pdf",
+      // inline display in browser:
+      ResponseContentDisposition: `inline; filename="COI-${doc.dot_number}.pdf"`
+    });
+
+    const signedUrl = await getSignedUrl(s3, command, { expiresIn: 60 * 10 }); // 10 min
+
+    return res.json({
+      ok: true,
+      dot_number: dot,
+      document: doc,
+      signedUrl
+    });
+  } catch (err) {
+    return res.status(400).json({ ok: false, error: err.message });
+  }
+});
+
 // Document PDF Broker/Carrier
 
 const multer = require("multer");
