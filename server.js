@@ -17,9 +17,13 @@ const spaces = new AWS.S3({
   signatureVersion: "v4"
 });
 
-const { GetObjectCommand } = require("@aws-sdk/client-s3");
-const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+const { 
+  S3Client, 
+  PutObjectCommand, 
+  GetObjectCommand 
+} = require("@aws-sdk/client-s3");
 
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 
 
 // Ideal Route - Get Latest DOT
