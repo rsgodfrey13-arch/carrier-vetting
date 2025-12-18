@@ -17,6 +17,10 @@ const spaces = new AWS.S3({
   signatureVersion: "v4"
 });
 
+const { GetObjectCommand } = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+
+
 // Document PDF Broker/Carrier
 
 const multer = require("multer");
@@ -134,6 +138,74 @@ const result = await pool.query(
 );
 
 
+// Get insurance docs
+
+app.get("/api/insurance/documents", async (req, res) => {
+  try {
+    const dot = String(req.query.dot || "").replace(/\D/g, "");
+    if (!dot) throw new Error("dot query param is required (numbers only).");
+
+    const r = await pool.query(
+      `
+      SELECT id, dot_number, uploaded_by, document_type, status, uploaded_at
+           , file_url, spaces_key
+      FROM insurance_documents
+      WHERE dot_number = $1
+      ORDER BY uploaded_at DESC
+      LIMIT 50
+      `,
+      [dot]
+    );
+
+    res.json({ ok: true, documents: r.rows });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message });
+  }
+});
+
+
+// GET a signed URL to view/download the PDF
+
+app.get("/api/insurance/documents/:id/signed-url", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const r = await pool.query(
+      `
+      SELECT id, dot_number, spaces_key, file_url
+      FROM insurance_documents
+      WHERE id = $1
+      `,
+      [id]
+    );
+
+    if (r.rowCount === 0) throw new Error("Document not found.");
+
+    const doc = r.rows[0];
+
+    // If you didn't add spaces_key, you'd need to parse it out of file_url here.
+    if (!doc.spaces_key) throw new Error("spaces_key is missing for this document.");
+
+    const command = new GetObjectCommand({
+      Bucket: process.env.SPACES_BUCKET,
+      Key: doc.spaces_key,
+      ResponseContentType: "application/pdf",
+      // optional: force download instead of inline viewing
+      // ResponseContentDisposition: `attachment; filename="COI-${doc.dot_number}.pdf"`
+    });
+
+    const signedUrl = await getSignedUrl(s3, command, { expiresIn: 60 * 10 }); // 10 minutes
+
+    res.json({
+      ok: true,
+      id: doc.id,
+      dot_number: doc.dot_number,
+      signedUrl
+    });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message });
+  }
+});
 
 
 // Mailgun Stuff
