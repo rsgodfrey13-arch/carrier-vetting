@@ -375,17 +375,20 @@ app.get("/contract/:token", async (req, res) => {
 
 
 
-
 /** ---------- CONTRACT SEND ROUTE ---------- **/
 app.post("/api/contracts/send/:dot", requireAuth, async (req, res) => {
   const dotnumber = req.params.dot;
   const { user_contract_id, email_to } = req.body || {};
-
   const user_id = req.session.userId;
-  if (!user_id) return res.status(401).json({ error: "Not authenticated" });
+
+  if (!user_id) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
 
   if (!user_contract_id || !email_to) {
-    return res.status(400).json({ error: "user_contract_id and email_to are required" });
+    return res.status(400).json({
+      error: "user_contract_id and email_to are required"
+    });
   }
 
   const token = makeToken();
@@ -396,11 +399,56 @@ app.post("/api/contracts/send/:dot", requireAuth, async (req, res) => {
   try {
     await client.query("BEGIN");
 
+    // ✅ Verify the contract template belongs to this user AND is usable
+    const templateCheck = await client.query(
+      `
+      SELECT 1
+      FROM public.user_contracts
+      WHERE id = $1
+        AND user_id = $2
+        AND storage_provider = 'DO_SPACES'
+        AND storage_key IS NOT NULL
+      `,
+      [user_contract_id, user_id]
+    );
+
+    if (templateCheck.rowCount === 0) {
+      throw Object.assign(
+        new Error("Invalid or unauthorized contract template"),
+        { statusCode: 400 }
+      );
+    }
+
+    // ✅ Insert contract record
     const insertSql = `
       INSERT INTO public.contracts
-        (user_id, dotnumber, status, channel, provider, payload, sent_at, token, token_expires_at, email_to, user_contract_id)
+        (
+          user_id,
+          dotnumber,
+          status,
+          channel,
+          provider,
+          payload,
+          sent_at,
+          token,
+          token_expires_at,
+          email_to,
+          user_contract_id
+        )
       VALUES
-        ($1, $2, 'SENT', 'EMAIL', 'MAILGUN', '{}'::jsonb, NOW(), $3, $4, $5, $6)
+        (
+          $1,
+          $2,
+          'SENT',
+          'EMAIL',
+          'MAILGUN',
+          '{}'::jsonb,
+          NOW(),
+          $3,
+          $4,
+          $5,
+          $6
+        )
       RETURNING contract_id;
     `;
 
@@ -415,31 +463,41 @@ app.post("/api/contracts/send/:dot", requireAuth, async (req, res) => {
 
     const contract_id = rows[0]?.contract_id;
     if (!contract_id) {
-      throw new Error("Insert succeeded but no contract_id returned");
+      throw new Error("Failed to create contract");
     }
 
-    await sendContractEmail({ to: email_to, dotnumber, link });
+    // ✅ Send email
+    await sendContractEmail({
+      to: email_to,
+      dotnumber,
+      link
+    });
 
     await client.query("COMMIT");
-    return res.json({ ok: true, contract_id, status: "SENT", link });
+
+    return res.json({
+      ok: true,
+      contract_id,
+      status: "SENT",
+      link
+    });
+
   } catch (err) {
     try {
       await client.query("ROLLBACK");
-    } catch (rbErr) {
-      console.error("ROLLBACK ERROR:", rbErr);
-    }
+    } catch {}
 
-    console.error("SEND CONTRACT ERROR:", err?.message, err?.detail, err);
+    console.error("SEND CONTRACT ERROR:", err);
 
-    return res.status(500).json({
-      error: "Failed to send contract",
-      message: err?.message || String(err),
-      detail: err?.detail || null
+    return res.status(err.statusCode || 500).json({
+      error: err.message || "Failed to send contract"
     });
+
   } finally {
     client.release();
   }
 });
+
 
 
 
