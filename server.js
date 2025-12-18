@@ -544,6 +544,121 @@ app.post("/contract/:token/ack", async (req, res) => {
 });
 
 
+/** ---------- CONTRACT TEMPLATES (broker-side) ---------- **/
+app.get("/api/user-contracts", requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+
+  try {
+    const { rows } = await pool.query(
+      `
+      SELECT
+        id,
+        name,
+        version,
+        storage_provider,
+        storage_key,
+        created_at
+      FROM public.user_contracts
+      WHERE user_id = $1
+      ORDER BY created_at DESC;
+      `,
+      [userId]
+    );
+
+    res.json({ rows });
+  } catch (err) {
+    console.error("GET /api/user-contracts error:", err);
+    res.status(500).json({ error: "Failed to load contract templates" });
+  }
+});
+
+
+
+
+
+
+/** ---------- LATEST CONTRACT FOR DOT (broker-side) ---------- **/
+app.get("/api/contracts/latest/:dot", requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const dotnumber = String(req.params.dot || "").trim();
+
+  if (!dotnumber) return res.status(400).json({ error: "dot is required" });
+
+  try {
+    const { rows } = await pool.query(
+      `
+      SELECT
+        c.contract_id,
+        c.user_id,
+        c.dotnumber,
+        c.status,
+        c.channel,
+        c.provider,
+        c.email_to,
+        c.sent_at,
+        c.signed_at,
+        c.created_at,
+        c.updated_at,
+        c.user_contract_id,
+        uc.name AS contract_name,
+        uc.version AS contract_version,
+        ca.method AS acceptance_method,
+        ca.accepted_at,
+        ca.accepted_name,
+        ca.accepted_title,
+        ca.accepted_email,
+        ca.accepted_ip
+      FROM public.contracts c
+      LEFT JOIN public.user_contracts uc
+        ON uc.id = c.user_contract_id
+      LEFT JOIN public.contract_acceptances ca
+        ON ca.contract_id = c.contract_id
+      WHERE c.user_id = $1
+        AND c.dotnumber = $2
+      ORDER BY c.created_at DESC
+      LIMIT 1;
+      `,
+      [userId, dotnumber]
+    );
+
+    if (rows.length === 0) return res.json({ row: null });
+
+    res.json({ row: rows[0] });
+  } catch (err) {
+    console.error("GET /api/contracts/latest/:dot error:", err);
+    res.status(500).json({ error: "Failed to load latest contract" });
+  }
+});
+
+
+
+
+
+
+app.get("/api/contracts/:dot", requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const dotnumber = String(req.params.dot || "").trim();
+
+  try {
+    const { rows } = await pool.query(
+      `
+      SELECT
+        contract_id, status, email_to, sent_at, created_at, updated_at, user_contract_id
+      FROM public.contracts
+      WHERE user_id = $1 AND dotnumber = $2
+      ORDER BY created_at DESC
+      LIMIT 50;
+      `,
+      [userId, dotnumber]
+    );
+
+    res.json({ rows });
+  } catch (err) {
+    console.error("GET /api/contracts/:dot error:", err);
+    res.status(500).json({ error: "Failed to load contract history" });
+  }
+});
+
 
 
 
