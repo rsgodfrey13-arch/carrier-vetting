@@ -121,6 +121,71 @@ app.post('/api/logout', (req, res) => {
   });
 });
 
+/** ---------- CONTRACT PDF (token-gated) ---------- **/
+app.get("/contract/:token/pdf", async (req, res) => {
+  const token = String(req.params.token || "").trim();
+  if (!token) return res.status(400).send("Missing token");
+
+  try {
+    // 1) Lookup contract + template key
+    const sql = `
+      SELECT
+        c.contract_id,
+        c.status,
+        c.token_expires_at,
+        uc.storage_provider,
+        uc.storage_key,
+        uc.name AS contract_name
+      FROM public.contracts c
+      JOIN public.user_contracts uc
+        ON uc.id = c.user_contract_id
+      WHERE c.token = $1
+      LIMIT 1;
+    `;
+
+    const { rows } = await pool.query(sql, [token]);
+    if (rows.length === 0) return res.status(404).send("Invalid link");
+
+    const row = rows[0];
+
+    // 2) Expiration check
+    if (row.token_expires_at && new Date(row.token_expires_at) < new Date()) {
+      return res.status(410).send("This link has expired");
+    }
+
+    // 3) Validate storage fields
+    if (row.storage_provider !== "DO_SPACES") {
+      return res.status(500).send("Storage provider not configured");
+    }
+    if (!row.storage_key) {
+      return res.status(500).send("Missing storage key");
+    }
+
+    // 4) Stream PDF from Spaces
+const Bucket = process.env.SPACES_BUCKET;
+    const Key = row.storage_key;
+
+    const obj = spaces.getObject({ Bucket, Key }).createReadStream();
+
+    // If the stream errors (missing key, perms), return 404/500
+    obj.on("error", (err) => {
+      console.error("SPACES getObject error:", err?.code, err?.message, err);
+      if (err?.code === "NoSuchKey") return res.status(404).send("PDF not found");
+      return res.status(500).send("Failed to load PDF");
+    });
+
+    // 5) Headers for inline display
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "inline; filename=\"contract.pdf\"");
+    res.setHeader("Cache-Control", "no-store");
+
+    // 6) Pipe it
+    obj.pipe(res);
+  } catch (err) {
+    console.error("GET /contract/:token/pdf error:", err?.message, err);
+    return res.status(500).send("Server error");
+  }
+});
 
 /** ---------- CONTRACT LANDING PAGE (token + ACK UI) ---------- **/
 app.get("/contract/:token", async (req, res) => {
