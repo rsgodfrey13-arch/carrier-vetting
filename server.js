@@ -137,7 +137,6 @@ app.post(
 
 // Mailgun Stuff
 const { sendContractEmail } = require("./mailgun");
-const crypto = require("crypto");
 function makeToken() {
   return crypto.randomBytes(24).toString("hex");
 }
