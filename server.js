@@ -1188,19 +1188,6 @@ app.get('/api/carriers/:dot', async (req, res) => {
 
 
 
-
-
-
-/**
- * PRETTY URL: /12345 → serve carrier.html
- * This must be AFTER /api/* routes.
- */
-app.get('/:dot(\\d+)', (req, res) => {
-  res.sendFile(path.join(__dirname, 'carrier.html'));
-});
-
-
-
 app.get("/api/_debug/spaces", async (req, res) => {
   try {
     const AWS = require("aws-sdk");
@@ -1227,86 +1214,17 @@ app.get("/api/_debug/spaces", async (req, res) => {
 
 
 
-/** ---------- CONTRACT LANDING PAGE (token) ---------- **/
-app.get("/contract/:token", async (req, res) => {
-  const token = String(req.params.token || "").trim();
-  if (!token) return res.status(400).send("Missing token");
 
-  try {
-    // 1) Validate token exists + not expired
-    const { rows } = await pool.query(
-      `
-      SELECT contract_id, token_expires_at, status
-      FROM public.contracts
-      WHERE token = $1
-      LIMIT 1;
-      `,
-      [token]
-    );
 
-    if (rows.length === 0) return res.status(404).send("Invalid link");
 
-    const expires = rows[0].token_expires_at;
-    if (expires && new Date(expires) < new Date()) {
-      return res.status(410).send("This link has expired");
-    }
 
-    // 2) Flip to VIEWED (lightweight version)
-    await pool.query(
-      `
-      UPDATE public.contracts
-      SET status = 'VIEWED', updated_at = NOW()
-      WHERE token = $1 AND status <> 'VIEWED';
-      `,
-      [token]
-    );
-
-    // 3) Branded page embedding the PDF route that already works
-    const pdfUrl = `/contract/${encodeURIComponent(token)}/pdf`;
-
-    res.setHeader("Content-Type", "text/html; charset=utf-8");
-    return res.send(`
-<!doctype html>
-<html>
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Carrier Agreement</title>
-  <style>
-    body { margin:0; font-family: Arial, sans-serif; background:#0b1220; color:#e6eefc; }
-    .wrap { max-width: 980px; margin: 0 auto; padding: 20px; }
-    .top { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
-    .brand { font-weight:800; letter-spacing:0.2px; }
-    .btn { display:inline-block; padding:10px 14px; border-radius:10px; background:#2b6cff; color:#fff; text-decoration:none; font-weight:700; }
-    .card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 16px; padding: 12px; }
-    iframe { width:100%; height: 78vh; border:0; border-radius: 12px; background:#fff; }
-    .muted { opacity:0.85; font-size: 13px; margin-top:10px; }
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="top">
-      <div class="brand">Carrier Shark — Carrier Agreement</div>
-      <a class="btn" href="${pdfUrl}" target="_blank" rel="noopener">Open PDF</a>
-    </div>
-
-    <div class="card">
-      <iframe src="${pdfUrl}"></iframe>
-      <div class="muted">If the PDF doesn’t display on your device, tap “Open PDF”.</div>
-    </div>
-  </div>
-</body>
-</html>
-    `);
-  } catch (err) {
-    console.error("GET /contract/:token error:", err?.message, err);
-    return res.status(500).send("Server error");
-  }
+/**
+ * PRETTY URL: /12345 → serve carrier.html
+ * This must be AFTER /api/* routes.
+ */
+app.get('/:dot(\\d+)', (req, res) => {
+  res.sendFile(path.join(__dirname, 'carrier.html'));
 });
-
-
-
-
-
 
 
 
