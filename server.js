@@ -17,6 +17,120 @@ const spaces = new AWS.S3({
   signatureVersion: "v4"
 });
 
+// Document PDF Broker/Carrier
+
+const multer = require("multer");
+const crypto = require("crypto");
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+
+// ---- Multer: store in memory, validate PDF ----
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 12 * 1024 * 1024 }, // 12MB
+  fileFilter: (req, file, cb) => {
+    // Accept PDF by mime or extension fallback
+    const okMime = file.mimetype === "application/pdf";
+    const okExt = (file.originalname || "").toLowerCase().endsWith(".pdf");
+    if (!okMime && !okExt) return cb(new Error("Only PDF files are allowed."));
+    cb(null, true);
+  },
+});
+
+// ---- S3 client for DigitalOcean Spaces ----
+const s3 = new S3Client({
+  region: process.env.SPACES_REGION,
+  endpoint: process.env.SPACES_ENDPOINT, // e.g. https://atl1.digitaloceanspaces.com
+  credentials: {
+    accessKeyId: process.env.SPACES_KEY,
+    secretAccessKey: process.env.SPACES_SECRET,
+  },
+});
+
+// helper: sanitize DOT
+function normalizeDot(dot) {
+  const cleaned = String(dot || "").replace(/\D/g, "");
+  if (!cleaned) throw new Error("dot_number is required.");
+  if (cleaned.length > 10) throw new Error("dot_number too long.");
+  return cleaned;
+}
+
+function normalizeUploadedBy(v) {
+  const x = String(v || "").toUpperCase().trim();
+  // Your table check is ('CARRIER','AGENT','CUSTOMER') right now
+  // You said "broker" — map BROKER => CUSTOMER (or change your CHECK to include BROKER)
+  if (x === "BROKER") return "CUSTOMER";
+  if (x === "CARRIER") return "CARRIER";
+  if (x === "AGENT") return "AGENT";
+  if (x === "CUSTOMER") return "CUSTOMER";
+  throw new Error("uploaded_by must be CARRIER, BROKER, AGENT, or CUSTOMER.");
+}
+
+function normalizeDocType(v) {
+  const x = String(v || "COI").toUpperCase().trim();
+  if (x === "COI" || x === "OTHER") return x;
+  throw new Error("document_type must be COI or OTHER.");
+}
+
+// ---- ROUTE: Upload insurance document ----
+app.post(
+  "/api/insurance/documents",
+  upload.single("document"),
+  async (req, res) => {
+    try {
+      if (!req.file) throw new Error("document (PDF) is required.");
+
+      const dot_number = normalizeDot(req.body.dot_number);
+      const uploaded_by = normalizeUploadedBy(req.body.uploaded_by);
+      const document_type = normalizeDocType(req.body.document_type);
+
+      // Create deterministic-ish storage key
+      const rand = crypto.randomBytes(10).toString("hex");
+      const key = `insurance/${dot_number}/${Date.now()}-${rand}.pdf`;
+
+      // Upload to Spaces
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: process.env.SPACES_BUCKET,
+          Key: key,
+          Body: req.file.buffer,
+          ContentType: "application/pdf",
+          ACL: "private", // keep private; serve via signed URL if needed
+          Metadata: {
+            dot_number,
+            uploaded_by,
+            document_type,
+          },
+        })
+      );
+
+      // File URL you store can be the s3 URI or https URL; if private, URL alone won't be usable
+      // Store a stable reference:
+      const file_url = `s3://${process.env.SPACES_BUCKET}/${key}`;
+
+      // Insert into Postgres
+      const result = await pool.query(
+        `
+        INSERT INTO insurance_documents
+          (dot_number, uploaded_by, file_url, file_type, document_type, status)
+        VALUES
+          ($1, $2, $3, 'PDF', $4, 'ON_FILE')
+        RETURNING id, dot_number, uploaded_by, file_url, file_type, document_type, status, uploaded_at
+        `,
+        [dot_number, uploaded_by, file_url, document_type]
+      );
+
+      return res.status(201).json({
+        ok: true,
+        document: result.rows[0],
+      });
+    } catch (err) {
+      return res.status(400).json({
+        ok: false,
+        error: err.message || "Upload failed",
+      });
+    }
+  }
+);
 
 
 
