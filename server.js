@@ -295,8 +295,48 @@ app.post("/api/insurance/documents/:id/parse", async (req, res) => {
     const pdfBuffer = Buffer.concat(chunks);
 
     // 3) Extract text
-const parsed = await pdfParse(pdfBuffer);
-const text = parsed?.text || "";
+const { ocrPdfBufferWithVision } = require("./ocr/visionPdfOcr");
+
+// ...
+
+const ocr = await ocrPdfBufferWithVision({
+  pdfBuffer,
+  gcsBucket: process.env.GCS_OCR_BUCKET,
+  gcsPrefix: `insurance-ocr/${doc.dot_number}/${id}` // keep it organized
+});
+
+const text = ocr.text || "";
+
+
+    // Store Vision Metadata
+
+    await pool.query(
+  `
+  UPDATE insurance_documents
+  SET extracted_text = $1,
+      ocr_provider = 'GOOGLE_VISION',
+      ocr_job_id = $2,
+      ocr_avg_confidence = $3,
+      ocr_page_count = $4,
+      ocr_output_uri = $5,
+      parse_result = $6::jsonb,
+      parse_confidence = $7::numeric,
+      parsed_at = NOW(),
+      status = CASE WHEN $7::numeric >= 70 THEN status ELSE 'NEEDS_REVIEW' END
+  WHERE id = $8
+  `,
+  [
+    text,
+    ocr.jobId,
+    ocr.avgConfidence,     // 0..1
+    ocr.pageCount,
+    ocr.gcs.outputUri,
+    JSON.stringify(parseResult),
+    confidence,
+    id
+  ]
+);
+
 
 
 
