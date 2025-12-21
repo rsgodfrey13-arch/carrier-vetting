@@ -50,12 +50,12 @@ const pdfParseModule = require("pdf-parse");
 
 // pdf-parse might export the function as module.exports OR as default export.
 // This normalizes it so `pdfParse(...)` always works.
-const pdfParse =
+const PDFParse =
   (typeof pdfParseModule === "function")
     ? pdfParseModule
     : (pdfParseModule.default || pdfParseModule);
 
-console.log("DEBUG pdf-parse typeof:", typeof pdfParse);
+console.log("DEBUG pdf-parse typeof:", typeof PDFParse);
 console.log("DEBUG pdf-parse keys:", Object.keys(pdfParseModule || {}));
 
 
@@ -162,8 +162,11 @@ app.post("/api/insurance/documents/:id/parse", async (req, res) => {
     const pdfBuffer = Buffer.concat(chunks);
 
     // 3) Extract text
-    const parsed = await pdfParse(pdfBuffer);
-    const text = parsed.text || "";
+      const parser = new PDFParse({ data: pdfBuffer });
+      const parsed = await parser.getText();   // v2
+      await parser.destroy();                  // IMPORTANT: free memory
+      const text = parsed.text || "";
+
 
     // 4) Detect + extract headline limits
     const acordLikely = isLikelyAcord25(text);
