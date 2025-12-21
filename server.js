@@ -44,9 +44,17 @@ const pool = new Pool({
 });
 
 
-// PARSE Insurance
+// PDF Parse normalizer
 
-const pdfParse = require("pdf-parse");
+const pdfParseModule = require("pdf-parse");
+
+// pdf-parse might export the function as module.exports OR as default export.
+// This normalizes it so `pdfParse(...)` always works.
+const pdfParse =
+  (typeof pdfParseModule === "function")
+    ? pdfParseModule
+    : (pdfParseModule.default || pdfParseModule);
+
 
 // ---------------- helpers ----------------
 
