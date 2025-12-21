@@ -73,7 +73,7 @@ if (!pdfParse) {
 
 
 console.log("DEBUG pdf-parse typeof:", typeof PDFParse);
-console.log("DEBUG pdf-parse keys:", Object.keys(pdfParseModule || {}));
+//console.log("DEBUG pdf-parse keys:", Object.keys(pdfParseModule || {}));
 // ---------------- helpers ----------------
 
 function parseMoney(s) {
