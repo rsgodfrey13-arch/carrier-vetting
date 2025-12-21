@@ -71,8 +71,7 @@ if (!pdfParse) {
   throw new Error("pdf-parse: could not find a callable parser function");
 }
 
-
-console.log("DEBUG pdf-parse typeof:", typeof PDFParse);
+console.log("pdf-parse typeof:", typeof pdfParse);
 //console.log("DEBUG pdf-parse keys:", Object.keys(pdfParseModule || {}));
 // ---------------- helpers ----------------
 
