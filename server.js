@@ -34,6 +34,15 @@ const s3 = new S3Client({
   }
 });
 
+const pool = new Pool({
+  host: 'carrier-vetting-do-user-27858216-0.e.db.ondigitalocean.com',      // e.g. db-postgresql-xxxx.b.db.ondigitalocean.com
+  port: 25060,               // DigitalOcean default
+  database: 'defaultdb',     // or whatever your DB name is
+  user: 'doadmin',           // or your user
+  password: 'AVNS_QZfAFA-4TzNXYII9lET',
+  ssl: { rejectUnauthorized: false }
+});
+
 
 // PARSE Insurance
 
@@ -308,7 +317,6 @@ app.get("/api/insurance/latest", async (req, res) => {
 
 const multer = require("multer");
 const crypto = require("crypto");
-const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 
 // ---- Multer: store in memory, validate PDF ----
 const upload = multer({
@@ -323,15 +331,6 @@ const upload = multer({
   },
 });
 
-// ---- S3 client for DigitalOcean Spaces ----
-const s3 = new S3Client({
-  region: process.env.SPACES_REGION,
-  endpoint: process.env.SPACES_ENDPOINT, // e.g. https://atl1.digitaloceanspaces.com
-  credentials: {
-    accessKeyId: process.env.SPACES_KEY,
-    secretAccessKey: process.env.SPACES_SECRET,
-  },
-});
 
 // helper: sanitize DOT
 function normalizeDot(dot) {
@@ -524,14 +523,7 @@ app.use(session({
  * HARD-CODED Postgres connection (same idea as your OLD version).
  * Put back the exact values you used when it was working.
  */
-const pool = new Pool({
-  host: 'carrier-vetting-do-user-27858216-0.e.db.ondigitalocean.com',      // e.g. db-postgresql-xxxx.b.db.ondigitalocean.com
-  port: 25060,               // DigitalOcean default
-  database: 'defaultdb',     // or whatever your DB name is
-  user: 'doadmin',           // or your user
-  password: 'AVNS_QZfAFA-4TzNXYII9lET',
-  ssl: { rejectUnauthorized: false }
-});
+
 
 /** ---------- AUTH HELPERS & ROUTES ---------- **/
 
