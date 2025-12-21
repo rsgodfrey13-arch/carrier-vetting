@@ -83,6 +83,117 @@ console.log("pdf-parse typeof:", typeof pdfParse);
 //console.log("DEBUG pdf-parse keys:", Object.keys(pdfParseModule || {}));
 // ---------------- helpers ----------------
 
+
+// ocr/visionPdfOcr.js
+const { Storage } = require("@google-cloud/storage");
+const vision = require("@google-cloud/vision").v1;
+const crypto = require("crypto");
+
+const storage = new Storage();
+const visionClient = new vision.ImageAnnotatorClient();
+
+function safeId() {
+  return crypto.randomBytes(16).toString("hex");
+}
+
+function avg(nums) {
+  const a = nums.filter(n => Number.isFinite(n));
+  if (!a.length) return null;
+  return a.reduce((x, y) => x + y, 0) / a.length;
+}
+
+async function ocrPdfBufferWithVision({ pdfBuffer, gcsBucket, gcsPrefix }) {
+  const jobId = safeId();
+  const inputKey = `${gcsPrefix}/input/${jobId}.pdf`;
+  const outputPrefix = `${gcsPrefix}/output/${jobId}/`; // must be a "folder-like" prefix
+
+  // 1) Upload PDF to GCS
+  const bucket = storage.bucket(gcsBucket);
+  await bucket.file(inputKey).save(pdfBuffer, {
+    contentType: "application/pdf",
+    resumable: false,
+    metadata: { cacheControl: "no-store" }
+  });
+
+  const gcsSourceUri = `gs://${gcsBucket}/${inputKey}`;
+  const gcsDestinationUri = `gs://${gcsBucket}/${outputPrefix}`;
+
+  // 2) Start async OCR job for PDF
+  const request = {
+    requests: [
+      {
+        inputConfig: {
+          gcsSource: { uri: gcsSourceUri },
+          mimeType: "application/pdf",
+        },
+        features: [{ type: "DOCUMENT_TEXT_DETECTION" }],
+        outputConfig: {
+          gcsDestination: { uri: gcsDestinationUri },
+          batchSize: 20, // pages per JSON output file
+        },
+      },
+    ],
+  };
+
+  // Returns a long-running operation
+  const [operation] = await visionClient.asyncBatchAnnotateFiles(request);
+  await operation.promise(); // waits until Vision finished writing output JSONs
+
+  // 3) Read output JSONs from GCS and aggregate text
+  const [files] = await bucket.getFiles({ prefix: outputPrefix });
+
+  const texts = [];
+  const confs = []; // we'll collect word-level confidences when present
+  let pageCount = 0;
+
+  for (const f of files) {
+    if (!f.name.endsWith(".json")) continue;
+
+    const [content] = await f.download();
+    const parsed = JSON.parse(content.toString("utf8"));
+
+    // Structure: responses[].fullTextAnnotation.text, and page/word confidence nested
+    const responses = parsed?.responses || [];
+    for (const r of responses) {
+      const t = r?.fullTextAnnotation?.text;
+      if (t) texts.push(t);
+
+      const pages = r?.fullTextAnnotation?.pages || [];
+      pageCount += pages.length;
+
+      for (const p of pages) {
+        for (const b of (p.blocks || [])) {
+          for (const par of (b.paragraphs || [])) {
+            for (const w of (par.words || [])) {
+              if (Number.isFinite(w.confidence)) confs.push(w.confidence);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  const fullText = texts.join("\n");
+  const avgConfidence = avg(confs); // 0..1 typically
+
+  return {
+    jobId,
+    gcs: {
+      inputUri: gcsSourceUri,
+      outputUri: gcsDestinationUri,
+      outputPrefix,
+    },
+    text: fullText,
+    avgConfidence,
+    pageCount,
+  };
+}
+
+module.exports = { ocrPdfBufferWithVision };
+
+
+
+
 function parseMoney(s) {
   if (!s) return null;
   const cleaned = String(s).replace(/[^0-9.]/g, "");
