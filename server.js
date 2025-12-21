@@ -212,18 +212,19 @@ const text = parsed?.text || "";
     };
 
     // 5) Save parse artifacts on the document
-    await pool.query(
-      `
-      UPDATE insurance_documents
-      SET extracted_text = $1,
-          parse_result = $2,
-          parse_confidence = $3,
-          parsed_at = NOW(),
-          status = CASE WHEN $3 >= 70 THEN status ELSE 'NEEDS_REVIEW' END
-      WHERE id = $4
-      `,
-      [text, parseResult, confidence, id]
-    );
+        await pool.query(
+          `
+          UPDATE insurance_documents
+          SET extracted_text = $1,
+              parse_result = $2::jsonb,
+              parse_confidence = $3::numeric,
+              parsed_at = NOW(),
+              status = CASE WHEN $3::numeric >= 70 THEN status ELSE 'NEEDS_REVIEW' END
+          WHERE id = $4
+          `,
+          [text, JSON.stringify(parseResult), confidence, id]
+        );
+
 
     let newSnapshotVersion = null;
 
