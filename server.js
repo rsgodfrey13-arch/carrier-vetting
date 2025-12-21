@@ -55,6 +55,9 @@ const pdfParse =
     ? pdfParseModule
     : (pdfParseModule.default || pdfParseModule);
 
+console.log("DEBUG pdf-parse typeof:", typeof pdfParse);
+console.log("DEBUG pdf-parse keys:", Object.keys(pdfParseModule || {}));
+
 
 // ---------------- helpers ----------------
 
