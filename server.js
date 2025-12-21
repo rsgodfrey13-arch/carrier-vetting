@@ -463,7 +463,6 @@ app.get("/api/insurance/latest", async (req, res) => {
 // Document PDF Broker/Carrier
 
 const multer = require("multer");
-const crypto = require("crypto");
 
 // ---- Multer: store in memory, validate PDF ----
 const upload = multer({
