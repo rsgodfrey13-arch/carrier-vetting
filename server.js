@@ -26,6 +26,230 @@ const {
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 
 
+// PARSE Insurance
+
+const pdfParse = require("pdf-parse");
+const { GetObjectCommand } = require("@aws-sdk/client-s3");
+
+// ---------------- helpers ----------------
+
+function parseMoney(s) {
+  if (!s) return null;
+  const cleaned = String(s).replace(/[^0-9.]/g, "");
+  if (!cleaned) return null;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
+function isLikelyAcord25(text) {
+  const t = (text || "").toUpperCase();
+  const signals = [
+    "CERTIFICATE OF LIABILITY INSURANCE",
+    "ACORD",
+    "PRODUCER",
+    "INSURED",
+    "COVERAGES",
+    "THIS CERTIFICATE IS ISSUED AS A MATTER OF INFORMATION ONLY"
+  ];
+  const hits = signals.reduce((acc, s) => acc + (t.includes(s) ? 1 : 0), 0);
+  return hits >= 3;
+}
+
+function findDates(text) {
+  const matches = (text || "").match(/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g);
+  return matches ? [...new Set(matches)] : [];
+}
+
+// pull biggest money near a keyword window
+function extractLimitNear(text, keyword) {
+  const t = text || "";
+  const idx = t.toUpperCase().indexOf(keyword.toUpperCase());
+  if (idx === -1) return null;
+
+  const window = t.slice(Math.max(0, idx - 200), Math.min(t.length, idx + 1400));
+  const moneyMatches = window.match(/\$?\s?\d{1,3}(?:,\d{3})+(?:\.\d{2})?/g);
+  if (!moneyMatches || moneyMatches.length === 0) return null;
+
+  const nums = moneyMatches.map(parseMoney).filter(Boolean);
+  if (nums.length === 0) return null;
+  return Math.max(...nums);
+}
+
+// detect which coverage types are present (even if we can’t parse perfect limits yet)
+function detectCoverageTypes(text) {
+  const t = (text || "").toUpperCase();
+  const types = [];
+
+  // ACORD-ish names
+  if (t.includes("GENERAL LIABILITY")) types.push("GL");
+  if (t.includes("AUTOMOBILE LIABILITY") || t.includes("AUTO LIABILITY")) types.push("AUTO");
+  if (t.includes("MOTOR TRUCK CARGO") || (t.includes("CARGO") && t.includes("TRUCK"))) types.push("CARGO");
+  if (t.includes("WORKERS COMPENSATION") || t.includes("WORKERS COMP")) types.push("WC");
+  if (t.includes("UMBRELLA LIAB") || t.includes("EXCESS LIAB")) types.push("UMBRELLA");
+  if (t.includes("PROFESSIONAL LIABILITY") || t.includes("ERRORS AND OMISSIONS") || t.includes("E&O")) types.push("E&O");
+  if (t.includes("POLLUTION")) types.push("POLLUTION");
+  if (t.includes("CYBER")) types.push("CYBER");
+
+  // dedupe
+  return [...new Set(types)];
+}
+
+function computeConfidence({ acordLikely, auto, cargo, gl, datesCount }) {
+  let score = 0;
+  if (acordLikely) score += 40;
+  if (auto) score += 25;
+  if (cargo) score += 25;
+  if (gl) score += 10;
+  if (datesCount >= 2) score += 10;
+  return Math.min(100, score);
+}
+
+// ---------------- route ----------------
+
+app.post("/api/insurance/documents/:id/parse", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 1) Load doc
+    const r = await pool.query(
+      `SELECT id, dot_number, spaces_key
+       FROM insurance_documents
+       WHERE id = $1`,
+      [id]
+    );
+    if (r.rowCount === 0) throw new Error("Document not found.");
+    const doc = r.rows[0];
+    if (!doc.spaces_key) throw new Error("spaces_key missing for this document.");
+
+    // 2) Download from Spaces
+    const obj = await s3.send(
+      new GetObjectCommand({
+        Bucket: process.env.SPACES_BUCKET,
+        Key: doc.spaces_key
+      })
+    );
+
+    const chunks = [];
+    for await (const chunk of obj.Body) chunks.push(chunk);
+    const pdfBuffer = Buffer.concat(chunks);
+
+    // 3) Extract text
+    const parsed = await pdfParse(pdfBuffer);
+    const text = parsed.text || "";
+
+    // 4) Detect + extract headline limits
+    const acordLikely = isLikelyAcord25(text);
+    const dates = findDates(text);
+
+    const autoLimit = extractLimitNear(text, "AUTO LIABILITY");
+    const cargoLimit = extractLimitNear(text, "CARGO");
+    const glLimit = extractLimitNear(text, "GENERAL LIABILITY");
+
+    const confidence = computeConfidence({
+      acordLikely,
+      auto: autoLimit,
+      cargo: cargoLimit,
+      gl: glLimit,
+      datesCount: dates.length
+    });
+
+    const coverageTypes = detectCoverageTypes(text);
+
+    const parseResult = {
+      acordLikely,
+      confidence,
+      extracted: {
+        auto_liability_limit: autoLimit,
+        cargo_limit: cargoLimit,
+        general_liability_limit: glLimit,
+        detected_dates: dates,
+        detected_coverage_types: coverageTypes
+      }
+    };
+
+    // 5) Save parse artifacts on the document
+    await pool.query(
+      `
+      UPDATE insurance_documents
+      SET extracted_text = $1,
+          parse_result = $2,
+          parse_confidence = $3,
+          parsed_at = NOW(),
+          status = CASE WHEN $3 >= 70 THEN status ELSE 'NEEDS_REVIEW' END
+      WHERE id = $4
+      `,
+      [text, parseResult, confidence, id]
+    );
+
+    let newSnapshotVersion = null;
+
+    // 6) Promote to snapshots if confident
+    if (confidence >= 70) {
+      const upsert = await pool.query(
+        `
+        INSERT INTO insurance_snapshots
+          (dot_number, auto_liability_limit, cargo_limit, general_liability_limit,
+           source, vendor, last_checked_at, snapshot_version, raw_payload_json)
+        VALUES
+          ($1, $2, $3, $4,
+           'PARSED', 'INTERNAL', NOW(), 1, $5)
+        ON CONFLICT (dot_number)
+        DO UPDATE SET
+          auto_liability_limit = EXCLUDED.auto_liability_limit,
+          cargo_limit = EXCLUDED.cargo_limit,
+          general_liability_limit = EXCLUDED.general_liability_limit,
+          source = EXCLUDED.source,
+          vendor = EXCLUDED.vendor,
+          last_checked_at = NOW(),
+          snapshot_version = insurance_snapshots.snapshot_version + 1,
+          raw_payload_json = EXCLUDED.raw_payload_json
+        RETURNING snapshot_version
+        `,
+        [doc.dot_number, autoLimit, cargoLimit, glLimit, parseResult]
+      );
+
+      newSnapshotVersion = upsert.rows[0]?.snapshot_version ?? 1;
+
+      // 7) Insert coverages for this snapshot version (simple version: store detected types)
+      // For now we store a minimal limits_json per type (headline limits where applicable).
+      // Later you can upgrade this to parse policy # / dates per line.
+      await pool.query(
+        `DELETE FROM insurance_coverages WHERE dot_number = $1 AND snapshot_version = $2`,
+        [doc.dot_number, newSnapshotVersion]
+      );
+
+      for (const ct of coverageTypes) {
+        let limits = {};
+        if (ct === "AUTO" && autoLimit) limits = { combined_single_limit: autoLimit };
+        if (ct === "CARGO" && cargoLimit) limits = { cargo: cargoLimit };
+        if (ct === "GL" && glLimit) limits = { each_occurrence: glLimit };
+
+        await pool.query(
+          `
+          INSERT INTO insurance_coverages
+            (dot_number, snapshot_version, coverage_type, limits_json)
+          VALUES
+            ($1, $2, $3, $4)
+          `,
+          [doc.dot_number, newSnapshotVersion, ct, limits]
+        );
+      }
+    }
+
+    return res.json({
+      ok: true,
+      document_id: id,
+      dot_number: doc.dot_number,
+      parseResult,
+      promoted_to_snapshot: confidence >= 70,
+      snapshot_version: newSnapshotVersion
+    });
+  } catch (err) {
+    return res.status(400).json({ ok: false, error: err.message });
+  }
+});
+
+
 // Ideal Route - Get Latest DOT
 
 app.get("/api/insurance/latest", async (req, res) => {
