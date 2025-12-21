@@ -35,13 +35,14 @@ const s3 = new S3Client({
 });
 
 const pool = new Pool({
-  host: 'carrier-vetting-do-user-27858216-0.e.db.ondigitalocean.com',      // e.g. db-postgresql-xxxx.b.db.ondigitalocean.com
-  port: 25060,               // DigitalOcean default
-  database: 'defaultdb',     // or whatever your DB name is
-  user: 'doadmin',           // or your user
-  password: 'AVNS_QZfAFA-4TzNXYII9lET',
+  host: process.env.DB_HOST,
+  port: Number(process.env.DB_PORT || 5432),
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
   ssl: { rejectUnauthorized: false }
 });
+
 
 
 // PDF Parse normalizer
