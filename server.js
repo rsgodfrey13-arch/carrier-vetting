@@ -46,19 +46,34 @@ const pool = new Pool({
 
 // PDF Parse normalizer
 
-const pdfParseModule = require("pdf-parse");
+//const pdfParseModule = require("pdf-parse");
 
 // pdf-parse might export the function as module.exports OR as default export.
 // This normalizes it so `pdfParse(...)` always works.
-const PDFParse =
-  (typeof pdfParseModule === "function")
-    ? pdfParseModule
-    : (pdfParseModule.default || pdfParseModule);
+//const PDFParse =
+//  (typeof pdfParseModule === "function")
+//    ? pdfParseModule
+ //   : (pdfParseModule.default || pdfParseModule);
+
+
+
+//try 2
+
+const pdfParseLib = require("pdf-parse");
+
+// pick the actual callable parser function regardless of export shape
+const pdfParse =
+  (typeof pdfParseLib === "function" && pdfParseLib) ||
+  (typeof pdfParseLib?.default === "function" && pdfParseLib.default) ||
+  (typeof pdfParseLib?.PDFParse === "function" && pdfParseLib.PDFParse);
+
+if (!pdfParse) {
+  throw new Error("pdf-parse: could not find a callable parser function");
+}
+
 
 console.log("DEBUG pdf-parse typeof:", typeof PDFParse);
 console.log("DEBUG pdf-parse keys:", Object.keys(pdfParseModule || {}));
-
-
 // ---------------- helpers ----------------
 
 function parseMoney(s) {
@@ -162,10 +177,9 @@ app.post("/api/insurance/documents/:id/parse", async (req, res) => {
     const pdfBuffer = Buffer.concat(chunks);
 
     // 3) Extract text
-      const parser = new PDFParse({ data: pdfBuffer });
-      const parsed = await parser.getText();   // v2
-      await parser.destroy();                  // IMPORTANT: free memory
-      const text = parsed.text || "";
+const parsed = await pdfParse(pdfBuffer);
+const text = parsed?.text || "";
+
 
 
     // 4) Detect + extract headline limits
