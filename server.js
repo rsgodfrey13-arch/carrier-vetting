@@ -2063,9 +2063,7 @@ app.get("/api/_debug/spaces", async (req, res) => {
  * PRETTY URL: /12345 → serve carrier.html
  * This must be AFTER /api/* routes.
  */
-app.get('/:dot(\\d+)', (req, res) => {
-  res.sendFile(path.join(__dirname, "static", "carrier.html"));
-});
+
 
 
 
