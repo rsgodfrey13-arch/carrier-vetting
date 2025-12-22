@@ -387,7 +387,7 @@ function makeToken() {
 app.set('trust proxy', 1);
 
 // Serve static files (index.html, carrier.html, style1.css, etc.)
-app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname, "static")));
 
 // Parse JSON bodies for POST/PUT
 app.use(express.json());
