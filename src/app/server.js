@@ -1,6 +1,6 @@
 "use strict";
 
-require("../config/bootstrap"); // env bootstrap (GCP key write, etc.)
+require("../config/bootstrap");
 
 const session = require("express-session");
 const { createApp } = require("./app");
@@ -8,7 +8,9 @@ const { createApp } = require("./app");
 const app = createApp();
 const port = process.env.PORT || 3000;
 
-// Session middleware (kept here so it runs before internal routes)
+// Session middleware MUST be registered before internal routes execute.
+// (Our app mounts routes inside createApp, but middleware order still matters.)
+// To guarantee order, we install session here BEFORE any requests hit routes.
 app.use(session({
   secret: process.env.SESSION_SECRET || "dev-secret-change-me",
   resave: false,
