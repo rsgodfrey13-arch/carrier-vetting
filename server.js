@@ -265,214 +265,6 @@ function computeConfidence({ acordLikely, auto, cargo, gl, datesCount }) {
   return Math.min(100, score);
 }
 
-// ---------------- route ----------------
-
-app.post("/api/insurance/documents/:id/parse", async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    // 1) Load doc
-    const r = await pool.query(
-      `SELECT id, dot_number, spaces_key
-       FROM insurance_documents
-       WHERE id = $1`,
-      [id]
-    );
-    if (r.rowCount === 0) throw new Error("Document not found.");
-    const doc = r.rows[0];
-    if (!doc.spaces_key) throw new Error("spaces_key missing for this document.");
-
-    // 2) Download from Spaces
-    const obj = await s3.send(
-      new GetObjectCommand({
-        Bucket: process.env.SPACES_BUCKET,
-        Key: doc.spaces_key
-      })
-    );
-
-    const chunks = [];
-    for await (const chunk of obj.Body) chunks.push(chunk);
-    const pdfBuffer = Buffer.concat(chunks);
-
-    // 3) Extract text
-const { ocrPdfBufferWithVision } = require("./ocr/visionPdfOcr");
-
-// ...
-
-const ocr = await ocrPdfBufferWithVision({
-  pdfBuffer,
-  gcsBucket: process.env.GCS_OCR_BUCKET,
-  gcsPrefix: `insurance-ocr/${doc.dot_number}/${id}` // keep it organized
-});
-
-const text = ocr.text || "";
-
-
-    // Store Vision Metadata
-
-    await pool.query(
-  `
-  UPDATE insurance_documents
-  SET extracted_text = $1,
-      ocr_provider = 'GOOGLE_VISION',
-      ocr_job_id = $2,
-      ocr_avg_confidence = $3,
-      ocr_page_count = $4,
-      ocr_output_uri = $5,
-      parse_result = $6::jsonb,
-      parse_confidence = $7::numeric,
-      parsed_at = NOW(),
-      status = CASE WHEN $7::numeric >= 70 THEN status ELSE 'NEEDS_REVIEW' END
-  WHERE id = $8
-  `,
-  [
-    text,
-    ocr.jobId,
-    ocr.avgConfidence,     // 0..1
-    ocr.pageCount,
-    ocr.gcs.outputUri,
-    JSON.stringify(parseResult),
-    confidence,
-    id
-  ]
-);
-
-
-
-
-    // 4) Detect + extract headline limits
-    const acordLikely = isLikelyAcord25(text);
-    const dates = findDates(text);
-
-// Normalize a bit (OCR can add weird spacing)
-const cleanedText = normalizeSpaces(text);
-
-// Only search inside the coverage section (reduces OCR false hits)
-const coveragesBlock = sliceCoveragesBlock(cleanedText);
-
-// Gate by detected types (so we don’t chase limits that aren’t even present)
-const coverageTypes = detectCoverageTypes(cleanedText);
-
-const hasAUTO = coverageTypes.includes("AUTO");
-const hasCARGO = coverageTypes.includes("CARGO");
-const hasGL = coverageTypes.includes("GL");
-
-// Keywords: be more specific than plain "CARGO"
-const autoLimit = hasAUTO
-  ? extractLimitNearAny(coveragesBlock, ["AUTOMOBILE LIABILITY", "AUTO LIABILITY", "AUTO LIAB"])
-  : null;
-
-const cargoLimit = hasCARGO
-  ? extractLimitNearAny(coveragesBlock, ["MOTOR TRUCK CARGO", "TRUCK CARGO", "CARGO"], { windowBefore: 80, windowAfter: 900 })
-  : null;
-
-const glLimit = hasGL
-  ? extractLimitNearAny(coveragesBlock, ["GENERAL LIABILITY", "COMMERCIAL GENERAL LIABILITY", "GEN'L LIABILITY"])
-  : null;
-
-    const confidence = computeConfidence({
-      acordLikely,
-      auto: autoLimit,
-      cargo: cargoLimit,
-      gl: glLimit,
-      datesCount: dates.length
-    });
-
-
-    const parseResult = {
-      acordLikely,
-      confidence,
-      extracted: {
-        auto_liability_limit: autoLimit,
-        cargo_limit: cargoLimit,
-        general_liability_limit: glLimit,
-        detected_dates: dates,
-        detected_coverage_types: coverageTypes
-      }
-    };
-
-    // 5) Save parse artifacts on the document
-        await pool.query(
-          `
-          UPDATE insurance_documents
-          SET extracted_text = $1,
-              parse_result = $2::jsonb,
-              parse_confidence = $3::numeric,
-              parsed_at = NOW(),
-              status = CASE WHEN $3::numeric >= 70 THEN status ELSE 'NEEDS_REVIEW' END
-          WHERE id = $4
-          `,
-          [text, JSON.stringify(parseResult), confidence, id]
-        );
-
-
-    let newSnapshotVersion = null;
-
-    // 6) Promote to snapshots if confident
-    if (confidence >= 70) {
-      const upsert = await pool.query(
-        `
-        INSERT INTO insurance_snapshots
-          (dot_number, auto_liability_limit, cargo_limit, general_liability_limit,
-           source, vendor, last_checked_at, snapshot_version, raw_payload_json)
-        VALUES
-          ($1, $2, $3, $4,
-           'PARSED', 'INTERNAL', NOW(), 1, $5)
-        ON CONFLICT (dot_number)
-        DO UPDATE SET
-          auto_liability_limit = EXCLUDED.auto_liability_limit,
-          cargo_limit = EXCLUDED.cargo_limit,
-          general_liability_limit = EXCLUDED.general_liability_limit,
-          source = EXCLUDED.source,
-          vendor = EXCLUDED.vendor,
-          last_checked_at = NOW(),
-          snapshot_version = insurance_snapshots.snapshot_version + 1,
-          raw_payload_json = EXCLUDED.raw_payload_json
-        RETURNING snapshot_version
-        `,
-        [doc.dot_number, autoLimit, cargoLimit, glLimit, parseResult]
-      );
-
-      newSnapshotVersion = upsert.rows[0]?.snapshot_version ?? 1;
-
-      // 7) Insert coverages for this snapshot version (simple version: store detected types)
-      // For now we store a minimal limits_json per type (headline limits where applicable).
-      // Later you can upgrade this to parse policy # / dates per line.
-      await pool.query(
-        `DELETE FROM insurance_coverages WHERE dot_number = $1 AND snapshot_version = $2`,
-        [doc.dot_number, newSnapshotVersion]
-      );
-
-      for (const ct of coverageTypes) {
-        let limits = {};
-        if (ct === "AUTO" && autoLimit) limits = { combined_single_limit: autoLimit };
-        if (ct === "CARGO" && cargoLimit) limits = { cargo: cargoLimit };
-        if (ct === "GL" && glLimit) limits = { each_occurrence: glLimit };
-
-        await pool.query(
-          `
-          INSERT INTO insurance_coverages
-            (dot_number, snapshot_version, coverage_type, limits_json)
-          VALUES
-            ($1, $2, $3, $4)
-          `,
-          [doc.dot_number, newSnapshotVersion, ct, limits]
-        );
-      }
-    }
-
-    return res.json({
-      ok: true,
-      document_id: id,
-      dot_number: doc.dot_number,
-      parseResult,
-      promoted_to_snapshot: confidence >= 70,
-      snapshot_version: newSnapshotVersion
-    });
-  } catch (err) {
-    return res.status(400).json({ ok: false, error: err.message });
-  }
-});
 
 
 // Ideal Route - Get Latest DOT
@@ -1970,6 +1762,213 @@ app.get('/api/carriers/:dot', async (req, res) => {
   }
 });
 
+// ---------------- route ----------------
+
+app.post("/api/insurance/documents/:id/parse", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 1) Load doc
+    const r = await pool.query(
+      `SELECT id, dot_number, spaces_key
+       FROM insurance_documents
+       WHERE id = $1`,
+      [id]
+    );
+    if (r.rowCount === 0) throw new Error("Document not found.");
+    const doc = r.rows[0];
+    if (!doc.spaces_key) throw new Error("spaces_key missing for this document.");
+
+    // 2) Download from Spaces
+    const obj = await s3.send(
+      new GetObjectCommand({
+        Bucket: process.env.SPACES_BUCKET,
+        Key: doc.spaces_key
+      })
+    );
+
+    const chunks = [];
+    for await (const chunk of obj.Body) chunks.push(chunk);
+    const pdfBuffer = Buffer.concat(chunks);
+
+
+// ...
+
+const ocr = await ocrPdfBufferWithVision({
+  pdfBuffer,
+  gcsBucket: process.env.GCS_OCR_BUCKET,
+  gcsPrefix: `insurance-ocr/${doc.dot_number}/${id}` // keep it organized
+});
+
+const text = ocr.text || "";
+
+
+await pool.query(
+  `UPDATE insurance_documents
+   SET ocr_provider='GOOGLE_VISION',
+       ocr_status='PROCESSING',
+       ocr_started_at=NOW(),
+       ocr_attempts = COALESCE(ocr_attempts,0) + 1
+   WHERE id=$1`,
+  [id]
+);
+
+
+
+
+
+    // 4) Detect + extract headline limits
+    const acordLikely = isLikelyAcord25(text);
+    const dates = findDates(text);
+
+// Normalize a bit (OCR can add weird spacing)
+const cleanedText = normalizeSpaces(text);
+
+// Only search inside the coverage section (reduces OCR false hits)
+const coveragesBlock = sliceCoveragesBlock(cleanedText);
+
+// Gate by detected types (so we don’t chase limits that aren’t even present)
+const coverageTypes = detectCoverageTypes(cleanedText);
+
+const hasAUTO = coverageTypes.includes("AUTO");
+const hasCARGO = coverageTypes.includes("CARGO");
+const hasGL = coverageTypes.includes("GL");
+
+// Keywords: be more specific than plain "CARGO"
+const autoLimit = hasAUTO
+  ? extractLimitNearAny(coveragesBlock, ["AUTOMOBILE LIABILITY", "AUTO LIABILITY", "AUTO LIAB"])
+  : null;
+
+const cargoLimit = hasCARGO
+  ? extractLimitNearAny(coveragesBlock, ["MOTOR TRUCK CARGO", "TRUCK CARGO", "CARGO"], { windowBefore: 80, windowAfter: 900 })
+  : null;
+
+const glLimit = hasGL
+  ? extractLimitNearAny(coveragesBlock, ["GENERAL LIABILITY", "COMMERCIAL GENERAL LIABILITY", "GEN'L LIABILITY"])
+  : null;
+
+    const confidence = computeConfidence({
+      acordLikely,
+      auto: autoLimit,
+      cargo: cargoLimit,
+      gl: glLimit,
+      datesCount: dates.length
+    });
+
+
+    const parseResult = {
+      acordLikely,
+      confidence,
+      extracted: {
+        auto_liability_limit: autoLimit,
+        cargo_limit: cargoLimit,
+        general_liability_limit: glLimit,
+        detected_dates: dates,
+        detected_coverage_types: coverageTypes
+      }
+    };
+
+    // 5) Save parse artifacts on the document
+await pool.query(
+  `
+  UPDATE insurance_documents
+  SET extracted_text = $1,
+      ocr_provider = 'GOOGLE_VISION',
+      ocr_status = 'DONE',
+      ocr_job_id = $2,
+      ocr_avg_confidence = $3,
+      ocr_page_count = $4,
+      ocr_input_uri = $5,
+      ocr_output_uri = $6,
+      ocr_completed_at = NOW(),
+      parse_result = $7::jsonb,
+      parse_confidence = $8::numeric,
+      parsed_at = NOW(),
+      status = CASE WHEN $8::numeric >= 70 THEN status ELSE 'NEEDS_REVIEW' END
+  WHERE id = $9
+  `,
+  [
+    text,
+    ocr.jobId,
+    ocr.avgConfidence,
+    ocr.pageCount,
+    ocr.gcs.inputUri,
+    ocr.gcs.outputUri,
+    JSON.stringify(parseResult),
+    confidence,
+    id
+  ]
+);
+;
+
+
+    let newSnapshotVersion = null;
+
+    // 6) Promote to snapshots if confident
+    if (confidence >= 70) {
+      const upsert = await pool.query(
+        `
+        INSERT INTO insurance_snapshots
+          (dot_number, auto_liability_limit, cargo_limit, general_liability_limit,
+           source, vendor, last_checked_at, snapshot_version, raw_payload_json)
+        VALUES
+          ($1, $2, $3, $4,
+           'PARSED', 'INTERNAL', NOW(), 1, $5)
+        ON CONFLICT (dot_number)
+        DO UPDATE SET
+          auto_liability_limit = EXCLUDED.auto_liability_limit,
+          cargo_limit = EXCLUDED.cargo_limit,
+          general_liability_limit = EXCLUDED.general_liability_limit,
+          source = EXCLUDED.source,
+          vendor = EXCLUDED.vendor,
+          last_checked_at = NOW(),
+          snapshot_version = insurance_snapshots.snapshot_version + 1,
+          raw_payload_json = EXCLUDED.raw_payload_json
+        RETURNING snapshot_version
+        `,
+        [doc.dot_number, autoLimit, cargoLimit, glLimit, parseResult]
+      );
+
+      newSnapshotVersion = upsert.rows[0]?.snapshot_version ?? 1;
+
+      // 7) Insert coverages for this snapshot version (simple version: store detected types)
+      // For now we store a minimal limits_json per type (headline limits where applicable).
+      // Later you can upgrade this to parse policy # / dates per line.
+      await pool.query(
+        `DELETE FROM insurance_coverages WHERE dot_number = $1 AND snapshot_version = $2`,
+        [doc.dot_number, newSnapshotVersion]
+      );
+
+      for (const ct of coverageTypes) {
+        let limits = {};
+        if (ct === "AUTO" && autoLimit) limits = { combined_single_limit: autoLimit };
+        if (ct === "CARGO" && cargoLimit) limits = { cargo: cargoLimit };
+        if (ct === "GL" && glLimit) limits = { each_occurrence: glLimit };
+
+        await pool.query(
+          `
+          INSERT INTO insurance_coverages
+            (dot_number, snapshot_version, coverage_type, limits_json)
+          VALUES
+            ($1, $2, $3, $4)
+          `,
+          [doc.dot_number, newSnapshotVersion, ct, limits]
+        );
+      }
+    }
+
+    return res.json({
+      ok: true,
+      document_id: id,
+      dot_number: doc.dot_number,
+      parseResult,
+      promoted_to_snapshot: confidence >= 70,
+      snapshot_version: newSnapshotVersion
+    });
+  } catch (err) {
+    return res.status(400).json({ ok: false, error: err.message });
+  }
+});
 
 
 
