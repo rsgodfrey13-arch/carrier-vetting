@@ -344,9 +344,31 @@ const text = ocr.text || "";
     const acordLikely = isLikelyAcord25(text);
     const dates = findDates(text);
 
-    const autoLimit = extractLimitNear(text, "AUTO LIABILITY");
-    const cargoLimit = extractLimitNear(text, "CARGO");
-    const glLimit = extractLimitNear(text, "GENERAL LIABILITY");
+// Normalize a bit (OCR can add weird spacing)
+const cleanedText = normalizeSpaces(text);
+
+// Only search inside the coverage section (reduces OCR false hits)
+const coveragesBlock = sliceCoveragesBlock(cleanedText);
+
+// Gate by detected types (so we don’t chase limits that aren’t even present)
+const coverageTypes = detectCoverageTypes(cleanedText);
+
+const hasAUTO = coverageTypes.includes("AUTO");
+const hasCARGO = coverageTypes.includes("CARGO");
+const hasGL = coverageTypes.includes("GL");
+
+// Keywords: be more specific than plain "CARGO"
+const autoLimit = hasAUTO
+  ? extractLimitNearAny(coveragesBlock, ["AUTOMOBILE LIABILITY", "AUTO LIABILITY", "AUTO LIAB"])
+  : null;
+
+const cargoLimit = hasCARGO
+  ? extractLimitNearAny(coveragesBlock, ["MOTOR TRUCK CARGO", "TRUCK CARGO", "CARGO"], { windowBefore: 80, windowAfter: 900 })
+  : null;
+
+const glLimit = hasGL
+  ? extractLimitNearAny(coveragesBlock, ["GENERAL LIABILITY", "COMMERCIAL GENERAL LIABILITY", "GEN'L LIABILITY"])
+  : null;
 
     const confidence = computeConfidence({
       acordLikely,
@@ -356,7 +378,6 @@ const text = ocr.text || "";
       datesCount: dates.length
     });
 
-    const coverageTypes = detectCoverageTypes(text);
 
     const parseResult = {
       acordLikely,
@@ -712,6 +733,66 @@ app.use(session({
 
 
 /** ---------- AUTH HELPERS & ROUTES ---------- **/
+
+
+function normalizeSpaces(s) {
+  return String(s || "").replace(/\s+/g, " ").trim();
+}
+
+// Try to isolate the “COVERAGES” block so we only search limits where they actually appear.
+function sliceCoveragesBlock(text) {
+  const t = text || "";
+  const upper = t.toUpperCase();
+
+  const startIdx = upper.indexOf("COVERAGES");
+  if (startIdx === -1) return t; // fallback to full doc
+
+  // End anchors that often appear after the coverages section on ACORD 25
+  const endAnchors = [
+    "DESCRIPTION OF OPERATIONS",
+    "CERTIFICATE HOLDER",
+    "CANCELLATION",
+    "SHOULD ANY OF THE ABOVE DESCRIBED POLICIES"
+  ];
+
+  let endIdx = t.length;
+  for (const a of endAnchors) {
+    const i = upper.indexOf(a, startIdx + 50);
+    if (i !== -1 && i < endIdx) endIdx = i;
+  }
+
+  return t.slice(startIdx, endIdx);
+}
+
+function extractMaxMoney(str) {
+  const moneyMatches = String(str || "").match(/\$?\s?\d{1,3}(?:,\d{3})+(?:\.\d{2})?/g);
+  if (!moneyMatches || moneyMatches.length === 0) return null;
+
+  const nums = moneyMatches.map(parseMoney).filter(Boolean);
+  if (!nums.length) return null;
+  return Math.max(...nums);
+}
+
+// Find the best limit near one of several keywords, inside a chosen block of text.
+function extractLimitNearAny(blockText, keywords, { windowBefore = 120, windowAfter = 1200 } = {}) {
+  const t = blockText || "";
+  const upper = t.toUpperCase();
+
+  let best = null;
+
+  for (const kw of keywords) {
+    const idx = upper.indexOf(String(kw).toUpperCase());
+    if (idx === -1) continue;
+
+    const window = t.slice(Math.max(0, idx - windowBefore), Math.min(t.length, idx + windowAfter));
+    const money = extractMaxMoney(window);
+    if (money && (!best || money > best)) best = money;
+  }
+
+  return best;
+}
+
+
 
 // helper: require that user is logged in
 function requireAuth(req, res, next) {
