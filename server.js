@@ -3,9 +3,10 @@ const session = require('express-session');
 const bcrypt = require('bcrypt');
 const { Pool } = require('pg');
 const path = require('path');
-
+const { ocrPdfBufferWithVision } = require("./ocr/visionPdfOcr");
 const app = express();
 const port = process.env.PORT || 3000;
+const crypto = require("crypto");
 
 const AWS = require("aws-sdk");
 
@@ -87,7 +88,6 @@ console.log("pdf-parse typeof:", typeof pdfParse);
 // ocr/visionPdfOcr.js
 const { Storage } = require("@google-cloud/storage");
 const vision = require("@google-cloud/vision").v1;
-const crypto = require("crypto");
 
 const storage = new Storage();
 const visionClient = new vision.ImageAnnotatorClient();
@@ -1792,15 +1792,7 @@ app.post("/api/insurance/documents/:id/parse", async (req, res) => {
     const pdfBuffer = Buffer.concat(chunks);
 
 
-// ...
 
-const ocr = await ocrPdfBufferWithVision({
-  pdfBuffer,
-  gcsBucket: process.env.GCS_OCR_BUCKET,
-  gcsPrefix: `insurance-ocr/${doc.dot_number}/${id}` // keep it organized
-});
-
-const text = ocr.text || "";
 
 
 await pool.query(
@@ -1812,6 +1804,15 @@ await pool.query(
    WHERE id=$1`,
   [id]
 );
+
+const ocr = await ocrPdfBufferWithVision({
+  pdfBuffer,
+  gcsBucket: process.env.GCS_OCR_BUCKET,
+  gcsPrefix: `insurance-ocr/${doc.dot_number}/${id}`
+});
+
+const text = ocr.text || "";
+
 
 
 
