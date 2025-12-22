@@ -2070,7 +2070,7 @@ app.get("/api/_debug/spaces", async (req, res) => {
  * This must be AFTER /api/* routes.
  */
 app.get('/:dot(\\d+)', (req, res) => {
-  res.sendFile(path.join(__dirname, 'carrier.html'));
+  res.sendFile(path.join(__dirname, "static", "carrier.html"));
 });
 
 
