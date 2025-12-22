@@ -1,32 +1,28 @@
 "use strict";
 
 const express = require("express");
-const session = require("express-session");
 const path = require("path");
+
+const { internalRoutes } = require("../routes/internal");
+const { publicRoutes } = require("../routes/public");
+const { externalRoutes } = require("../routes/external/v1.routes");
 
 function createApp() {
   const app = express();
 
-  // If you're behind a proxy (DigitalOcean App Platform), this helps cookies work correctly
+  // Behind proxy on DigitalOcean
   app.set("trust proxy", 1);
 
-  // Serve static files
+  // Serve static from /static (Phase 1 stays correct)
   app.use(express.static(path.join(__dirname, "../../static")));
 
-  // Parse JSON bodies for POST/PUT
+  // Parse JSON
   app.use(express.json());
 
-  // Session middleware
-  app.use(session({
-    secret: process.env.SESSION_SECRET || "dev-secret-change-me",
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production"
-    }
-  }));
+  // Mount route groups
+  app.use(publicRoutes());           // /contract/:token, /:dot, etc.
+  app.use("/api", internalRoutes()); // session auth routes + UI APIs
+  app.use("/api/v1", externalRoutes()); // API key auth + v1 API
 
   return app;
 }
