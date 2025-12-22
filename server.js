@@ -4,6 +4,8 @@ const bcrypt = require('bcrypt');
 const { Pool } = require('pg');
 const path = require('path');
 
+const { ocrPdfBufferWithTextract } = require("./ocr/textractPdf");
+
 const app = express();
 const port = process.env.PORT || 3000;
 const crypto = require("crypto");
@@ -1650,21 +1652,73 @@ app.get('/api/carriers/:dot', async (req, res) => {
 // ---------------- route ----------------
 
 app.post("/api/insurance/documents/:id/parse", async (req, res) => {
+  const client = await pool.connect();
+
+  // Optional: allow forcing provider during testing
+  // /parse?provider=VISION
+
+  // Only Use Textract
+
+const forcedProvider = "TEXTRACT";
+
+  
+  // Either or (saved for later
+  //const forcedProvider = String(req.query.provider || "").toUpperCase().trim(); // "VISION" | "TEXTRACT" | ""
+
   try {
     const { id } = req.params;
 
-    // 1) Load doc
-    const r = await pool.query(
-      `SELECT id, dot_number, spaces_key
-       FROM insurance_documents
-       WHERE id = $1`,
+    // ---------- 0) Lock + idempotency ----------
+    await client.query("BEGIN");
+
+    const r = await client.query(
+      `
+      SELECT id, dot_number, spaces_key, ocr_status, ocr_provider, parse_result
+      FROM insurance_documents
+      WHERE id = $1
+      FOR UPDATE
+      `,
       [id]
     );
+
     if (r.rowCount === 0) throw new Error("Document not found.");
+
     const doc = r.rows[0];
     if (!doc.spaces_key) throw new Error("spaces_key missing for this document.");
 
-    // 2) Download from Spaces
+    // If already processing, block double-run
+    if (doc.ocr_status === "PROCESSING") {
+      await client.query("ROLLBACK");
+      return res.status(409).json({ ok: false, error: "OCR already PROCESSING for this document." });
+    }
+
+    // If already done, return existing parse_result (idempotent)
+    if (doc.ocr_status === "DONE" && doc.parse_result) {
+      await client.query("ROLLBACK");
+      return res.json({
+        ok: true,
+        document_id: id,
+        dot_number: doc.dot_number,
+        parseResult: doc.parse_result,
+        reused: true
+      });
+    }
+
+    // Mark processing (we'll update provider later once we choose)
+    await client.query(
+      `
+      UPDATE insurance_documents
+      SET ocr_status='PROCESSING',
+          ocr_started_at=NOW(),
+          ocr_attempts = COALESCE(ocr_attempts,0) + 1
+      WHERE id=$1
+      `,
+      [id]
+    );
+
+    await client.query("COMMIT");
+
+    // ---------- 1) Download PDF from Spaces ----------
     const obj = await s3.send(
       new GetObjectCommand({
         Bucket: process.env.SPACES_BUCKET,
@@ -1676,62 +1730,130 @@ app.post("/api/insurance/documents/:id/parse", async (req, res) => {
     for await (const chunk of obj.Body) chunks.push(chunk);
     const pdfBuffer = Buffer.concat(chunks);
 
+    // ---------- 2) OCR (Textract primary, Vision fallback) ----------
+    let providerUsed = null;
+    let text = "";
+    let ocrMeta = {}; // keep provider-specific metadata
+    let rawOcrForDb = null; // optional raw blob (keep small)
 
+    const tryTextract = forcedProvider ? forcedProvider === "TEXTRACT" : true;
+    const tryVision = forcedProvider ? forcedProvider === "VISION" : true;
 
+    let textract = null;
+    let vision = null;
 
+    // --- Textract first ---
+    if (tryTextract) {
+      try {
+        providerUsed = "AWS_TEXTRACT";
+        await pool.query(
+          `UPDATE insurance_documents SET ocr_provider='AWS_TEXTRACT' WHERE id=$1`,
+          [id]
+        );
 
-await pool.query(
-  `UPDATE insurance_documents
-   SET ocr_provider='GOOGLE_VISION',
-       ocr_status='PROCESSING',
-       ocr_started_at=NOW(),
-       ocr_attempts = COALESCE(ocr_attempts,0) + 1
-   WHERE id=$1`,
-  [id]
-);
+        textract = await ocrPdfBufferWithTextract({
+          pdfBuffer,
+          objectKeyHint: `${doc.dot_number}/${id}`
+        });
 
-const ocr = await ocrPdfBufferWithVision({
-  pdfBuffer,
-  gcsBucket: process.env.GCS_OCR_BUCKET,
-  gcsPrefix: `insurance-ocr/${doc.dot_number}/${id}`
-});
+        text = textract.fullText || "";
 
-const text = ocr.text || "";
+//  HARD FAIL if Textract didn't produce usable text
+if (!text || !text.trim()) {
+  throw new Error("Textract OCR failed — Google fallback disabled");
+}
+        
+        // Keep only small meta in parse_result; blocks are huge
+        ocrMeta = {
+          jobId: textract.jobId,
+          inputS3Uri: textract.inputS3Uri,
+          avgLineConfidence: textract.confidence?.avgLineConfidence ?? null,
+          lineCount: textract.confidence?.lineCount ?? null,
+          tableCount: textract.tables?.length ?? 0,
+          keyCount: textract.keyValuePairs?.pairs?.length ?? 0
+        };
 
+        // Optional: store a compact raw snippet for debugging
+        rawOcrForDb = {
+          provider: "AWS_TEXTRACT",
+          jobId: textract.jobId,
+          inputS3Uri: textract.inputS3Uri,
+          confidence: textract.confidence,
+          // DO NOT store full blocks unless you add a jsonb column and accept size bloat
+          // blocks: textract.blocks
+        };
+      } catch (e) {
+        console.error("Textract failed, will fallback to Vision if enabled:", e?.message || e);
+        textract = null;
+        providerUsed = null;
+      }
+    }
+/**
+    // --- Vision fallback  commented out---
+    if (!text && tryVision) {
+      providerUsed = "GOOGLE_VISION";
+      await pool.query(
+        `UPDATE insurance_documents SET ocr_provider='GOOGLE_VISION' WHERE id=$1`,
+        [id]
+      );
 
+      vision = await ocrPdfBufferWithVision({
+        pdfBuffer,
+        gcsBucket: process.env.GCS_OCR_BUCKET,
+        gcsPrefix: `insurance-ocr/${doc.dot_number}/${id}`
+      });
 
+      text = vision.text || "";
 
+      ocrMeta = {
+        jobId: vision.jobId,
+        avgConfidence: vision.avgConfidence,
+        pageCount: vision.pageCount,
+        inputUri: vision.gcs?.inputUri,
+        outputUri: vision.gcs?.outputUri
+      };
 
+      rawOcrForDb = {
+        provider: "GOOGLE_VISION",
+        jobId: vision.jobId,
+        avgConfidence: vision.avgConfidence,
+        pageCount: vision.pageCount,
+        gcs: vision.gcs
+      };
+    }
+*/
 
-    // 4) Detect + extract headline limits
+    if (!text) {
+      throw new Error("OCR failed (Textract + Vision).");
+    }
+
+    // ---------- 3) Your existing parsing logic (unchanged) ----------
     const acordLikely = isLikelyAcord25(text);
     const dates = findDates(text);
 
-// Normalize a bit (OCR can add weird spacing)
-const cleanedText = normalizeSpaces(text);
+    const cleanedText = normalizeSpaces(text);
+    const coveragesBlock = sliceCoveragesBlock(cleanedText);
+    const coverageTypes = detectCoverageTypes(cleanedText);
 
-// Only search inside the coverage section (reduces OCR false hits)
-const coveragesBlock = sliceCoveragesBlock(cleanedText);
+    const hasAUTO = coverageTypes.includes("AUTO");
+    const hasCARGO = coverageTypes.includes("CARGO");
+    const hasGL = coverageTypes.includes("GL");
 
-// Gate by detected types (so we don’t chase limits that aren’t even present)
-const coverageTypes = detectCoverageTypes(cleanedText);
+    const autoLimit = hasAUTO
+      ? extractLimitNearAny(coveragesBlock, ["AUTOMOBILE LIABILITY", "AUTO LIABILITY", "AUTO LIAB"])
+      : null;
 
-const hasAUTO = coverageTypes.includes("AUTO");
-const hasCARGO = coverageTypes.includes("CARGO");
-const hasGL = coverageTypes.includes("GL");
+    const cargoLimit = hasCARGO
+      ? extractLimitNearAny(
+          coveragesBlock,
+          ["MOTOR TRUCK CARGO", "TRUCK CARGO", "CARGO"],
+          { windowBefore: 80, windowAfter: 900 }
+        )
+      : null;
 
-// Keywords: be more specific than plain "CARGO"
-const autoLimit = hasAUTO
-  ? extractLimitNearAny(coveragesBlock, ["AUTOMOBILE LIABILITY", "AUTO LIABILITY", "AUTO LIAB"])
-  : null;
-
-const cargoLimit = hasCARGO
-  ? extractLimitNearAny(coveragesBlock, ["MOTOR TRUCK CARGO", "TRUCK CARGO", "CARGO"], { windowBefore: 80, windowAfter: 900 })
-  : null;
-
-const glLimit = hasGL
-  ? extractLimitNearAny(coveragesBlock, ["GENERAL LIABILITY", "COMMERCIAL GENERAL LIABILITY", "GEN'L LIABILITY"])
-  : null;
+    const glLimit = hasGL
+      ? extractLimitNearAny(coveragesBlock, ["GENERAL LIABILITY", "COMMERCIAL GENERAL LIABILITY", "GEN'L LIABILITY"])
+      : null;
 
     const confidence = computeConfidence({
       acordLikely,
@@ -1740,7 +1862,6 @@ const glLimit = hasGL
       gl: glLimit,
       datesCount: dates.length
     });
-
 
     const parseResult = {
       acordLikely,
@@ -1751,46 +1872,84 @@ const glLimit = hasGL
         general_liability_limit: glLimit,
         detected_dates: dates,
         detected_coverage_types: coverageTypes
+      },
+      ocr: {
+        provider: providerUsed,
+        meta: ocrMeta
       }
     };
 
-    // 5) Save parse artifacts on the document
-await pool.query(
-  `
-  UPDATE insurance_documents
-  SET extracted_text = $1,
-      ocr_provider = 'GOOGLE_VISION',
-      ocr_status = 'DONE',
-      ocr_job_id = $2,
-      ocr_avg_confidence = $3,
-      ocr_page_count = $4,
-      ocr_input_uri = $5,
-      ocr_output_uri = $6,
-      ocr_completed_at = NOW(),
-      parse_result = $7::jsonb,
-      parse_confidence = $8::numeric,
-      parsed_at = NOW(),
-      status = CASE WHEN $8::numeric >= 70 THEN status ELSE 'NEEDS_REVIEW' END
-  WHERE id = $9
-  `,
-  [
-    text,
-    ocr.jobId,
-    ocr.avgConfidence,
-    ocr.pageCount,
-    ocr.gcs.inputUri,
-    ocr.gcs.outputUri,
-    JSON.stringify(parseResult),
-    confidence,
-    id
-  ]
-);
-;
+    // ---------- 4) Save document OCR + parse artifacts ----------
+    // NOTE: you currently have many ocr_* columns oriented around Vision/GCS.
+    // We'll fill what we can safely without breaking your schema.
+    if (providerUsed === "AWS_TEXTRACT") {
+      await pool.query(
+        `
+        UPDATE insurance_documents
+        SET extracted_text = $1,
+            ocr_provider = 'AWS_TEXTRACT',
+            ocr_status = 'DONE',
+            ocr_job_id = $2,
+            ocr_avg_confidence = $3,
+            ocr_input_uri = $4,
+            ocr_output_uri = NULL,
+            ocr_completed_at = NOW(),
+            parse_result = $5::jsonb,
+            parse_confidence = $6::numeric,
+            parsed_at = NOW(),
+            status = CASE WHEN $6::numeric >= 70 THEN status ELSE 'NEEDS_REVIEW' END
+        WHERE id = $7
+        `,
+        [
+          text,
+          textract?.jobId || null,
+          textract?.confidence?.avgLineConfidence ?? null,
+          textract?.inputS3Uri || null,
+          JSON.stringify(parseResult),
+          confidence,
+          id
+        ]
+      );
+    } 
+    /**
 
-
+ else {
+      // GOOGLE_VISION
+      await pool.query(
+        `
+        UPDATE insurance_documents
+        SET extracted_text = $1,
+            ocr_provider = 'GOOGLE_VISION',
+            ocr_status = 'DONE',
+            ocr_job_id = $2,
+            ocr_avg_confidence = $3,
+            ocr_page_count = $4,
+            ocr_input_uri = $5,
+            ocr_output_uri = $6,
+            ocr_completed_at = NOW(),
+            parse_result = $7::jsonb,
+            parse_confidence = $8::numeric,
+            parsed_at = NOW(),
+            status = CASE WHEN $8::numeric >= 70 THEN status ELSE 'NEEDS_REVIEW' END
+        WHERE id = $9
+        `,
+        [
+          text,
+          vision?.jobId || null,
+          vision?.avgConfidence ?? null,
+          vision?.pageCount ?? null,
+          vision?.gcs?.inputUri || null,
+          vision?.gcs?.outputUri || null,
+          JSON.stringify(parseResult),
+          confidence,
+          id
+        ]
+      );
+    }
+*/
+    // ---------- 5) Promote to snapshots (your existing logic) ----------
     let newSnapshotVersion = null;
 
-    // 6) Promote to snapshots if confident
     if (confidence >= 70) {
       const upsert = await pool.query(
         `
@@ -1817,9 +1976,6 @@ await pool.query(
 
       newSnapshotVersion = upsert.rows[0]?.snapshot_version ?? 1;
 
-      // 7) Insert coverages for this snapshot version (simple version: store detected types)
-      // For now we store a minimal limits_json per type (headline limits where applicable).
-      // Later you can upgrade this to parse policy # / dates per line.
       await pool.query(
         `DELETE FROM insurance_coverages WHERE dot_number = $1 AND snapshot_version = $2`,
         [doc.dot_number, newSnapshotVersion]
@@ -1847,15 +2003,35 @@ await pool.query(
       ok: true,
       document_id: id,
       dot_number: doc.dot_number,
+      ocr_provider: providerUsed,
       parseResult,
       promoted_to_snapshot: confidence >= 70,
       snapshot_version: newSnapshotVersion
     });
+
   } catch (err) {
+    // Mark FAILED (best effort)
+    try {
+      await pool.query(
+        `
+        UPDATE insurance_documents
+        SET ocr_status = 'FAILED',
+            ocr_error = $2,
+            ocr_completed_at = NOW()
+        WHERE id = $1
+        `,
+        [req.params.id, String(err?.message || err)]
+      );
+    } catch {}
+
+    // Important: rollback only if we still have a txn open
+    try { await client.query("ROLLBACK"); } catch {}
+
     return res.status(400).json({ ok: false, error: err.message });
+  } finally {
+    client.release();
   }
 });
-
 
 
 
@@ -1905,48 +2081,4 @@ app.listen(port, () => {
 });
 
 
-/** ---------- Removed ---------- -
-app.get('/api/carriers/search', async (req, res) => {
-  const q = (req.query.q || '').trim();
-
-  if (!q) {
-    return res.json([]);
-  }
-
-  try {
-    const result = await pool.query(
-      `
-      SELECT
-        dotnumber,
-        legalname,
-        dbaname,
-        phycity,
-        phystate
-      FROM carriers
-      WHERE
-        dotnumber ILIKE $1
-        OR legalname ILIKE $1
-        OR dbaname ILIKE $1
-      ORDER BY legalname
-      LIMIT 15;
-      `,
-      ['%' + q + '%']
-    );
-
-    res.json(
-      result.rows.map(r => ({
-        dot: r.dotnumber,
-        legalname: r.legalname,
-        dbaname: r.dbaname,
-        city: r.phycity,
-        state: r.phystate
-      }))
-    );
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Search failed' });
-  }
-});
-
-**/
 
