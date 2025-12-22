@@ -5,8 +5,8 @@ const path = require("path");
 
 const router = express.Router();
 
-app.get('/:dot(\\d+)', (req, res) => {
-  res.sendFile(path.join(__dirname, "static", "carrier.html"));
+router.get("/:dot(\\d+)", (req, res) => {
+  res.sendFile(path.join(__dirname, "../../../static", "carrier.html"));
 });
 
 module.exports = router;
