@@ -481,13 +481,7 @@ function requireAuth(req, res, next) {
   next();
 }
 
-// who am I? (used by UI + Postman to check login)
-app.get('/api/me', (req, res) => {
-  if (!req.session?.userId) {
-    return res.json({ user: null });
-  }
-  res.json({ user: { id: req.session.userId } });
-});
+
 
 // login: expects { "email": "x", "password": "y" }
 app.post('/api/login', async (req, res) => {
