@@ -1,8 +1,15 @@
 // api-v1.js
-const express = require('express');
+const express = require("express");
 const { getPolicyForUser } = require("../../policies/importPolicy");
 
+function createApiV1(pool) {
+  const router = express.Router();
 
+  if (!pool || typeof pool.query !== "function") {
+    throw new Error("V1 router initialized without a valid pool");
+  }
+
+  
 function normalizeAlertIds(input) {
   if (!input) return [];
 
@@ -64,9 +71,7 @@ function normalizeDotsWithInvalid(input) {
   return { unique, invalid };
 }
 
-
-function createApiV1(pool) {
-  const router = express.Router();
+;
 
 // ---------------------------------------------
 // GET /api/v1/me/carriers/import-limits
