@@ -1,6 +1,6 @@
 // api-v1.js
 const express = require('express');
-const { getPolicyForUser } = require('./importPolicy');
+const { getPolicyForUser } = require("../../policies/importPolicy");
 
 
 function normalizeAlertIds(input) {
