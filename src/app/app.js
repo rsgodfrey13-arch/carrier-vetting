@@ -19,7 +19,9 @@ function createApp() {
   app.set("trust proxy", 1);
 
   // Serve static files from /static (your Phase 1 move)
-  app.use(express.static(path.join(__dirname, "../../static")));
+  const staticDir = path.join(__dirname, "../../static");
+  app.use("/static", express.static(staticDir));
+  ;
 
   // Parse JSON bodies
   app.use(express.json());
