@@ -5,7 +5,7 @@ const crypto = require("crypto");
 
 const { pool } = require("../../db/pool");
 const { requireAuth } = require("../../middleware/requireAuth");
-const { sendContractEmail } = require("../../../mailgun"); // keep using root mailgun.js for now
+const { sendContractEmail } = require("../../clients/mailgun");
 
 const router = express.Router();
 
