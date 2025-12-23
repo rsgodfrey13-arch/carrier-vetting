@@ -242,6 +242,7 @@ router.post('/me/carriers/import', async (req, res) => {
 
       res.json(carrier);
     } catch (err) {
+      console.error("V1 DB ERROR:", err);   // <— Temp Debug
       console.error('Error in GET /api/v1/carriers/:dot:', err);
       res.status(500).json({ error: 'Database query failed' });
     }
