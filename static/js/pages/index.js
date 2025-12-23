@@ -1,1 +1,1116 @@
+/* static/js/pages/index.js */
+
+(() => {
+  // ---------------------------------------------
+  // STATE
+  // ---------------------------------------------
+  let myCarrierDots = new Set();
+
+  // Pagination
+  let currentPage = 1;
+  let pageSize = 25;
+  let totalRows = 0;
+  let totalPages = 0;
+
+  // Server-side sort
+  let sortBy = "carrier";
+  let sortDir = "asc";
+
+  // ---------------------------------------------
+  // HELPERS
+  // ---------------------------------------------
+  function $(id) {
+    return document.getElementById(id);
+  }
+
+  function safeText(val, fallback = "") {
+    const t = String(val ?? "").trim();
+    return t ? t : fallback;
+  }
+
+  function goToCarrier(dot) {
+    if (!dot) return;
+    window.location.pathname = "/" + encodeURIComponent(dot);
+  }
+
+  async function isLoggedIn() {
+    try {
+      const me = await fetch("/api/me").then((r) => r.json());
+      return !!me.user;
+    } catch {
+      return false;
+    }
+  }
+
+  // ---------------------------------------------
+  // TABLE LOAD + RENDER
+  // ---------------------------------------------
+  async function loadCarriers() {
+    try {
+      const tbody = $("carrier-table-body");
+      if (!tbody) return;
+
+      tbody.innerHTML = "";
+
+      // 1) Determine endpoint based on login
+      let endpoint = "/api/carriers";
+      try {
+        const me = await fetch("/api/me").then((r) => r.json());
+        if (me.user) endpoint = "/api/my-carriers";
+      } catch (e) {
+        console.error("Error checking login:", e);
+      }
+
+      // 2) Build URL with pagination + sorting
+      const url = new URL(endpoint, window.location.origin);
+      url.searchParams.set("page", currentPage);
+      url.searchParams.set("pageSize", pageSize);
+
+      if (sortBy) {
+        url.searchParams.set("sortBy", sortBy);
+        url.searchParams.set("sortDir", sortDir);
+      }
+
+      const res = await fetch(url);
+      const result = await res.json();
+
+      const data = Array.isArray(result) ? result : result.rows;
+      totalRows = result.total ?? (Array.isArray(data) ? data.length : 0);
+      totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+
+      if (!Array.isArray(data) || data.length === 0) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = 10;
+        cell.textContent = "No carriers found.";
+        row.appendChild(cell);
+        tbody.appendChild(row);
+
+        renderPagination();
+        return;
+      }
+
+      data.forEach((c) => {
+        const row = document.createElement("tr");
+        const dotVal = c.dot || c.dotnumber || c.id || "";
+
+        // Checkbox cell
+        const selectCell = document.createElement("td");
+        selectCell.className = "col-select select-cell";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.className = "row-select";
+        checkbox.dataset.dot = dotVal;
+
+        selectCell.appendChild(checkbox);
+        row.appendChild(selectCell);
+
+        // DOT link
+        const dotCell = document.createElement("td");
+        const link = document.createElement("a");
+        link.textContent = dotVal;
+        link.href = "/" + encodeURIComponent(dotVal);
+        link.className = "dot-link";
+        dotCell.appendChild(link);
+        row.appendChild(dotCell);
+
+        // MC
+        const mcCell = document.createElement("td");
+        mcCell.textContent = c.mc_number || "-";
+        row.appendChild(mcCell);
+
+        // Carrier name
+        const nameCell = document.createElement("td");
+        const carrierName = c.legalname || c.dbaname || c.name || "-";
+        nameCell.textContent = carrierName;
+        nameCell.title = carrierName;
+        row.appendChild(nameCell);
+
+        // Location
+        const locationCell = document.createElement("td");
+        const city = c.city || c.phycity || "";
+        const state = c.state || c.phystate || "";
+        locationCell.textContent = `${city}${city && state ? ", " : ""}${state}`;
+        row.appendChild(locationCell);
+
+        // Operating
+        const allowedCell = document.createElement("td");
+        const isAuthorized = c.allowedtooperate === "Y";
+        allowedCell.textContent = isAuthorized ? "Authorized" : "Not Authorized";
+        if (isAuthorized) allowedCell.classList.add("status-ok");
+        row.appendChild(allowedCell);
+
+        // Common
+        const commonCell = document.createElement("td");
+        commonCell.textContent = c.commonauthoritystatus || "-";
+        if (commonCell.textContent === "A") commonCell.classList.add("status-ok");
+        row.appendChild(commonCell);
+
+        // Contract
+        const contractCell = document.createElement("td");
+        contractCell.textContent = c.contractauthoritystatus || "-";
+        if (contractCell.textContent === "A") contractCell.classList.add("status-ok");
+        row.appendChild(contractCell);
+
+        // Broker
+        const brokerCell = document.createElement("td");
+        brokerCell.textContent = c.brokerauthoritystatus || "-";
+        if (brokerCell.textContent === "A") brokerCell.classList.add("status-ok");
+        row.appendChild(brokerCell);
+
+        // Safety
+        const ratingMap = { S: "Satisfactory", C: "Conditional", U: "Unsatisfactory" };
+        const rawRating = c.safetyrating ? String(c.safetyrating).trim().toUpperCase() : "";
+        const safetyCell = document.createElement("td");
+        safetyCell.textContent = ratingMap[rawRating] || "Not Rated";
+        row.appendChild(safetyCell);
+
+        // Row click behavior
+        row.addEventListener("click", (e) => {
+          if (e.target.closest(".select-cell")) return;
+          if (e.target.tagName.toLowerCase() !== "a") {
+            goToCarrier(dotVal);
+          }
+        });
+
+        tbody.appendChild(row);
+      });
+
+      renderPagination();
+    } catch (err) {
+      console.error("Error fetching carriers:", err);
+    }
+  }
+
+  function renderPagination() {
+    const container = $("pagination-controls");
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    if (totalPages <= 1) return;
+
+    const makeButton = (label, page, disabled = false, active = false) => {
+      const btn = document.createElement("button");
+      btn.textContent = label;
+      btn.className = "page-btn";
+      if (active) btn.classList.add("active");
+
+      if (disabled) {
+        btn.disabled = true;
+      } else if (page !== null) {
+        btn.addEventListener("click", () => {
+          if (page === currentPage) return;
+          currentPage = page;
+          loadCarriers();
+        });
+      }
+
+      return btn;
+    };
+
+    // Prev
+    container.appendChild(makeButton("⟨", Math.max(1, currentPage - 1), currentPage === 1));
+
+    const maxButtons = 7;
+
+    if (totalPages <= maxButtons) {
+      for (let p = 1; p <= totalPages; p++) {
+        container.appendChild(makeButton(String(p), p, false, p === currentPage));
+      }
+    } else {
+      container.appendChild(makeButton("1", 1, false, currentPage === 1));
+
+      if (currentPage > 4) {
+        const span = document.createElement("span");
+        span.textContent = "...";
+        span.className = "page-ellipsis";
+        container.appendChild(span);
+      }
+
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+
+      for (let p = start; p <= end; p++) {
+        container.appendChild(makeButton(String(p), p, false, p === currentPage));
+      }
+
+      if (currentPage < totalPages - 3) {
+        const span = document.createElement("span");
+        span.textContent = "...";
+        span.className = "page-ellipsis";
+        container.appendChild(span);
+      }
+
+      container.appendChild(makeButton(String(totalPages), totalPages, false, currentPage === totalPages));
+    }
+
+    // Next
+    container.appendChild(
+      makeButton("⟩", Math.min(totalPages, currentPage + 1), currentPage === totalPages)
+    );
+  }
+
+  // Rows-per-page selector
+  function wireRowsPerPage() {
+    const rpp = $("rows-per-page");
+    if (!rpp) return;
+
+    rpp.addEventListener("change", (e) => {
+      pageSize = parseInt(e.target.value, 10) || 25;
+      currentPage = 1;
+      loadCarriers();
+    });
+  }
+
+  // ---------------------------------------------
+  // AUTOCOMPLETE "MY CARRIER" PILL
+  // ---------------------------------------------
+  async function buildMyCarrierDots() {
+    try {
+      const me = await fetch("/api/me").then((r) => r.json());
+      if (!me.user) {
+        myCarrierDots = new Set();
+        return;
+      }
+
+      const url = new URL("/api/my-carriers", window.location.origin);
+      url.searchParams.set("page", 1);
+      url.searchParams.set("pageSize", 5000);
+
+      const res = await fetch(url);
+      if (!res.ok) {
+        myCarrierDots = new Set();
+        return;
+      }
+
+      const json = await res.json();
+      const rows = Array.isArray(json) ? json : json.rows || [];
+
+      myCarrierDots = new Set(rows.map((c) => String(c.dot || c.dotnumber || c.id || "")));
+    } catch (err) {
+      console.error("buildMyCarrierDots error", err);
+      myCarrierDots = new Set();
+    }
+  }
+
+  function wireAutocomplete() {
+    const searchInput = $("search-input");
+    const searchBtn = $("open-carrier-btn");
+    const suggestionsEl = $("carrier-suggestions");
+    if (!searchInput || !searchBtn || !suggestionsEl) return;
+
+    let searchTimeout = null;
+
+    function clearSuggestions() {
+      suggestionsEl.innerHTML = "";
+      suggestionsEl.classList.remove("open");
+    }
+
+    function renderSuggestions(results) {
+      clearSuggestions();
+      if (!Array.isArray(results) || results.length === 0) return;
+
+      results.forEach((item) => {
+        const li = document.createElement("li");
+        li.className = "carrier-suggestion-item";
+
+        const dotVal = item.dot || item.dotnumber || item.id || "";
+        const name = item.legalname || item.dbaname || "(No name)";
+        const city = item.phycity || item.city || "";
+        const state = item.phystate || item.state || "";
+        const mc = item.mc_number || "-";
+
+        const isMine = myCarrierDots.has(String(dotVal));
+
+        li.innerHTML = `
+          <div class="suggestion-main">
+            <span class="suggestion-title-text">${dotVal} – ${name}</span>
+            ${isMine ? '<span class="my-carrier-pill">MY CARRIER</span>' : ""}
+          </div>
+          <div class="suggestion-sub">
+            MC: ${mc} • ${city}${city && state ? ", " : ""}${state}
+          </div>
+        `;
+
+        li.addEventListener("click", () => goToCarrier(dotVal));
+        suggestionsEl.appendChild(li);
+      });
+
+      suggestionsEl.classList.add("open");
+    }
+
+    async function performSearch(query) {
+      const q = query.trim();
+      if (q.length < 2) {
+        clearSuggestions();
+        return;
+      }
+
+      try {
+        const url = new URL("/api/carrier-search", window.location.origin);
+        url.searchParams.set("q", q);
+
+        const res = await fetch(url);
+        if (!res.ok) {
+          clearSuggestions();
+          return;
+        }
+
+        const results = await res.json();
+        renderSuggestions(results);
+      } catch (e) {
+        console.error("search error", e);
+        clearSuggestions();
+      }
+    }
+
+    searchInput.addEventListener("input", () => {
+      const value = searchInput.value;
+      if (searchTimeout) clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => performSearch(value), 250);
+    });
+
+    searchInput.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+
+      e.preventDefault();
+      const first = suggestionsEl.querySelector(".carrier-suggestion-item");
+      if (first) {
+        const text = first.querySelector(".suggestion-main")?.textContent || "";
+        const dot = text.split("–")[0].trim();
+        goToCarrier(dot);
+      } else {
+        goToCarrier(searchInput.value.trim());
+      }
+    });
+
+    searchBtn.addEventListener("click", () => {
+      const first = suggestionsEl.querySelector(".carrier-suggestion-item");
+      if (first) {
+        const text = first.querySelector(".suggestion-main")?.textContent || "";
+        const dot = text.split("–")[0].trim();
+        goToCarrier(dot);
+      } else {
+        goToCarrier(searchInput.value.trim());
+      }
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".search-shell")) clearSuggestions();
+    });
+  }
+
+  // ---------------------------------------------
+  // SORT HEADER HANDLERS
+  // ---------------------------------------------
+  function wireSortHeaders() {
+    const table = $("carriers-table");
+    if (!table) return;
+
+    const headers = Array.from(table.querySelectorAll("th.sortable"));
+
+    function updateSortHeaderClasses() {
+      headers.forEach((h) => {
+        h.classList.remove("sorted-asc", "sorted-desc");
+        if (h.dataset.col === sortBy) {
+          h.classList.add(sortDir === "asc" ? "sorted-asc" : "sorted-desc");
+        }
+      });
+    }
+
+    headers.forEach((th) => {
+      const colKey = th.dataset.col;
+
+      th.addEventListener("click", () => {
+        if (sortBy === colKey) {
+          sortDir = sortDir === "asc" ? "desc" : "asc";
+        } else {
+          sortBy = colKey;
+          sortDir = "asc";
+        }
+
+        currentPage = 1;
+        updateSortHeaderClasses();
+        loadCarriers();
+      });
+    });
+
+    updateSortHeaderClasses();
+  }
+
+  // ---------------------------------------------
+  // CSV DOWNLOAD
+  // ---------------------------------------------
+  function wireCsvDownload() {
+    const btn = $("download-btn");
+    if (!btn) return;
+
+    btn.addEventListener("click", async () => {
+      try {
+        let endpoint = "/api/carriers";
+        try {
+          const me = await fetch("/api/me").then((r) => r.json());
+          if (me.user) endpoint = "/api/my-carriers";
+        } catch {
+          console.warn("me check failed, defaulting to /api/carriers");
+        }
+
+        if (!totalRows || totalRows <= 0) {
+          alert("No carriers to export.");
+          return;
+        }
+
+        const url = new URL(endpoint, window.location.origin);
+        url.searchParams.set("page", 1);
+        url.searchParams.set("pageSize", totalRows);
+
+        if (sortBy) {
+          url.searchParams.set("sortBy", sortBy);
+          url.searchParams.set("sortDir", sortDir);
+        }
+
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Export request failed: ${res.status}`);
+
+        const result = await res.json();
+        const data = Array.isArray(result) ? result : result.rows;
+
+        if (!data || !data.length) {
+          alert("No carriers to export.");
+          return;
+        }
+
+        const lines = [];
+        lines.push(["DOT", "MC", "Carrier", "Location", "Operating", "Common", "Contract", "Broker", "Safety Rating"].join(","));
+
+        const ratingMap = { S: "Satisfactory", C: "Conditional", U: "Unsatisfactory" };
+
+        data.forEach((c) => {
+          const dotVal = c.dot || c.dotnumber || c.id || "";
+          const mc = c.mc_number || "";
+          const name = c.legalname || c.dbaname || c.name || "";
+          const city = c.city || c.phycity || "";
+          const state = c.state || c.phystate || "";
+          const location = `${city}${city && state ? ", " : ""}${state}`;
+
+          const operating = c.allowedtooperate === "Y" ? "Authorized" : "Not Authorized";
+          const common = c.commonauthoritystatus || "";
+          const contract = c.contractauthoritystatus || "";
+          const broker = c.brokerauthoritystatus || "";
+          const rawRating = c.safetyrating ? String(c.safetyrating).trim().toUpperCase() : "";
+          const safety = ratingMap[rawRating] || "Not Rated";
+
+          const cols = [dotVal, mc, name, location, operating, common, contract, broker, safety].map((val) => {
+            let t = String(val ?? "").replace(/\s+/g, " ").trim();
+            if (/[",\n]/.test(t)) t = '"' + t.replace(/"/g, '""') + '"';
+            return t;
+          });
+
+          lines.push(cols.join(","));
+        });
+
+        const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+        const blobUrl = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = "carriers.csv";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+      } catch (err) {
+        console.error("CSV download failed", err);
+        alert("Sorry, something went wrong generating the CSV.");
+      }
+    });
+  }
+
+  // ---------------------------------------------
+  // AUTH UI (Login/Logout buttons)
+  // ---------------------------------------------
+  function wireAuthUi() {
+    const loginBtn = $("login-btn");
+    const logoutBtn = $("logout-btn");
+    if (!loginBtn || !logoutBtn) return;
+
+    loginBtn.addEventListener("click", () => {
+      window.location.href = "/login.html";
+    });
+
+    async function initAuthUI() {
+      try {
+        const res = await fetch("/api/me");
+        const data = await res.json();
+
+        if (data.user) {
+          loginBtn.style.display = "none";
+          logoutBtn.style.display = "inline-block";
+
+          logoutBtn.onclick = async () => {
+            await fetch("/api/logout", { method: "POST" });
+            window.location.href = "/";
+          };
+        } else {
+          loginBtn.style.display = "inline-block";
+          logoutBtn.style.display = "none";
+        }
+      } catch (err) {
+        console.error("auth ui error", err);
+      }
+    }
+
+    initAuthUI();
+  }
+
+  // ---------------------------------------------
+  // BULK SELECT + REMOVE
+  // ---------------------------------------------
+  function wireBulkRemove() {
+    const tbody = $("carrier-table-body");
+    const selectAll = $("select-all");
+    const bulkBar = $("bulk-actions");
+    const selectedCountEl = $("selected-count");
+    const bulkRemoveBtn = $("bulk-remove-btn");
+
+    if (!tbody || !selectAll || !bulkBar || !selectedCountEl || !bulkRemoveBtn) return;
+
+    function updateBulkBar() {
+      const selected = document.querySelectorAll(".row-select:checked");
+      const count = selected.length;
+
+      if (count === 0) {
+        bulkBar.classList.add("hidden");
+        selectAll.checked = false;
+      } else {
+        bulkBar.classList.remove("hidden");
+        selectedCountEl.textContent = String(count);
+
+        const allBoxes = document.querySelectorAll(".row-select");
+        selectAll.checked = count === allBoxes.length && allBoxes.length > 0;
+      }
+    }
+
+    tbody.addEventListener("change", (e) => {
+      if (e.target.classList.contains("row-select")) updateBulkBar();
+    });
+
+    selectAll.addEventListener("change", () => {
+      const allBoxes = document.querySelectorAll(".row-select");
+      allBoxes.forEach((cb) => (cb.checked = selectAll.checked));
+      updateBulkBar();
+    });
+
+    bulkRemoveBtn.addEventListener("click", async () => {
+      const selected = Array.from(document.querySelectorAll(".row-select:checked"));
+      if (!selected.length) return;
+
+      if (!confirm(`Remove ${selected.length} carriers from My Carriers?`)) return;
+
+      for (const cb of selected) {
+        const dot = cb.dataset.dot;
+        try {
+          const res = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}`, { method: "DELETE" });
+
+          if (res.status === 401) {
+            alert("Your session expired. Please log in again.");
+            window.location.href = "/login.html";
+            return;
+          }
+
+          if (!res.ok) {
+            console.error("Failed to remove", dot, await res.text());
+          } else {
+            const row = cb.closest("tr");
+            if (row) row.remove();
+          }
+        } catch (err) {
+          console.error("Network error removing", dot, err);
+        }
+      }
+
+      updateBulkBar();
+    });
+  }
+
+  // ---------------------------------------------
+  // BULK IMPORT WIZARD
+  // NOTE: This assumes the modal HTML stays in index.html
+  // ---------------------------------------------
+  function wireBulkImportWizard() {
+    // refs
+    const bulkImportBtn = $("bulk-import-btn");
+    const importModal = $("import-modal");
+    const importCloseBtn = $("import-modal-close");
+    const importCancelBtn = $("import-cancel-btn");
+    const importNextBtn = $("import-next-btn");
+    const importBackBtn = $("import-back-btn");
+
+    if (!bulkImportBtn || !importModal || !importNextBtn) return;
+
+    const stepEls = {
+      1: document.querySelector(".import-step-body-1"),
+      2: document.querySelector(".import-step-body-2"),
+      3: document.querySelector(".import-step-body-3"),
+    };
+
+    const stepTabs = {
+      1: document.querySelector(".import-step-1"),
+      2: document.querySelector(".import-step-2"),
+      3: document.querySelector(".import-step-3"),
+    };
+
+    let currentStep = 1;
+    let importMethod = "csv";
+    let parsedDotsFromCsv = [];
+    let previewResult = null;
+
+    const loadingEl = $("import-loading");
+    const resultsEl = $("import-results");
+
+    const summaryNewCount = $("summary-new-count");
+    const summaryDupCount = $("summary-dup-count");
+    const summaryInvCount = $("summary-invalid-count");
+
+    const doneInsertedEl = $("done-inserted");
+    const doneDuplicatesEl = $("done-duplicates");
+    const doneInvalidEl = $("done-invalid");
+
+    const sectionNewBody = $("section-new-body");
+    const sectionDupBody = $("section-dup-body");
+    const sectionInvalidBody = $("section-invalid-body");
+    const sectionNewCountEl = $("section-new-count");
+    const sectionDupCountEl = $("section-dup-count");
+    const sectionInvalidCountEl = $("section-invalid-count");
+
+    const methodButtons = document.querySelectorAll(".import-method-btn");
+    const csvPanel = $("import-panel-csv");
+    const pastePanel = $("import-panel-paste");
+
+    const dropzone = $("csv-dropzone");
+    const fileInput = $("csv-file-input");
+    const browseCsvBtn = $("browse-csv-btn");
+    const csvSummaryEl = $("csv-upload-summary");
+    const csvFileNameEl = $("csv-file-name");
+    const csvDotCountEl = $("csv-dot-count");
+
+    const dotPasteTextarea = $("dot-paste-textarea");
+
+    function openImportModal() {
+      importModal.classList.remove("hidden");
+      goToStep(1);
+    }
+
+    function resetWizardState() {
+      currentStep = 1;
+      previewResult = null;
+      parsedDotsFromCsv = [];
+
+      if (csvSummaryEl) {
+        csvSummaryEl.classList.add("hidden");
+        if (csvFileNameEl) csvFileNameEl.textContent = "";
+        if (csvDotCountEl) csvDotCountEl.textContent = "0";
+      }
+
+      if (dotPasteTextarea) dotPasteTextarea.value = "";
+
+      if (sectionNewBody) sectionNewBody.innerHTML = "";
+      if (sectionDupBody) sectionDupBody.innerHTML = "";
+      if (sectionInvalidBody) sectionInvalidBody.innerHTML = "";
+      setSummaryCounts(0, 0, 0);
+
+      if (loadingEl) loadingEl.classList.add("hidden");
+      if (resultsEl) resultsEl.classList.add("hidden");
+    }
+
+    function closeImportModal() {
+      importModal.classList.add("hidden");
+      resetWizardState();
+    }
+
+    bulkImportBtn.addEventListener("click", openImportModal);
+    [importCloseBtn, importCancelBtn].forEach((btn) => btn && btn.addEventListener("click", closeImportModal));
+
+    importModal.addEventListener("click", (e) => {
+      if (e.target === importModal) closeImportModal();
+    });
+
+    function goToStep(step) {
+      currentStep = step;
+
+      Object.entries(stepEls).forEach(([num, el]) => {
+        if (!el) return;
+        el.classList.toggle("active", Number(num) === step);
+      });
+
+      Object.entries(stepTabs).forEach(([num, el]) => {
+        if (!el) return;
+        el.classList.toggle("import-step-active", Number(num) === step);
+      });
+
+      if (step === 1) {
+        if (importBackBtn) importBackBtn.style.visibility = "hidden";
+        importNextBtn.textContent = "Next";
+      } else if (step === 2) {
+        if (importBackBtn) importBackBtn.style.visibility = "visible";
+        importNextBtn.textContent = "Import carriers";
+      } else if (step === 3) {
+        if (importBackBtn) importBackBtn.style.visibility = "hidden";
+        importNextBtn.textContent = "Finish";
+      }
+    }
+
+    if (importBackBtn) {
+      importBackBtn.addEventListener("click", () => {
+        if (currentStep === 2) goToStep(1);
+        else if (currentStep === 3) goToStep(2);
+      });
+    }
+
+    function setImportMethod(method) {
+      importMethod = method;
+
+      methodButtons.forEach((btn) => {
+        const isActive = btn.dataset.importMethod === method;
+        btn.classList.toggle("import-method-active", isActive);
+      });
+
+      if (csvPanel && pastePanel) {
+        csvPanel.classList.toggle("active", method === "csv");
+        pastePanel.classList.toggle("active", method === "paste");
+      }
+    }
+
+    methodButtons.forEach((btn) => {
+      btn.addEventListener("click", () => setImportMethod(btn.dataset.importMethod));
+    });
+
+    setImportMethod("csv");
+
+    function parseDotsFromCsvText(text) {
+      const parsed = Papa.parse(text, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (h) => String(h || "").trim().toLowerCase(),
+      });
+
+      if (parsed.errors?.length) console.warn("CSV parse warnings:", parsed.errors);
+
+      const rows = parsed.data || [];
+      if (!rows.length) return [];
+
+      const dotKeys = ["dot", "dotnumber", "dot_number", "usd_dot", "dot #"];
+      let dotKey = null;
+
+      const sample = rows[0];
+      for (const k of Object.keys(sample)) {
+        if (dotKeys.includes(k)) {
+          dotKey = k;
+          break;
+        }
+      }
+
+      if (!dotKey) {
+        alert("Could not find a DOT column. Expect a header like DOT or dotnumber.");
+        return [];
+      }
+
+      const dots = [];
+      for (const r of rows) {
+        const raw = String(r[dotKey] ?? "").trim();
+        if (!raw) continue;
+
+        const digits = raw.replace(/\D/g, "");
+        if (digits.length >= 1 && digits.length <= 7) dots.push(digits);
+      }
+
+      return [...new Set(dots)];
+    }
+
+    function handleFiles(files) {
+      if (!files || !files.length) return;
+      const file = files[0];
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target.result;
+        const dots = parseDotsFromCsvText(text);
+        parsedDotsFromCsv = dots;
+
+        if (!csvSummaryEl) return;
+
+        if (dots.length > 0) {
+          csvSummaryEl.classList.remove("hidden");
+          if (csvFileNameEl) csvFileNameEl.textContent = " – " + file.name;
+          if (csvDotCountEl) csvDotCountEl.textContent = String(dots.length);
+        } else {
+          csvSummaryEl.classList.add("hidden");
+          alert("No valid DOT numbers found in the CSV.");
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    if (browseCsvBtn && fileInput) {
+      browseCsvBtn.addEventListener("click", () => fileInput.click());
+      fileInput.addEventListener("change", (e) => handleFiles(e.target.files));
+    }
+
+    if (dropzone) {
+      ["dragenter", "dragover"].forEach((eventName) => {
+        dropzone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropzone.classList.add("drop-active");
+        });
+      });
+
+      ["dragleave", "drop"].forEach((eventName) => {
+        dropzone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropzone.classList.remove("drop-active");
+        });
+      });
+
+      dropzone.addEventListener("drop", (e) => {
+        const dt = e.dataTransfer;
+        if (dt && dt.files) handleFiles(dt.files);
+      });
+
+      dropzone.addEventListener("click", () => fileInput && fileInput.click());
+    }
+
+    function getDotsFromPaste() {
+      if (!dotPasteTextarea) return [];
+      const raw = dotPasteTextarea.value || "";
+      const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      const dots = lines.filter((v) => /^\d+$/.test(v));
+      return [...new Set(dots)];
+    }
+
+    function setSummaryCounts(newCount, dupCount, invCount) {
+      if (summaryNewCount) summaryNewCount.textContent = String(newCount);
+      if (summaryDupCount) summaryDupCount.textContent = String(dupCount);
+      if (summaryInvCount) summaryInvCount.textContent = String(invCount);
+
+      if (sectionNewCountEl) sectionNewCountEl.textContent = `${newCount} rows`;
+      if (sectionDupCountEl) sectionDupCountEl.textContent = `${dupCount} rows`;
+      if (sectionInvalidCountEl) sectionInvalidCountEl.textContent = `${invCount} rows`;
+    }
+
+    function renderSectionTable(container, rows, statusClass, emptyLabel) {
+      if (!container) return;
+      container.innerHTML = "";
+
+      if (!rows || !rows.length) {
+        const p = document.createElement("p");
+        p.className = "import-empty";
+        p.textContent = `No ${emptyLabel}.`;
+        container.appendChild(p);
+        return;
+      }
+
+      const table = document.createElement("table");
+      table.className = "import-results-table";
+
+      const thead = document.createElement("thead");
+      thead.innerHTML = `
+        <tr>
+          <th>DOT</th>
+          <th>Carrier</th>
+          <th>Location</th>
+          <th>Status</th>
+        </tr>
+      `;
+      table.appendChild(thead);
+
+      const tbody = document.createElement("tbody");
+
+      rows.forEach((row) => {
+        const tr = document.createElement("tr");
+
+        const tdDot = document.createElement("td");
+        tdDot.textContent = row.dot || "";
+
+        const tdName = document.createElement("td");
+        tdName.textContent = row.name || "—";
+
+        const tdLoc = document.createElement("td");
+        tdLoc.textContent =
+          row.city || row.state
+            ? `${row.city || ""}${row.city && row.state ? ", " : ""}${row.state || ""}`
+            : "—";
+
+        const tdStatus = document.createElement("td");
+        const span = document.createElement("span");
+        span.classList.add("status-badge", statusClass);
+        if (statusClass === "status-new") span.textContent = "New";
+        if (statusClass === "status-duplicate") span.textContent = "Current Carrier";
+        if (statusClass === "status-invalid") span.textContent = "Invalid";
+        tdStatus.appendChild(span);
+
+        tr.appendChild(tdDot);
+        tr.appendChild(tdName);
+        tr.appendChild(tdLoc);
+        tr.appendChild(tdStatus);
+
+        tbody.appendChild(tr);
+      });
+
+      table.appendChild(tbody);
+      container.appendChild(table);
+    }
+
+    function renderPreviewTable(preview) {
+      renderSectionTable(sectionNewBody, preview.new || [], "status-new", "new carriers");
+      renderSectionTable(sectionDupBody, preview.duplicates || [], "status-duplicate", "duplicates");
+      renderSectionTable(sectionInvalidBody, preview.invalid || [], "status-invalid", "invalid DOTs");
+    }
+
+    async function runPreview(dots) {
+      if (!dots.length) {
+        alert("No valid DOT numbers to import.");
+        return;
+      }
+
+      if (loadingEl) loadingEl.classList.remove("hidden");
+      if (resultsEl) resultsEl.classList.add("hidden");
+      setSummaryCounts(0, 0, 0);
+
+      try {
+        const res = await fetch("/api/my-carriers/bulk/preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dots }),
+        });
+
+        if (res.status === 401) {
+          alert("You must be logged in to import carriers.");
+          return;
+        }
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          console.error("Preview failed:", errData);
+          alert("Preview failed. Please try again.");
+          return;
+        }
+
+        const data = await res.json();
+        previewResult = data;
+
+        const s = data.summary || {};
+        setSummaryCounts(s.new || 0, s.duplicates || 0, s.invalid || 0);
+        renderPreviewTable(data);
+
+        if (resultsEl) resultsEl.classList.remove("hidden");
+      } catch (err) {
+        console.error("Error calling preview:", err);
+        alert("Preview failed due to a network error.");
+      } finally {
+        if (loadingEl) loadingEl.classList.add("hidden");
+      }
+    }
+
+    async function runImportFromPreview() {
+      if (!previewResult || !previewResult.new || previewResult.new.length === 0) {
+        const summary = previewResult?.summary || {};
+        if (doneInsertedEl) doneInsertedEl.textContent = "0";
+        if (doneDuplicatesEl) doneDuplicatesEl.textContent = String(summary.duplicates || 0);
+        if (doneInvalidEl) doneInvalidEl.textContent = String(summary.invalid || 0);
+
+        goToStep(3);
+        return;
+      }
+
+      try {
+        importNextBtn.disabled = true;
+
+        const dots = previewResult.new.map((r) => r.dot).filter(Boolean);
+
+        const res = await fetch("/api/my-carriers/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dots }),
+        });
+
+        if (res.status === 401) {
+          alert("You must be logged in to import carriers.");
+          return;
+        }
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          console.error("Bulk import failed:", errData);
+          alert("Bulk import failed. Please try again.");
+          return;
+        }
+
+        const data = await res.json();
+        const s = data.summary || {};
+
+        if (doneInsertedEl) doneInsertedEl.textContent = String(s.inserted || 0);
+        if (doneDuplicatesEl) doneDuplicatesEl.textContent = String(s.duplicates || 0);
+        if (doneInvalidEl) doneInvalidEl.textContent = String(s.invalid || 0);
+
+        goToStep(3);
+      } catch (err) {
+        console.error("Error in bulk import:", err);
+        alert("Bulk import failed due to a network error.");
+      } finally {
+        importNextBtn.disabled = false;
+      }
+    }
+
+    importNextBtn.addEventListener("click", () => {
+      if (currentStep === 1) {
+        const dots = importMethod === "csv" ? parsedDotsFromCsv || [] : getDotsFromPaste();
+        if (!dots.length) {
+          alert("Please upload a CSV with DOTs or paste DOT numbers first.");
+          return;
+        }
+        goToStep(2);
+        runPreview(dots);
+      } else if (currentStep === 2) {
+        runImportFromPreview();
+      } else if (currentStep === 3) {
+        closeImportModal();
+        window.location.reload();
+      }
+    });
+
+    // Accordion toggles
+    document.querySelectorAll(".import-section-header").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const section = btn.closest(".import-section");
+        if (!section) return;
+        section.classList.toggle("collapsed");
+      });
+    });
+
+    // Default: collapse duplicates + invalid
+    document
+      .querySelectorAll('.import-section[data-status="duplicate"], .import-section[data-status="invalid"]')
+      .forEach((sec) => sec.classList.add("collapsed"));
+  }
+
+  // ---------------------------------------------
+  // BOOT
+  // ---------------------------------------------
+  document.addEventListener("DOMContentLoaded", () => {
+    wireRowsPerPage();
+    wireAutocomplete();
+    wireSortHeaders();
+    wireCsvDownload();
+    wireAuthUi();
+    wireBulkRemove();
+    wireBulkImportWizard();
+
+    loadCarriers();
+    buildMyCarrierDots();
+  });
+})();
 
