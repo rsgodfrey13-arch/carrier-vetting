@@ -7,7 +7,9 @@ const session = require("express-session");
 
 const { internalRoutes } = require("../routes/internal");
 const { publicRoutes } = require("../routes/public");
-const { externalRoutes } = require("../routes/external/v1.routes");
+//const { externalRoutes } = require("../routes/external/v1.routes"); // Old v1 route reference
+const { externalV1Routes } = require("../routes/external/v1.routes");
+
 
 
 function createApp() {
@@ -41,7 +43,7 @@ function createApp() {
   app.use("/api", internalRoutes());
 
   // External API key routes (we’ll enable after v1.routes.js exists)
-   app.use("/api/v1", externalRoutes());
+   app.use("/api/v1", externalV1Routes());
 
   return app;
 }
