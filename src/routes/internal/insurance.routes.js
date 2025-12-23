@@ -9,6 +9,11 @@ const { s3 } = require("../../clients/spacesS3v3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const { PutObjectCommand, GetObjectCommand } = require("@aws-sdk/client-s3");
 
+const { parseAcord25FromText } = require("../../services/insurance/parseAcord25");
+const { ocrPdfBufferWithTextract } = require("../../../ocr/textractPdf");
+
+
+
 const router = express.Router();
 
 // ---- Multer: store in memory, validate PDF ----
@@ -195,5 +200,226 @@ router.get("/insurance/documents/:id/signed-url", async (req, res) => {
     res.status(400).json({ ok: false, error: err.message });
   }
 });
+
+/**
+ * POST /api/insurance/documents/:id/parse
+ */
+router.post("/insurance/documents/:id/parse", async (req, res) => {
+  const client = await pool.connect();
+
+  const forcedProvider = "TEXTRACT"; // keeping your hard-force behavior
+
+  try {
+    const { id } = req.params;
+
+    // ---------- 0) Lock + idempotency ----------
+    await client.query("BEGIN");
+
+    const r = await client.query(
+      `
+      SELECT id, dot_number, spaces_key, ocr_status, ocr_provider, parse_result
+      FROM insurance_documents
+      WHERE id = $1
+      FOR UPDATE
+      `,
+      [id]
+    );
+
+    if (r.rowCount === 0) throw new Error("Document not found.");
+
+    const doc = r.rows[0];
+    if (!doc.spaces_key) throw new Error("spaces_key missing for this document.");
+
+    if (doc.ocr_status === "PROCESSING") {
+      await client.query("ROLLBACK");
+      return res.status(409).json({ ok: false, error: "OCR already PROCESSING for this document." });
+    }
+
+    if (doc.ocr_status === "DONE" && doc.parse_result) {
+      await client.query("ROLLBACK");
+      return res.json({
+        ok: true,
+        document_id: id,
+        dot_number: doc.dot_number,
+        parseResult: doc.parse_result,
+        reused: true
+      });
+    }
+
+    await client.query(
+      `
+      UPDATE insurance_documents
+      SET ocr_status='PROCESSING',
+          ocr_started_at=NOW(),
+          ocr_attempts = COALESCE(ocr_attempts,0) + 1
+      WHERE id=$1
+      `,
+      [id]
+    );
+
+    await client.query("COMMIT");
+
+    // ---------- 1) Download PDF from Spaces ----------
+    const obj = await s3.send(
+      new GetObjectCommand({
+        Bucket: process.env.SPACES_BUCKET,
+        Key: doc.spaces_key
+      })
+    );
+
+    const chunks = [];
+    for await (const chunk of obj.Body) chunks.push(chunk);
+    const pdfBuffer = Buffer.concat(chunks);
+
+    // ---------- 2) OCR (Textract only) ----------
+    let providerUsed = null;
+    let text = "";
+    let ocrMeta = {};
+
+    const tryTextract = forcedProvider ? forcedProvider === "TEXTRACT" : true;
+
+    let textract = null;
+
+    if (tryTextract) {
+      providerUsed = "AWS_TEXTRACT";
+      await pool.query(`UPDATE insurance_documents SET ocr_provider='AWS_TEXTRACT' WHERE id=$1`, [id]);
+
+      textract = await ocrPdfBufferWithTextract({
+        pdfBuffer,
+        objectKeyHint: `${doc.dot_number}/${id}`
+      });
+
+      text = textract.fullText || "";
+
+      if (!text || !text.trim()) {
+        throw new Error("Textract OCR failed — produced empty text.");
+      }
+
+      ocrMeta = {
+        jobId: textract.jobId,
+        inputS3Uri: textract.inputS3Uri,
+        avgLineConfidence: textract.confidence?.avgLineConfidence ?? null,
+        lineCount: textract.confidence?.lineCount ?? null,
+        tableCount: textract.tables?.length ?? 0,
+        keyCount: textract.keyValuePairs?.pairs?.length ?? 0
+      };
+    }
+
+    // ---------- 3) Parse ----------
+    const { parseResult, confidence, coverageTypes, autoLimit, cargoLimit, glLimit } =
+      parseAcord25FromText(text, { ocrProvider: providerUsed, ocrMeta });
+
+    // ---------- 4) Save ----------
+    await pool.query(
+      `
+      UPDATE insurance_documents
+      SET extracted_text = $1,
+          ocr_provider = 'AWS_TEXTRACT',
+          ocr_status = 'DONE',
+          ocr_job_id = $2,
+          ocr_avg_confidence = $3,
+          ocr_input_uri = $4,
+          ocr_output_uri = NULL,
+          ocr_completed_at = NOW(),
+          parse_result = $5::jsonb,
+          parse_confidence = $6::numeric,
+          parsed_at = NOW(),
+          status = CASE WHEN $6::numeric >= 70 THEN status ELSE 'NEEDS_REVIEW' END
+      WHERE id = $7
+      `,
+      [
+        text,
+        textract?.jobId || null,
+        textract?.confidence?.avgLineConfidence ?? null,
+        textract?.inputS3Uri || null,
+        JSON.stringify(parseResult),
+        confidence,
+        id
+      ]
+    );
+
+    // ---------- 5) Promote to snapshots ----------
+    let newSnapshotVersion = null;
+
+    if (confidence >= 70) {
+      const upsert = await pool.query(
+        `
+        INSERT INTO insurance_snapshots
+          (dot_number, auto_liability_limit, cargo_limit, general_liability_limit,
+           source, vendor, last_checked_at, snapshot_version, raw_payload_json)
+        VALUES
+          ($1, $2, $3, $4,
+           'PARSED', 'INTERNAL', NOW(), 1, $5)
+        ON CONFLICT (dot_number)
+        DO UPDATE SET
+          auto_liability_limit = EXCLUDED.auto_liability_limit,
+          cargo_limit = EXCLUDED.cargo_limit,
+          general_liability_limit = EXCLUDED.general_liability_limit,
+          source = EXCLUDED.source,
+          vendor = EXCLUDED.vendor,
+          last_checked_at = NOW(),
+          snapshot_version = insurance_snapshots.snapshot_version + 1,
+          raw_payload_json = EXCLUDED.raw_payload_json
+        RETURNING snapshot_version
+        `,
+        [doc.dot_number, autoLimit, cargoLimit, glLimit, parseResult]
+      );
+
+      newSnapshotVersion = upsert.rows[0]?.snapshot_version ?? 1;
+
+      await pool.query(
+        `DELETE FROM insurance_coverages WHERE dot_number = $1 AND snapshot_version = $2`,
+        [doc.dot_number, newSnapshotVersion]
+      );
+
+      for (const ct of coverageTypes) {
+        let limits = {};
+        if (ct === "AUTO" && autoLimit) limits = { combined_single_limit: autoLimit };
+        if (ct === "CARGO" && cargoLimit) limits = { cargo: cargoLimit };
+        if (ct === "GL" && glLimit) limits = { each_occurrence: glLimit };
+
+        await pool.query(
+          `
+          INSERT INTO insurance_coverages
+            (dot_number, snapshot_version, coverage_type, limits_json)
+          VALUES
+            ($1, $2, $3, $4)
+          `,
+          [doc.dot_number, newSnapshotVersion, ct, limits]
+        );
+      }
+    }
+
+    return res.json({
+      ok: true,
+      document_id: id,
+      dot_number: doc.dot_number,
+      ocr_provider: providerUsed,
+      parseResult,
+      promoted_to_snapshot: confidence >= 70,
+      snapshot_version: newSnapshotVersion
+    });
+  } catch (err) {
+    try {
+      await pool.query(
+        `
+        UPDATE insurance_documents
+        SET ocr_status = 'FAILED',
+            ocr_error = $2,
+            ocr_completed_at = NOW()
+        WHERE id = $1
+        `,
+        [req.params.id, String(err?.message || err)]
+      );
+    } catch {}
+
+    try { await client.query("ROLLBACK"); } catch {}
+
+    return res.status(400).json({ ok: false, error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
 
 module.exports = router;
