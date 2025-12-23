@@ -2,21 +2,15 @@
 
 const express = require("express");
 const { apiAuth } = require("../../middleware/apiAuth");
-const { pool } = require("../../db/pool");
+const createApiV1 = require("./v1.router");
 
-// TEMP: keep using the existing root api-v1.js for now
-const createApiV1 = require("../../../api-v1");
-
-function externalRoutes() {
+function externalV1Routes() {
   const router = express.Router();
 
-  // Protect all /api/v1 routes with API key auth
-  router.use(apiAuth);
-
-  // Mount the v1 API
-  router.use(createApiV1(pool));
+  // protect all /api/v1 routes with API key auth
+  router.use(apiAuth, createApiV1());
 
   return router;
 }
 
-module.exports = { externalRoutes };
+module.exports = { externalV1Routes };
