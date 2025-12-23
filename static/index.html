@@ -191,9 +191,10 @@
   </div>
 
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="/js/shared/shared.js" defer></script>
+<script src="/js/pages/index.js" defer></script>
 
-
-  
+<!--  
   <script>
 
 
@@ -894,7 +895,7 @@ async function performSearch(query) {
   });
 </script>
 
-<!-- Bulk Import Modal -->
+//Bulk Import Modal
 <div id="import-modal" class="import-modal hidden">
   <div class="import-modal-backdrop"></div>
 
@@ -911,7 +912,7 @@ async function performSearch(query) {
       </button>
     </header>
 
-    <!-- Step indicator -->
+    // Step indicator //
     <div class="import-steps">
       <div class="import-step import-step-1 import-step-active">
         <span class="import-step-number">1</span>
@@ -927,9 +928,9 @@ async function performSearch(query) {
       </div>
     </div>
 
-    <!-- STEP 1: Upload -->
+    // STEP 1: Upload //
     <div class="import-step-body import-step-body-1 active">
-      <!-- Method toggle -->
+      // Method toggle //
       <div class="import-method-toggle">
         <button class="import-method-btn import-method-active"
                 type="button"
@@ -944,7 +945,7 @@ async function performSearch(query) {
       </div>
 
       <div class="import-panels">
-        <!-- CSV panel -->
+        // CSV panel //
         <div id="import-panel-csv" class="import-panel active">
           <div id="csv-dropzone" class="dropzone">
             <input id="csv-file-input" type="file" accept=".csv" hidden>
@@ -969,7 +970,7 @@ async function performSearch(query) {
             </a>
           </div>
 
-          <!-- After-upload status -->
+          // After-upload status //
           <div id="csv-upload-summary" class="csv-upload-summary hidden">
             <p class="csv-upload-title">
               ✓ CSV loaded<span id="csv-file-name"></span>
@@ -980,7 +981,7 @@ async function performSearch(query) {
           </div>
         </div>
 
-        <!-- Paste panel -->
+        // Paste panel //
         <div id="import-panel-paste" class="import-panel">
           <label for="dot-paste-textarea" class="paste-label">
             Paste one DOT per line
@@ -996,7 +997,7 @@ async function performSearch(query) {
       </div>
     </div>
 
-    <!-- STEP 2: Review -->
+    // STEP 2: Review //
     <div class="import-step-body import-step-body-2">
       <div class="import-summary" id="import-summary">
         <div class="summary-pill summary-new">
@@ -1022,7 +1023,7 @@ async function performSearch(query) {
       </div>
 
 <div class="import-results hidden" id="import-results">
-  <!-- New carriers section -->
+  // New carriers section //
   <div class="import-section" data-status="new">
     <button class="import-section-header" type="button">
       <span class="import-section-title">New carriers</span>
@@ -1032,7 +1033,7 @@ async function performSearch(query) {
     <div class="import-section-body" id="section-new-body"></div>
   </div>
 
-  <!-- Duplicates section -->
+  // Duplicates section //
   <div class="import-section" data-status="duplicate">
     <button class="import-section-header" type="button">
       <span class="import-section-title">Current Carriers</span>
@@ -1042,7 +1043,7 @@ async function performSearch(query) {
     <div class="import-section-body" id="section-dup-body"></div>
   </div>
 
-  <!-- Invalid section -->
+  // Invalid section //
   <div class="import-section" data-status="invalid">
     <button class="import-section-header" type="button">
       <span class="import-section-title">Invalid DOTs</span>
@@ -1054,7 +1055,7 @@ async function performSearch(query) {
 </div>
 </div>
 
-    <!-- STEP 3: Done -->
+    // STEP 3: Done //
     <div class="import-step-body import-step-body-3">
       <div class="import-done-icon">🎉</div>
       <h3 class="import-done-title">Import complete</h3>
@@ -1078,7 +1079,7 @@ async function performSearch(query) {
       </div>
     </div>
 
-    <!-- Footer -->
+    // Footer //
     <footer class="import-modal-footer">
       <button type="button"
               class="btn-ghost btn-sm"
@@ -1634,6 +1635,6 @@ async function runImportFromPreview() {
   });
 </script>
 
-  
+--> 
 </body>
 </html>
