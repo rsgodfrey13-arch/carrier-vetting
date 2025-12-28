@@ -15,9 +15,6 @@
 }
 
 
-*, *::before, *::after{
-  box-sizing:inherit;
-}
 
 /* helpers */
 .hidden{ display:none; }
