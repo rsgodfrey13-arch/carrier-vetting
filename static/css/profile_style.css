@@ -1,20 +1,3 @@
-:root {
-  --bg-1: #020617;
-  --bg-2: #0b1120;
-  --accent-1: #38bdf8;
-  --accent-2: #22c55e;
-  --accent-button: #10b981;
-  --accent-red-button: #e11d48;
-  --accent-warn: #f97316;
-  --accent-purp: #7C3AED;
-  --text-main: #e5e7eb;
-  --text-muted: #9ca3af;
-  --border-subtle: rgba(148, 163, 184, 0.25);
-  --card-bg: rgba(15, 23, 42, 0.86);
-  --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.9);
-  --radius-lg: 20px;
-  --radius-md: 14px;
-}
 
 /* ========== Base ========== */
 
