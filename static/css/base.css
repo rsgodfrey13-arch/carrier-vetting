@@ -1,251 +1,65 @@
-/* =========================================================
-   BASE.CSS — shared tokens + primitives + reusable components
-   ========================================================= */
-
-/* ---------- Design tokens (single source of truth) ---------- */
-:root {
-  --bg-1: #020617;
-  --bg-2: #0b1120;
-
+:root{
+  /* brandy blue-ish palette */
+  --brand:      #00b7ff;
+  --brand-dark: #0b78cf;
+  --ink:        #0F172A;
+  --muted:      #5B6577;
+  --card:       #0B1624;
+  --border:     rgba(255,255,255,.15);
+  --radius:     14px;
   --accent-1: #38bdf8;
   --accent-2: #22c55e;
   --accent-warn: #f97316;
-  --accent-purp: #7C3AED;
-
-  --accent-button: #10b981;
-  --accent-red-button: #e11d48;
-
   --text-main: #e5e7eb;
   --text-muted: #9ca3af;
-
-  --border-subtle: rgba(148, 163, 184, 0.25);
-  --card-bg: rgba(15, 23, 42, 0.86);
-  --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.9);
-
-  --radius-lg: 20px;
-  --radius-md: 14px;
 }
 
-/* ---------- Reset ---------- */
-*,
-*::before,
-*::after { box-sizing: border-box; }
-
-html, body { margin: 0; padding: 0; }
-
-body {
-  min-height: 100vh;
-  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: var(--text-main);
-  overflow-x: hidden;
+/* base layout */
+html, body{
+  min-height:100%;
+  margin:0;
+  padding:0;
 }
 
-/* ---------- Techy background layers (reusable) ---------- */
-.bg-gradient {
-  position: fixed;
-  inset: 0;
-  z-index: -3;
-  pointer-events: none;
+body{
+  font-family:"Segoe UI", Roboto, Inter, system-ui, -apple-system, sans-serif;
+  color:#F9FEFF;
+  /* blue gradient similar to your political compass site */
   background:
-    radial-gradient(circle at 10% 0%, rgba(56,189,248,.08) 0, transparent 50%),
-    radial-gradient(circle at 90% 20%, rgba(34,197,94,.14) 0, transparent 55%),
-    radial-gradient(circle at 50% 110%, rgba(59,130,246,.18) 0, transparent 60%);
+    radial-gradient(1400px 900px at 20% -10%, rgba(255,255,255,.08), transparent 60%),
+    linear-gradient(180deg, #00b7ff 0%, #0aa1e2 45%, #0b78cf 100%);
+  display:flex;
+  justify-content:center;
+  padding:24px 12px;
+  box-sizing:border-box;
 }
 
-.bg-grid {
-  position: fixed;
-  inset: 0;
-  z-index: -2;
-  pointer-events: none;
-  mix-blend-mode: soft-light;
-  background-image:
-    linear-gradient(rgba(148,163,184,.12) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148,163,184,.12) 1px, transparent 1px);
-  background-size: 42px 42px;
-  opacity: .16;
+.page{
+  width:100%;
+  max-width:960px;
 }
 
-/* ---------- Layout wrapper ---------- */
-.page {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 28px 18px 52px;
+/* title */
+.page-title{
+  margin:0 0 16px;
+  font-size:24px;
+  letter-spacing:.4px;
+  font-weight:700;
+  text-shadow:0 1px 2px rgba(0,0,0,.35);
 }
 
-/* ---------- Reusable glass card ---------- */
-.glass-card {
-  position: relative;
-  background: var(--card-bg);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-}
+/* ================================
+   TOP NAV / HEADER
+   ================================ */
 
-/* ---------- Reusable page header block ---------- */
-.page-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1.5rem;
-  margin-bottom: 18px;
-}
-
-.page-header-left {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.page-title {
-  margin: 0;
-  font-family: "Space Grotesk", system-ui, sans-serif;
-  font-size: clamp(1.7rem, 2.2vw, 2rem);
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: #f9fafb;
-}
-
-.page-subtitle {
-  margin: 0;
-  font-size: .9rem;
-  color: var(--text-muted);
-}
-
-/* ---------- Links ---------- */
-.ghost-link {
-  display: inline-flex;
-  align-items: center;
-  gap: .4rem;
-  padding: .45rem .9rem;
-  border-radius: 999px;
-  border: 1px solid rgba(148,163,184,.5);
-  color: var(--text-main);
-  font-size: .85rem;
-  text-decoration: none;
-  backdrop-filter: blur(10px);
-  background: rgba(15,23,42,.6);
-  transition: border-color .2s, background .2s, transform .15s;
-}
-.ghost-link:hover {
-  border-color: var(--accent-1);
-  background: rgba(15,23,42,.9);
-  transform: translateY(-1px);
-}
-
-.data-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: .35rem;
-  font-size: .85rem;
-  color: var(--accent-1);
-  text-decoration: none;
-  padding: .25rem .55rem;
-  border-radius: 999px;
-  border: 1px solid rgba(56,189,248,.35);
-  background: rgba(15,23,42,.8);
-  transition: background .2s, transform .15s, box-shadow .2s;
-}
-.data-link:hover {
-  background: rgba(15,23,42,1);
-  transform: translateY(-1px);
-  box-shadow: 0 0 14px rgba(56,189,248,.6);
-}
-
-/* ---------- Pills / chips (reusable) ---------- */
-.carrier-pill {
-  padding: .35rem .9rem;
-  border-radius: 999px;
-  font-size: .78rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  border: 1px solid rgba(148,163,184,.8);
-  color: #e5e7eb;
-  background: radial-gradient(circle at top left, rgba(56,189,248,.21), rgba(15,23,42,.94));
-  box-shadow: 0 0 0 1px rgba(15,23,42,.7);
-}
-.carrier-pill.small { font-size: .7rem; padding-inline: .8rem; }
-.carrier-pill.ghost { background: transparent; }
-
-.pill-ok   { border-color: var(--accent-2);   box-shadow: 0 0 14px rgba(34,197,94,.5); }
-.pill-warn { border-color: var(--accent-warn); box-shadow: 0 0 14px rgba(249,115,22,.45); }
-.pill-purp { border-color: var(--accent-purp); box-shadow: 0 0 14px rgba(124,58,237,.45); }
-
-.metric-chip {
-  min-width: 110px;
-  padding: .4rem .7rem;
-  border-radius: 999px;
-  border: 1px dashed rgba(148,163,184,.6);
-  background: rgba(15,23,42,.8);
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: .6rem;
-}
-.metric-label {
-  font-size: .68rem;
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  color: var(--text-muted);
-}
-.metric-value {
-  font-size: .86rem;
-  font-weight: 500;
-  color: #e5e7eb;
-}
-
-/* ---------- Buttons (reusable) ---------- */
-button { cursor: pointer; }
-
-.btn-primary {
-  border-radius: 999px;
-  padding: 6px 16px;
-  border: none;
-  cursor: pointer;
-  font-size: 0.85rem;
-  font-weight: 500;
-  background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
-  color: #0b1120;
-  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.75);
-  transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
-}
-.btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.9);
-}
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: default;
-  transform: none;
-  box-shadow: none;
-}
-
-.btn-ghost {
-  border-radius: 999px;
-  padding: 6px 14px;
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  background: transparent;
-  cursor: pointer;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
-}
-.btn-ghost:hover {
-  background: rgba(15, 23, 42, 0.9);
-  color: var(--text-main);
-  border-color: rgba(148, 163, 184, 0.7);
-}
-
-/* ---------- Top nav / header (reusable) ---------- */
 .site-header {
   position: sticky;
   top: 0;
   z-index: 999;
   padding: 14px 0;
-  width: 100%;
+  width: 100%;      /* full width bar */
 }
+
 
 .glass-nav {
   background: rgba(7,14,25,0.75);
@@ -287,29 +101,255 @@ button { cursor: pointer; }
   text-decoration: none;
   padding: 6px 10px;
   border-radius: 8px;
-  transition: color .2s ease, background .2s ease, box-shadow .2s ease, transform .15s ease;
+  transition:
+    color .2s ease,
+    background .2s ease,
+    box-shadow .2s ease,
+    transform .15s ease;
 }
+
+/* subtle glow hover */
 .nav-link:hover {
   color: #7dd3fc;
   background: rgba(56,189,248,0.08);
   box-shadow: 0 0 12px rgba(56,189,248,0.25);
   transform: translateY(-1px);
 }
+
+/* active highlighting for current page (fake for now) */
 .nav-link.active {
   color: #38bdf8;
   background: rgba(56,189,248,0.12);
   border: 1px solid rgba(56,189,248,0.25);
 }
 
-/* ---------- Utilities ---------- */
-.hidden { display: none !important; }
 
 .blue-text {
   color: var(--accent-1);
   font-weight: 500;
 }
 
-/* ---------- Responsive ---------- */
-@media (max-width: 600px) {
-  .page { padding-inline: 14px; }
+/* Download CSV */
+
+.download-btn {
+  background: #0b78cf;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: 12px;
+  transition: 0.2s;
 }
+
+.download-btn:hover {
+  background: #00b7ff;
+}
+
+
+.carriers-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+}
+
+
+
+.col-select {
+  width: 32px;
+  text-align: center;
+}
+
+.col-select input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.bulk-actions {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: rgba(15, 23, 42, 0.9);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.bulk-actions.hidden {
+  display: none;
+}
+
+.bulk-remove-btn {
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  border: none;
+  background: rgba(248, 113, 113, 0.3);
+  color: #fee2e2;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.bulk-remove-btn:hover {
+  background: rgba(248, 113, 113, 0.5);
+  transform: translateY(-1px);
+}
+
+
+.bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  margin-bottom: 10px; /* space before the table */
+
+  padding: 8px 16px;
+  border-radius: 10px;
+
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(148,163,184,0.22);
+  backdrop-filter: blur(12px);
+
+  font-size: 0.9rem;
+  color: var(--text-main);
+}
+
+.bulk-actions.hidden {
+  display: none;
+}
+
+.bulk-remove-btn {
+  background: #b91c1c;
+  border: none;
+  padding: 8px 14px;
+  color: white;
+  border-radius: 8px;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: opacity 0.1s ease, transform 0.1s ease;
+}
+
+.bulk-remove-btn:hover {
+  opacity: 0.8;
+  transform: translateY(-1px);
+}
+
+
+/* Make the search box the positioning context */
+.search-shell {
+  position: relative;
+}
+
+/* Base style for the suggestions list */
+.carrier-suggestions {
+  position: absolute;
+  top: 100%;              /* directly under the input row */
+  left: 0;
+  width: 100%;
+
+  margin-top: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 260px;
+  overflow-y: auto;
+
+  border-radius: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: rgba(15, 23, 42, 0.97);
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.9);
+
+  display: none;          /* hidden by default */
+  z-index: 100;           /* sit on top of the table */
+}
+
+/* When JS adds .open, show it */
+.carrier-suggestions.open {
+  display: block;
+}
+
+.carrier-suggestion-item {
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.carrier-suggestion-item:hover {
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.suggestion-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.suggestion-title-text {
+  font-size: 0.9rem;
+  color: #f9fafb;
+  font-weight: 500;
+}
+
+/* "My carrier" pill – subtle green like your status */
+.my-carrier-pill {
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(34,197,94,0.7);     /* var(--accent-2)-ish */
+  background: rgba(34,197,94,0.18);
+  color: #bbf7d0;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.suggestion-sub {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+/* Search input container */
+.search-input-wrap {
+  position: relative;   /* needed for dropdown positioning */
+  flex: 1 1 auto;       /* makes it stretch across the row */
+}
+
+/* Ensure alignment */
+.search-row {
+  align-items: center;
+}
+
+/* Make the search bubble stretch fully */
+.search-input {
+  width: 100%;
+  flex: 1 1 auto;
+  box-sizing: border-box;
+}
+
+
+
+/* Carrier name column — truncate long names */
+.carriers-table th:nth-child(4),
+.carriers-table td:nth-child(4) {
+  max-width: 260px;          /* adjust if you want slightly wider/narrower */
+}
+
+.carriers-table td:nth-child(4) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;   /* adds the "..." */
+}
+
+/* Make all clickable elements use the pointer cursor */
+button,
+a,
+.nav-btn {
+  cursor: pointer;
+}
+
