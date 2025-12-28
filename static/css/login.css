@@ -1,0 +1,14 @@
+/* =========================================================
+   LOGIN.CSS — login page only
+   ========================================================= */
+
+/* Put your login page body theme here */
+body.login-page {
+  background: radial-gradient(circle at top left, #0ea5e9 0, #020617 55%, #020617 100%);
+}
+
+/* Example: center a login card */
+/*
+.login-wrap { min-height: calc(100vh - 80px); display:flex; align-items:center; justify-content:center; }
+.login-card { width: 100%; max-width: 440px; padding: 18px; }
+*/
