@@ -14,13 +14,6 @@
   --text-muted: #9ca3af;
 }
 
-/* base layout */
-html, body{
-  min-height:100%;
-  margin:0;
-  padding:0;
-}
-
 body{
   font-family:"Segoe UI", Roboto, Inter, system-ui, -apple-system, sans-serif;
   color:#F9FEFF;
@@ -32,11 +25,6 @@ body{
 
 *, *::before, *::after{
   box-sizing:inherit;
-}
-
-.page{
-  width:100%;
-  max-width:960px;
 }
 
 /* helpers */
