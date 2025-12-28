@@ -305,6 +305,14 @@ router.post("/insurance/documents/:id/parse", async (req, res) => {
       };
     }
 
+// ---- normalize Textract confidence (0–100 → 0–1 for DB) ----
+const avgPct = textract?.confidence?.avgLineConfidence;
+const avg01 =
+  typeof avgPct === "number"
+    ? Math.max(0, Math.min(1, avgPct / 100))
+    : null;
+
+    
     // ---------- 3) Parse ----------
     const { parseResult, confidence, coverageTypes, autoLimit, cargoLimit, glLimit } =
       parseAcord25FromText(text, { ocrProvider: providerUsed, ocrMeta });
@@ -330,7 +338,7 @@ router.post("/insurance/documents/:id/parse", async (req, res) => {
       [
         text,
         textract?.jobId || null,
-        textract?.confidence?.avgLineConfidence ?? null,
+        avg01,
         textract?.inputS3Uri || null,
         JSON.stringify(parseResult),
         confidence,
