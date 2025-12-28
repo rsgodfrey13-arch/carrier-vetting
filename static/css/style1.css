@@ -5,6 +5,17 @@ html, body{
   padding:0;
 }
 
+body{
+  font-family:"Segoe UI", Roboto, Inter, system-ui, -apple-system, sans-serif;
+  color:#F9FEFF;
+  background:
+    radial-gradient(1400px 900px at 20% -10%, rgba(255,255,255,.08), transparent 60%),
+    linear-gradient(180deg, #00b7ff 0%, #0aa1e2 45%, #0b78cf 100%);
+  display:flex;
+  justify-content:center;
+  padding:24px 12px;
+  box-sizing:border-box;
+}
 
 .page{
   width:100%;
