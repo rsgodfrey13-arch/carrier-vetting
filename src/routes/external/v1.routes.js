@@ -6,7 +6,7 @@ const { pool } = require("../../db/pool");
 const createApiV1 = require("./v1.router");
 
 // IMPORT YOUR DOCUPIPE ROUTES
-const docupipeRoutes = require("./docupipe.routes"); // <-- path may differ, see note below
+const docupipeRoutes = require("./docupipe.routes");
 
 function externalV1Routes() {
   const router = express.Router();
