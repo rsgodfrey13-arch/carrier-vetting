@@ -8,6 +8,8 @@ router.post("/webhooks/docupipe", async (req, res) => {
     const expected = process.env.DOCUPIPE_WEBHOOK_SECRET;
     if (expected) {
       const incoming = req.get("x-docupipe-secret");
+      console.log("incoming x-docupipe-secret:", incoming);
+      console.log("expected:", expected);
       if (!incoming || incoming !== expected) {
         return res.status(401).send("unauthorized");
       }
