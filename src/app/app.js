@@ -11,6 +11,7 @@ const { externalV1Routes } = require("../routes/external/v1.routes");
 function createApp() {
   const app = express();
 
+  // Behind Cloudflare / DO App Platform / any proxy
   app.set("trust proxy", 1);
 
   const staticDir = path.join(__dirname, "../../static");
@@ -21,8 +22,12 @@ function createApp() {
   // ✅ Also serve the same static files under /static/*
   app.use("/static", express.static(staticDir));
 
-  app.use(express.json());
+  // ✅ Parse incoming request bodies BEFORE routes
+  // Increase limit for webhook payloads
+  app.use(express.json({ limit: "10mb" }));
+  app.use(express.urlencoded({ extended: false, limit: "10mb" }));
 
+  // Sessions (used for internal routes)
   app.use(
     session({
       secret: process.env.SESSION_SECRET || "dev-secret-change-me",
@@ -42,7 +47,7 @@ function createApp() {
   // Internal session-based APIs
   app.use("/api", internalRoutes());
 
-  // External v1 APIs
+  // External v1 APIs (webhooks + apiAuth protected routes)
   app.use("/api/v1", externalV1Routes());
 
   return app;
