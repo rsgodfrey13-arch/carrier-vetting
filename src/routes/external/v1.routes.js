@@ -1,6 +1,21 @@
 "use strict";
 
 const express = require("express");
+
+function externalV1Routes() {
+  const router = express.Router();
+
+  // ✅ Webhooks FIRST (no apiAuth)
+  router.use(docupipeRoutes);
+
+  // 🔒 Everything else still protected
+  router.use(apiAuth);
+  router.use(createApiV1(pool));
+
+  return router;
+}
+
+
 const { apiAuth } = require("../../middleware/apiAuth");
 const { pool } = require("../../db/pool");
 
