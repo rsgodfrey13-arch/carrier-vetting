@@ -101,6 +101,7 @@ router.get("/insurance/latest", async (req, res) => {
  * POST /api/insurance/documents  (multipart form-data: document=pdf, dot_number, uploaded_by, document_type)
  */
 router.post("/insurance/documents", upload.single("document"), async (req, res) => {
+  const client = await pool.connect();
   try {
     if (!req.file) throw new Error("document (PDF) is required.");
 
@@ -111,35 +112,51 @@ router.post("/insurance/documents", upload.single("document"), async (req, res) 
     const rand = crypto.randomBytes(10).toString("hex");
     const key = `insurance/${dot_number}/${Date.now()}-${rand}.pdf`;
 
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: process.env.SPACES_BUCKET,
-        Key: key,
-        Body: req.file.buffer,
-        ContentType: "application/pdf",
-        ACL: "private",
-        Metadata: { dot_number, uploaded_by, document_type }
-      })
-    );
+    await s3.send(new PutObjectCommand({
+      Bucket: process.env.SPACES_BUCKET,
+      Key: key,
+      Body: req.file.buffer,
+      ContentType: "application/pdf",
+      ACL: "private",
+      Metadata: { dot_number, uploaded_by, document_type }
+    }));
 
     const file_url = `s3://${process.env.SPACES_BUCKET}/${key}`;
 
-    const result = await pool.query(
+    await client.query("BEGIN");
+
+    const result = await client.query(
       `
       INSERT INTO insurance_documents
-        (dot_number, uploaded_by, file_url, spaces_key, file_type, document_type, status)
+        (dot_number, uploaded_by, file_url, spaces_key, file_type, document_type, status, ocr_status)
       VALUES
-        ($1, $2, $3, $4, 'PDF', $5, 'ON_FILE')
-      RETURNING id, dot_number, uploaded_by, file_url, spaces_key, file_type, document_type, status, uploaded_at
+        ($1, $2, $3, $4, 'PDF', $5, 'ON_FILE', 'PENDING')
+      RETURNING id, dot_number, uploaded_by, file_url, spaces_key, file_type, document_type, status, uploaded_at, ocr_status
       `,
       [dot_number, uploaded_by, file_url, key, document_type]
     );
 
+    const documentId = result.rows[0].id;
+
+    await client.query(
+      `
+      INSERT INTO insurance_ocr_jobs (document_id, provider, status, attempt)
+      VALUES ($1, 'DOCUPIPE', 'PENDING', 0)
+      `,
+      [documentId]
+    );
+
+    await client.query("COMMIT");
+
     return res.status(201).json({ ok: true, document: result.rows[0] });
   } catch (err) {
+    try { await client.query("ROLLBACK"); } catch {}
     return res.status(400).json({ ok: false, error: err.message || "Upload failed" });
+  } finally {
+    client.release();
   }
 });
+
 
 /**
  * GET /api/insurance/documents?dot=123
