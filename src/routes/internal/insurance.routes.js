@@ -140,10 +140,10 @@ router.post("/insurance/documents", upload.single("document"), async (req, res) 
 
     await client.query(
       `
-      INSERT INTO insurance_ocr_jobs (document_id, provider, status, attempt)
-      VALUES ($1, 'DOCUPIPE', 'PENDING', 0)
+      INSERT INTO insurance_ocr_jobs (document_id, provider, status, attempt, dot_number)
+      VALUES ($1, 'DOCUPIPE', 'PENDING', 0, $2)
       `,
-      [documentId]
+      [documentId, dot_number]
     );
 
     await client.query("COMMIT");
