@@ -6,20 +6,50 @@ const { pool } = require("../../db/pool");
 const router = express.Router();
 
 // GET /api/carrier-search?q=...
-// Returns top 10 matches for DOT / MC / name
 router.get("/carrier-search", async (req, res) => {
-  const q = (req.query.q || "").trim();
+  const qRaw = String(req.query.q || "").trim();
+  if (qRaw.length < 2) return res.json([]);
 
-  // Require at least 2 chars, like the front-end
-  if (q.length < 2) {
-    return res.json([]);
-  }
-
-  const isNumeric = /^\d+$/.test(q);
-  const likePrefix = q + "%";
-  const nameLike = "%" + q.toLowerCase() + "%";
+  const qNorm = qRaw.toLowerCase();
+  const qDigits = qRaw.replace(/\D/g, "");
+  const isNumericish = qDigits.length >= 2 && /^[\d\s\-().]+$/.test(qRaw);
 
   try {
+    // Numeric-ish: DOT/MC prefix
+    if (isNumericish) {
+      const likePrefix = qDigits + "%";
+
+      const result = await pool.query(
+        `
+        SELECT
+          dotnumber AS dot,
+          mc_number,
+          legalname,
+          dbaname,
+          phycity,
+          phystate
+        FROM public.carriers
+        WHERE dotnumber::text LIKE $1
+           OR mc_number::text LIKE $1
+        ORDER BY
+          CASE
+            WHEN dotnumber::text = $2 THEN 0
+            WHEN mc_number::text = $2 THEN 1
+            ELSE 2
+          END,
+          dotnumber
+        LIMIT 10;
+        `,
+        [likePrefix, qDigits]
+      );
+
+      return res.json(result.rows);
+    }
+
+    // Name: prefix hits first, then contains/fuzzy fallback (trigram index)
+    const prefix = qNorm + "%";
+    const contains = "%" + qNorm + "%";
+
     const result = await pool.query(
       `
       SELECT
@@ -30,32 +60,23 @@ router.get("/carrier-search", async (req, res) => {
         phycity,
         phystate
       FROM public.carriers
-      WHERE
-        (
-          $1::boolean
-          AND (
-            dotnumber::text ILIKE $2
-            OR mc_number::text ILIKE $2
-          )
-        )
-        OR
-        (
-          NOT $1::boolean
-          AND (
-            lower(legalname) LIKE $3
-            OR lower(dbaname)  LIKE $3
-          )
-        )
-      ORDER BY legalname
+      WHERE carrier_name_norm LIKE $1
+         OR carrier_name_norm LIKE $2
+      ORDER BY
+        CASE
+          WHEN carrier_name_norm LIKE $1 THEN 0
+          ELSE 1
+        END,
+        carrier_name_norm
       LIMIT 10;
       `,
-      [isNumeric, likePrefix, nameLike]
+      [prefix, contains]
     );
 
-    res.json(result.rows);
+    return res.json(result.rows);
   } catch (err) {
     console.error("carrier-search error", err);
-    res.status(500).json({ error: "Search failed" });
+    return res.status(500).json({ error: "Search failed" });
   }
 });
 
