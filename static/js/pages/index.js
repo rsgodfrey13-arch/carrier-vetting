@@ -341,30 +341,44 @@
       suggestionsEl.classList.add("open");
     }
 
-    async function performSearch(query) {
-      const q = query.trim();
-      if (q.length < 2) {
-        clearSuggestions();
-        return;
-      }
 
-      try {
-        const url = new URL("/api/carrier-search", window.location.origin);
-        url.searchParams.set("q", q);
+let activeController = null;
+let lastQuery = "";
 
-        const res = await fetch(url);
-        if (!res.ok) {
-          clearSuggestions();
-          return;
-        }
+async function performSearch(query) {
+  const q = query.trim();
+  if (q.length < 2) {
+    clearSuggestions();
+    return;
+  }
 
-        const results = await res.json();
-        renderSuggestions(results);
-      } catch (e) {
-        console.error("search error", e);
-        clearSuggestions();
-      }
+  if (q === lastQuery) return;
+  lastQuery = q;
+
+  // abort prior request
+  if (activeController) activeController.abort();
+  activeController = new AbortController();
+
+  try {
+    const url = new URL("/api/carrier-search", window.location.origin);
+    url.searchParams.set("q", q);
+
+    const res = await fetch(url, { signal: activeController.signal });
+    if (!res.ok) {
+      clearSuggestions();
+      return;
     }
+
+    const results = await res.json();
+    renderSuggestions(results);
+  } catch (e) {
+    if (e.name !== "AbortError") console.error("search error", e);
+    clearSuggestions();
+  }
+}
+
+
+
 
     searchInput.addEventListener("input", () => {
       const value = searchInput.value;
