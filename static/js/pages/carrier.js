@@ -57,7 +57,20 @@
         return;
       }
 
-      const c = await res.json();
+const data = await res.json();
+
+// support both old and new response shapes
+const c = data && data.carrier ? data.carrier : data;
+
+// if backend returned stale data, re-fetch once after background refresh
+if (data && data.source === "cache_stale") {
+  const key = `carrier_refetch_${dot}`;
+  if (!window[key]) {
+    window[key] = true;
+    setTimeout(() => loadCarrier(), 1300);
+  }
+}
+
 
       // Header
       const name = (c.legalname || c.dbaname || `Carrier ${c.dotnumber || ""}`).trim();
