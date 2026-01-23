@@ -10,6 +10,7 @@ const myCarriersRoutes = require("./myCarriers.routes");
 const contractsRoutes = require("./contracts.routes");
 const insuranceRoutes = require("./insurance.routes");
 const debugRoutes = require("./debug.routes");
+const healthInternalRoutes = require("./healthInternal.routes");
 
 function internalRoutes() {
   const router = express.Router();
@@ -21,6 +22,7 @@ function internalRoutes() {
   router.use(contractsRoutes);
   router.use(insuranceRoutes);
   router.use(debugRoutes);
+  router.use(healthInternalRoutes);
 
   return router;
 }
