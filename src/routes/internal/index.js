@@ -13,6 +13,8 @@ const debugRoutes = require("./debug.routes");
 const healthInternalRoutes = require("./healthInternal.routes"); // router export
 const { healthRoutes } = require("./health.routes"); // factory export
 
+const publicCarriersRoutes = require("./publicCarriers.routes");
+
 function internalRoutes({ pool } = {}) {
   if (!pool || typeof pool.query !== "function") {
     throw new Error(
@@ -34,6 +36,7 @@ function internalRoutes({ pool } = {}) {
   router.use(contractsRoutes);
   router.use(insuranceRoutes);
   router.use(debugRoutes);
+  router.use(publicCarriersRoutes);
 
   return router;
 }
