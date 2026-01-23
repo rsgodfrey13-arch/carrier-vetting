@@ -53,13 +53,14 @@
       tbody.innerHTML = "";
 
       // 1) Determine endpoint based on login
-      let endpoint = "/api/carriers";
+      let endpoint = "/api/public-carriers";   // <-- default for logged OUT
       try {
         const me = await fetch("/api/me").then((r) => r.json());
-        if (me.user) endpoint = "/api/my-carriers";
+        if (me.user) endpoint = "/api/my-carriers"; // logged IN
       } catch (e) {
         console.error("Error checking login:", e);
       }
+
 
       // 2) Build URL with pagination + sorting
       const url = new URL(endpoint, window.location.origin);
