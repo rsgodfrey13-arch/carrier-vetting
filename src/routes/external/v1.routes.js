@@ -4,7 +4,7 @@ const express = require("express");
 const { apiAuth } = require("../../middleware/apiAuth");
 const { pool } = require("../../db/pool");
 const createApiV1 = require("./v1.router");
-const { healthExternalRoutes } = require("./external/healthExternal.routes");
+const { healthExternalRoutes } = require("./external/healthExternal.routes.js");
 
 // IMPORT YOUR DOCUPIPE ROUTES
 const docupipeRoutes = require("./docupipe.routes");
