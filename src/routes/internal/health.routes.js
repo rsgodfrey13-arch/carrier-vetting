@@ -46,16 +46,42 @@ function healthRoutes({ pool }) {
         out.ms.postgres = Date.now() - t;
       }
 
-      // NiFi
-      {
-        const t = Date.now();
-        await axios.get("https://129.212.189.13:8443/nifi-api/system-diagnostics", {
-          timeout: 2000,
-          httpsAgent,
-        });
-        out.checks.nifi = true;
-        out.ms.nifi = Date.now() - t;
-      }
+// 5) NiFi (authenticated)
+{
+  const t = Date.now();
+
+  const baseUrl = process.env.NIFI_BASE_URL || "https://129.212.189.13:8443";
+  const username = process.env.NIFI_USERNAME;
+  const password = process.env.NIFI_PASSWORD;
+
+  if (!username || !password) {
+    throw new Error("NiFi creds missing: set NIFI_USERNAME and NIFI_PASSWORD");
+  }
+
+  // NiFi: create access token
+  const tokenResp = await axios.post(
+    `${baseUrl}/nifi-api/access/token`,
+    new URLSearchParams({ username, password }).toString(),
+    {
+      timeout: 2000,
+      httpsAgent,
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    }
+  );
+
+  const token = tokenResp.data;
+
+  // Use token to hit diagnostics
+  await axios.get(`${baseUrl}/nifi-api/system-diagnostics`, {
+    timeout: 2000,
+    httpsAgent,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  out.checks.nifi = true;
+  out.ms.nifi = Date.now() - t;
+}
+
 
       out.ms.total = Date.now() - started;
       return res.status(200).json(out);
