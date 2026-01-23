@@ -24,6 +24,11 @@ function internalRoutes({ pool } = {}) {
 
   const router = express.Router();
 
+  router.get("/_test500", (req, res) => {
+  throw new Error("test crash");
+});
+
+
   // Health first (no auth/session dependency)
   router.use(healthRoutes({ pool })); // GET /api/health
   router.use(healthInternalRoutes);   // GET /api/health-internal
