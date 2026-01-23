@@ -1,5 +1,10 @@
-module.exports = (router) => {
-  router.get("/healthz", (req, res) => {
-    res.status(200).json({ status: "ok", layer: "public" });
-  });
-};
+"use strict";
+const express = require("express");
+
+const router = express.Router();
+
+router.get("/healthz", (req, res) => {
+  res.status(200).json({ status: "ok", layer: "public" });
+});
+
+module.exports = router;
