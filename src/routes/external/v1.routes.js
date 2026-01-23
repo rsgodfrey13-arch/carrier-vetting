@@ -15,7 +15,7 @@ function externalV1Routes() {
 
   // Webhook FIRST (no apiAuth)
   router.use(docupipeRoutes);
-  router.use(healthExternalRoutes); 
+router.use(healthExternalRoutes());; 
 
   // Everything else protected
   router.use(apiAuth);
