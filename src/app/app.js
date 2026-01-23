@@ -45,7 +45,8 @@ function createApp() {
   app.use(publicRoutes());
 
   // Internal session-based APIs
-  app.use("/api", internalRoutes());
+const { pool } = require("../db/pool");
+app.use("/api", internalRoutes({ pool }));
 
   // External v1 APIs (webhooks + apiAuth protected routes)
   app.use("/api/v1", externalV1Routes());
