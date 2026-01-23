@@ -47,7 +47,7 @@ router.get("/public-carriers", async (req, res) => {
       c.brokerauthoritystatus,
       c.safetyrating
     from user_carriers uc
-    join carriers c on c.dotnumber = uc.dotnumber
+    join carriers c on c.dotnumber = uc.carrier_dot
     where uc.user_id = $1
     order by ${sortExpr} ${sortDir}
     limit $2 offset $3
