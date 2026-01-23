@@ -9,6 +9,7 @@ const { publicRoutes } = require("../routes/public");
 const { externalV1Routes } = require("../routes/external/v1.routes");
 const { logApiFailures } = require("../middleware/logApiFailures");
 const { pool } = require("../db/pool");
+const { errorHandler } = require("../middleware/errorHandler");
 
 function createApp() {
   const app = express();
@@ -56,7 +57,7 @@ function createApp() {
   // External v1 APIs (webhooks + apiAuth protected routes)
   app.use("/api/v1", externalV1Routes());
 
-
+app.use(errorHandler);
 
   return app;
 }
