@@ -7,6 +7,8 @@ const session = require("express-session");
 const { internalRoutes } = require("../routes/internal");
 const { publicRoutes } = require("../routes/public");
 const { externalV1Routes } = require("../routes/external/v1.routes");
+const { logApiFailures } = require("../middleware/logApiFailures");
+
 
 function createApp() {
   const app = express();
@@ -45,11 +47,14 @@ function createApp() {
   app.use(publicRoutes());
 
   // Internal session-based APIs
-const { pool } = require("../db/pool");
-app.use("/api", internalRoutes({ pool }));
+  const { pool } = require("../db/pool");
+  app.use("/api", internalRoutes({ pool }));
 
   // External v1 APIs (webhooks + apiAuth protected routes)
   app.use("/api/v1", externalV1Routes());
+
+  // Log failures (400+ or whatever threshold you set) into Postgres
+  app.use(logApiFailures);
 
   return app;
 }
