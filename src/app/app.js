@@ -8,7 +8,7 @@ const { internalRoutes } = require("../routes/internal");
 const { publicRoutes } = require("../routes/public");
 const { externalV1Routes } = require("../routes/external/v1.routes");
 const { logApiFailures } = require("../middleware/logApiFailures");
-
+const { pool } = require("../db/pool");
 
 function createApp() {
   const app = express();
@@ -50,7 +50,7 @@ function createApp() {
   app.use(publicRoutes());
 
   // Internal session-based APIs
-  const { pool } = require("../db/pool");
+  
   app.use("/api", internalRoutes({ pool }));
 
   // External v1 APIs (webhooks + apiAuth protected routes)
