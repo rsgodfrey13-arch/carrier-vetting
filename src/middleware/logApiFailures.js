@@ -24,7 +24,8 @@ function stripQuery(url) {
 // If you want ALL failures, keep >= 400.
 // If you want less noise, change to: status >= 500 || status === 429
 function shouldTrack(status) {
-  return status >= 400;
+return status >= 500 || status === 429;
+
 }
 
 function logApiFailures(req, res, next) {
