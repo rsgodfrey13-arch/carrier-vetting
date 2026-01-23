@@ -10,17 +10,23 @@ const contractsRoutes = require("./contracts.routes");
 const insuranceRoutes = require("./insurance.routes");
 const debugRoutes = require("./debug.routes");
 
-const healthInternalRoutes = require("./healthInternal.routes");
-const { healthRoutes } = require("./health.routes"); // ✅ add
+const healthInternalRoutes = require("./healthInternal.routes"); // router export
+const { healthRoutes } = require("./health.routes"); // factory export
 
-function internalRoutes({ pool }) { // ✅ accept deps
+function internalRoutes({ pool } = {}) {
+  if (!pool || typeof pool.query !== "function") {
+    throw new Error(
+      "internalRoutes() requires a Postgres pool. Mount like: app.use('/api', internalRoutes({ pool }))"
+    );
+  }
+
   const router = express.Router();
 
-  // ✅ master first (so it always exists even if other routers change)
-  router.use(healthRoutes({ pool }));        // /api/health
-  router.use(healthInternalRoutes);          // /api/health-internal (your existing)
+  // Health first (no auth/session dependency)
+  router.use(healthRoutes({ pool })); // GET /api/health
+  router.use(healthInternalRoutes);   // GET /api/health-internal
 
-  // existing internal routers
+  // Existing internal routers
   router.use(authRoutes);
   router.use(carrierSearchRoutes);
   router.use(carriersRoutes);
