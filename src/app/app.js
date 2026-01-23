@@ -42,7 +42,10 @@ function createApp() {
       },
     })
   );
-
+  
+  // Log failures (400+ or whatever threshold you set) into Postgres
+  app.use(logApiFailures);
+  
   // Public routes (/:dot, /privacy, etc.)
   app.use(publicRoutes());
 
@@ -53,8 +56,7 @@ function createApp() {
   // External v1 APIs (webhooks + apiAuth protected routes)
   app.use("/api/v1", externalV1Routes());
 
-  // Log failures (400+ or whatever threshold you set) into Postgres
-  app.use(logApiFailures);
+
 
   return app;
 }
