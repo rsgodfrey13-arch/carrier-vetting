@@ -1,5 +1,5 @@
 // apiErrorMetrics.js
-const { pool } = require("./db");
+const pool = require("../db/pool");
 
 const UPSERT_SQL = `
 INSERT INTO api_error_metrics (
