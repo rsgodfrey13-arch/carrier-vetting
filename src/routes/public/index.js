@@ -9,10 +9,9 @@ const healthzRoutes = require("./healthz.routes");
 
 function publicRoutes() {
   const router = express.Router();
-
   router.use(contractPublicRoutes);
   router.use(prettyDotRoutes);
-
+  router.use(healthzRoutes); 
   return router;
 }
 
