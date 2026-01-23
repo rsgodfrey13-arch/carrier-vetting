@@ -4,7 +4,7 @@ const express = require("express");
 const { apiAuth } = require("../../middleware/apiAuth");
 const { pool } = require("../../db/pool");
 const createApiV1 = require("./v1.router");
-const { healthExternalRoutes } = require("./healthExternal.routes");
+const healthExternalRoutes = require("./healthExternal.routes");
 
 // IMPORT YOUR DOCUPIPE ROUTES
 const docupipeRoutes = require("./docupipe.routes");
@@ -15,7 +15,7 @@ function externalV1Routes() {
 
   // Webhook FIRST (no apiAuth)
   router.use(docupipeRoutes);
-router.use(healthExternalRoutes());; 
+  router.use(healthExternalRoutes);
 
   // Everything else protected
   router.use(apiAuth);
