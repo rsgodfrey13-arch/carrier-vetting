@@ -1737,3 +1737,23 @@ th.sortable.sorted-desc .sort-icon::before {
 .glass-card::after {
   pointer-events: none !important;
 }
+
+
+/* --- FIX: modal not clickable because overlay is on top --- */
+
+#import-modal {
+  pointer-events: auto; /* allow clicks in the modal area */
+}
+
+/* backdrop must be BEHIND the dialog */
+#import-modal .import-modal-backdrop {
+  z-index: 0;
+  pointer-events: none; /* <-- key: stop stealing clicks */
+}
+
+/* dialog must be ABOVE backdrop */
+#import-modal .import-modal-dialog {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+}
