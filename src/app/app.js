@@ -55,11 +55,6 @@ function createApp() {
   // ✅ Public "site" routes at root (/:dot, /privacy, etc.)
   app.use(publicRoutes());
 
-  // ✅ ALSO mount the same public router under /track so /track/pageview exists
-  // This gives you:
-  //   POST /track/pageview
-  //   GET  /track/healthz
-  app.use("/track", publicRoutes());
 
   // Internal session-based APIs
   app.use("/api", internalRoutes({ pool }));
