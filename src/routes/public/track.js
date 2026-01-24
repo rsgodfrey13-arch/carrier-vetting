@@ -60,10 +60,10 @@ router.post("/pageview", async (req, res) => {
     const path = (req.body?.path || "/").toString().slice(0, 200);
     await insertPageview(req, path);
     res.json({ ok: true });
-  } catch (e) {
-    console.error("track pageview POST error:", e);
-    res.status(500).json({ ok: false });
-  }
+} catch (e) {
+  console.error("track pageview POST error:", e);
+  res.status(500).json({ ok: false, error: e.message });
+}
 });
 
 module.exports = router;
