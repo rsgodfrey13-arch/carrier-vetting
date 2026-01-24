@@ -24,7 +24,7 @@ async function trackHomepageView() {
   if (sessionStorage.getItem(key)) return;
   sessionStorage.setItem(key, "1");
 
-  const r = await fetch("/track/pageview", {
+  const r = await fetch("/pageview", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ path: "/" }),
