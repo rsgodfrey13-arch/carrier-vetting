@@ -167,6 +167,7 @@ tr:hover{
 }
 .dot-link:hover{ text-decoration:underline; }
 
+
 @media (max-width:640px){
   .carrier-meta-row{ flex-direction:column; }
   th,td{ white-space:normal; }
@@ -233,8 +234,8 @@ tr:hover{
 /* ========== LIST / HOME PAGE ========== */
 body.carrier-list{
   min-height:100vh;
-  display:block;
-  padding:0;
+  display:block; /* override flex */
+  padding:0;     /* pad .page instead */
   font-family:"Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background:
     radial-gradient(circle at 80% 40%, rgba(56,189,248,0.32), transparent 60%),
@@ -245,17 +246,20 @@ body.carrier-list{
   overflow-x:hidden;
 }
 
+/* reuse same background overlays as profile */
 body.carrier-list .bg-gradient,
 body.carrier-list .bg-grid{
   pointer-events:none;
 }
 
+/* --- Page spacing --- */
 body.carrier-list .page{
   max-width:1280px;
   margin:0 auto;
   padding:28px 18px 52px;
 }
 
+/* --- Header text matches profile vibe --- */
 body.carrier-list .page-header{
   display:flex;
   align-items:flex-end;
@@ -283,7 +287,7 @@ body.carrier-list .page-subtitle{
 .search-shell{
   margin-bottom:22px;
   padding:18px 20px 20px;
-  position:relative;
+  position:relative; /* positioning context for dropdown */
 }
 
 .search-shell::before{
@@ -321,6 +325,7 @@ body.carrier-list .page-subtitle{
   color:#f9fafb;
 }
 
+/* search row */
 .search-row{
   display:flex;
   align-items:center;
@@ -355,6 +360,7 @@ body.carrier-list .page-subtitle{
     0 18px 40px rgba(15,23,42,.9);
 }
 
+/* button matches pills style */
 .search-btn{
   flex:0 0 auto;
   height:40px;
@@ -384,11 +390,13 @@ body.carrier-list .page-subtitle{
   box-shadow:0 10px 28px rgba(15,23,42,.9);
 }
 
+/* Search input container */
 .search-input-wrap{
-  position:relative;
+  position:relative; /* needed for dropdown positioning */
   flex:1 1 auto;
 }
 
+/* === Autocomplete Dropdown (final behavior) === */
 .carrier-suggestions{
   position:absolute;
   top:100%;
@@ -487,6 +495,7 @@ body.carrier-list .page-subtitle{
   gap:10px;
 }
 
+/* table wrapper */
 .carriers-table-wrap{
   border-top:1px solid rgba(30,64,175,.7);
   margin-top:4px;
@@ -494,6 +503,7 @@ body.carrier-list .page-subtitle{
   padding-inline:4px;
 }
 
+/* table styling */
 .carriers-table{
   width:100%;
   border-collapse:collapse;
@@ -537,6 +547,7 @@ body.carrier-list .page-subtitle{
   white-space:nowrap;
 }
 
+/* status = A → green text */
 .carriers-table td.status-ok{
   color:var(--accent-2);
   font-weight:550;
@@ -561,6 +572,7 @@ body.carrier-list .page-subtitle{
   width:7%;
 }
 
+/* Carrier name column */
 .carriers-table th:nth-child(4),
 .carriers-table td:nth-child(4){
   width:28%;
@@ -608,11 +620,13 @@ body.carrier-list .page-subtitle{
   width:10%;
 }
 
+/* make table scrollable on small screens */
 @media (max-width:800px){
   .carriers-table-wrap{ overflow-x:auto; }
   .carriers-table{ min-width:640px; }
 }
 
+/* responsiveness for header/search */
 @media (max-width:700px){
   body.carrier-list .page{ padding-inline:14px; }
   .search-shell{ padding-inline:16px; }
@@ -629,6 +643,7 @@ body.carrier-list .page-subtitle{
   }
 }
 
+
 /* Download CSV */
 .download-btn{
   background:#0b78cf;
@@ -641,15 +656,19 @@ body.carrier-list .page-subtitle{
   margin-bottom:12px;
   transition:0.2s;
 }
+
 .download-btn:hover{ background:#00b7ff; }
 
 .col-select{
   width:32px;
   text-align:center;
 }
-.col-select input[type="checkbox"]{ cursor:pointer; }
 
-/* Bulk actions */
+.col-select input[type="checkbox"]{
+  cursor:pointer;
+}
+
+/* Bulk actions (final behavior) */
 .bulk-actions{
   display:flex;
   align-items:center;
@@ -663,6 +682,7 @@ body.carrier-list .page-subtitle{
   font-size:0.9rem;
   color:var(--text-main);
 }
+
 .bulk-actions.hidden{ display:none; }
 
 .bulk-remove-btn{
@@ -676,10 +696,12 @@ body.carrier-list .page-subtitle{
   cursor:pointer;
   transition:opacity 0.1s ease, transform 0.1s ease;
 }
+
 .bulk-remove-btn:hover{
   opacity:0.8;
   transform:translateY(-1px);
 }
+
 
 /* ===== Table footer / pagination ===== */
 .table-footer{
@@ -770,7 +792,7 @@ body.carrier-list .page-subtitle{
   opacity:0.7;
 }
 
-/* ---------- Sortable table headers ---------- */
+/* ---------- Sortable table headers (final behavior) ---------- */
 th.sortable{
   cursor:pointer;
   position:relative;
@@ -778,7 +800,9 @@ th.sortable{
   transition:color 0.15s ease;
 }
 
-th.sortable:hover{ color:var(--accent-1); }
+th.sortable:hover{
+  color:var(--accent-1);
+}
 
 th.sortable::after{
   content:"";
@@ -818,8 +842,15 @@ th.sortable:hover:not(.sorted-asc):not(.sorted-desc) .sort-icon::before{
   opacity:0.3;
 }
 
-th.sortable.sorted-asc .sort-icon::before{ content:"▲"; opacity:1; }
-th.sortable.sorted-desc .sort-icon::before{ content:"▼"; opacity:1; }
+th.sortable.sorted-asc .sort-icon::before{
+  content:"▲";
+  opacity:1;
+}
+
+th.sortable.sorted-desc .sort-icon::before{
+  content:"▼";
+  opacity:1;
+}
 
 .table-tip{
   margin-top:6px;
@@ -829,16 +860,9 @@ th.sortable.sorted-desc .sort-icon::before{ content:"▼"; opacity:1; }
   opacity:0.8;
 }
 
-/* =========================================================
-   IMPORT MODAL (REBUILT - CLICKABLE + CLEAN SCROLLING)
-   ========================================================= */
+/* --- Import Modal --- */
+.import-modal.hidden{ display:none; }
 
-/* hidden means truly gone */
-.import-modal.hidden{
-  display:none;
-}
-
-/* overlay is clickable; use JS/backdrop click if you want to close */
 .import-modal{
   position:fixed;
   inset:0;
@@ -846,11 +870,9 @@ th.sortable.sorted-desc .sort-icon::before{ content:"▼"; opacity:1; }
   display:flex;
   align-items:center;
   justify-content:center;
-  padding:24px;
-  pointer-events:auto; /* ✅ IMPORTANT */
+  pointer-events:none;
 }
 
-/* backdrop sits behind dialog */
 .import-modal-backdrop{
   position:absolute;
   inset:0;
@@ -859,25 +881,23 @@ th.sortable.sorted-desc .sort-icon::before{ content:"▼"; opacity:1; }
     radial-gradient(circle at bottom, rgba(34,197,94,0.18), transparent),
     rgba(15,23,42,0.88);
   backdrop-filter:blur(14px);
-  -webkit-backdrop-filter:blur(14px);
-  z-index:0;
 }
 
-/* dialog above backdrop */
 .import-modal-dialog{
   position:relative;
-  z-index:1;
-  width:min(720px, 100%);
-  max-height:90vh;
-  display:flex;
-  flex-direction:column;
-
-  margin:0;
+  max-width:720px;
+  width:100%;
+  margin:24px;
   padding:22px 22px 18px;
   border-radius:var(--radius-lg, 20px);
   background:var(--card-bg, rgba(15,23,42,0.9));
   box-shadow:var(--shadow-soft, 0 24px 60px rgba(15,23,42,0.95));
   border:1px solid var(--border-subtle, rgba(148,163,184,0.35));
+  pointer-events:auto;
+
+  max-height:90vh;
+  display:flex;
+  flex-direction:column;
 }
 
 /* Header */
@@ -887,7 +907,7 @@ th.sortable.sorted-desc .sort-icon::before{ content:"▼"; opacity:1; }
   justify-content:space-between;
   gap:16px;
   margin-bottom:12px;
-  flex:0 0 auto;
+  flex-shrink:0;
 }
 
 .import-modal-title{
@@ -909,21 +929,22 @@ th.sortable.sorted-desc .sort-icon::before{ content:"▼"; opacity:1; }
   color:var(--text-muted);
   font-size:1.2rem;
   cursor:pointer;
-  padding:2px 6px;
+  padding:2px 4px;
   border-radius:999px;
 }
+
 .import-modal-close:hover{
   background:rgba(148,163,184,0.18);
   color:var(--text-main);
 }
 
-/* Steps row */
+/* Steps */
 .import-steps{
   display:flex;
   gap:14px;
   margin-bottom:16px;
   font-size:0.8rem;
-  flex:0 0 auto;
+  flex-shrink:0;
 }
 
 .import-step{
@@ -932,10 +953,6 @@ th.sortable.sorted-desc .sort-icon::before{ content:"▼"; opacity:1; }
   gap:6px;
   color:var(--text-muted);
   opacity:0.5;
-}
-
-.import-step.import-step-active{
-  opacity:1;
 }
 
 .import-step-number{
@@ -959,6 +976,8 @@ th.sortable.sorted-desc .sort-icon::before{ content:"▼"; opacity:1; }
   color:var(--text-main);
 }
 
+.import-step.import-step-active{ opacity:1; }
+
 /* Method toggle */
 .import-method-toggle{
   display:inline-flex;
@@ -967,7 +986,6 @@ th.sortable.sorted-desc .sort-icon::before{ content:"▼"; opacity:1; }
   background:rgba(15,23,42,0.9);
   border:1px solid var(--border-subtle);
   margin-bottom:14px;
-  flex:0 0 auto;
 }
 
 .import-method-btn{
@@ -987,24 +1005,20 @@ th.sortable.sorted-desc .sort-icon::before{ content:"▼"; opacity:1; }
   color:#e5f4ff;
 }
 
-/* Panels container */
-.import-panels{
-  margin-bottom:16px;
-  flex:1 1 auto;
-  min-height:0; /* ✅ required for child scroll */
-}
-
+/* Panels */
+.import-panels{ margin-bottom:16px; }
 .import-panel{ display:none; }
 .import-panel.active{ display:block; }
 
-/* Only step body scrolls */
+/* Step bodies (final scrolling behavior) */
 .import-step-body{
   display:none;
   margin-top:8px;
-  height:100%;
-  overflow:auto;
+  flex:1;
+  overflow-y:auto;
   padding-bottom:12px;
 }
+
 .import-step-body.active{ display:block; }
 
 /* Dropzone */
@@ -1016,6 +1030,7 @@ th.sortable.sorted-desc .sort-icon::before{ content:"▼"; opacity:1; }
   cursor:pointer;
   transition:border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
+
 .dropzone-inner{ text-align:center; }
 
 .dropzone-title{
@@ -1065,6 +1080,7 @@ th.sortable.sorted-desc .sort-icon::before{ content:"▼"; opacity:1; }
   text-decoration:none;
   opacity:0.9;
 }
+
 .import-sample-link:hover{
   opacity:1;
   text-decoration:underline;
@@ -1088,6 +1104,7 @@ th.sortable.sorted-desc .sort-icon::before{ content:"▼"; opacity:1; }
   font-size:0.85rem;
   resize:vertical;
 }
+
 .paste-textarea:focus{
   outline:none;
   border-color:var(--accent-1);
@@ -1100,20 +1117,21 @@ th.sortable.sorted-desc .sort-icon::before{ content:"▼"; opacity:1; }
   color:var(--text-muted);
 }
 
-/* Footer pinned */
+/* Footer */
 .import-modal-footer{
   display:flex;
   justify-content:flex-end;
   gap:10px;
   padding-top:8px;
   border-top:1px solid rgba(15,23,42,0.9);
-  flex:0 0 auto;
+  flex-shrink:0;
 }
 
 .import-footer-spacer{ flex:1; }
 #import-back-btn{ visibility:hidden; }
 
-/* Buttons */
+
+/* Match your existing button aesthetic */
 .bulk-import-btn{
   background:var(--accent-1, #38bdf8);
   color:white;
@@ -1124,6 +1142,7 @@ th.sortable.sorted-desc .sort-icon::before{ content:"▼"; opacity:1; }
   cursor:pointer;
   transition:background 0.2s ease, box-shadow 0.2s ease;
 }
+
 .bulk-import-btn:hover{
   background:#0ea5e9;
   box-shadow:0 0 14px rgba(56, 189, 248, 0.4);
@@ -1139,9 +1158,11 @@ th.sortable.sorted-desc .sort-icon::before{ content:"▼"; opacity:1; }
   font-size:0.8rem;
   color:var(--text-main);
 }
+
 .csv-upload-summary.hidden{ display:none; }
 
 .csv-upload-title{ font-weight:500; }
+
 .csv-upload-title #csv-file-name{
   margin-left:6px;
   color:var(--text-muted);
@@ -1201,6 +1222,7 @@ th.sortable.sorted-desc .sort-icon::before{ content:"▼"; opacity:1; }
   font-size:0.85rem;
   color:var(--text-muted);
 }
+
 .import-loading.hidden{ display:none; }
 
 .spinner{
@@ -1222,9 +1244,10 @@ th.sortable.sorted-desc .sort-icon::before{ content:"▼"; opacity:1; }
   to{ transform:rotate(360deg); }
 }
 
-/* Accordion results */
+/* Results */
 .import-results.hidden{ display:none; }
 
+/* Accordion-style result sections */
 .import-section{
   margin-top:8px;
   border-radius:var(--radius-md, 14px);
@@ -1245,6 +1268,7 @@ th.sortable.sorted-desc .sort-icon::before{ content:"▼"; opacity:1; }
   cursor:pointer;
   transition:background 0.15s ease;
 }
+
 .import-section-header:hover{
   background:rgba(255, 255, 255, 0.03);
 }
@@ -1265,11 +1289,12 @@ th.sortable.sorted-desc .sort-icon::before{ content:"▼"; opacity:1; }
 
 .import-section-body{
   max-height:none !important;
-  overflow:visible !important;
+  overflow-y:visible !important;
   border-top:1px solid rgba(30, 41, 59, 0.7);
   padding-bottom:6px;
 }
 
+/* Collapsed state */
 .import-section.collapsed .import-section-body{ display:none; }
 .import-section.collapsed .import-section-toggle{ transform:rotate(-90deg); }
 
@@ -1316,8 +1341,11 @@ th.sortable.sorted-desc .sort-icon::before{ content:"▼"; opacity:1; }
   background:rgba(15,23,42,0.7);
 }
 
+/* Column widths tuned for DOT import data */
 .import-results-table th:nth-child(1),
-.import-results-table td:nth-child(1){ width:90px; }
+.import-results-table td:nth-child(1){
+  width:90px;
+}
 
 .import-results-table th:nth-child(4),
 .import-results-table td:nth-child(4){
