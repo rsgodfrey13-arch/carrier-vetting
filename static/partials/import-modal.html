@@ -10,62 +10,165 @@
           Upload a CSV or paste DOTs, then review and confirm before importing.
         </p>
       </div>
-      <button class="import-modal-close" id="import-modal-close">✕</button>
+      <button
+        class="import-modal-close"
+        id="import-modal-close"
+        type="button"
+        aria-label="Close"
+      >
+        ✕
+      </button>
     </header>
 
+    <!-- Step indicator -->
     <div class="import-steps">
       <div class="import-step import-step-1 import-step-active">
-        <span class="import-step-number">1</span><span>Upload</span>
+        <span class="import-step-number">1</span>
+        <span class="import-step-label">Upload</span>
       </div>
       <div class="import-step import-step-2">
-        <span class="import-step-number">2</span><span>Review</span>
+        <span class="import-step-number">2</span>
+        <span class="import-step-label">Review</span>
       </div>
       <div class="import-step import-step-3">
-        <span class="import-step-number">3</span><span>Done</span>
+        <span class="import-step-number">3</span>
+        <span class="import-step-label">Done</span>
       </div>
     </div>
 
+    <!-- STEP 1 -->
     <div class="import-step-body import-step-body-1 active">
       <div class="import-method-toggle">
-        <button class="import-method-btn import-method-active" data-import-method="csv">Upload CSV</button>
-        <button class="import-method-btn" data-import-method="paste">Paste DOT list</button>
+        <button
+          class="import-method-btn import-method-active"
+          type="button"
+          data-import-method="csv"
+        >
+          Upload CSV
+        </button>
+        <button
+          class="import-method-btn"
+          type="button"
+          data-import-method="paste"
+        >
+          Paste DOT list
+        </button>
       </div>
 
       <div class="import-panels">
+        <!-- CSV PANEL -->
         <div id="import-panel-csv" class="import-panel active">
           <div id="csv-dropzone" class="dropzone">
-            <input id="csv-file-input" type="file" accept=".csv" hidden>
+            <!-- 🔴 MUST be hidden, JS controls click -->
+            <input
+              id="csv-file-input"
+              type="file"
+              accept=".csv"
+              hidden
+            >
+
             <div class="dropzone-inner">
               <p class="dropzone-title">Drop your CSV here</p>
-              <p class="dropzone-subtitle">or click to browse</p>
+              <p class="dropzone-subtitle">
+                or <span class="browse-link">click to browse</span>
+              </p>
             </div>
           </div>
 
           <div class="import-help-row">
-            <button id="browse-csv-btn" type="button">Choose file…</button>
-            <a href="/sample-carrier-import.csv" download>Download sample CSV</a>
+            <button
+              id="browse-csv-btn"
+              class="btn-secondary btn-xs"
+              type="button"
+            >
+              Choose file…
+            </button>
+
+            <a
+              href="/sample-carrier-import.csv"
+              class="import-sample-link"
+              download
+            >
+              Download sample CSV
+            </a>
           </div>
 
           <div id="csv-upload-summary" class="csv-upload-summary hidden">
-            ✓ CSV loaded <span id="csv-file-name"></span> —
-            <span id="csv-dot-count">0</span> DOTs
+            <p class="csv-upload-title">
+              ✓ CSV loaded <span id="csv-file-name"></span>
+            </p>
+            <p class="csv-upload-meta">
+              Detected <span id="csv-dot-count">0</span> DOT numbers.
+            </p>
           </div>
         </div>
 
+        <!-- PASTE PANEL -->
         <div id="import-panel-paste" class="import-panel">
-          <textarea id="dot-paste-textarea" rows="6"
-            placeholder="517125&#10;97615"></textarea>
+          <label for="dot-paste-textarea" class="paste-label">
+            Paste one DOT per line
+          </label>
+          <textarea
+            id="dot-paste-textarea"
+            class="paste-textarea"
+            rows="8"
+            placeholder="517125&#10;97615"
+          ></textarea>
         </div>
       </div>
     </div>
 
-    <div class="import-step-body import-step-body-2"></div>
-    <div class="import-step-body import-step-body-3"></div>
+    <!-- STEP 2 -->
+    <div class="import-step-body import-step-body-2">
+      <div class="import-loading hidden" id="import-loading">
+        <div class="spinner"></div>
+        <p>Validating carriers…</p>
+      </div>
+
+      <div class="import-results hidden" id="import-results">
+        <div class="import-section" data-status="new">
+          <button class="import-section-header" type="button">
+            <span>New carriers</span>
+            <span id="section-new-count">0</span>
+          </button>
+          <div id="section-new-body"></div>
+        </div>
+
+        <div class="import-section" data-status="duplicate">
+          <button class="import-section-header" type="button">
+            <span>Current Carriers</span>
+            <span id="section-dup-count">0</span>
+          </button>
+          <div id="section-dup-body"></div>
+        </div>
+
+        <div class="import-section" data-status="invalid">
+          <button class="import-section-header" type="button">
+            <span>Invalid DOTs</span>
+            <span id="section-invalid-count">0</span>
+          </button>
+          <div id="section-invalid-body"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="import-step-body import-step-body-3">
+      <div class="import-done-icon">🎉</div>
+      <h3>Import complete</h3>
+
+      <div class="import-done-stats">
+        <div><span id="done-inserted">0</span> added</div>
+        <div><span id="done-duplicates">0</span> duplicates</div>
+        <div><span id="done-invalid">0</span> invalid</div>
+      </div>
+    </div>
 
     <footer class="import-modal-footer">
-      <button id="import-back-btn">Back</button>
-      <button id="import-cancel-btn">Cancel</button>
-      <button id="import-next-btn">Next</button>
+      <button id="import-back-btn" type="button">Back</button>
+      <div class="import-footer-spacer"></div>
+      <button id="import-cancel-btn" type="button">Cancel</button>
+      <button id="import-next-btn" type="button">Next</button>
     </footer>
   </div>
 </div>
