@@ -1,5 +1,3 @@
-//shared
-
 async function loadHeader() {
   const container = document.getElementById("site-header");
   if (!container) return;
@@ -10,6 +8,12 @@ async function loadHeader() {
 
     container.innerHTML = await res.text();
 
+    // 🔥 Header is NOW in the DOM → wire buttons
+    await initAuthUI();
+  } catch (err) {
+    console.error("Header load failed:", err);
+  }
+}
 
 async function trackPageViewLoggedIn(pathname) {
   try {
@@ -28,33 +32,6 @@ async function trackPageViewLoggedIn(pathname) {
       keepalive: true
     });
   } catch (_) {}
-}
-
-
-    
-    // 🔥 Header is NOW in the DOM → wire buttons
-    await initAuthUI();
-  } catch (err) {
-    console.error("Header load failed:", err);
-  }
-}
-
-async function trackPageViewLoggedIn(pathname) {
-  try {
-    // client-side dedupe: only once per tab/session per path
-    const key = `pv:${pathname}`;
-    if (sessionStorage.getItem(key)) return;
-    sessionStorage.setItem(key, "1");
-
-    await fetch("/api/internal/track/pageview", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: pathname }),
-      keepalive: true, // helps if user navigates away quickly
-    });
-  } catch (_) {
-    // swallow errors
-  }
 }
 
 async function initAuthUI() {
@@ -78,7 +55,7 @@ async function initAuthUI() {
       loginBtn.style.display = "none";
       logoutBtn.style.display = "inline-block";
 
-      // ✅ Track page view only for logged-in users
+      // ✅ track homepage view for logged-in users
       trackPageViewLoggedIn(window.location.pathname);
 
       logoutBtn.onclick = async () => {
