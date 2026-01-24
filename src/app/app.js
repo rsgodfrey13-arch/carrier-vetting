@@ -26,7 +26,6 @@ function createApp() {
   app.use("/static", express.static(staticDir));
 
   // ✅ Parse incoming request bodies BEFORE routes
-  // Increase limit for webhook payloads
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ extended: false, limit: "10mb" }));
 
@@ -43,21 +42,32 @@ function createApp() {
       },
     })
   );
-  
-  // Log failures (400+ or whatever threshold you set) into Postgres
+
+  // ✅ Attach DB for any route that needs req.db (track uses it)
+  app.use((req, res, next) => {
+    req.db = pool;
+    next();
+  });
+
+  // Log failures (400+ etc) into Postgres
   app.use(logApiFailures);
-  
-  // Public routes (/:dot, /privacy, etc.)
+
+  // ✅ Public "site" routes at root (/:dot, /privacy, etc.)
   app.use(publicRoutes());
 
+  // ✅ ALSO mount the same public router under /track so /track/pageview exists
+  // This gives you:
+  //   POST /track/pageview
+  //   GET  /track/healthz
+  app.use("/track", publicRoutes());
+
   // Internal session-based APIs
-  
   app.use("/api", internalRoutes({ pool }));
 
   // External v1 APIs (webhooks + apiAuth protected routes)
   app.use("/api/v1", externalV1Routes());
 
-app.use(errorHandler);
+  app.use(errorHandler);
 
   return app;
 }
