@@ -42,6 +42,22 @@
     }
   }
 
+// Bulk Import Helper
+
+  (async function loadImportModal() {
+  if (document.getElementById('import-modal')) return;
+
+  try {
+    const res = await fetch('/static/partials/import-modal.html');
+    const html = await res.text();
+    document.body.insertAdjacentHTML('beforeend', html);
+  } catch (e) {
+    console.error('Failed to load import modal', e);
+  }
+})();
+
+
+  
   // ---------------------------------------------
   // TABLE LOAD + RENDER
   // ---------------------------------------------
