@@ -64,4 +64,5 @@ router.post("/pageview", async (req, res) => {
   }
 });
 
-module.exports = { trackRoutes: router };
+module.exports = router;
+
