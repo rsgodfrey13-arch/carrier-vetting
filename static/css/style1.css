@@ -1426,3 +1426,69 @@ th.sortable.sorted-desc .sort-icon::before{
   font-weight:600;
   color:var(--text-main);
 }
+
+
+
+/* =========================================================
+   FIX: Modal not clickable (overlay/pointer-events issue)
+   Paste at very bottom of CSS
+   ========================================================= */
+
+#import-modal.import-modal {
+  pointer-events: auto !important; /* allow clicks */
+}
+
+/* Backdrop sits behind the dialog and can receive clicks if you want click-to-close */
+#import-modal .import-modal-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  pointer-events: auto !important;
+}
+
+/* Dialog is above backdrop and clickable */
+#import-modal .import-modal-dialog {
+  position: relative !important;
+  z-index: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* Ensure nothing inside accidentally disables clicks */
+#import-modal * {
+  pointer-events: auto;
+}
+
+/* ===== IMPORT MODAL CLICKABILITY HOTFIX ===== */
+
+/* Modal must accept clicks when visible */
+#import-modal {
+  pointer-events: auto !important;
+}
+
+/* When hidden, block clicks */
+#import-modal.hidden {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+/* Backdrop should be behind the dialog */
+#import-modal .import-modal-backdrop {
+  z-index: 0 !important;
+  pointer-events: auto !important; /* keep if you want click-backdrop-to-close */
+}
+
+/* Dialog must be above backdrop and clickable */
+#import-modal .import-modal-dialog {
+  z-index: 1 !important;
+  pointer-events: auto !important;
+  position: relative !important;
+}
+
+/* Make all controls definitely clickable */
+#import-modal button,
+#import-modal a,
+#import-modal input,
+#import-modal textarea,
+#import-modal .dropzone {
+  pointer-events: auto !important;
+}
