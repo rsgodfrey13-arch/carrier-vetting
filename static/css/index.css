@@ -1787,3 +1787,38 @@ th.sortable.sorted-desc .sort-icon::before {
 #import-modal * {
   pointer-events: auto;
 }
+
+/* ===== IMPORT MODAL CLICKABILITY HOTFIX ===== */
+
+/* Modal must accept clicks when visible */
+#import-modal {
+  pointer-events: auto !important;
+}
+
+/* When hidden, block clicks */
+#import-modal.hidden {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+/* Backdrop should be behind the dialog */
+#import-modal .import-modal-backdrop {
+  z-index: 0 !important;
+  pointer-events: auto !important; /* keep if you want click-backdrop-to-close */
+}
+
+/* Dialog must be above backdrop and clickable */
+#import-modal .import-modal-dialog {
+  z-index: 1 !important;
+  pointer-events: auto !important;
+  position: relative !important;
+}
+
+/* Make all controls definitely clickable */
+#import-modal button,
+#import-modal a,
+#import-modal input,
+#import-modal textarea,
+#import-modal .dropzone {
+  pointer-events: auto !important;
+}
