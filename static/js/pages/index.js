@@ -53,14 +53,13 @@
       tbody.innerHTML = "";
 
       // 1) Determine endpoint based on login
-      let endpoint = "/api/public-carriers";   // <-- default for logged OUT
+      let endpoint = "/api/public-carriers"; // <-- default for logged OUT
       try {
         const me = await fetch("/api/me").then((r) => r.json());
         if (me.user) endpoint = "/api/my-carriers"; // logged IN
       } catch (e) {
         console.error("Error checking login:", e);
       }
-
 
       // 2) Build URL with pagination + sorting
       const url = new URL(endpoint, window.location.origin);
@@ -248,9 +247,7 @@
     }
 
     // Next
-    container.appendChild(
-      makeButton("⟩", Math.min(totalPages, currentPage + 1), currentPage === totalPages)
-    );
+    container.appendChild(makeButton("⟩", Math.min(totalPages, currentPage + 1), currentPage === totalPages));
   }
 
   // Rows-per-page selector
@@ -342,44 +339,40 @@
       suggestionsEl.classList.add("open");
     }
 
+    let activeController = null;
+    let lastQuery = "";
 
-let activeController = null;
-let lastQuery = "";
+    async function performSearch(query) {
+      const q = query.trim();
+      if (q.length < 2) {
+        clearSuggestions();
+        return;
+      }
 
-async function performSearch(query) {
-  const q = query.trim();
-  if (q.length < 2) {
-    clearSuggestions();
-    return;
-  }
+      if (q === lastQuery) return;
+      lastQuery = q;
 
-  if (q === lastQuery) return;
-  lastQuery = q;
+      // abort prior request
+      if (activeController) activeController.abort();
+      activeController = new AbortController();
 
-  // abort prior request
-  if (activeController) activeController.abort();
-  activeController = new AbortController();
+      try {
+        const url = new URL("/api/carrier-search", window.location.origin);
+        url.searchParams.set("q", q);
 
-  try {
-    const url = new URL("/api/carrier-search", window.location.origin);
-    url.searchParams.set("q", q);
+        const res = await fetch(url, { signal: activeController.signal });
+        if (!res.ok) {
+          clearSuggestions();
+          return;
+        }
 
-    const res = await fetch(url, { signal: activeController.signal });
-    if (!res.ok) {
-      clearSuggestions();
-      return;
+        const results = await res.json();
+        renderSuggestions(results);
+      } catch (e) {
+        if (e.name !== "AbortError") console.error("search error", e);
+        clearSuggestions();
+      }
     }
-
-    const results = await res.json();
-    renderSuggestions(results);
-  } catch (e) {
-    if (e.name !== "AbortError") console.error("search error", e);
-    clearSuggestions();
-  }
-}
-
-
-
 
     searchInput.addEventListener("input", () => {
       const value = searchInput.value;
@@ -455,17 +448,90 @@ async function performSearch(query) {
     updateSortHeaderClasses();
   }
 
-function wireCsvDownload() {
-  const btn = $("download-btn");
-  if (!btn) return;
+  // ---------------------------------------------
+  // CSV DOWNLOAD
+  // ---------------------------------------------
+  function wireCsvDownload() {
+    const btn = $("download-btn");
+    if (!btn) return;
 
-  btn.addEventListener("click", () => {
-    downloadCarriersCsv().catch((err) => {
-      console.error("CSV download failed", err);
-      alert("Sorry, something went wrong generating the CSV.");
+    btn.addEventListener("click", async () => {
+      try {
+        let endpoint = "/api/public-carriers";
+        try {
+          const me = await fetch("/api/me").then((r) => r.json());
+          if (me.user) endpoint = "/api/my-carriers";
+        } catch {
+          console.warn("me check failed, defaulting to /api/public-carriers");
+        }
+
+        const url = new URL(endpoint, window.location.origin);
+        url.searchParams.set("page", 1);
+        url.searchParams.set("pageSize", 5000);
+
+        if (sortBy) {
+          url.searchParams.set("sortBy", sortBy);
+          url.searchParams.set("sortDir", sortDir);
+        }
+
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Export request failed: ${res.status}`);
+
+        const result = await res.json();
+        const data = Array.isArray(result) ? result : result.rows;
+
+        if (!data || !data.length) {
+          alert("No carriers to export.");
+          return;
+        }
+
+        const lines = [];
+        lines.push(
+          ["DOT", "MC", "Carrier", "Location", "Operating", "Common", "Contract", "Broker", "Safety Rating"].join(",")
+        );
+
+        const ratingMap = { S: "Satisfactory", C: "Conditional", U: "Unsatisfactory" };
+
+        data.forEach((c) => {
+          const dotVal = c.dot || c.dotnumber || c.id || "";
+          const mc = c.mc_number || "";
+          const name = c.legalname || c.dbaname || c.name || "";
+          const city = c.city || c.phycity || "";
+          const state = c.state || c.phystate || "";
+          const location = `${city}${city && state ? ", " : ""}${state}`;
+
+          const operating = c.allowedtooperate === "Y" ? "Authorized" : "Not Authorized";
+          const common = c.commonauthoritystatus || "";
+          const contract = c.contractauthoritystatus || "";
+          const broker = c.brokerauthoritystatus || "";
+          const rawRating = c.safetyrating ? String(c.safetyrating).trim().toUpperCase() : "";
+          const safety = ratingMap[rawRating] || "Not Rated";
+
+          const cols = [dotVal, mc, name, location, operating, common, contract, broker, safety].map((val) => {
+            let t = String(val ?? "").replace(/\s+/g, " ").trim();
+            if (/[",\n]/.test(t)) t = '"' + t.replace(/"/g, '""') + '"';
+            return t;
+          });
+
+          lines.push(cols.join(","));
+        });
+
+        const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+        const blobUrl = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = "carriers.csv";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+      } catch (err) {
+        console.error("CSV download failed", err);
+        alert("Sorry, something went wrong generating the CSV.");
+      }
     });
-  });
-}
+  }
 
   // ---------------------------------------------
   // AUTH UI (Login/Logout buttons)
@@ -1036,78 +1102,6 @@ function wireCsvDownload() {
       .forEach((sec) => sec.classList.add("collapsed"));
   }
 
-function escapeCsv(val) {
-  let t = String(val ?? '').replace(/\s+/g, ' ').trim();
-  if (/[",\n]/.test(t)) t = '"' + t.replace(/"/g, '""') + '"';
-  return t;
-}
-
-async function downloadCarriersCsv() {
-  // Decide endpoint based on login
-  let endpoint = '/api/carriers';
-  try {
-    const me = await fetch('/api/me').then(r => r.json());
-    if (me.user) endpoint = '/api/my-carriers';
-  } catch (_) {}
-
-  // IMPORTANT: don’t trust totalRows (may be 0 if user clicks fast)
-  // Instead: request a big pageSize. If your API caps pageSize, this still works (just exports what it returns).
-  const url = new URL(endpoint, window.location.origin);
-  url.searchParams.set('page', 1);
-  url.searchParams.set('pageSize', 5000); // safe default; raise if your API allows
-  if (typeof sortBy !== 'undefined' && sortBy) {
-    url.searchParams.set('sortBy', sortBy);
-    url.searchParams.set('sortDir', (typeof sortDir !== 'undefined' && sortDir) ? sortDir : 'asc');
-  }
-
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Export request failed: ${res.status}`);
-
-  const result = await res.json();
-  const data = Array.isArray(result) ? result : (result.rows || []);
-  if (!data.length) {
-    alert('No carriers to export.');
-    return;
-  }
-
-  const ratingMap = { S: 'Satisfactory', C: 'Conditional', U: 'Unsatisfactory' };
-
-  const lines = [];
-  lines.push([
-    'DOT','MC','Carrier','Location','Operating','Common','Contract','Broker','Safety Rating'
-  ].join(','));
-
-  data.forEach(c => {
-    const dotVal    = c.dot || c.dotnumber || c.id || '';
-    const mc        = c.mc_number || '';
-    const name      = c.legalname || c.dbaname || c.name || '';
-    const location  = `${(c.city || c.phycity || '')}${(c.state || c.phystate) ? ', ' + (c.state || c.phystate) : ''}`;
-    const operating = c.allowedtooperate === 'Y' ? 'Authorized' : 'Not Authorized';
-    const common    = c.commonauthoritystatus || '';
-    const contract  = c.contractauthoritystatus || '';
-    const broker    = c.brokerauthoritystatus || '';
-    const rawRating = c.safetyrating ? String(c.safetyrating).trim().toUpperCase() : '';
-    const safety    = ratingMap[rawRating] || 'Not Rated';
-
-    lines.push([
-      dotVal, mc, name, location, operating, common, contract, broker, safety
-    ].map(escapeCsv).join(','));
-  });
-
-  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-  const blobUrl = URL.createObjectURL(blob);
-
-  const a = document.createElement('a');
-  a.href = blobUrl;
-  a.download = 'carriers.csv';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(blobUrl);
-}
-}
-
-  
   // ---------------------------------------------
   // BOOT
   // ---------------------------------------------
