@@ -15,27 +15,27 @@ async function loadHeader() {
   }
 }
 
-// Tracks homepage views (logged in OR not)
 async function trackHomepageView() {
-  try {
-    // only track homepage
-    if (window.location.pathname !== "/") return;
+  // only track homepage
+  if (window.location.pathname !== "/") return;
 
-    // dedupe once per tab/session
-    const key = "pv:/";
-    if (sessionStorage.getItem(key)) return;
-    sessionStorage.setItem(key, "1");
+  // dedupe once per tab/session
+  const key = "pv:/";
+  if (sessionStorage.getItem(key)) return;
+  sessionStorage.setItem(key, "1");
 
-    await fetch("/track/pageview", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: "/" }),
-      keepalive: true
-    });
-  } catch (_) {
-    // swallow
+  const r = await fetch("/track/pageview", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: "/" }),
+    keepalive: true
+  });
+
+  if (!r.ok) {
+    console.error("pageview failed:", r.status, await r.text().catch(() => ""));
   }
 }
+
 
 async function initAuthUI() {
   const loginBtn = document.getElementById("login-btn");
