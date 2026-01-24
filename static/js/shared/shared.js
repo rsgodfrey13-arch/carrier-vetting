@@ -1,3 +1,5 @@
+//shared
+
 async function loadHeader() {
   const container = document.getElementById("site-header");
   if (!container) return;
