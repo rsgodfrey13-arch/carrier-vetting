@@ -198,39 +198,32 @@
 
 <!-- Bulk Import Modal -->
 <div id="import-modal" class="import-modal hidden">
-  <!-- IMPORTANT: backdrop must NOT steal clicks -->
-  <div
-    class="import-modal-backdrop"
-    style="position:absolute; inset:0; pointer-events:none; z-index:0;"
-  ></div>
+  <div class="import-modal-backdrop" aria-hidden="true"></div>
 
-  <!-- IMPORTANT: dialog must be above backdrop and receive clicks -->
-  <div
-    class="import-modal-dialog glass-card"
-    style="position:relative; z-index:1; pointer-events:auto;"
-  >
+  <div class="import-modal-dialog glass-card" role="dialog" aria-modal="true" aria-labelledby="import-modal-title">
     <header class="import-modal-header">
       <div>
-        <h2 class="import-modal-title">Carrier Import Wizard</h2>
+        <h2 class="import-modal-title" id="import-modal-title">Carrier Import Wizard</h2>
         <p class="import-modal-subtitle">
           Upload a CSV or paste DOTs, then review and confirm before importing.
         </p>
       </div>
-      <button class="import-modal-close" id="import-modal-close" type="button">✕</button>
+      <button class="import-modal-close" id="import-modal-close" type="button" aria-label="Close">✕</button>
     </header>
 
-    <div class="import-steps">
+    <div class="import-steps" aria-label="Import steps">
       <div class="import-step import-step-1 import-step-active">
-        <span class="import-step-number">1</span><span>Upload</span>
+        <span class="import-step-number">1</span><span class="import-step-label">Upload</span>
       </div>
       <div class="import-step import-step-2">
-        <span class="import-step-number">2</span><span>Review</span>
+        <span class="import-step-number">2</span><span class="import-step-label">Review</span>
       </div>
       <div class="import-step import-step-3">
-        <span class="import-step-number">3</span><span>Done</span>
+        <span class="import-step-number">3</span><span class="import-step-label">Done</span>
       </div>
     </div>
 
+    <!-- STEP 1 -->
     <div class="import-step-body import-step-body-1 active">
       <div class="import-method-toggle">
         <button class="import-method-btn import-method-active" type="button" data-import-method="csv">
@@ -242,46 +235,186 @@
       </div>
 
       <div class="import-panels">
+        <!-- CSV PANEL -->
         <div id="import-panel-csv" class="import-panel active">
-          <div id="csv-dropzone" class="dropzone">
+          <div id="csv-dropzone" class="dropzone" role="button" tabindex="0" aria-label="Upload CSV">
             <input id="csv-file-input" type="file" accept=".csv" hidden>
             <div class="dropzone-inner">
               <p class="dropzone-title">Drop your CSV here</p>
               <p class="dropzone-subtitle">or click to browse</p>
+              <p class="dropzone-hint">CSV should contain a DOT (or dotnumber) column, or a single column of DOTs.</p>
             </div>
           </div>
 
           <div class="import-help-row">
-            <button id="browse-csv-btn" type="button">Choose file…</button>
-            <a href="/sample-carrier-import.csv" download>Download sample CSV</a>
+            <button id="browse-csv-btn" class="btn-ghost btn-xs" type="button">Choose file…</button>
+            <a class="import-sample-link" href="/sample-carrier-import.csv" download>Download sample CSV</a>
           </div>
 
           <div id="csv-upload-summary" class="csv-upload-summary hidden">
-            ✓ CSV loaded <span id="csv-file-name"></span> —
-            <span id="csv-dot-count">0</span> DOTs
+            <span class="csv-upload-title">✓ CSV loaded <span id="csv-file-name"></span></span>
+            <div class="csv-upload-meta">
+              <span id="csv-dot-count">0</span> DOTs detected
+            </div>
           </div>
         </div>
 
+        <!-- PASTE PANEL -->
         <div id="import-panel-paste" class="import-panel">
+          <label class="paste-label" for="dot-paste-textarea">Paste DOT numbers (one per line)</label>
           <textarea
             id="dot-paste-textarea"
-            rows="6"
+            class="paste-textarea"
+            rows="8"
             placeholder="517125&#10;97615"
           ></textarea>
+          <div class="paste-hint">Tip: you can paste commas/spaces too — we’ll extract the numbers.</div>
+        </div>
+      </div>
+
+      <!-- Optional: a lightweight validation note area your JS can use -->
+      <div id="import-upload-note" class="import-empty" style="display:none;"></div>
+    </div>
+
+    <!-- STEP 2 (REVIEW) -->
+    <div class="import-step-body import-step-body-2">
+      <div class="import-summary" id="import-summary">
+        <div class="summary-pill summary-new">
+          <span>New</span>
+          <span class="summary-count" id="summary-new-count">0</span>
+        </div>
+        <div class="summary-pill summary-dup">
+          <span>Duplicates</span>
+          <span class="summary-count" id="summary-dup-count">0</span>
+        </div>
+        <div class="summary-pill summary-invalid">
+          <span>Invalid</span>
+          <span class="summary-count" id="summary-invalid-count">0</span>
+        </div>
+      </div>
+
+      <div id="import-loading" class="import-loading hidden">
+        <div class="spinner" aria-hidden="true"></div>
+        Validating and preparing your import…
+        <div class="import-loading-sub">This may take a few seconds for large lists.</div>
+      </div>
+
+      <div id="import-results" class="import-results hidden">
+        <!-- New -->
+        <div class="import-section" data-section="new">
+          <button class="import-section-header" type="button">
+            <div>
+              <span class="import-section-title">New DOTs</span>
+              <span class="import-section-count">(<span id="new-count">0</span>)</span>
+            </div>
+            <span class="import-section-toggle">▾</span>
+          </button>
+          <div class="import-section-body">
+            <table class="import-results-table">
+              <thead>
+                <tr>
+                  <th>DOT</th>
+                  <th>Carrier</th>
+                  <th>Notes</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="import-new-tbody"></tbody>
+            </table>
+            <div class="import-empty hidden" id="import-new-empty">No new DOTs found.</div>
+          </div>
+        </div>
+
+        <!-- Duplicates -->
+        <div class="import-section collapsed" data-section="duplicate">
+          <button class="import-section-header" type="button">
+            <div>
+              <span class="import-section-title">Duplicates (already in My Carriers)</span>
+              <span class="import-section-count">(<span id="dup-count">0</span>)</span>
+            </div>
+            <span class="import-section-toggle">▾</span>
+          </button>
+          <div class="import-section-body">
+            <table class="import-results-table">
+              <thead>
+                <tr>
+                  <th>DOT</th>
+                  <th>Carrier</th>
+                  <th>Notes</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="import-dup-tbody"></tbody>
+            </table>
+            <div class="import-empty hidden" id="import-dup-empty">No duplicates.</div>
+          </div>
+        </div>
+
+        <!-- Invalid -->
+        <div class="import-section collapsed" data-section="invalid">
+          <button class="import-section-header" type="button">
+            <div>
+              <span class="import-section-title">Invalid</span>
+              <span class="import-section-count">(<span id="invalid-count">0</span>)</span>
+            </div>
+            <span class="import-section-toggle">▾</span>
+          </button>
+          <div class="import-section-body">
+            <table class="import-results-table">
+              <thead>
+                <tr>
+                  <th>Value</th>
+                  <th>Reason</th>
+                  <th>Notes</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="import-invalid-tbody"></tbody>
+            </table>
+            <div class="import-empty hidden" id="import-invalid-empty">No invalid rows.</div>
+          </div>
+        </div>
+
+        <div class="table-tip" style="margin-top:10px;">
+          Tip: Only <b>New DOTs</b> will be imported when you click “Next”.
         </div>
       </div>
     </div>
 
-    <div class="import-step-body import-step-body-2"></div>
-    <div class="import-step-body import-step-body-3"></div>
+    <!-- STEP 3 (DONE) -->
+    <div class="import-step-body import-step-body-3">
+      <div class="import-done-icon">✅</div>
+      <div class="import-done-title">Import complete</div>
+      <div class="import-done-subtitle">Your carrier list has been updated.</div>
+
+      <div class="import-done-stats">
+        <div class="done-stat">
+          <span class="done-label">Imported</span>
+          <span class="done-value" id="done-imported-count">0</span>
+        </div>
+        <div class="done-stat">
+          <span class="done-label">Duplicates</span>
+          <span class="done-value" id="done-dup-count">0</span>
+        </div>
+        <div class="done-stat">
+          <span class="done-label">Invalid</span>
+          <span class="done-value" id="done-invalid-count">0</span>
+        </div>
+      </div>
+
+      <div class="import-empty" style="margin-top:12px;">
+        You can close this modal or import another list.
+      </div>
+    </div>
 
     <footer class="import-modal-footer">
-      <button id="import-back-btn" type="button">Back</button>
-      <button id="import-cancel-btn" type="button">Cancel</button>
-      <button id="import-next-btn" type="button">Next</button>
+      <button id="import-back-btn" class="btn-ghost" type="button">Back</button>
+      <button id="import-cancel-btn" class="btn-ghost" type="button">Cancel</button>
+      <button id="import-next-btn" class="btn-primary" type="button">Next</button>
     </footer>
   </div>
 </div>
+
   
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script src="/js/shared/shared.js" defer></script>
