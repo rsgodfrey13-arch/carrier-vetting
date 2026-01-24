@@ -1,8 +1,16 @@
 <!-- Bulk Import Modal -->
 <div id="import-modal" class="import-modal hidden">
-  <div class="import-modal-backdrop"></div>
+  <!-- IMPORTANT: backdrop must NOT steal clicks -->
+  <div
+    class="import-modal-backdrop"
+    style="position:absolute; inset:0; pointer-events:none; z-index:0;"
+  ></div>
 
-  <div class="import-modal-dialog glass-card">
+  <!-- IMPORTANT: dialog must be above backdrop and receive clicks -->
+  <div
+    class="import-modal-dialog glass-card"
+    style="position:relative; z-index:1; pointer-events:auto;"
+  >
     <header class="import-modal-header">
       <div>
         <h2 class="import-modal-title">Carrier Import Wizard</h2>
@@ -10,163 +18,67 @@
           Upload a CSV or paste DOTs, then review and confirm before importing.
         </p>
       </div>
-      <button
-        class="import-modal-close"
-        id="import-modal-close"
-        type="button"
-        aria-label="Close"
-      >
-        ✕
-      </button>
+      <button class="import-modal-close" id="import-modal-close" type="button">✕</button>
     </header>
 
-    <!-- Step indicator -->
     <div class="import-steps">
       <div class="import-step import-step-1 import-step-active">
-        <span class="import-step-number">1</span>
-        <span class="import-step-label">Upload</span>
+        <span class="import-step-number">1</span><span>Upload</span>
       </div>
       <div class="import-step import-step-2">
-        <span class="import-step-number">2</span>
-        <span class="import-step-label">Review</span>
+        <span class="import-step-number">2</span><span>Review</span>
       </div>
       <div class="import-step import-step-3">
-        <span class="import-step-number">3</span>
-        <span class="import-step-label">Done</span>
+        <span class="import-step-number">3</span><span>Done</span>
       </div>
     </div>
 
-    <!-- STEP 1 -->
     <div class="import-step-body import-step-body-1 active">
       <div class="import-method-toggle">
-        <button
-          class="import-method-btn import-method-active"
-          type="button"
-          data-import-method="csv"
-        >
+        <button class="import-method-btn import-method-active" type="button" data-import-method="csv">
           Upload CSV
         </button>
-        <button
-          class="import-method-btn"
-          type="button"
-          data-import-method="paste"
-        >
+        <button class="import-method-btn" type="button" data-import-method="paste">
           Paste DOT list
         </button>
       </div>
 
       <div class="import-panels">
-        <!-- CSV PANEL -->
         <div id="import-panel-csv" class="import-panel active">
           <div id="csv-dropzone" class="dropzone">
-            <!-- 🔴 MUST be hidden, JS controls click -->
-            <input
-              id="csv-file-input"
-              type="file"
-              accept=".csv"
-              hidden
-            >
-
+            <input id="csv-file-input" type="file" accept=".csv" hidden>
             <div class="dropzone-inner">
               <p class="dropzone-title">Drop your CSV here</p>
-              <p class="dropzone-subtitle">
-                or <span class="browse-link">click to browse</span>
-              </p>
+              <p class="dropzone-subtitle">or click to browse</p>
             </div>
           </div>
 
           <div class="import-help-row">
-            <button
-              id="browse-csv-btn"
-              class="btn-secondary btn-xs"
-              type="button"
-            >
-              Choose file…
-            </button>
-
-            <a
-              href="/sample-carrier-import.csv"
-              class="import-sample-link"
-              download
-            >
-              Download sample CSV
-            </a>
+            <button id="browse-csv-btn" type="button">Choose file…</button>
+            <a href="/sample-carrier-import.csv" download>Download sample CSV</a>
           </div>
 
           <div id="csv-upload-summary" class="csv-upload-summary hidden">
-            <p class="csv-upload-title">
-              ✓ CSV loaded <span id="csv-file-name"></span>
-            </p>
-            <p class="csv-upload-meta">
-              Detected <span id="csv-dot-count">0</span> DOT numbers.
-            </p>
+            ✓ CSV loaded <span id="csv-file-name"></span> —
+            <span id="csv-dot-count">0</span> DOTs
           </div>
         </div>
 
-        <!-- PASTE PANEL -->
         <div id="import-panel-paste" class="import-panel">
-          <label for="dot-paste-textarea" class="paste-label">
-            Paste one DOT per line
-          </label>
           <textarea
             id="dot-paste-textarea"
-            class="paste-textarea"
-            rows="8"
+            rows="6"
             placeholder="517125&#10;97615"
           ></textarea>
         </div>
       </div>
     </div>
 
-    <!-- STEP 2 -->
-    <div class="import-step-body import-step-body-2">
-      <div class="import-loading hidden" id="import-loading">
-        <div class="spinner"></div>
-        <p>Validating carriers…</p>
-      </div>
-
-      <div class="import-results hidden" id="import-results">
-        <div class="import-section" data-status="new">
-          <button class="import-section-header" type="button">
-            <span>New carriers</span>
-            <span id="section-new-count">0</span>
-          </button>
-          <div id="section-new-body"></div>
-        </div>
-
-        <div class="import-section" data-status="duplicate">
-          <button class="import-section-header" type="button">
-            <span>Current Carriers</span>
-            <span id="section-dup-count">0</span>
-          </button>
-          <div id="section-dup-body"></div>
-        </div>
-
-        <div class="import-section" data-status="invalid">
-          <button class="import-section-header" type="button">
-            <span>Invalid DOTs</span>
-            <span id="section-invalid-count">0</span>
-          </button>
-          <div id="section-invalid-body"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- STEP 3 -->
-    <div class="import-step-body import-step-body-3">
-      <div class="import-done-icon">🎉</div>
-      <h3>Import complete</h3>
-
-      <div class="import-done-stats">
-        <div><span id="done-inserted">0</span> added</div>
-        <div><span id="done-duplicates">0</span> duplicates</div>
-        <div><span id="done-invalid">0</span> invalid</div>
-      </div>
-    </div>
+    <div class="import-step-body import-step-body-2"></div>
+    <div class="import-step-body import-step-body-3"></div>
 
     <footer class="import-modal-footer">
       <button id="import-back-btn" type="button">Back</button>
-      <div class="import-footer-spacer"></div>
       <button id="import-cancel-btn" type="button">Cancel</button>
       <button id="import-next-btn" type="button">Next</button>
     </footer>
