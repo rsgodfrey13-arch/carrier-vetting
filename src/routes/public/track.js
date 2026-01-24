@@ -33,27 +33,32 @@ async function insertPageview(req, path) {
 
   const dedupeMinutes = 10;
 
-  await pool.query(
-    `
-    INSERT INTO public.page_view_events (user_id, path, session_id, ip_hash, user_agent)
-    SELECT $1, $2, $3, $4, $5
-    WHERE NOT EXISTS (
-      SELECT 1
-      FROM public.page_view_events
-      WHERE path = $2
-        AND occurred_at > now() - ($6::text || ' minutes')::interval
-        AND (
-          ($1 IS NOT NULL AND user_id = $1)
-          OR
-          ($1 IS NULL AND $3 IS NOT NULL AND session_id = $3)
-          OR
-          ($1 IS NULL AND $3 IS NULL AND ip_hash = $4 AND user_agent = $5)
-        )
-    )
-    `,
-    [userId, path, sessionId, ipHash, ua, dedupeMinutes]
-  );
-}
+await pool.query(
+  `
+  INSERT INTO public.page_view_events (user_id, path, session_id, ip_hash, user_agent)
+  SELECT
+    $1::integer,
+    $2::text,
+    $3::text,
+    $4::text,
+    $5::text
+  WHERE NOT EXISTS (
+    SELECT 1
+    FROM public.page_view_events
+    WHERE path = $2::text
+      AND occurred_at > now() - ($6::text || ' minutes')::interval
+      AND (
+        ($1::integer IS NOT NULL AND user_id = $1::integer)
+        OR
+        ($1::integer IS NULL AND $3::text IS NOT NULL AND session_id = $3::text)
+        OR
+        ($1::integer IS NULL AND $3::text IS NULL AND ip_hash = $4::text AND user_agent = $5::text)
+      )
+  )
+  `,
+  [userId, path, sessionId, ipHash, ua, dedupeMinutes]
+);
+
 
 router.post("/pageview", async (req, res) => {
   try {
