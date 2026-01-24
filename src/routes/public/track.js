@@ -1,6 +1,6 @@
-// src/routes/public/track.js
 const express = require("express");
 const crypto = require("crypto");
+const { pool } = require("../db/pool"); // <-- adjust path if needed
 
 const router = express.Router();
 
@@ -27,13 +27,12 @@ async function insertPageview(req, path) {
 
   const ip = getClientIp(req);
   const ua = (req.headers["user-agent"] || "").toString().slice(0, 300);
-
   const ipHash = hashIp(ip);
   const sessionId = req.sessionID || null;
 
   const dedupeMinutes = 10;
 
-  await req.db.query(
+  await pool.query(
     `
     INSERT INTO public.page_view_events (user_id, path, session_id, ip_hash, user_agent)
     SELECT $1, $2, $3, $4, $5
@@ -41,7 +40,7 @@ async function insertPageview(req, path) {
       SELECT 1
       FROM public.page_view_events
       WHERE path = $2
-        AND occurred_at > now() - make_interval(mins => $6)
+        AND occurred_at > now() - ($6::text || ' minutes')::interval
         AND (
           ($1 IS NOT NULL AND user_id = $1)
           OR
@@ -55,19 +54,6 @@ async function insertPageview(req, path) {
   );
 }
 
-// ✅ GET version (supports pixel-style hits, prevents noisy 404s)
-router.get("/pageview", async (req, res) => {
-  try {
-    const path = (req.query?.path || "/").toString().slice(0, 200);
-    await insertPageview(req, path);
-    res.status(204).end();
-  } catch (e) {
-    console.error("track pageview GET error:", e);
-    res.status(204).end(); // never break the page
-  }
-});
-
-// ✅ POST version (your current fetch() usage)
 router.post("/pageview", async (req, res) => {
   try {
     const path = (req.body?.path || "/").toString().slice(0, 200);
