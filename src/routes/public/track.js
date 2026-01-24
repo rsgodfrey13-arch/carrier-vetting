@@ -1,4 +1,4 @@
-// routes/internal/track.js
+// routes/public/track.js
 const express = require("express");
 const crypto = require("crypto");
 
