@@ -8,30 +8,33 @@ async function loadHeader() {
 
     container.innerHTML = await res.text();
 
-    // 🔥 Header is NOW in the DOM → wire buttons
+    // Header is now in the DOM → wire buttons
     await initAuthUI();
   } catch (err) {
     console.error("Header load failed:", err);
   }
 }
 
-async function trackPageViewLoggedIn(pathname) {
+// Tracks homepage views (logged in OR not)
+async function trackHomepageView() {
   try {
     // only track homepage
-    if (pathname !== "/") return;
+    if (window.location.pathname !== "/") return;
 
-    // dedupe once per tab/session per path
-    const key = `pv:${pathname}`;
+    // dedupe once per tab/session
+    const key = "pv:/";
     if (sessionStorage.getItem(key)) return;
     sessionStorage.setItem(key, "1");
 
-    await fetch("/api/internal/track/pageview", {
+    await fetch("/api/track/pageview", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: pathname }),
+      body: JSON.stringify({ path: "/" }),
       keepalive: true
     });
-  } catch (_) {}
+  } catch (_) {
+    // swallow
+  }
 }
 
 async function initAuthUI() {
@@ -41,7 +44,6 @@ async function initAuthUI() {
   // If this page doesn't have the header, just skip.
   if (!loginBtn || !logoutBtn) return;
 
-  // Login button always goes to login page
   loginBtn.onclick = () => {
     window.location.href = "/login.html";
   };
@@ -54,9 +56,6 @@ async function initAuthUI() {
       // Logged in
       loginBtn.style.display = "none";
       logoutBtn.style.display = "inline-block";
-
-      // ✅ track homepage view for logged-in users
-      trackPageViewLoggedIn(window.location.pathname);
 
       logoutBtn.onclick = async () => {
         await fetch("/api/logout", { method: "POST" });
@@ -75,4 +74,8 @@ async function initAuthUI() {
   }
 }
 
-document.addEventListener("DOMContentLoaded", loadHeader);
+// Run both on page load
+document.addEventListener("DOMContentLoaded", () => {
+  trackHomepageView(); // ✅ logs whether logged in or not
+  loadHeader();        // ✅ keeps your header/auth behavior
+});
