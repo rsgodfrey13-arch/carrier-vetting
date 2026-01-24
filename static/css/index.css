@@ -1757,3 +1757,33 @@ th.sortable.sorted-desc .sort-icon::before {
   z-index: 1;
   pointer-events: auto;
 }
+
+
+/* =========================================================
+   FIX: Modal not clickable (overlay/pointer-events issue)
+   Paste at very bottom of CSS
+   ========================================================= */
+
+#import-modal.import-modal {
+  pointer-events: auto !important; /* allow clicks */
+}
+
+/* Backdrop sits behind the dialog and can receive clicks if you want click-to-close */
+#import-modal .import-modal-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  pointer-events: auto !important;
+}
+
+/* Dialog is above backdrop and clickable */
+#import-modal .import-modal-dialog {
+  position: relative !important;
+  z-index: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* Ensure nothing inside accidentally disables clicks */
+#import-modal * {
+  pointer-events: auto;
+}
