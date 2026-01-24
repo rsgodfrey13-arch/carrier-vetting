@@ -10,6 +10,28 @@ async function loadHeader() {
 
     container.innerHTML = await res.text();
 
+
+async function trackPageViewLoggedIn(pathname) {
+  try {
+    // only track homepage
+    if (pathname !== "/") return;
+
+    // dedupe once per tab/session per path
+    const key = `pv:${pathname}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+
+    await fetch("/api/internal/track/pageview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: pathname }),
+      keepalive: true
+    });
+  } catch (_) {}
+}
+
+
+    
     // 🔥 Header is NOW in the DOM → wire buttons
     await initAuthUI();
   } catch (err) {
