@@ -1707,3 +1707,33 @@ th.sortable.sorted-desc .sort-icon::before {
 .import-section-header:hover {
   background: rgba(255, 255, 255, 0.03);
 }
+
+/* ===========================
+   FIX: Import modal clicks
+   =========================== */
+
+/* the modal must be clickable */
+.import-modal {
+  pointer-events: auto !important;
+}
+
+/* backdrop should NEVER block clicks meant for the dialog */
+.import-modal-backdrop {
+  z-index: 0 !important;
+  pointer-events: none !important;
+}
+
+/* dialog sits above backdrop */
+.import-modal-dialog {
+  position: relative !important;
+  z-index: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* if your glass-card uses ::before/::after overlays, stop them eating clicks */
+.import-modal-dialog::before,
+.import-modal-dialog::after,
+.glass-card::before,
+.glass-card::after {
+  pointer-events: none !important;
+}
