@@ -1612,3 +1612,27 @@ th.sortable.sorted-desc .sort-icon::before{
     grid-template-columns:1fr;
   }
 }
+
+
+/* Filters popover: render above everything, never clipped */
+#filters-popover{
+  position: fixed;
+  inset: 0;            /* full-screen overlay */
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px 12px;
+}
+
+#filters-popover.hidden{
+  display: none;
+}
+
+/* The actual panel inside the overlay */
+#filters-popover .filters-panel{
+  width: min(780px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  border-radius: 16px;
+}
