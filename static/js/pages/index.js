@@ -42,6 +42,112 @@
     }
   }
 
+
+  // ---------------------------------------------
+  // QUICK FILTER PILLS
+  // ---------------------------------------------
+  const activeQuickFilters = new Set();
+
+  function qfSetClearVisible() {
+    const clearBtn = document.getElementById("qfClearAll");
+    if (!clearBtn) return;
+    clearBtn.hidden = activeQuickFilters.size === 0;
+  }
+
+  function isActiveAuthority(val) {
+    const t = String(val ?? "").trim().toUpperCase();
+    return t && t !== "-" && t !== "INACTIVE";
+  }
+
+  function locationStateFromCarrier(c) {
+    const st = (c.state || c.phystate || "").toString().trim().toUpperCase();
+    return st;
+  }
+
+  function isAuthorizedCarrier(c) {
+    return String(c.allowedtooperate || "").toUpperCase() === "Y";
+  }
+
+  function safetyLabel(c) {
+    const ratingMap = { S: "Satisfactory", C: "Conditional", U: "Unsatisfactory" };
+    const rawRating = c.safetyrating ? String(c.safetyrating).trim().toUpperCase() : "";
+    return ratingMap[rawRating] || "Not Rated";
+  }
+
+  function carrierMatchesQuickFilters(c) {
+    if (activeQuickFilters.size === 0) return true;
+
+    for (const token of activeQuickFilters) {
+      const [key, ...rest] = String(token).split(":");
+      const value = rest.join(":");
+
+      if (key === "operating") {
+        if (value === "AUTHORIZED" && !isAuthorizedCarrier(c)) return false;
+      }
+
+      if (key === "safety") {
+        if (value === "NOT_RATED" && safetyLabel(c).toUpperCase() !== "NOT RATED") return false;
+      }
+
+      if (key === "state") {
+        if (locationStateFromCarrier(c) !== String(value).toUpperCase()) return false;
+      }
+
+      if (key === "common") {
+        if (value === "ACTIVE" && !isActiveAuthority(c.commonauthoritystatus)) return false;
+      }
+
+      if (key === "contract") {
+        if (value === "ACTIVE" && !isActiveAuthority(c.contractauthoritystatus)) return false;
+      }
+
+      if (key === "broker") {
+        if (value === "ACTIVE" && !isActiveAuthority(c.brokerauthoritystatus)) return false;
+      }
+    }
+
+    return true;
+  }
+
+  function applyQuickFiltersAndRerender() {
+    qfSetClearVisible();
+    currentPage = 1;
+    loadCarriers(); // ✅ re-fetch + re-render with filters applied
+  }
+
+  function initQuickFilters() {
+    const wrap = document.getElementById("quickFilters");
+    if (!wrap) return;
+
+    wrap.addEventListener("click", (e) => {
+      const btn = e.target.closest("button.qf-pill");
+      if (!btn) return;
+
+      if (btn.id === "qfClearAll") {
+        activeQuickFilters.clear();
+        wrap.querySelectorAll(".qf-pill.is-active").forEach((b) => b.classList.remove("is-active"));
+        applyQuickFiltersAndRerender();
+        return;
+      }
+
+      const token = btn.getAttribute("data-filter");
+      if (!token) return;
+
+      if (activeQuickFilters.has(token)) {
+        activeQuickFilters.delete(token);
+        btn.classList.remove("is-active");
+      } else {
+        activeQuickFilters.add(token);
+        btn.classList.add("is-active");
+      }
+
+      applyQuickFiltersAndRerender();
+    });
+
+    qfSetClearVisible();
+  }
+
+  
   // ---------------------------------------------
   // TABLE LOAD + RENDER
   // ---------------------------------------------
