@@ -71,9 +71,27 @@
     <!-- LIST SECTION -->
     <section class="glass-card carriers-card">
       <header class="carriers-card-header">
-        <div>
+        <div class="carriers-header-left">
           <h2 class="carriers-title">My Carriers</h2>
           <p class="carriers-subtitle">Click a DOT number to open its profile page.</p>
+        </div>
+      
+        <!-- Quick filter pills (fits the empty space you circled) -->
+        <div class="carriers-header-filters" id="quickFilters" aria-label="Quick filters">
+          <button class="qf-pill" type="button" data-filter="operating:AUTHORIZED">Authorized</button>
+          <button class="qf-pill" type="button" data-filter="safety:NOT_RATED">Not Rated</button>
+          <button class="qf-pill" type="button" data-filter="common:ACTIVE">Common</button>
+          <button class="qf-pill" type="button" data-filter="contract:ACTIVE">Contract</button>
+          <button class="qf-pill" type="button" data-filter="broker:ACTIVE">Broker</button>
+      
+          <span class="qf-sep" aria-hidden="true"></span>
+      
+          <button class="qf-pill" type="button" data-filter="state:FL">FL</button>
+          <button class="qf-pill" type="button" data-filter="state:ON">ON</button>
+      
+          <button class="qf-pill qf-clear" type="button" id="qfClearAll" hidden>
+            Clear all
+          </button>
         </div>
       
         <div class="carriers-header-actions">
@@ -81,8 +99,6 @@
           <button id="download-btn" class="download-btn">Download CSV</button>
         </div>
       </header>
-
-
 
       <div class="carriers-table-wrap">
         
