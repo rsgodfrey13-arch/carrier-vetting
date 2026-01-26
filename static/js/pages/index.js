@@ -42,264 +42,266 @@
     }
   }
 
-
   // ---------------------------------------------
-// PANEL FILTERS (DOT/MC/City/State + dropdowns)
+  // PANEL FILTERS (DOT/MC/City/State + dropdowns)
+  // ---------------------------------------------
+  const panelFilters = {
+    dot: "",
+    mc: "",
+    city: "",
+    state: "",
+    authorized: "", // "Y" | "N" | ""
+    common: "", // "A" | "I" | "NONE" | ""
+    broker: "", // "A" | "I" | "NONE" | ""
+    contract: "", // "A" | "I" | "NONE" | ""
+    safety: "", // "S" | "C" | "U" | "NOT_RATED" | ""
+  };
 
-const panelFilters = {
-  dot: "",
-  mc: "",
-  city: "",
-  state: "",
-  authorized: "", // "Y" | "N" | ""
-  common: "",     // "A" | "I" | "NONE" | ""
-  broker: "",     // "A" | "I" | "NONE" | ""
-  contract: "",   // "A" | "I" | "NONE" | ""
-  safety: "",     // "S" | "C" | "U" | "NOT_RATED" | ""
-};
-
-function norm(val) {
-  return String(val ?? "").trim();
-}
-
-function matchesText(hay, needle) {
-  const n = norm(needle).toLowerCase();
-  if (!n) return true;
-  return norm(hay).toLowerCase().includes(n);
-}
-
-function normAuthorityABC(val) {
-  const t = norm(val).toUpperCase();
-  if (!t || t === "-" || t === "N" || t === "NO") return "NONE";
-  if (t === "A") return "A";
-  if (t === "I") return "I";
-  return "NONE"; // anything weird becomes NONE for your rule
-}
-
-function safetyCode(val) {
-  const t = norm(val).toUpperCase();
-  if (t === "S" || t === "C" || t === "U") return t;
-  return "NOT_RATED";
-}
-
-
-function carrierMatchesPanelFilters(c) {
-  const dotVal = norm(c.dot || c.dotnumber || c.id);
-  const mcVal = norm(c.mc_number);
-  const cityVal = norm(c.city || c.phycity);
-  const stateVal = norm(c.state || c.phystate).toUpperCase();
-
-  if (panelFilters.dot && !dotVal.includes(norm(panelFilters.dot))) return false;
-  if (panelFilters.mc && !mcVal.includes(norm(panelFilters.mc))) return false;
-  if (panelFilters.city && !matchesText(cityVal, panelFilters.city)) return false;
-  if (panelFilters.state && stateVal !== norm(panelFilters.state).toUpperCase()) return false;
-
-  // Authorized: Y = yes, everything else = no
-  if (panelFilters.authorized) {
-    const isYes = norm(c.allowedtooperate).toUpperCase() === "Y";
-    if (panelFilters.authorized === "Y" && !isYes) return false;
-    if (panelFilters.authorized === "N" && isYes) return false;
+  function norm(val) {
+    return String(val ?? "").trim();
   }
 
-  // A/I/NONE rules
-  if (panelFilters.common) {
-    const v = normAuthorityABC(c.commonauthoritystatus);
-    if (panelFilters.common === "NONE" ? v !== "NONE" : v !== panelFilters.common) return false;
-  }
-  if (panelFilters.broker) {
-    const v = normAuthorityABC(c.brokerauthoritystatus);
-    if (panelFilters.broker === "NONE" ? v !== "NONE" : v !== panelFilters.broker) return false;
-  }
-  if (panelFilters.contract) {
-    const v = normAuthorityABC(c.contractauthoritystatus);
-    if (panelFilters.contract === "NONE" ? v !== "NONE" : v !== panelFilters.contract) return false;
+  function matchesText(hay, needle) {
+    const n = norm(needle).toLowerCase();
+    if (!n) return true;
+    return norm(hay).toLowerCase().includes(n);
   }
 
-  // Safety
-  if (panelFilters.safety) {
-    const code = safetyCode(c.safetyrating);
-    if (code !== panelFilters.safety) return false;
+  function normAuthorityABC(val) {
+    const t = norm(val).toUpperCase();
+    if (!t || t === "-" || t === "N" || t === "NO") return "NONE";
+    if (t === "A") return "A";
+    if (t === "I") return "I";
+    return "NONE";
   }
 
-  return true;
-}
-
-
-
-  
-function countActivePanelFilters() {
-  return Object.values(panelFilters).filter((v) => String(v || "").trim() !== "").length;
-}
-
-function setFiltersCountUi() {
-  const btn = $("filters-btn");
-  const badge = $("filters-count");
-  const n = countActivePanelFilters();
-
-  if (badge) {
-    badge.textContent = String(n);
-    badge.hidden = n === 0;
-  }
-  if (btn) btn.classList.toggle("is-active", n > 0);
-}
-
-function wireFiltersPanel() {
-  const btn = $("filters-btn");
-  const pop = $("filters-popover");
-
-  // 🔥 prevent clipping: popover must not live inside an overflow-hidden card
-  if (pop && pop.parentElement !== document.body) {
-    document.body.appendChild(pop);
+  function safetyCode(val) {
+    const t = norm(val).toUpperCase();
+    if (t === "S" || t === "C" || t === "U") return t;
+    return "NOT_RATED";
   }
 
-  
-  const closeBtn = $("filters-close");
-  const clearBtn = $("filters-clear");
-  const applyBtn = $("filters-apply");
+  function carrierMatchesPanelFilters(c) {
+    const dotVal = norm(c.dot || c.dotnumber || c.id);
+    const mcVal = norm(c.mc_number);
+    const cityVal = norm(c.city || c.phycity);
+    const stateVal = norm(c.state || c.phystate).toUpperCase();
 
-  if (!btn || !pop || !applyBtn) return;
+    if (panelFilters.dot && !dotVal.includes(norm(panelFilters.dot))) return false;
+    if (panelFilters.mc && !mcVal.includes(norm(panelFilters.mc))) return false;
+    if (panelFilters.city && !matchesText(cityVal, panelFilters.city)) return false;
+    if (panelFilters.state && stateVal !== norm(panelFilters.state).toUpperCase()) return false;
 
-function positionPopover() {
-  if (!pop || pop.classList.contains("hidden")) return;
-
-  // measure button
-  const r = btn.getBoundingClientRect();
-
-  // temporarily show to measure width correctly
-  pop.style.visibility = "hidden";
-  pop.classList.remove("hidden");
-
-  // measure popover
-  const popW = pop.offsetWidth;
-  const popH = pop.offsetHeight;
-
-  // prefer right-aligned to the button
-  let left = r.right - popW;
-  let top = r.bottom + 10;
-
-  // clamp within viewport
-  const pad = 12;
-  left = Math.max(pad, Math.min(left, window.innerWidth - popW - pad));
-  top  = Math.max(pad, Math.min(top, window.innerHeight - popH - pad));
-
-  pop.style.left = `${left}px`;
-  pop.style.top = `${top}px`;
-
-  pop.style.visibility = "visible";
-}
-
-  
-  const elDot = $("f-dot");
-  const elMc = $("f-mc");
-  const elCity = $("f-city");
-  const elState = $("f-state");
-  const elAuthorized = $("f-authorized");
-  const elCommon = $("f-common");
-  const elBroker = $("f-broker");
-  const elContract = $("f-contract");
-  const elSafety = $("f-safety");
-
-const inputs = [elDot, elMc, elCity, elState, elAuthorized, elCommon, elBroker, elContract, elSafety].filter(Boolean);
-
-inputs.forEach((el) => {
-  el.addEventListener("change", () => {
-    // updates badge without applying
-    panelFilters.dot = elDot?.value || "";
-    panelFilters.mc = elMc?.value || "";
-    panelFilters.city = elCity?.value || "";
-    panelFilters.state = elState?.value || "";
-    panelFilters.authorized = elAuthorized?.value || "";
-    panelFilters.common = elCommon?.value || "";
-    panelFilters.broker = elBroker?.value || "";
-    panelFilters.contract = elContract?.value || "";
-    panelFilters.safety = elSafety?.value || "";
-    setFiltersCountUi();
-  });
-
-  el.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      applyBtn.click();
+    // Authorized: Y = yes, everything else = no
+    if (panelFilters.authorized) {
+      const isYes = norm(c.allowedtooperate).toUpperCase() === "Y";
+      if (panelFilters.authorized === "Y" && !isYes) return false;
+      if (panelFilters.authorized === "N" && isYes) return false;
     }
-  });
-});
 
-  
-  function open() { pop.classList.remove("hidden"); }
-  function close() { pop.classList.add("hidden"); }
+    // A/I/NONE rules
+    if (panelFilters.common) {
+      const v = normAuthorityABC(c.commonauthoritystatus);
+      if (panelFilters.common === "NONE" ? v !== "NONE" : v !== panelFilters.common) return false;
+    }
+    if (panelFilters.broker) {
+      const v = normAuthorityABC(c.brokerauthoritystatus);
+      if (panelFilters.broker === "NONE" ? v !== "NONE" : v !== panelFilters.broker) return false;
+    }
+    if (panelFilters.contract) {
+      const v = normAuthorityABC(c.contractauthoritystatus);
+      if (panelFilters.contract === "NONE" ? v !== "NONE" : v !== panelFilters.contract) return false;
+    }
 
-btn.addEventListener("click", () => {
-  pop.classList.toggle("hidden");
-  positionPopover();
-});
+    // Safety
+    if (panelFilters.safety) {
+      const code = safetyCode(c.safetyrating);
+      if (code !== panelFilters.safety) return false;
+    }
 
-  closeBtn && closeBtn.addEventListener("click", close);
-
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") close();
-  });
-
-  document.addEventListener("click", (e) => {
-    if (e.target.closest("#filters-btn")) return;
-    if (e.target.closest("#filters-popover")) return;
-    close();
-  });
-
-  function syncFromInputs() {
-    panelFilters.dot = elDot?.value || "";
-    panelFilters.mc = elMc?.value || "";
-    panelFilters.city = elCity?.value || "";
-    panelFilters.state = elState?.value || "";
-    panelFilters.authorized = elAuthorized?.value || "";
-    panelFilters.common = elCommon?.value || "";
-    panelFilters.broker = elBroker?.value || "";
-    panelFilters.contract = elContract?.value || "";
-    panelFilters.safety = elSafety?.value || "";
+    return true;
   }
 
-  function clearInputs() {
-    if (elDot) elDot.value = "";
-    if (elMc) elMc.value = "";
-    if (elCity) elCity.value = "";
-    if (elState) elState.value = "";
-    if (elAuthorized) elAuthorized.value = "";
-    if (elCommon) elCommon.value = "";
-    if (elBroker) elBroker.value = "";
-    if (elContract) elContract.value = "";
-    if (elSafety) elSafety.value = "";
-    syncFromInputs();
+  function countActivePanelFilters() {
+    return Object.values(panelFilters).filter((v) => String(v || "").trim() !== "").length;
+  }
+
+  function setFiltersCountUi() {
+    const btn = $("filters-btn");
+    const badge = $("filters-count");
+    const n = countActivePanelFilters();
+
+    if (badge) {
+      badge.textContent = String(n);
+      badge.hidden = n === 0;
+    }
+    if (btn) btn.classList.toggle("is-active", n > 0);
+  }
+
+  function wireFiltersPanel() {
+    const btn = $("filters-btn");
+    const pop = $("filters-popover");
+
+    const closeBtn = $("filters-close");
+    const clearBtn = $("filters-clear");
+    const applyBtn = $("filters-apply");
+
+    if (!btn || !pop || !applyBtn) return;
+
+    // prevent clipping: put popover directly under <body>
+    if (pop.parentElement !== document.body) {
+      document.body.appendChild(pop);
+    }
+
+    const elDot = $("f-dot");
+    const elMc = $("f-mc");
+    const elCity = $("f-city");
+    const elState = $("f-state");
+    const elAuthorized = $("f-authorized");
+    const elCommon = $("f-common");
+    const elBroker = $("f-broker");
+    const elContract = $("f-contract");
+    const elSafety = $("f-safety");
+
+    const inputs = [
+      elDot,
+      elMc,
+      elCity,
+      elState,
+      elAuthorized,
+      elCommon,
+      elBroker,
+      elContract,
+      elSafety,
+    ].filter(Boolean);
+
+    function syncFromInputs() {
+      panelFilters.dot = elDot?.value || "";
+      panelFilters.mc = elMc?.value || "";
+      panelFilters.city = elCity?.value || "";
+      panelFilters.state = elState?.value || "";
+      panelFilters.authorized = elAuthorized?.value || "";
+      panelFilters.common = elCommon?.value || "";
+      panelFilters.broker = elBroker?.value || "";
+      panelFilters.contract = elContract?.value || "";
+      panelFilters.safety = elSafety?.value || "";
+    }
+
+    function clearInputs() {
+      if (elDot) elDot.value = "";
+      if (elMc) elMc.value = "";
+      if (elCity) elCity.value = "";
+      if (elState) elState.value = "";
+      if (elAuthorized) elAuthorized.value = "";
+      if (elCommon) elCommon.value = "";
+      if (elBroker) elBroker.value = "";
+      if (elContract) elContract.value = "";
+      if (elSafety) elSafety.value = "";
+      syncFromInputs();
+      setFiltersCountUi();
+    }
+
+    // keep badge updated as user changes inputs (no apply)
+    inputs.forEach((el) => {
+      el.addEventListener("change", () => {
+        syncFromInputs();
+        setFiltersCountUi();
+      });
+
+      el.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          applyBtn.click();
+        }
+      });
+    });
+
+    // tiny polish: auto uppercase state
+    elState &&
+      elState.addEventListener("input", () => {
+        elState.value = String(elState.value || "")
+          .toUpperCase()
+          .replace(/[^A-Z]/g, "")
+          .slice(0, 2);
+      });
+
+    function positionPopover() {
+      if (!pop || pop.classList.contains("hidden")) return;
+
+      const r = btn.getBoundingClientRect();
+
+      // Popover must be measurable. Ensure it's not display:none.
+      // We do NOT remove "hidden" here. Open() handles that.
+      pop.style.visibility = "hidden";
+
+      const popW = pop.offsetWidth;
+      const popH = pop.offsetHeight;
+
+      let left = r.right - popW;
+      let top = r.bottom + 10;
+
+      const pad = 12;
+      left = Math.max(pad, Math.min(left, window.innerWidth - popW - pad));
+      top = Math.max(pad, Math.min(top, window.innerHeight - popH - pad));
+
+      pop.style.left = `${left}px`;
+      pop.style.top = `${top}px`;
+
+      pop.style.visibility = "visible";
+    }
+
+    function openPopover() {
+      pop.classList.remove("hidden");
+      // wait a frame so width/height are correct
+      requestAnimationFrame(positionPopover);
+    }
+
+    function closePopover() {
+      pop.classList.add("hidden");
+      pop.style.visibility = "";
+    }
+
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (pop.classList.contains("hidden")) openPopover();
+      else closePopover();
+    });
+
+    closeBtn && closeBtn.addEventListener("click", closePopover);
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closePopover();
+    });
+
+    document.addEventListener("click", (e) => {
+      if (e.target.closest("#filters-btn")) return;
+      if (e.target.closest("#filters-popover")) return;
+      closePopover();
+    });
+
+    window.addEventListener("resize", positionPopover);
+    window.addEventListener("scroll", positionPopover, true);
+
+    // Apply
+    applyBtn.addEventListener("click", () => {
+      syncFromInputs();
+      setFiltersCountUi();
+      currentPage = 1;
+      loadCarriers();
+      closePopover();
+    });
+
+    // Clear
+    clearBtn &&
+      clearBtn.addEventListener("click", () => {
+        clearInputs();
+        currentPage = 1;
+        loadCarriers();
+      });
+
     setFiltersCountUi();
   }
 
-  window.addEventListener("resize", positionPopover);
-window.addEventListener("scroll", positionPopover, true);
-
-  
-  // Apply
-  applyBtn.addEventListener("click", () => {
-    syncFromInputs();
-    setFiltersCountUi();
-    currentPage = 1;
-    loadCarriers();
-    close();
-  });
-
-  // Clear
-  clearBtn && clearBtn.addEventListener("click", () => {
-    clearInputs();
-    currentPage = 1;
-    loadCarriers();
-  });
-
-  // tiny polish: auto uppercase state
-  elState && elState.addEventListener("input", () => {
-    elState.value = String(elState.value || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2);
-  });
-
-  setFiltersCountUi();
-}
-
-  
   // ---------------------------------------------
   // TABLE LOAD + RENDER
   // ---------------------------------------------
@@ -311,10 +313,10 @@ window.addEventListener("scroll", positionPopover, true);
       tbody.innerHTML = "";
 
       // 1) Determine endpoint based on login
-      let endpoint = "/api/public-carriers"; // <-- default for logged OUT
+      let endpoint = "/api/public-carriers";
       try {
         const me = await fetch("/api/me").then((r) => r.json());
-        if (me.user) endpoint = "/api/my-carriers"; // logged IN
+        if (me.user) endpoint = "/api/my-carriers";
       } catch (e) {
         console.error("Error checking login:", e);
       }
@@ -333,18 +335,25 @@ window.addEventListener("scroll", positionPopover, true);
       const result = await res.json();
 
       let data = Array.isArray(result) ? result : result.rows;
-      
+
       // panel filters
-      if (Array.isArray(data) && countActivePanelFilters() > 0) {
+      const isClientFiltered = countActivePanelFilters() > 0;
+      if (Array.isArray(data) && isClientFiltered) {
         data = data.filter(carrierMatchesPanelFilters);
       }
 
-
       const filteredCount = Array.isArray(data) ? data.length : 0;
-      const isClientFiltered = countActivePanelFilters() > 0;
-      
-      totalRows = isClientFiltered ? filteredCount : (result.total ?? filteredCount);
-      totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+
+      // IMPORTANT: Client-side filters only apply to the currently fetched page.
+      // To keep pagination honest + not broken, force 1 page when filters are active.
+      if (isClientFiltered) {
+        totalRows = filteredCount;
+        totalPages = 1;
+        currentPage = 1;
+      } else {
+        totalRows = result.total ?? filteredCount;
+        totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+      }
 
       if (!Array.isArray(data) || data.length === 0) {
         const row = document.createElement("tr");
@@ -620,7 +629,6 @@ window.addEventListener("scroll", positionPopover, true);
       if (q === lastQuery) return;
       lastQuery = q;
 
-      // abort prior request
       if (activeController) activeController.abort();
       activeController = new AbortController();
 
@@ -648,10 +656,7 @@ window.addEventListener("scroll", positionPopover, true);
       searchTimeout = setTimeout(() => performSearch(value), 250);
     });
 
-    searchInput.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter") return;
-
-      e.preventDefault();
+    function goFirstSuggestionOrInput() {
       const first = suggestionsEl.querySelector(".carrier-suggestion-item");
       if (first) {
         const text = first.querySelector(".suggestion-main")?.textContent || "";
@@ -660,17 +665,16 @@ window.addEventListener("scroll", positionPopover, true);
       } else {
         goToCarrier(searchInput.value.trim());
       }
+    }
+
+    searchInput.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      goFirstSuggestionOrInput();
     });
 
     searchBtn.addEventListener("click", () => {
-      const first = suggestionsEl.querySelector(".carrier-suggestion-item");
-      if (first) {
-        const text = first.querySelector(".suggestion-main")?.textContent || "";
-        const dot = text.split("–")[0].trim();
-        goToCarrier(dot);
-      } else {
-        goToCarrier(searchInput.value.trim());
-      }
+      goFirstSuggestionOrInput();
     });
 
     document.addEventListener("click", (e) => {
@@ -716,75 +720,67 @@ window.addEventListener("scroll", positionPopover, true);
     updateSortHeaderClasses();
   }
 
-// ---------------------------------------------
-// CSV DOWNLOAD (respects panel filters)
-// ---------------------------------------------
-function wireCsvDownload() {
-  const btn = $("download-btn");
-  if (!btn) return;
+  // ---------------------------------------------
+  // CSV DOWNLOAD (exports current table view)
+  // ---------------------------------------------
+  function wireCsvDownload() {
+    const btn = $("download-btn");
+    if (!btn) return;
 
-  btn.addEventListener("click", () => {
-    try {
-      const tbody = $("carrier-table-body");
-      if (!tbody) return;
+    btn.addEventListener("click", () => {
+      try {
+        const tbody = $("carrier-table-body");
+        if (!tbody) return;
 
-      const rows = Array.from(tbody.querySelectorAll("tr"));
+        const rows = Array.from(tbody.querySelectorAll("tr"));
 
-      // Handle empty state row
-      const realRows = rows.filter((tr) => tr.querySelectorAll("td").length >= 2);
-      if (!realRows.length) {
-        alert("No carriers to export.");
-        return;
+        const realRows = rows.filter((tr) => tr.querySelectorAll("td").length >= 2);
+        if (!realRows.length) {
+          alert("No carriers to export.");
+          return;
+        }
+
+        const lines = [];
+        lines.push(["DOT", "MC", "Carrier", "Location", "Operating", "Common", "Contract", "Broker", "Safety Rating"].join(","));
+
+        function csvCell(val) {
+          let t = String(val ?? "").replace(/\s+/g, " ").trim();
+          if (/[",\n]/.test(t)) t = '"' + t.replace(/"/g, '""') + '"';
+          return t;
+        }
+
+        realRows.forEach((tr) => {
+          const tds = Array.from(tr.querySelectorAll("td"));
+          const dot = tds[1]?.innerText ?? "";
+          const mc = tds[2]?.innerText ?? "";
+          const carrier = tds[3]?.innerText ?? "";
+          const location = tds[4]?.innerText ?? "";
+          const operating = tds[5]?.innerText ?? "";
+          const common = tds[6]?.innerText ?? "";
+          const contract = tds[7]?.innerText ?? "";
+          const broker = tds[8]?.innerText ?? "";
+          const safety = tds[9]?.innerText ?? "";
+
+          const cols = [dot, mc, carrier, location, operating, common, contract, broker, safety].map(csvCell);
+          lines.push(cols.join(","));
+        });
+
+        const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+        const blobUrl = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = "carriers.csv";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+      } catch (err) {
+        console.error("CSV download failed", err);
+        alert("Sorry, something went wrong generating the CSV.");
       }
-
-      const lines = [];
-      lines.push(
-        ["DOT", "MC", "Carrier", "Location", "Operating", "Common", "Contract", "Broker", "Safety Rating"].join(",")
-      );
-
-      function csvCell(val) {
-        let t = String(val ?? "").replace(/\s+/g, " ").trim();
-        if (/[",\n]/.test(t)) t = '"' + t.replace(/"/g, '""') + '"';
-        return t;
-      }
-
-      realRows.forEach((tr) => {
-        const tds = Array.from(tr.querySelectorAll("td"));
-
-        // Your table columns:
-        // 0 checkbox, 1 DOT, 2 MC, 3 Carrier, 4 Location, 5 Operating, 6 Common, 7 Contract, 8 Broker, 9 Safety
-        const dot = tds[1]?.innerText ?? "";
-        const mc = tds[2]?.innerText ?? "";
-        const carrier = tds[3]?.innerText ?? "";
-        const location = tds[4]?.innerText ?? "";
-        const operating = tds[5]?.innerText ?? "";
-        const common = tds[6]?.innerText ?? "";
-        const contract = tds[7]?.innerText ?? "";
-        const broker = tds[8]?.innerText ?? "";
-        const safety = tds[9]?.innerText ?? "";
-
-        const cols = [dot, mc, carrier, location, operating, common, contract, broker, safety].map(csvCell);
-        lines.push(cols.join(","));
-      });
-
-      const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
-      const blobUrl = URL.createObjectURL(blob);
-
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = "carriers.csv";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
-    } catch (err) {
-      console.error("CSV download failed", err);
-      alert("Sorry, something went wrong generating the CSV.");
-    }
-  });
-}
-
-
+    });
+  }
 
   // ---------------------------------------------
   // AUTH UI (Login/Logout buttons)
@@ -1144,7 +1140,10 @@ function wireCsvDownload() {
     function getDotsFromPaste() {
       if (!dotPasteTextarea) return [];
       const raw = dotPasteTextarea.value || "";
-      const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      const lines = raw
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean);
       const dots = lines.filter((v) => /^\d+$/.test(v));
       return [...new Set(dots)];
     }
@@ -1353,7 +1352,6 @@ function wireCsvDownload() {
     document
       .querySelectorAll('.import-section[data-section="duplicate"], .import-section[data-section="invalid"]')
       .forEach((sec) => sec.classList.add("collapsed"));
-
   }
 
   // ---------------------------------------------
@@ -1371,5 +1369,4 @@ function wireCsvDownload() {
     loadCarriers();
     buildMyCarrierDots();
   });
-
 })();
