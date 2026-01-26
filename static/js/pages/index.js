@@ -82,9 +82,6 @@ function safetyCode(val) {
   return "NOT_RATED";
 }
 
-function countActivePanelFilters() {
-  return Object.values(panelFilters).filter((v) => norm(v) !== "").length;
-}
 
 function carrierMatchesPanelFilters(c) {
   const dotVal = norm(c.dot || c.dotnumber || c.id);
