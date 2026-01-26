@@ -147,6 +147,188 @@
     qfSetClearVisible();
   }
 
+  // ---------------------------------------------
+// PANEL FILTERS (DOT/MC/City/State + dropdowns)
+// ---------------------------------------------
+const panelFilters = {
+  dot: "",
+  mc: "",
+  city: "",
+  state: "",
+  authorized: "", // "Y" | "N" | ""
+  common: "",     // "A" | "I" | "NONE" | ""
+  broker: "",     // "A" | "I" | "NONE" | ""
+  contract: "",   // "A" | "I" | "NONE" | ""
+  safety: "",     // "S" | "C" | "U" | "NOT_RATED" | ""
+};
+
+function normalizeAuthStatus(val) {
+  const t = String(val ?? "").trim().toUpperCase();
+  if (!t || t === "-" || t === "N" || t === "NO" || t === "NONE") return "NONE";
+  if (t === "A") return "A";
+  if (t === "I" || t === "INACTIVE") return "I";
+  return t; // fallback
+}
+
+function matchesText(haystack, needle) {
+  const h = String(haystack ?? "").toLowerCase();
+  const n = String(needle ?? "").toLowerCase().trim();
+  if (!n) return true;
+  return h.includes(n);
+}
+
+function carrierMatchesPanelFilters(c) {
+  // DOT
+  const dotVal = String(c.dot || c.dotnumber || c.id || "");
+  if (panelFilters.dot && !dotVal.includes(String(panelFilters.dot).trim())) return false;
+
+  // MC
+  const mcVal = String(c.mc_number || "");
+  if (panelFilters.mc && !mcVal.includes(String(panelFilters.mc).trim())) return false;
+
+  // City
+  const cityVal = String(c.city || c.phycity || "");
+  if (panelFilters.city && !matchesText(cityVal, panelFilters.city)) return false;
+
+  // State
+  const stVal = String(c.state || c.phystate || "").trim().toUpperCase();
+  if (panelFilters.state && stVal !== String(panelFilters.state).trim().toUpperCase()) return false;
+
+  // Authorized
+  if (panelFilters.authorized) {
+    const isYes = String(c.allowedtooperate || "").toUpperCase() === "Y";
+    if (panelFilters.authorized === "Y" && !isYes) return false;
+    if (panelFilters.authorized === "N" && isYes) return false;
+  }
+
+  // Common / Broker / Contract
+  if (panelFilters.common) {
+    const v = normalizeAuthStatus(c.commonauthoritystatus);
+    if (panelFilters.common === "NONE" ? v !== "NONE" : v !== panelFilters.common) return false;
+  }
+  if (panelFilters.broker) {
+    const v = normalizeAuthStatus(c.brokerauthoritystatus);
+    if (panelFilters.broker === "NONE" ? v !== "NONE" : v !== panelFilters.broker) return false;
+  }
+  if (panelFilters.contract) {
+    const v = normalizeAuthStatus(c.contractauthoritystatus);
+    if (panelFilters.contract === "NONE" ? v !== "NONE" : v !== panelFilters.contract) return false;
+  }
+
+  // Safety Rating
+  if (panelFilters.safety) {
+    const raw = c.safetyrating ? String(c.safetyrating).trim().toUpperCase() : "";
+    const label = raw ? raw : "NOT_RATED";
+    if (label !== panelFilters.safety) return false;
+  }
+
+  return true;
+}
+
+function countActivePanelFilters() {
+  return Object.values(panelFilters).filter((v) => String(v || "").trim() !== "").length;
+}
+
+function setFiltersCountUi() {
+  const btn = $("filters-btn");
+  const badge = $("filters-count");
+  const n = countActivePanelFilters();
+
+  if (badge) {
+    badge.textContent = String(n);
+    badge.hidden = n === 0;
+  }
+  if (btn) btn.classList.toggle("is-active", n > 0);
+}
+
+function wireFiltersPanel() {
+  const btn = $("filters-btn");
+  const pop = $("filters-popover");
+  const closeBtn = $("filters-close");
+  const clearBtn = $("filters-clear");
+  const applyBtn = $("filters-apply");
+
+  if (!btn || !pop || !applyBtn) return;
+
+  const elDot = $("f-dot");
+  const elMc = $("f-mc");
+  const elCity = $("f-city");
+  const elState = $("f-state");
+  const elAuthorized = $("f-authorized");
+  const elCommon = $("f-common");
+  const elBroker = $("f-broker");
+  const elContract = $("f-contract");
+  const elSafety = $("f-safety");
+
+  function open() { pop.classList.remove("hidden"); }
+  function close() { pop.classList.add("hidden"); }
+
+  btn.addEventListener("click", () => {
+    pop.classList.toggle("hidden");
+  });
+
+  closeBtn && closeBtn.addEventListener("click", close);
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") close();
+  });
+
+  document.addEventListener("click", (e) => {
+    if (e.target.closest("#filters-btn")) return;
+    if (e.target.closest("#filters-popover")) return;
+    close();
+  });
+
+  function syncFromInputs() {
+    panelFilters.dot = elDot?.value || "";
+    panelFilters.mc = elMc?.value || "";
+    panelFilters.city = elCity?.value || "";
+    panelFilters.state = elState?.value || "";
+    panelFilters.authorized = elAuthorized?.value || "";
+    panelFilters.common = elCommon?.value || "";
+    panelFilters.broker = elBroker?.value || "";
+    panelFilters.contract = elContract?.value || "";
+    panelFilters.safety = elSafety?.value || "";
+  }
+
+  function clearInputs() {
+    if (elDot) elDot.value = "";
+    if (elMc) elMc.value = "";
+    if (elCity) elCity.value = "";
+    if (elState) elState.value = "";
+    if (elAuthorized) elAuthorized.value = "";
+    if (elCommon) elCommon.value = "";
+    if (elBroker) elBroker.value = "";
+    if (elContract) elContract.value = "";
+    if (elSafety) elSafety.value = "";
+    syncFromInputs();
+    setFiltersCountUi();
+  }
+
+  // Apply
+  applyBtn.addEventListener("click", () => {
+    syncFromInputs();
+    setFiltersCountUi();
+    currentPage = 1;
+    loadCarriers();
+    close();
+  });
+
+  // Clear
+  clearBtn && clearBtn.addEventListener("click", () => {
+    clearInputs();
+    currentPage = 1;
+    loadCarriers();
+  });
+
+  // tiny polish: auto uppercase state
+  elState && elState.addEventListener("input", () => {
+    elState.value = String(elState.value || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2);
+  });
+
+  setFiltersCountUi();
+}
+
   
   // ---------------------------------------------
   // TABLE LOAD + RENDER
@@ -182,11 +364,20 @@
 
       let data = Array.isArray(result) ? result : result.rows;
       
-      if (Array.isArray(data) && activeQuickFilters.size > 0) {
-        data = data.filter(carrierMatchesQuickFilters);
+      if (Array.isArray(data)) {
+        if (activeQuickFilters.size > 0) data = data.filter(carrierMatchesQuickFilters);
+      
+        // panel filters
+        if (countActivePanelFilters() > 0) data = data.filter(carrierMatchesPanelFilters);
       }
 
-      totalRows = result.total ?? (Array.isArray(data) ? data.length : 0);
+
+      const filteredCount = Array.isArray(data) ? data.length : 0;
+
+      // When filtering client-side, use filteredCount for pagination
+      const isClientFiltered = (activeQuickFilters.size > 0) || (countActivePanelFilters() > 0);
+      
+      totalRows = isClientFiltered ? filteredCount : (result.total ?? filteredCount);
       totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
 
       if (!Array.isArray(data) || data.length === 0) {
@@ -1219,6 +1410,7 @@
   // ---------------------------------------------
   document.addEventListener("DOMContentLoaded", () => {
     initQuickFilters(); 
+    wireFiltersPanel();
     wireRowsPerPage();
     wireAutocomplete();
     wireSortHeaders();
@@ -1226,7 +1418,6 @@
     wireAuthUi();
     wireBulkRemove();
     wireBulkImportWizard();
-
     loadCarriers();
     buildMyCarrierDots();
   });
