@@ -95,11 +95,90 @@
         </div>
       
         <div class="carriers-header-actions">
+          <button id="filters-btn" class="filters-btn" type="button">
+            Filters <span id="filters-count" class="filters-count" hidden>0</span>
+          </button>
+        
           <button id="bulk-import-btn" class="bulk-import-btn">Bulk Import</button>
           <button id="download-btn" class="download-btn">Download CSV</button>
         </div>
       </header>
-
+        <!-- Filters popover -->
+        <div id="filters-popover" class="filters-popover hidden" role="dialog" aria-modal="false" aria-label="Filters">
+          <div class="filters-popover-inner">
+            <div class="filters-head">
+              <div>
+                <div class="filters-title">Filters</div>
+                <div class="filters-subtitle">Narrow down your carrier list.</div>
+              </div>
+              <button id="filters-close" class="filters-close" type="button" aria-label="Close">✕</button>
+            </div>
+        
+            <div class="filters-grid">
+              <div class="filters-col">
+                <label class="f-label">DOT</label>
+                <input id="f-dot" class="f-input" type="text" placeholder="e.g. 1234567">
+        
+                <label class="f-label">MC</label>
+                <input id="f-mc" class="f-input" type="text" placeholder="e.g. 123456">
+        
+                <label class="f-label">City</label>
+                <input id="f-city" class="f-input" type="text" placeholder="e.g. Atlanta">
+        
+                <label class="f-label">State</label>
+                <input id="f-state" class="f-input" type="text" placeholder="e.g. GA" maxlength="2">
+              </div>
+        
+              <div class="filters-col">
+                <label class="f-label">Authorized</label>
+                <select id="f-authorized" class="f-select">
+                  <option value="">Any</option>
+                  <option value="Y">Yes</option>
+                  <option value="N">No</option>
+                </select>
+        
+                <label class="f-label">Common</label>
+                <select id="f-common" class="f-select">
+                  <option value="">Any</option>
+                  <option value="A">Active</option>
+                  <option value="I">Inactive</option>
+                  <option value="NONE">None</option>
+                </select>
+        
+                <label class="f-label">Broker</label>
+                <select id="f-broker" class="f-select">
+                  <option value="">Any</option>
+                  <option value="A">Active</option>
+                  <option value="I">Inactive</option>
+                  <option value="NONE">None</option>
+                </select>
+        
+                <label class="f-label">Contract</label>
+                <select id="f-contract" class="f-select">
+                  <option value="">Any</option>
+                  <option value="A">Active</option>
+                  <option value="I">Inactive</option>
+                  <option value="NONE">None</option>
+                </select>
+        
+                <label class="f-label">Safety Rating</label>
+                <select id="f-safety" class="f-select">
+                  <option value="">Any</option>
+                  <option value="S">Satisfactory</option>
+                  <option value="C">Conditional</option>
+                  <option value="U">Unsatisfactory</option>
+                  <option value="NOT_RATED">Not Rated</option>
+                </select>
+              </div>
+            </div>
+        
+            <div class="filters-footer">
+              <button id="filters-clear" class="btn-ghost" type="button">Clear</button>
+              <button id="filters-apply" class="btn-primary" type="button">Apply</button>
+            </div>
+          </div>
+        </div>
+      
       <div class="carriers-table-wrap">
         
             <div id="bulk-actions" class="bulk-actions hidden">
