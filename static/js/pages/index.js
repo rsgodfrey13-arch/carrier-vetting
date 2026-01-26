@@ -1212,6 +1212,7 @@
   // BOOT
   // ---------------------------------------------
   document.addEventListener("DOMContentLoaded", () => {
+    initQuickFilters(); 
     wireRowsPerPage();
     wireAutocomplete();
     wireSortHeaders();
@@ -1223,4 +1224,5 @@
     loadCarriers();
     buildMyCarrierDots();
   });
+
 })();
