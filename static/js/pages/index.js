@@ -180,7 +180,12 @@
       const res = await fetch(url);
       const result = await res.json();
 
-      const data = Array.isArray(result) ? result : result.rows;
+      let data = Array.isArray(result) ? result : result.rows;
+      
+      if (Array.isArray(data) && activeQuickFilters.size > 0) {
+        data = data.filter(carrierMatchesQuickFilters);
+      }
+
       totalRows = result.total ?? (Array.isArray(data) ? data.length : 0);
       totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
 
@@ -1204,8 +1209,9 @@
 
     // Default: collapse duplicates + invalid
     document
-      .querySelectorAll('.import-section[data-status="duplicate"], .import-section[data-status="invalid"]')
+      .querySelectorAll('.import-section[data-section="duplicate"], .import-section[data-section="invalid"]')
       .forEach((sec) => sec.classList.add("collapsed"));
+
   }
 
   // ---------------------------------------------
