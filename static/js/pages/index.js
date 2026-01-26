@@ -681,91 +681,47 @@ function wireCsvDownload() {
   const btn = $("download-btn");
   if (!btn) return;
 
-  btn.addEventListener("click", async () => {
+  btn.addEventListener("click", () => {
     try {
-      let endpoint = "/api/public-carriers";
-      try {
-        const me = await fetch("/api/me").then((r) => r.json());
-        if (me.user) endpoint = "/api/my-carriers";
-      } catch {
-        console.warn("me check failed, defaulting to /api/public-carriers");
-      }
+      const tbody = $("carrier-table-body");
+      if (!tbody) return;
 
-      // Pull a large set for exporting (client-side filtering)
-      const url = new URL(endpoint, window.location.origin);
-      url.searchParams.set("page", 1);
-      url.searchParams.set("pageSize", 5000);
+      const rows = Array.from(tbody.querySelectorAll("tr"));
 
-      // keep current sort for export
-      if (sortBy) {
-        url.searchParams.set("sortBy", sortBy);
-        url.searchParams.set("sortDir", sortDir);
-      }
-
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`Export request failed: ${res.status}`);
-
-      const result = await res.json();
-      let data = Array.isArray(result) ? result : result.rows;
-      
-      if (!data || !data.length) {
+      // Handle empty state row
+      const realRows = rows.filter((tr) => tr.querySelectorAll("td").length >= 2);
+      if (!realRows.length) {
         alert("No carriers to export.");
-        return;
-      }
-      
-      // ✅ apply panel filters
-      if (countActivePanelFilters() > 0) {
-        data = data.filter(carrierMatchesPanelFilters);
-      }
-      
-      if (!data.length) {
-        alert("No carriers match your current filters.");
-        return;
-      }
-
-
-      // ✅ Apply Filters panel BEFORE export
-      if (typeof countActivePanelFilters === "function" &&
-          typeof carrierMatchesPanelFilters === "function" &&
-          countActivePanelFilters() > 0) {
-        data = data.filter(carrierMatchesPanelFilters);
-      }
-
-      if (!data.length) {
-        alert("No carriers match your current filters.");
         return;
       }
 
       const lines = [];
       lines.push(
-        ["DOT", "MC", "Carrier", "City", "State", "Authorized", "Common", "Contract", "Broker", "Safety Rating"].join(",")
+        ["DOT", "MC", "Carrier", "Location", "Operating", "Common", "Contract", "Broker", "Safety Rating"].join(",")
       );
 
-      const ratingMap = { S: "Satisfactory", C: "Conditional", U: "Unsatisfactory" };
+      function csvCell(val) {
+        let t = String(val ?? "").replace(/\s+/g, " ").trim();
+        if (/[",\n]/.test(t)) t = '"' + t.replace(/"/g, '""') + '"';
+        return t;
+      }
 
-      data.forEach((c) => {
-        const dotVal = c.dot || c.dotnumber || c.id || "";
-        const mc = c.mc_number || "";
-        const name = c.legalname || c.dbaname || c.name || "";
+      realRows.forEach((tr) => {
+        const tds = Array.from(tr.querySelectorAll("td"));
 
-        const city = c.city || c.phycity || "";
-        const state = c.state || c.phystate || "";
+        // Your table columns:
+        // 0 checkbox, 1 DOT, 2 MC, 3 Carrier, 4 Location, 5 Operating, 6 Common, 7 Contract, 8 Broker, 9 Safety
+        const dot = tds[1]?.innerText ?? "";
+        const mc = tds[2]?.innerText ?? "";
+        const carrier = tds[3]?.innerText ?? "";
+        const location = tds[4]?.innerText ?? "";
+        const operating = tds[5]?.innerText ?? "";
+        const common = tds[6]?.innerText ?? "";
+        const contract = tds[7]?.innerText ?? "";
+        const broker = tds[8]?.innerText ?? "";
+        const safety = tds[9]?.innerText ?? "";
 
-        const authorized = String(c.allowedtooperate || "").toUpperCase() === "Y" ? "Yes" : "No";
-
-        const common = c.commonauthoritystatus || "";
-        const contract = c.contractauthoritystatus || "";
-        const broker = c.brokerauthoritystatus || "";
-
-        const rawRating = c.safetyrating ? String(c.safetyrating).trim().toUpperCase() : "";
-        const safety = ratingMap[rawRating] || "Not Rated";
-
-        const cols = [dotVal, mc, name, city, state, authorized, common, contract, broker, safety].map((val) => {
-          let t = String(val ?? "").replace(/\s+/g, " ").trim();
-          if (/[",\n]/.test(t)) t = '"' + t.replace(/"/g, '""') + '"';
-          return t;
-        });
-
+        const cols = [dot, mc, carrier, location, operating, common, contract, broker, safety].map(csvCell);
         lines.push(cols.join(","));
       });
 
@@ -785,6 +741,7 @@ function wireCsvDownload() {
     }
   });
 }
+
 
 
   // ---------------------------------------------
