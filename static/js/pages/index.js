@@ -677,90 +677,107 @@ inputs.forEach((el) => {
     updateSortHeaderClasses();
   }
 
-  // ---------------------------------------------
-  // CSV DOWNLOAD
-  // ---------------------------------------------
-  function wireCsvDownload() {
-    const btn = $("download-btn");
-    if (!btn) return;
+// ---------------------------------------------
+// CSV DOWNLOAD (respects panel filters)
+// ---------------------------------------------
+function wireCsvDownload() {
+  const btn = $("download-btn");
+  if (!btn) return;
 
-    btn.addEventListener("click", async () => {
+  btn.addEventListener("click", async () => {
+    try {
+      let endpoint = "/api/public-carriers";
       try {
-        let endpoint = "/api/public-carriers";
-        try {
-          const me = await fetch("/api/me").then((r) => r.json());
-          if (me.user) endpoint = "/api/my-carriers";
-        } catch {
-          console.warn("me check failed, defaulting to /api/public-carriers");
-        }
+        const me = await fetch("/api/me").then((r) => r.json());
+        if (me.user) endpoint = "/api/my-carriers";
+      } catch {
+        console.warn("me check failed, defaulting to /api/public-carriers");
+      }
 
-        const url = new URL(endpoint, window.location.origin);
-        url.searchParams.set("page", 1);
-        url.searchParams.set("pageSize", 5000);
+      // Pull a large set for exporting (client-side filtering)
+      const url = new URL(endpoint, window.location.origin);
+      url.searchParams.set("page", 1);
+      url.searchParams.set("pageSize", 5000);
 
-        if (sortBy) {
-          url.searchParams.set("sortBy", sortBy);
-          url.searchParams.set("sortDir", sortDir);
-        }
+      // keep current sort for export
+      if (sortBy) {
+        url.searchParams.set("sortBy", sortBy);
+        url.searchParams.set("sortDir", sortDir);
+      }
 
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`Export request failed: ${res.status}`);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Export request failed: ${res.status}`);
 
-        const result = await res.json();
-        const data = Array.isArray(result) ? result : result.rows;
+      const result = await res.json();
+      let data = Array.isArray(result) ? result : result.rows;
 
-        if (!data || !data.length) {
-          alert("No carriers to export.");
-          return;
-        }
+      if (!Array.isArray(data) || data.length === 0) {
+        alert("No carriers to export.");
+        return;
+      }
 
-        const lines = [];
-        lines.push(
-          ["DOT", "MC", "Carrier", "Location", "Operating", "Common", "Contract", "Broker", "Safety Rating"].join(",")
-        );
+      // ✅ Apply Filters panel BEFORE export
+      if (typeof countActivePanelFilters === "function" &&
+          typeof carrierMatchesPanelFilters === "function" &&
+          countActivePanelFilters() > 0) {
+        data = data.filter(carrierMatchesPanelFilters);
+      }
 
-        const ratingMap = { S: "Satisfactory", C: "Conditional", U: "Unsatisfactory" };
+      if (!data.length) {
+        alert("No carriers match your current filters.");
+        return;
+      }
 
-        data.forEach((c) => {
-          const dotVal = c.dot || c.dotnumber || c.id || "";
-          const mc = c.mc_number || "";
-          const name = c.legalname || c.dbaname || c.name || "";
-          const city = c.city || c.phycity || "";
-          const state = c.state || c.phystate || "";
-          const location = `${city}${city && state ? ", " : ""}${state}`;
+      const lines = [];
+      lines.push(
+        ["DOT", "MC", "Carrier", "City", "State", "Authorized", "Common", "Contract", "Broker", "Safety Rating"].join(",")
+      );
 
-          const operating = c.allowedtooperate === "Y" ? "Authorized" : "Not Authorized";
-          const common = c.commonauthoritystatus || "";
-          const contract = c.contractauthoritystatus || "";
-          const broker = c.brokerauthoritystatus || "";
-          const rawRating = c.safetyrating ? String(c.safetyrating).trim().toUpperCase() : "";
-          const safety = ratingMap[rawRating] || "Not Rated";
+      const ratingMap = { S: "Satisfactory", C: "Conditional", U: "Unsatisfactory" };
 
-          const cols = [dotVal, mc, name, location, operating, common, contract, broker, safety].map((val) => {
-            let t = String(val ?? "").replace(/\s+/g, " ").trim();
-            if (/[",\n]/.test(t)) t = '"' + t.replace(/"/g, '""') + '"';
-            return t;
-          });
+      data.forEach((c) => {
+        const dotVal = c.dot || c.dotnumber || c.id || "";
+        const mc = c.mc_number || "";
+        const name = c.legalname || c.dbaname || c.name || "";
 
-          lines.push(cols.join(","));
+        const city = c.city || c.phycity || "";
+        const state = c.state || c.phystate || "";
+
+        const authorized = String(c.allowedtooperate || "").toUpperCase() === "Y" ? "Yes" : "No";
+
+        const common = c.commonauthoritystatus || "";
+        const contract = c.contractauthoritystatus || "";
+        const broker = c.brokerauthoritystatus || "";
+
+        const rawRating = c.safetyrating ? String(c.safetyrating).trim().toUpperCase() : "";
+        const safety = ratingMap[rawRating] || "Not Rated";
+
+        const cols = [dotVal, mc, name, city, state, authorized, common, contract, broker, safety].map((val) => {
+          let t = String(val ?? "").replace(/\s+/g, " ").trim();
+          if (/[",\n]/.test(t)) t = '"' + t.replace(/"/g, '""') + '"';
+          return t;
         });
 
-        const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
-        const blobUrl = URL.createObjectURL(blob);
+        lines.push(cols.join(","));
+      });
 
-        const a = document.createElement("a");
-        a.href = blobUrl;
-        a.download = "carriers.csv";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(blobUrl);
-      } catch (err) {
-        console.error("CSV download failed", err);
-        alert("Sorry, something went wrong generating the CSV.");
-      }
-    });
-  }
+      const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const blobUrl = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = "carriers.csv";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("CSV download failed", err);
+      alert("Sorry, something went wrong generating the CSV.");
+    }
+  });
+}
+
 
   // ---------------------------------------------
   // AUTH UI (Login/Logout buttons)
