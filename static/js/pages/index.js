@@ -44,112 +44,8 @@
 
 
   // ---------------------------------------------
-  // QUICK FILTER PILLS
-  // ---------------------------------------------
-  const activeQuickFilters = new Set();
-
-  function qfSetClearVisible() {
-    const clearBtn = document.getElementById("qfClearAll");
-    if (!clearBtn) return;
-    clearBtn.hidden = activeQuickFilters.size === 0;
-  }
-
-  function isActiveAuthority(val) {
-    const t = String(val ?? "").trim().toUpperCase();
-    return t && t !== "-" && t !== "INACTIVE";
-  }
-
-  function locationStateFromCarrier(c) {
-    const st = (c.state || c.phystate || "").toString().trim().toUpperCase();
-    return st;
-  }
-
-  function isAuthorizedCarrier(c) {
-    return String(c.allowedtooperate || "").toUpperCase() === "Y";
-  }
-
-  function safetyLabel(c) {
-    const ratingMap = { S: "Satisfactory", C: "Conditional", U: "Unsatisfactory" };
-    const rawRating = c.safetyrating ? String(c.safetyrating).trim().toUpperCase() : "";
-    return ratingMap[rawRating] || "Not Rated";
-  }
-
-  function carrierMatchesQuickFilters(c) {
-    if (activeQuickFilters.size === 0) return true;
-
-    for (const token of activeQuickFilters) {
-      const [key, ...rest] = String(token).split(":");
-      const value = rest.join(":");
-
-      if (key === "operating") {
-        if (value === "AUTHORIZED" && !isAuthorizedCarrier(c)) return false;
-      }
-
-      if (key === "safety") {
-        if (value === "NOT_RATED" && safetyLabel(c).toUpperCase() !== "NOT RATED") return false;
-      }
-
-      if (key === "state") {
-        if (locationStateFromCarrier(c) !== String(value).toUpperCase()) return false;
-      }
-
-      if (key === "common") {
-        if (value === "ACTIVE" && !isActiveAuthority(c.commonauthoritystatus)) return false;
-      }
-
-      if (key === "contract") {
-        if (value === "ACTIVE" && !isActiveAuthority(c.contractauthoritystatus)) return false;
-      }
-
-      if (key === "broker") {
-        if (value === "ACTIVE" && !isActiveAuthority(c.brokerauthoritystatus)) return false;
-      }
-    }
-
-    return true;
-  }
-
-  function applyQuickFiltersAndRerender() {
-    qfSetClearVisible();
-    currentPage = 1;
-    loadCarriers(); // ✅ re-fetch + re-render with filters applied
-  }
-
-  function initQuickFilters() {
-    const wrap = document.getElementById("quickFilters");
-    if (!wrap) return;
-
-    wrap.addEventListener("click", (e) => {
-      const btn = e.target.closest("button.qf-pill");
-      if (!btn) return;
-
-      if (btn.id === "qfClearAll") {
-        activeQuickFilters.clear();
-        wrap.querySelectorAll(".qf-pill.is-active").forEach((b) => b.classList.remove("is-active"));
-        applyQuickFiltersAndRerender();
-        return;
-      }
-
-      const token = btn.getAttribute("data-filter");
-      if (!token) return;
-
-      if (activeQuickFilters.has(token)) {
-        activeQuickFilters.delete(token);
-        btn.classList.remove("is-active");
-      } else {
-        activeQuickFilters.add(token);
-        btn.classList.add("is-active");
-      }
-
-      applyQuickFiltersAndRerender();
-    });
-
-    qfSetClearVisible();
-  }
-
-  // ---------------------------------------------
 // PANEL FILTERS (DOT/MC/City/State + dropdowns)
-// ---------------------------------------------
+
 const panelFilters = {
   dot: "",
   mc: "",
@@ -162,69 +58,78 @@ const panelFilters = {
   safety: "",     // "S" | "C" | "U" | "NOT_RATED" | ""
 };
 
-function normalizeAuthStatus(val) {
-  const t = String(val ?? "").trim().toUpperCase();
-  if (!t || t === "-" || t === "N" || t === "NO" || t === "NONE") return "NONE";
-  if (t === "A") return "A";
-  if (t === "I" || t === "INACTIVE") return "I";
-  return t; // fallback
+function norm(val) {
+  return String(val ?? "").trim();
 }
 
-function matchesText(haystack, needle) {
-  const h = String(haystack ?? "").toLowerCase();
-  const n = String(needle ?? "").toLowerCase().trim();
+function matchesText(hay, needle) {
+  const n = norm(needle).toLowerCase();
   if (!n) return true;
-  return h.includes(n);
+  return norm(hay).toLowerCase().includes(n);
+}
+
+function normAuthorityABC(val) {
+  const t = norm(val).toUpperCase();
+  if (!t || t === "-" || t === "N" || t === "NO") return "NONE";
+  if (t === "A") return "A";
+  if (t === "I") return "I";
+  return "NONE"; // anything weird becomes NONE for your rule
+}
+
+function safetyCode(val) {
+  const t = norm(val).toUpperCase();
+  if (t === "S" || t === "C" || t === "U") return t;
+  return "NOT_RATED";
+}
+
+function countActivePanelFilters() {
+  return Object.values(panelFilters).filter((v) => norm(v) !== "").length;
 }
 
 function carrierMatchesPanelFilters(c) {
-  // DOT
-  const dotVal = String(c.dot || c.dotnumber || c.id || "");
-  if (panelFilters.dot && !dotVal.includes(String(panelFilters.dot).trim())) return false;
+  const dotVal = norm(c.dot || c.dotnumber || c.id);
+  const mcVal = norm(c.mc_number);
+  const cityVal = norm(c.city || c.phycity);
+  const stateVal = norm(c.state || c.phystate).toUpperCase();
 
-  // MC
-  const mcVal = String(c.mc_number || "");
-  if (panelFilters.mc && !mcVal.includes(String(panelFilters.mc).trim())) return false;
-
-  // City
-  const cityVal = String(c.city || c.phycity || "");
+  if (panelFilters.dot && !dotVal.includes(norm(panelFilters.dot))) return false;
+  if (panelFilters.mc && !mcVal.includes(norm(panelFilters.mc))) return false;
   if (panelFilters.city && !matchesText(cityVal, panelFilters.city)) return false;
+  if (panelFilters.state && stateVal !== norm(panelFilters.state).toUpperCase()) return false;
 
-  // State
-  const stVal = String(c.state || c.phystate || "").trim().toUpperCase();
-  if (panelFilters.state && stVal !== String(panelFilters.state).trim().toUpperCase()) return false;
-
-  // Authorized
+  // Authorized: Y = yes, everything else = no
   if (panelFilters.authorized) {
-    const isYes = String(c.allowedtooperate || "").toUpperCase() === "Y";
+    const isYes = norm(c.allowedtooperate).toUpperCase() === "Y";
     if (panelFilters.authorized === "Y" && !isYes) return false;
     if (panelFilters.authorized === "N" && isYes) return false;
   }
 
-  // Common / Broker / Contract
+  // A/I/NONE rules
   if (panelFilters.common) {
-    const v = normalizeAuthStatus(c.commonauthoritystatus);
+    const v = normAuthorityABC(c.commonauthoritystatus);
     if (panelFilters.common === "NONE" ? v !== "NONE" : v !== panelFilters.common) return false;
   }
   if (panelFilters.broker) {
-    const v = normalizeAuthStatus(c.brokerauthoritystatus);
+    const v = normAuthorityABC(c.brokerauthoritystatus);
     if (panelFilters.broker === "NONE" ? v !== "NONE" : v !== panelFilters.broker) return false;
   }
   if (panelFilters.contract) {
-    const v = normalizeAuthStatus(c.contractauthoritystatus);
+    const v = normAuthorityABC(c.contractauthoritystatus);
     if (panelFilters.contract === "NONE" ? v !== "NONE" : v !== panelFilters.contract) return false;
   }
 
-  // Safety Rating
+  // Safety
   if (panelFilters.safety) {
-    const raw = c.safetyrating ? String(c.safetyrating).trim().toUpperCase() : "";
-    const label = raw ? raw : "NOT_RATED";
-    if (label !== panelFilters.safety) return false;
+    const code = safetyCode(c.safetyrating);
+    if (code !== panelFilters.safety) return false;
   }
 
   return true;
 }
 
+
+
+  
 function countActivePanelFilters() {
   return Object.values(panelFilters).filter((v) => String(v || "").trim() !== "").length;
 }
@@ -260,6 +165,32 @@ function wireFiltersPanel() {
   const elContract = $("f-contract");
   const elSafety = $("f-safety");
 
+const inputs = [elDot, elMc, elCity, elState, elAuthorized, elCommon, elBroker, elContract, elSafety].filter(Boolean);
+
+inputs.forEach((el) => {
+  el.addEventListener("change", () => {
+    // updates badge without applying
+    panelFilters.dot = elDot?.value || "";
+    panelFilters.mc = elMc?.value || "";
+    panelFilters.city = elCity?.value || "";
+    panelFilters.state = elState?.value || "";
+    panelFilters.authorized = elAuthorized?.value || "";
+    panelFilters.common = elCommon?.value || "";
+    panelFilters.broker = elBroker?.value || "";
+    panelFilters.contract = elContract?.value || "";
+    panelFilters.safety = elSafety?.value || "";
+    setFiltersCountUi();
+  });
+
+  el.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      applyBtn.click();
+    }
+  });
+});
+
+  
   function open() { pop.classList.remove("hidden"); }
   function close() { pop.classList.add("hidden"); }
 
@@ -364,18 +295,14 @@ function wireFiltersPanel() {
 
       let data = Array.isArray(result) ? result : result.rows;
       
-      if (Array.isArray(data)) {
-        if (activeQuickFilters.size > 0) data = data.filter(carrierMatchesQuickFilters);
-      
-        // panel filters
-        if (countActivePanelFilters() > 0) data = data.filter(carrierMatchesPanelFilters);
+      // panel filters
+      if (Array.isArray(data) && countActivePanelFilters() > 0) {
+        data = data.filter(carrierMatchesPanelFilters);
       }
 
 
       const filteredCount = Array.isArray(data) ? data.length : 0;
-
-      // When filtering client-side, use filteredCount for pagination
-      const isClientFiltered = (activeQuickFilters.size > 0) || (countActivePanelFilters() > 0);
+      const isClientFiltered = countActivePanelFilters() > 0;
       
       totalRows = isClientFiltered ? filteredCount : (result.total ?? filteredCount);
       totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
@@ -1409,7 +1336,6 @@ function wireFiltersPanel() {
   // BOOT
   // ---------------------------------------------
   document.addEventListener("DOMContentLoaded", () => {
-    initQuickFilters(); 
     wireFiltersPanel();
     wireRowsPerPage();
     wireAutocomplete();
