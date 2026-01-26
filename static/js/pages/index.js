@@ -146,6 +146,13 @@ function setFiltersCountUi() {
 function wireFiltersPanel() {
   const btn = $("filters-btn");
   const pop = $("filters-popover");
+
+  // 🔥 prevent clipping: popover must not live inside an overflow-hidden card
+  if (pop && pop.parentElement !== document.body) {
+    document.body.appendChild(pop);
+  }
+
+  
   const closeBtn = $("filters-close");
   const clearBtn = $("filters-clear");
   const applyBtn = $("filters-apply");
