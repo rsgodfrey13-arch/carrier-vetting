@@ -1426,3 +1426,94 @@ th.sortable.sorted-desc .sort-icon::before{
   font-weight:600;
   color:var(--text-main);
 }
+
+/* ------------------------------
+   QUICK FILTER PILLS (Home)
+--------------------------------- */
+
+/* Ensure header distributes: left | filters | actions */
+.carriers-card-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+}
+
+.carriers-header-left{
+  min-width:220px; /* keeps title/subtitle stable */
+}
+
+.carriers-header-filters{
+  flex:1;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  justify-content:center;
+  min-width:240px;
+}
+
+.qf-pill{
+  appearance:none;
+  border:1px solid rgba(255,255,255,.18);
+  background:rgba(0,0,0,.16);
+  color:#eaf7ff;
+  border-radius:999px;
+  padding:8px 12px;
+  font-weight:600;
+  letter-spacing:.2px;
+  cursor:pointer;
+  user-select:none;
+  transition:transform .08s ease, background .12s ease, border-color .12s ease, box-shadow .12s ease;
+}
+
+.qf-pill:hover{
+  transform:translateY(-1px);
+  border-color:rgba(255,255,255,.30);
+  background:rgba(255,255,255,.06);
+}
+
+.qf-pill.is-active{
+  background:rgba(70,200,255,.22);
+  border-color:rgba(70,200,255,.55);
+  box-shadow:0 0 0 3px rgba(70,200,255,.10);
+}
+
+.qf-pill:active{
+  transform:translateY(0);
+}
+
+.qf-sep{
+  width:1px;
+  height:22px;
+  background:rgba(255,255,255,.16);
+  margin:0 2px;
+}
+
+.qf-clear{
+  background:transparent;
+  border-color:rgba(255,255,255,.14);
+  opacity:.9;
+}
+
+.qf-clear:hover{
+  opacity:1;
+}
+
+/* Mobile: stack nicely */
+@media (max-width: 860px){
+  .carriers-card-header{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+  .carriers-header-filters{
+    width:100%;
+    justify-content:flex-start;
+  }
+  .carriers-header-actions{
+    width:100%;
+    display:flex;
+    gap:10px;
+    justify-content:flex-end;
+  }
+}
