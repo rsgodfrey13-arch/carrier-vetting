@@ -159,6 +159,36 @@ function wireFiltersPanel() {
 
   if (!btn || !pop || !applyBtn) return;
 
+function positionPopover() {
+  if (!pop || pop.classList.contains("hidden")) return;
+
+  // measure button
+  const r = btn.getBoundingClientRect();
+
+  // temporarily show to measure width correctly
+  pop.style.visibility = "hidden";
+  pop.classList.remove("hidden");
+
+  // measure popover
+  const popW = pop.offsetWidth;
+  const popH = pop.offsetHeight;
+
+  // prefer right-aligned to the button
+  let left = r.right - popW;
+  let top = r.bottom + 10;
+
+  // clamp within viewport
+  const pad = 12;
+  left = Math.max(pad, Math.min(left, window.innerWidth - popW - pad));
+  top  = Math.max(pad, Math.min(top, window.innerHeight - popH - pad));
+
+  pop.style.left = `${left}px`;
+  pop.style.top = `${top}px`;
+
+  pop.style.visibility = "visible";
+}
+
+  
   const elDot = $("f-dot");
   const elMc = $("f-mc");
   const elCity = $("f-city");
@@ -198,9 +228,10 @@ inputs.forEach((el) => {
   function open() { pop.classList.remove("hidden"); }
   function close() { pop.classList.add("hidden"); }
 
-  btn.addEventListener("click", () => {
-    pop.classList.toggle("hidden");
-  });
+btn.addEventListener("click", () => {
+  pop.classList.toggle("hidden");
+  positionPopover();
+});
 
   closeBtn && closeBtn.addEventListener("click", close);
 
@@ -240,6 +271,10 @@ inputs.forEach((el) => {
     setFiltersCountUi();
   }
 
+  window.addEventListener("resize", positionPopover);
+window.addEventListener("scroll", positionPopover, true);
+
+  
   // Apply
   applyBtn.addEventListener("click", () => {
     syncFromInputs();
