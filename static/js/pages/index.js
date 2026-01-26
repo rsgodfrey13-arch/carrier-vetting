@@ -710,11 +710,22 @@ function wireCsvDownload() {
 
       const result = await res.json();
       let data = Array.isArray(result) ? result : result.rows;
-
-      if (!Array.isArray(data) || data.length === 0) {
+      
+      if (!data || !data.length) {
         alert("No carriers to export.");
         return;
       }
+      
+      // ✅ apply panel filters
+      if (countActivePanelFilters() > 0) {
+        data = data.filter(carrierMatchesPanelFilters);
+      }
+      
+      if (!data.length) {
+        alert("No carriers match your current filters.");
+        return;
+      }
+
 
       // ✅ Apply Filters panel BEFORE export
       if (typeof countActivePanelFilters === "function" &&
