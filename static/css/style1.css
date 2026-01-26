@@ -1665,3 +1665,28 @@ th.sortable.sorted-desc .sort-icon::before{
   margin: 0 !important;
 }
 
+/* FORCE Filters popover to be a centered overlay (wins over earlier absolute rules) */
+.filters-popover{
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9999 !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  padding: 24px 12px !important;
+  width: auto !important;
+  right: auto !important;
+  left: auto !important;
+  top: auto !important;
+}
+
+.filters-popover.hidden{
+  display: none !important;
+}
+
+/* Your existing inner panel becomes the centered “modal” */
+.filters-popover-inner{
+  width: min(780px, 100%) !important;
+  max-height: calc(100vh - 48px) !important;
+  overflow: auto !important;
+}
