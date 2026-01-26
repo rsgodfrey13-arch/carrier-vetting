@@ -1636,3 +1636,32 @@ th.sortable.sorted-desc .sort-icon::before{
   overflow: auto;
   border-radius: 16px;
 }
+
+/* overlay already fixed/inset from earlier — this just centers + animates */
+#filters-popover{
+  justify-content: center;
+  align-items: center;
+}
+
+#filters-popover > *{
+  transform: translateY(8px) scale(.98);
+  opacity: 0;
+  transition: transform .16s ease, opacity .16s ease;
+}
+
+/* when open (not hidden), animate in */
+#filters-popover:not(.hidden) > *{
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+
+
+#filters-popover .filters-panel{
+  position: relative !important; /* not absolute */
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  margin: 0 !important;
+}
+
