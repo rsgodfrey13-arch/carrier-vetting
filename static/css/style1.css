@@ -1747,3 +1747,56 @@ th.sortable.sorted-desc .sort-icon::before{
   border:1px solid rgba(255,255,255,.06);
   backdrop-filter: blur(10px);
 }
+
+
+/* =========================
+   GRID MODE BAR (My Carriers vs Search Results)
+   ========================= */
+
+.grid-modebar{
+  margin-top:8px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.grid-modepill{
+  display:inline-flex;
+  align-items:center;
+  height:26px;
+  padding:0 12px;
+  border-radius:999px;
+  font-size:.72rem;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  font-weight:700;
+
+  background:rgba(15,23,42,.55);
+  border:1px solid rgba(148,163,184,.22);
+  color:rgba(229,231,235,.92);
+}
+
+.grid-query{
+  font-size:.78rem;
+  color:rgba(148,163,184,.95);
+}
+
+.grid-back{
+  height:26px;
+  padding:0 12px;
+  border-radius:999px;
+  border:1px solid rgba(56,189,248,.55);
+  background:rgba(56,189,248,.14);
+  color:#e0f2fe;
+  font-size:.72rem;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.grid-back:hover{
+  background:rgba(56,189,248,.20);
+  border-color:rgba(56,189,248,.75);
+}
