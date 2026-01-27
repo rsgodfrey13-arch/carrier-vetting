@@ -388,7 +388,7 @@
       let endpoint = "/api/public-carriers";
 
       if (gridMode === "SEARCH") {
-        endpoint = "/api/carrier-search";
+        endpoint = "/api/search-carriers"; // <-- NEW real search endpoint
       } else {
         try {
           const me = await fetch("/api/me").then((r) => r.json());
@@ -399,17 +399,17 @@
       }
 
 
+
       // 2) Build URL with pagination + sorting
             const url = new URL(endpoint, window.location.origin);
 
-            if (gridMode !== "SEARCH") {
-              url.searchParams.set("page", currentPage);
-              url.searchParams.set("pageSize", pageSize);
-            }
-      
+            url.searchParams.set("page", currentPage);
+            url.searchParams.set("pageSize", pageSize);
+            
             if (gridMode === "SEARCH") {
               url.searchParams.set("q", searchQuery);
             }
+
 
 
       if (sortBy) {
@@ -433,11 +433,8 @@
       // IMPORTANT: Client-side filters only apply to the currently fetched page.
       // To keep pagination honest + not broken, force 1 page when filters are active.
       // Updated version for grid mode 1/27
-            if (gridMode === "SEARCH") {
-              totalRows = filteredCount;
-              totalPages = 1;
-              currentPage = 1;
-            } else if (isClientFiltered) {
+            if (isClientFiltered) {
+              // client filters only apply to the current page we fetched
               totalRows = filteredCount;
               totalPages = 1;
               currentPage = 1;
@@ -445,7 +442,8 @@
               totalRows = result.total ?? filteredCount;
               totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
             }
-
+            
+            
 
       if (!Array.isArray(data) || data.length === 0) {
         const row = document.createElement("tr");
