@@ -25,7 +25,10 @@
   // ---------------------------------------------
 
 function normDot(val) {
-  return String(val ?? "").replace(/\D/g, "").trim();
+  const digits = String(val ?? "").replace(/\D/g, "");
+  if (!digits) return "";
+  const stripped = digits.replace(/^0+/, "");
+  return stripped === "" ? "0" : stripped;
 }
 
   
@@ -474,9 +477,9 @@ function normDot(val) {
         const selectCell = document.createElement("td");
         selectCell.className = "col-select select-cell";
         
-        const dotKey = String(dotVal || "").trim();
+        const dotKey = normDot(dotVal);
         const isMine = myCarrierDots.has(dotKey);
-        
+
         if (gridMode === "SEARCH" && isMine) {
           row.classList.add("is-mine");
           selectCell.innerHTML = `<span class="mine-pill">✓ My Carrier</span>`;
@@ -710,7 +713,8 @@ function normDot(val) {
         const state = item.phystate || item.state || "";
         const mc = item.mc_number || "-";
 
-        const isMine = myCarrierDots.has(String(dotVal));
+        const isMine = myCarrierDots.has(normDot(dotVal));
+
 
         li.innerHTML = `
           <div class="suggestion-main">
@@ -1021,7 +1025,7 @@ bulkRemoveBtn.addEventListener("click", async () => {
       }
 
       // Update local set + UI rows
-      dots.forEach((d) => myCarrierDots.add(String(d)));
+      dots.forEach((d) => myCarrierDots.add(d));
 
       selected.forEach((cb) => {
         const dot = String(cb.dataset.dot || "").trim();
@@ -1059,7 +1063,7 @@ bulkRemoveBtn.addEventListener("click", async () => {
       if (!res.ok) {
         console.error("Failed to remove", dot, await res.text());
       } else {
-        myCarrierDots.delete(String(dot));
+        myCarrierDots.delete(normDot(dot));
         const row = cb.closest("tr");
         if (row) row.remove();
       }
