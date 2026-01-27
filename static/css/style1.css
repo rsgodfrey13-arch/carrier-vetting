@@ -1851,3 +1851,56 @@ th.sortable.sorted-desc .sort-icon::before{
   border-color: rgba(45,212,191,.75);
   background: rgba(45,212,191,.18);
 }
+
+/* =========================
+   STRONG SEARCH MODE SHIFT
+   ========================= */
+
+.carriers-card.mode-search{
+  box-shadow:
+    0 0 0 1px rgba(34,211,238,.35),
+    0 28px 70px rgba(0,0,0,.85);
+}
+
+/* dim the usual bright blue */
+.carriers-card.mode-search td:first-child,
+.carriers-card.mode-search td:nth-child(3){
+  color:#7dd3fc; /* muted */
+}
+
+/* carrier name + dot hover less “brand” */
+.carriers-card.mode-search td:first-child:hover,
+.carriers-card.mode-search td:nth-child(3):hover{
+  color:#e0f2fe;
+}
+
+/* mode pill */
+.carriers-card.mode-search .grid-modepill{
+  background:rgba(15,23,42,.75);
+  border-color:rgba(34,211,238,.55);
+  color:#67e8f9;
+}
+
+/* back button pops in search */
+.carriers-card.mode-search .grid-back{
+  background:radial-gradient(circle at top left,
+              rgba(34,211,238,.25),
+              rgba(15,23,42,.9));
+  border-color:rgba(34,211,238,.8);
+  color:#e0fafa;
+  box-shadow:0 0 14px rgba(34,211,238,.45);
+}
+
+/* active column underline swaps tone */
+.carriers-card.mode-search th.sortable.sorted-asc::after,
+.carriers-card.mode-search th.sortable.sorted-desc::after{
+  background:linear-gradient(90deg, #22d3ee, #67e8f9);
+  box-shadow:0 0 12px rgba(34,211,238,.6);
+}
+
+/* top divider glow */
+.carriers-card.mode-search .carriers-table-wrap{
+  border-top:1px solid rgba(34,211,238,.75);
+  box-shadow:0 -1px 0 rgba(34,211,238,.25),
+              0 0 18px rgba(34,211,238,.45);
+}
