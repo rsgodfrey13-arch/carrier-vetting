@@ -1904,3 +1904,14 @@ th.sortable.sorted-desc .sort-icon::before{
   box-shadow:0 -1px 0 rgba(34,211,238,.25),
               0 0 18px rgba(34,211,238,.45);
 }
+
+.carriers-card.mode-search::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  border-radius:inherit;
+  background:radial-gradient(circle at 20% 0%, rgba(34,211,238,.10), transparent 55%);
+  opacity:.9;
+}
+.carriers-card{ position:relative; }
