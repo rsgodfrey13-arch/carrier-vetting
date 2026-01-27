@@ -42,6 +42,10 @@
 
     const isSearch = mode === "SEARCH";
 
+    const card = document.querySelector(".carriers-card");
+    if (card) card.classList.toggle("mode-search", mode === "SEARCH");
+
+
     // Header copy
     if (titleEl) titleEl.textContent = isSearch ? "Search Results" : "My Carriers";
     if (subtitleEl)
