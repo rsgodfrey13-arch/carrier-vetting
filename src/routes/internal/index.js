@@ -1,7 +1,7 @@
 "use strict";
 
 const express = require("express");
-
+const carrierSearchResultsRoutes = require("./carrierSearchResults.routes");
 const authRoutes = require("./auth.routes");
 const carrierSearchRoutes = require("./carrierSearch.routes");
 const carriersRoutes = require("./carriers.routes");
@@ -36,6 +36,7 @@ function internalRoutes({ pool } = {}) {
   // Existing internal routers
   router.use(authRoutes);
   router.use(carrierSearchRoutes);
+  router.use(carrierSearchResultsRoutes);
   router.use(carriersRoutes);
   router.use(myCarriersRoutes);
   router.use(contractsRoutes);
