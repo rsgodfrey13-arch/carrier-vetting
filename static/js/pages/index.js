@@ -465,17 +465,26 @@
         const row = document.createElement("tr");
         const dotVal = c.dot || c.dotnumber || c.id || "";
 
-        // Checkbox cell
+        // Checkbox cell (SEARCH mode: show ✓ My Carrier pill instead of checkbox when already saved)
         const selectCell = document.createElement("td");
         selectCell.className = "col-select select-cell";
-
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.className = "row-select";
-        checkbox.dataset.dot = dotVal;
-
-        selectCell.appendChild(checkbox);
+        
+        const dotKey = String(dotVal || "").trim();
+        const isMine = myCarrierDots.has(dotKey);
+        
+        if (gridMode === "SEARCH" && isMine) {
+          row.classList.add("is-mine");
+          selectCell.innerHTML = `<span class="mine-pill">✓ My Carrier</span>`;
+        } else {
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.className = "row-select";
+          checkbox.dataset.dot = dotVal;
+          selectCell.appendChild(checkbox);
+        }
+        
         row.appendChild(selectCell);
+
 
         // DOT link
         const dotCell = document.createElement("td");
@@ -941,6 +950,11 @@
     function updateBulkBar() {
       const selected = document.querySelectorAll(".row-select:checked");
       const count = selected.length;
+      // Label changes by mode
+      bulkRemoveBtn.textContent = gridMode === "SEARCH"
+        ? "ADD SELECTED TO MY CARRIERS"
+        : "REMOVE SELECTED FROM MY CARRIERS";
+
 
       if (count === 0) {
         bulkBar.classList.add("hidden");
@@ -964,36 +978,88 @@
       updateBulkBar();
     });
 
-    bulkRemoveBtn.addEventListener("click", async () => {
-      const selected = Array.from(document.querySelectorAll(".row-select:checked"));
-      if (!selected.length) return;
+bulkRemoveBtn.addEventListener("click", async () => {
+  const selected = Array.from(document.querySelectorAll(".row-select:checked"));
+  if (!selected.length) return;
 
-      if (!confirm(`Remove ${selected.length} carriers from My Carriers?`)) return;
+  const isSearchMode = gridMode === "SEARCH";
 
-      for (const cb of selected) {
-        const dot = cb.dataset.dot;
-        try {
-          const res = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}`, { method: "DELETE" });
+  if (isSearchMode) {
+    if (!confirm(`Add ${selected.length} carriers to My Carriers?`)) return;
 
-          if (res.status === 401) {
-            alert("Your session expired. Please log in again.");
-            window.location.href = "/login.html";
-            return;
-          }
+    // bulk add using your existing endpoint (same as import)
+    const dots = selected.map((cb) => cb.dataset.dot).filter(Boolean);
 
-          if (!res.ok) {
-            console.error("Failed to remove", dot, await res.text());
-          } else {
-            const row = cb.closest("tr");
-            if (row) row.remove();
-          }
-        } catch (err) {
-          console.error("Network error removing", dot, err);
-        }
+    try {
+      const res = await fetch("/api/my-carriers/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dots }),
+      });
+
+      if (res.status === 401) {
+        alert("Your session expired. Please log in again.");
+        window.location.href = "/login.html";
+        return;
       }
 
+      if (!res.ok) {
+        console.error("Bulk add failed:", await res.text());
+        alert("Could not add carriers. Please try again.");
+        return;
+      }
+
+      // Update local set + UI rows
+      dots.forEach((d) => myCarrierDots.add(String(d)));
+
+      selected.forEach((cb) => {
+        const dot = String(cb.dataset.dot || "").trim();
+        const row = cb.closest("tr");
+        const cell = cb.closest("td");
+
+        if (row) row.classList.add("is-mine");
+        if (cell) cell.innerHTML = `<span class="mine-pill">✓ My Carrier</span>`;
+      });
+
+      // hide bulk UI
       updateBulkBar();
-    });
+    } catch (err) {
+      console.error("Network error bulk add", err);
+      alert("Network error adding carriers.");
+    }
+
+    return;
+  }
+
+  // ---- MY mode: remove (your existing logic) ----
+  if (!confirm(`Remove ${selected.length} carriers from My Carriers?`)) return;
+
+  for (const cb of selected) {
+    const dot = cb.dataset.dot;
+    try {
+      const res = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}`, { method: "DELETE" });
+
+      if (res.status === 401) {
+        alert("Your session expired. Please log in again.");
+        window.location.href = "/login.html";
+        return;
+      }
+
+      if (!res.ok) {
+        console.error("Failed to remove", dot, await res.text());
+      } else {
+        myCarrierDots.delete(String(dot));
+        const row = cb.closest("tr");
+        if (row) row.remove();
+      }
+    } catch (err) {
+      console.error("Network error removing", dot, err);
+    }
+  }
+
+  updateBulkBar();
+});
+
   }
 
   // ---------------------------------------------
@@ -1475,7 +1541,6 @@
     wireBulkRemove();
     wireBulkImportWizard();
     setGridMode("MY");
-    loadCarriers();
-    buildMyCarrierDots();
+    buildMyCarrierDots().then(loadCarriers);
   });
 })();
