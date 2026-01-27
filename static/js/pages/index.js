@@ -15,10 +15,82 @@
   // Server-side sort
   let sortBy = "carrier";
   let sortDir = "asc";
+    // Grid mode
+  let gridMode = "MY"; // "MY" | "SEARCH"
+  let searchQuery = "";
+
 
   // ---------------------------------------------
   // HELPERS
   // ---------------------------------------------
+
+  function setGridMode(mode, query = "") {
+    gridMode = mode;
+    searchQuery = query || "";
+
+    const titleEl = $("grid-title");
+    const subtitleEl = $("grid-subtitle");
+    const modePill = $("grid-modepill");
+    const queryEl = $("grid-query");
+    const backBtn = $("grid-back-btn");
+
+    const filtersBtn = $("filters-btn");
+    const bulkImportBtn = $("bulk-import-btn");
+    const downloadBtn = $("download-btn");
+    const selectAll = $("select-all");
+    const bulkBar = $("bulk-actions");
+
+    const isSearch = mode === "SEARCH";
+
+    // Header copy
+    if (titleEl) titleEl.textContent = isSearch ? "Search Results" : "My Carriers";
+    if (subtitleEl)
+      subtitleEl.textContent = isSearch
+        ? "Showing carriers matching your search."
+        : "Click a DOT number to open its profile page.";
+
+    if (modePill) modePill.textContent = isSearch ? "Viewing: Search Results" : "Viewing: My Carriers";
+
+    if (queryEl) {
+      if (isSearch && searchQuery) {
+        queryEl.hidden = false;
+        queryEl.textContent = `for “${searchQuery}”`;
+      } else {
+        queryEl.hidden = true;
+        queryEl.textContent = "";
+      }
+    }
+
+    if (backBtn) backBtn.hidden = !isSearch;
+
+    // My-carriers-only controls (keep it simple + non-confusing)
+    if (filtersBtn) filtersBtn.disabled = isSearch;
+    if (bulkImportBtn) bulkImportBtn.disabled = isSearch;
+
+    // Download can stay enabled (it exports whatever is in the grid)
+    if (downloadBtn) downloadBtn.disabled = false;
+
+    // Hide bulk UI when in search
+    if (bulkBar) bulkBar.classList.add("hidden");
+    if (selectAll) {
+      selectAll.checked = false;
+      selectAll.disabled = isSearch;
+    }
+  }
+
+  function wireGridModeBar() {
+    const backBtn = $("grid-back-btn");
+    if (!backBtn) return;
+
+    backBtn.addEventListener("click", () => {
+      setGridMode("MY");
+      currentPage = 1;
+      loadCarriers();
+    });
+  }
+
+
+  
   function $(id) {
     return document.getElementById(id);
   }
@@ -312,19 +384,33 @@
 
       tbody.innerHTML = "";
 
-      // 1) Determine endpoint based on login
+      // 1) Determine endpoint based on grid mode + login
       let endpoint = "/api/public-carriers";
-      try {
-        const me = await fetch("/api/me").then((r) => r.json());
-        if (me.user) endpoint = "/api/my-carriers";
-      } catch (e) {
-        console.error("Error checking login:", e);
+
+      if (gridMode === "SEARCH") {
+        endpoint = "/api/carrier-search";
+      } else {
+        try {
+          const me = await fetch("/api/me").then((r) => r.json());
+          if (me.user) endpoint = "/api/my-carriers";
+        } catch (e) {
+          console.error("Error checking login:", e);
+        }
       }
 
+
       // 2) Build URL with pagination + sorting
-      const url = new URL(endpoint, window.location.origin);
-      url.searchParams.set("page", currentPage);
-      url.searchParams.set("pageSize", pageSize);
+            const url = new URL(endpoint, window.location.origin);
+
+            if (gridMode !== "SEARCH") {
+              url.searchParams.set("page", currentPage);
+              url.searchParams.set("pageSize", pageSize);
+            }
+      
+            if (gridMode === "SEARCH") {
+              url.searchParams.set("q", searchQuery);
+            }
+
 
       if (sortBy) {
         url.searchParams.set("sortBy", sortBy);
@@ -346,14 +432,20 @@
 
       // IMPORTANT: Client-side filters only apply to the currently fetched page.
       // To keep pagination honest + not broken, force 1 page when filters are active.
-      if (isClientFiltered) {
-        totalRows = filteredCount;
-        totalPages = 1;
-        currentPage = 1;
-      } else {
-        totalRows = result.total ?? filteredCount;
-        totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
-      }
+      // Updated version for grid mode 1/27
+            if (gridMode === "SEARCH") {
+              totalRows = filteredCount;
+              totalPages = 1;
+              currentPage = 1;
+            } else if (isClientFiltered) {
+              totalRows = filteredCount;
+              totalPages = 1;
+              currentPage = 1;
+            } else {
+              totalRows = result.total ?? filteredCount;
+              totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+            }
+
 
       if (!Array.isArray(data) || data.length === 0) {
         const row = document.createElement("tr");
@@ -656,26 +748,37 @@
       searchTimeout = setTimeout(() => performSearch(value), 250);
     });
 
-    function goFirstSuggestionOrInput() {
-      const first = suggestionsEl.querySelector(".carrier-suggestion-item");
-      if (first) {
-        const text = first.querySelector(".suggestion-main")?.textContent || "";
-        const dot = text.split("–")[0].trim();
-        goToCarrier(dot);
-      } else {
-        goToCarrier(searchInput.value.trim());
-      }
-    }
+        function handleSubmitSearch() {
+          const q = searchInput.value.trim();
+          if (!q) return;
+    
+          // If there's a suggestion dropdown open, prefer first item click behavior
+          const first = suggestionsEl.querySelector(".carrier-suggestion-item");
+          if (first && suggestionsEl.classList.contains("open")) {
+            const text = first.querySelector(".suggestion-main")?.textContent || "";
+            const dot = text.split("–")[0].trim();
+            goToCarrier(dot);
+            return;
+          }
+    
+          // Otherwise: show results in the grid (same page)
+          clearSuggestions();
+          setGridMode("SEARCH", q);
+          currentPage = 1;
+          loadCarriers();
+        }
 
-    searchInput.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter") return;
-      e.preventDefault();
-      goFirstSuggestionOrInput();
-    });
 
-    searchBtn.addEventListener("click", () => {
-      goFirstSuggestionOrInput();
-    });
+        searchInput.addEventListener("keydown", (e) => {
+          if (e.key !== "Enter") return;
+          e.preventDefault();
+          handleSubmitSearch();
+        });
+    
+        searchBtn.addEventListener("click", () => {
+          handleSubmitSearch();
+        });
+
 
     document.addEventListener("click", (e) => {
       if (!e.target.closest(".search-shell")) clearSuggestions();
@@ -1359,6 +1462,7 @@
   // ---------------------------------------------
   document.addEventListener("DOMContentLoaded", () => {
     wireFiltersPanel();
+    wireGridModeBar();
     wireRowsPerPage();
     wireAutocomplete();
     wireSortHeaders();
@@ -1366,6 +1470,7 @@
     wireAuthUi();
     wireBulkRemove();
     wireBulkImportWizard();
+    setGridMode("MY");
     loadCarriers();
     buildMyCarrierDots();
   });
