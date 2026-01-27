@@ -753,6 +753,7 @@
           if (!q) return;
     
           // If there's a suggestion dropdown open, prefer first item click behavior
+          /*
           const first = suggestionsEl.querySelector(".carrier-suggestion-item");
           if (first && suggestionsEl.classList.contains("open")) {
             const text = first.querySelector(".suggestion-main")?.textContent || "";
@@ -760,6 +761,7 @@
             goToCarrier(dot);
             return;
           }
+          */
     
           // Otherwise: show results in the grid (same page)
           clearSuggestions();
