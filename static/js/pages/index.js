@@ -26,10 +26,11 @@
 
 function normDot(val) {
   const digits = String(val ?? "").replace(/\D/g, "");
-  if (!digits) return "";
-  const stripped = digits.replace(/^0+/, "");
-  return stripped === "" ? "0" : stripped;
+  // strip leading zeros safely
+  const noLeading = digits.replace(/^0+/, "");
+  return noLeading || (digits ? "0" : "");
 }
+
 
   
   function setGridMode(mode, query = "") {
@@ -708,12 +709,13 @@ function normDot(val) {
         li.className = "carrier-suggestion-item";
 
         const dotVal = item.dot || item.dotnumber || item.id || "";
+        const dotKey = normDot(dotVal);
         const name = item.legalname || item.dbaname || "(No name)";
         const city = item.phycity || item.city || "";
         const state = item.phystate || item.state || "";
         const mc = item.mc_number || "-";
 
-        const isMine = myCarrierDots.has(normDot(dotVal));
+        const isMine = myCarrierDots.has(dotKey);
 
 
         li.innerHTML = `
@@ -1028,7 +1030,7 @@ bulkRemoveBtn.addEventListener("click", async () => {
       dots.forEach((d) => myCarrierDots.add(d));
 
       selected.forEach((cb) => {
-        const dot = String(cb.dataset.dot || "").trim();
+        const dot = normDot(cb.dataset.dot);
         const row = cb.closest("tr");
         const cell = cb.closest("td");
 
