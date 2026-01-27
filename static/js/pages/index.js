@@ -24,6 +24,11 @@
   // HELPERS
   // ---------------------------------------------
 
+function normDot(val) {
+  return String(val ?? "").replace(/\D/g, "").trim();
+}
+
+  
   function setGridMode(mode, query = "") {
     gridMode = mode;
     searchQuery = query || "";
@@ -666,7 +671,12 @@
       const json = await res.json();
       const rows = Array.isArray(json) ? json : json.rows || [];
 
-      myCarrierDots = new Set(rows.map((c) => String(c.dot || c.dotnumber || c.id || "")));
+      myCarrierDots = new Set(
+        rows
+          .map((c) => normDot(c.dot || c.dotnumber || c.id))
+          .filter(Boolean)
+      );
+
     } catch (err) {
       console.error("buildMyCarrierDots error", err);
       myCarrierDots = new Set();
@@ -759,7 +769,7 @@
       searchTimeout = setTimeout(() => performSearch(value), 250);
     });
 
-        function handleSubmitSearch() {
+        async function handleSubmitSearch() {
           const q = searchInput.value.trim();
           if (!q) return;
     
@@ -776,6 +786,7 @@
     
           // Otherwise: show results in the grid (same page)
           clearSuggestions();
+          await buildMyCarrierDots();   // <-- make sure "mine" is current
           setGridMode("SEARCH", q);
           currentPage = 1;
           loadCarriers();
@@ -1530,7 +1541,7 @@ bulkRemoveBtn.addEventListener("click", async () => {
   // ---------------------------------------------
   // BOOT
   // ---------------------------------------------
-  document.addEventListener("DOMContentLoaded", () => {
+  document.addEventListener("DOMContentLoaded", async () => {
     wireFiltersPanel();
     wireGridModeBar();
     wireRowsPerPage();
@@ -1540,7 +1551,10 @@ bulkRemoveBtn.addEventListener("click", async () => {
     wireAuthUi();
     wireBulkRemove();
     wireBulkImportWizard();
+  
+    await buildMyCarrierDots();   // <-- build first
     setGridMode("MY");
-    buildMyCarrierDots().then(loadCarriers);
+    loadCarriers();
   });
+
 })();
