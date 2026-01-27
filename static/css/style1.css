@@ -1800,3 +1800,54 @@ th.sortable.sorted-desc .sort-icon::before{
   background:rgba(56,189,248,.20);
   border-color:rgba(56,189,248,.75);
 }
+
+
+/* =========================
+   GRID MODE THEME (MY vs SEARCH)
+   Add at very bottom of file
+   ========================= */
+
+/* Default = MY */
+.carriers-card{
+  --mode-accent-1: var(--accent-1);
+  --mode-accent-2: var(--accent-2);
+}
+
+/* SEARCH mode: subtle teal shift */
+.carriers-card.mode-search{
+  --mode-accent-1: #2dd4bf; /* teal */
+  --mode-accent-2: #38bdf8; /* keep your blue in the blend */
+}
+
+/* 1) VIEWING pill */
+.carriers-card.mode-search .grid-modepill{
+  border-color: rgba(45,212,191,.45);
+  box-shadow: 0 0 0 3px rgba(45,212,191,.10);
+}
+
+/* 2) The little top divider on table wrapper */
+.carriers-card.mode-search .carriers-table-wrap{
+  border-top-color: rgba(45,212,191,.55);
+}
+
+/* 3) Sort underline uses mode accent */
+.carriers-card th.sortable::after{
+  background: linear-gradient(90deg, var(--mode-accent-1), var(--mode-accent-2));
+}
+
+.carriers-card th.sortable.sorted-asc::after,
+.carriers-card th.sortable.sorted-desc::after{
+  box-shadow: 0 0 10px rgba(45,212,191,.28); /* subtle, not neon */
+}
+
+/* 4) Back button gets the SEARCH cue */
+.carriers-card.mode-search .grid-back{
+  border-color: rgba(45,212,191,.55);
+  background: rgba(45,212,191,.12);
+  color: #ccfbf1;
+}
+
+.carriers-card.mode-search .grid-back:hover{
+  border-color: rgba(45,212,191,.75);
+  background: rgba(45,212,191,.18);
+}
