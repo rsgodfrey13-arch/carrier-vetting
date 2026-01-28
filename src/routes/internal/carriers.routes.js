@@ -231,8 +231,12 @@ router.get("/carriers/:dot", async (req, res) => {
       phycity as city,
       phystate as state,
       phyzipcode as zip,
-      to_char(retrieval_date::timestamp, 'Mon DD, YYYY HH12:MI AM EST') as retrieval_date_formatted,
-      *
+      to_char(
+        (coalesce(profile_fetched_at, updated_at) AT TIME ZONE 'America/New_York'),
+        'Mon DD, YYYY HH12:MI AM'
+      ) || ' ET' as retrieval_date_formatted,
+      
+            *
     from carriers
     where dotnumber = $1
     `,
@@ -266,7 +270,25 @@ router.get("/carriers/:dot", async (req, res) => {
   ]);
 
   if (result.ok) {
-    const updated = await pool.query(`select * from carriers where dotnumber = $1`, [dot]);
+    const updated = await pool.query( `
+      select
+        dotnumber as dot,
+        phystreet as address1,
+        null as address2,
+        phycity as city,
+        phystate as state,
+        phyzipcode as zip,
+        to_char(
+          (coalesce(profile_fetched_at, updated_at) AT TIME ZONE 'America/New_York'),
+          'Mon DD, YYYY HH12:MI AM'
+        ) || ' ET' as retrieval_date_formatted,
+        *
+      from carriers
+      where dotnumber = $1
+      `,
+      [dot]
+    );
+
     updated.rows[0].cargo_carried = carrier.cargo_carried;
     return res.json({ source: "fmcsa_fast", carrier: updated.rows[0] });
   }
