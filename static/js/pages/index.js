@@ -474,28 +474,26 @@ function normDot(val) {
         const row = document.createElement("tr");
         const dotVal = c.dot || c.dotnumber || c.id || "";
 
-        // Checkbox cell (always a checkbox; if already saved, disable + mark row)
+        // Checkbox cell (SEARCH mode: ✓ if already saved, otherwise checkbox)
         const selectCell = document.createElement("td");
         selectCell.className = "col-select select-cell";
         
         const dotKey = normDot(dotVal);
         const isMine = myCarrierDots.has(dotKey);
         
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.className = "row-select";
-        checkbox.dataset.dot = dotVal;
-        
-        // In SEARCH mode, if it's already in My Carriers: disable checkbox + show indicator via CSS
         if (gridMode === "SEARCH" && isMine) {
           row.classList.add("is-mine");
-          checkbox.disabled = true;
-          //checkbox.checked = true;           // optional; remove if you’d rather not show checked
-          checkbox.title = "Already in My Carriers";
+          selectCell.innerHTML = `<span class="saved-check" title="Already in My Carriers">✓</span>`;
+        } else {
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.className = "row-select";
+          checkbox.dataset.dot = dotVal;
+          selectCell.appendChild(checkbox);
         }
         
-        selectCell.appendChild(checkbox);
         row.appendChild(selectCell);
+
 
 
 
@@ -1036,7 +1034,7 @@ bulkRemoveBtn.addEventListener("click", async () => {
         const cell = cb.closest("td");
 
         if (row) row.classList.add("is-mine");
-        if (cell) cell.innerHTML = `<span class="mine-pill">✓ My Carrier</span>`;
+        if (cell) cell.innerHTML = `<span class="saved-check" title="Already in My Carriers">✓</span>`;
       });
 
       // hide bulk UI
