@@ -488,7 +488,7 @@ function normDot(val) {
           const checkbox = document.createElement("input");
           checkbox.type = "checkbox";
           checkbox.className = "row-select";
-          checkbox.dataset.dot = dotVal;
+          checkbox.dataset.dot = normDot(dotVal);
           selectCell.appendChild(checkbox);
         }
         
@@ -1018,6 +1018,10 @@ bulkRemoveBtn.addEventListener("click", async () => {
         return;
       }
 
+      // refresh truth from server (fixes pagination/search consistency)
+      await buildMyCarrierDots();
+
+      
       // Update local set + UI rows
       dots.forEach((d) => myCarrierDots.add(normDot(d)));
 
