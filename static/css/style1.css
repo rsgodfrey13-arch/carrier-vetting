@@ -2019,3 +2019,21 @@ tr.is-mine .row-select:disabled {
   opacity: 0.65;
   cursor: not-allowed;
 }
+
+/* lock that first column so nothing shifts */
+.col-select {
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  text-align: center;
+}
+
+/* the "saved" checkmark */
+.saved-check{
+  display:inline-block;
+  font-size:18px;
+  line-height:1;
+  color:#2adb8d;
+  text-shadow:0 0 6px rgba(42,219,141,.45);
+  user-select:none;
+}
