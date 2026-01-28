@@ -1985,3 +1985,37 @@ tr.is-mine{
 tr.is-mine td{
   opacity:.92;
 }
+
+/* Lock the first column so NOTHING shifts */
+.col-select {
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  text-align: center;
+}
+
+/* Make room for a tiny dot without changing layout */
+.select-cell {
+  position: relative;
+}
+
+/* Search-mode: already-saved rows get a subtle green dot indicator */
+tr.is-mine .select-cell::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 8px;               /* keeps it inside the cell */
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(42, 219, 141, 0.95);
+  box-shadow: 0 0 0 3px rgba(42, 219, 141, 0.18);
+  pointer-events: none;
+}
+
+/* Optional: dim the checkbox when disabled so it reads as "already saved" */
+tr.is-mine .row-select:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
