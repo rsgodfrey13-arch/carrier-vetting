@@ -77,11 +77,12 @@ function normDot(val) {
     if (backBtn) backBtn.hidden = !isSearch;
 
     // Search mode: hide confusing actions, keep CSV export
-    if (filtersBtn) filtersBtn.hidden = isSearch;
-    if (bulkImportBtn) bulkImportBtn.hidden = isSearch;
-    
-    // CSV is useful in both modes
-    if (downloadBtn) downloadBtn.hidden = false;
+    if (filtersBtn) filtersBtn.style.display = isSearch ? "none" : "";
+    if (bulkImportBtn) bulkImportBtn.style.display = isSearch ? "none" : "";
+
+    // Keep Download Button
+    if (downloadBtn) downloadBtn.style.display = "";
+
 
 
     // Hide bulk UI when in search
