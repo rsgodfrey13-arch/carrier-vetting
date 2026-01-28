@@ -2037,3 +2037,13 @@ tr.is-mine .row-select:disabled {
   text-shadow:0 0 6px rgba(42,219,141,.45);
   user-select:none;
 }
+
+/* kill the old "green dot" indicator (from earlier versions) */
+tr.is-mine .select-cell::before,
+tr.is-mine .select-cell::after,
+tr.is-mine .col-select::before,
+tr.is-mine .col-select::after{
+  content: none !important;
+  display: none !important;
+  background: none !important;
+}
