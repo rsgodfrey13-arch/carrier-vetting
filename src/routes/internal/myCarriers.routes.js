@@ -94,6 +94,29 @@ router.post("/my-carriers", requireAuth, async (req, res) => {
   }
 });
 
+
+// Get ALL saved DOTs for this user (no join, no pagination) - used by UI to mark "My Carrier"
+router.get("/my-carriers/dots", requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.userId;
+
+    const result = await pool.query(
+      `SELECT carrier_dot
+       FROM user_carriers
+       WHERE user_id = $1;`,
+      [userId]
+    );
+
+    // return array of strings
+    res.json(result.rows.map(r => String(r.carrier_dot)));
+  } catch (err) {
+    console.error("Error in GET /api/my-carriers/dots:", err);
+    res.status(500).json({ error: "Failed to load carrier dots" });
+  }
+});
+
+
+
 // Bulk add carriers for this user
 router.post("/my-carriers/bulk", requireAuth, async (req, res) => {
   try {
