@@ -670,7 +670,7 @@ async function buildMyCarrierDots() {
     }
 
     const dots = await res.json(); // array like ["123", "456"]
-    myCarrierDots = new Set(dots.map((d) => String(d).trim()).filter(Boolean));
+    myCarrierDots = new Set(dots.map((d) => normDot(d)).filter(Boolean));
   } catch (err) {
     console.error("buildMyCarrierDots error", err);
     myCarrierDots = new Set();
@@ -1019,7 +1019,8 @@ bulkRemoveBtn.addEventListener("click", async () => {
       }
 
       // Update local set + UI rows
-      dots.forEach((d) => myCarrierDots.add(d));
+      dots.forEach((d) => myCarrierDots.add(normDot(d)));
+
 
       selected.forEach((cb) => {
         const dot = normDot(cb.dataset.dot);
