@@ -654,39 +654,31 @@ function normDot(val) {
   // ---------------------------------------------
   // AUTOCOMPLETE "MY CARRIER" PILL
   // ---------------------------------------------
-  async function buildMyCarrierDots() {
-    try {
-      const me = await fetch("/api/me").then((r) => r.json());
-      if (!me.user) {
-        myCarrierDots = new Set();
-        return;
-      }
 
-      const url = new URL("/api/my-carriers", window.location.origin);
-      url.searchParams.set("page", 1);
-      url.searchParams.set("pageSize", 5000);
-
-      const res = await fetch(url);
-      if (!res.ok) {
-        myCarrierDots = new Set();
-        return;
-      }
-
-      const json = await res.json();
-      const rows = Array.isArray(json) ? json : json.rows || [];
-
-      myCarrierDots = new Set(
-        rows
-          .map((c) => normDot(c.dot || c.dotnumber || c.id))
-          .filter(Boolean)
-      );
-
-    } catch (err) {
-      console.error("buildMyCarrierDots error", err);
+async function buildMyCarrierDots() {
+  try {
+    const me = await fetch("/api/me").then((r) => r.json());
+    if (!me.user) {
       myCarrierDots = new Set();
+      return;
     }
-  }
 
+    const res = await fetch("/api/my-carriers/dots");
+    if (!res.ok) {
+      myCarrierDots = new Set();
+      return;
+    }
+
+    const dots = await res.json(); // array like ["123", "456"]
+    myCarrierDots = new Set(dots.map((d) => String(d).trim()).filter(Boolean));
+  } catch (err) {
+    console.error("buildMyCarrierDots error", err);
+    myCarrierDots = new Set();
+  }
+}
+
+  
+  
   function wireAutocomplete() {
     const searchInput = $("search-input");
     const searchBtn = $("open-carrier-btn");
