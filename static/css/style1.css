@@ -1951,3 +1951,37 @@ th.sortable.sorted-desc .sort-icon::before{
   width:42px;
   text-align:center;
 }
+
+.mine-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.4px;
+  line-height:1;
+  background:rgba(46, 204, 113, .14);
+  border:1px solid rgba(46, 204, 113, .35);
+  color:rgba(210, 255, 230, .95);
+  white-space:nowrap;
+}
+
+
+.select-cell{
+  width:64px;
+  min-width:64px;
+}
+.select-cell .mine-pill{
+  justify-content:center;
+  width:100%;
+}
+
+
+tr.is-mine{
+  background:linear-gradient(90deg, rgba(46,204,113,.08), transparent 55%);
+}
+tr.is-mine td{
+  opacity:.92;
+}
