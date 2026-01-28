@@ -76,12 +76,13 @@ function normDot(val) {
 
     if (backBtn) backBtn.hidden = !isSearch;
 
-    // My-carriers-only controls (keep it simple + non-confusing)
-    if (filtersBtn) filtersBtn.disabled = isSearch;
-    if (bulkImportBtn) bulkImportBtn.disabled = isSearch;
+    // Search mode: hide confusing actions, keep CSV export
+    if (filtersBtn) filtersBtn.hidden = isSearch;
+    if (bulkImportBtn) bulkImportBtn.hidden = isSearch;
+    
+    // CSV is useful in both modes
+    if (downloadBtn) downloadBtn.hidden = false;
 
-    // Download can stay enabled (it exports whatever is in the grid)
-    if (downloadBtn) downloadBtn.disabled = false;
 
     // Hide bulk UI when in search
     if (bulkBar) bulkBar.classList.add("hidden");
