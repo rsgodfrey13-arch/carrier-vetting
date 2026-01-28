@@ -278,7 +278,7 @@ router.post("/my-carriers/bulk/preview", requireAuth, async (req, res) => {
 });
 
 // Check if THIS dot is already saved for this user
-router.get("/my-carriers/:dot", requireAuth, async (req, res) => {
+router.get("", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const { dot } = req.params;
 
@@ -294,13 +294,149 @@ router.get("/my-carriers/:dot", requireAuth, async (req, res) => {
       return res.status(404).json({ saved: false });
     }
   } catch (err) {
-    console.error("Error in GET /api/my-carriers/:dot:", err);
+    console.error("Error in GET /api:", err);
     res.status(500).json({ error: "Failed to check carrier" });
   }
 });
 
+
+// Get email alert settings for THIS carrier
+router.get("/my-carriers/:dot/alerts/email", requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const { dot } = req.params;
+
+  try {
+    // 1) Ensure carrier is saved (optional but cleaner UX)
+    const uc = await pool.query(
+      `
+      SELECT email_alerts
+      FROM user_carriers
+      WHERE user_id = $1 AND carrier_dot = $2
+      `,
+      [userId, dot]
+    );
+
+    if (uc.rowCount === 0) {
+      return res.status(404).json({ error: "Carrier not saved" });
+    }
+
+    const enabled = String(uc.rows[0].email_alerts || "N").toUpperCase() === "Y";
+
+    // 2) Default email (for now: user email)
+    const userRes = await pool.query(
+      `SELECT email FROM users WHERE id = $1`,
+      [userId]
+    );
+
+    const defaultEmail = userRes.rows[0]?.email || null;
+
+    // 3) Extra recipients for this carrier
+    const recips = await pool.query(
+      `
+      SELECT email
+      FROM user_carrier_alert_recipients
+      WHERE user_id = $1 AND carrier_dot = $2
+      ORDER BY email
+      `,
+      [userId, dot]
+    );
+
+    return res.json({
+      enabled,
+      defaultEmail,
+      recipients: recips.rows.map(r => r.email)
+    });
+  } catch (err) {
+    console.error("Error in GET /api/my-carriers/:dot/alerts/email:", err);
+    return res.status(500).json({ error: "Failed to load email alert settings" });
+  }
+});
+
+
+// Save email alert settings for THIS carrier (toggle + recipients list)
+router.put("/my-carriers/:dot/alerts/email", requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const { dot } = req.params;
+
+  try {
+    const enabled = !!req.body?.enabled;
+    let recipients = Array.isArray(req.body?.recipients) ? req.body.recipients : [];
+
+    // normalize + validate emails
+    recipients = [...new Set(
+      recipients
+        .map(e => String(e || "").trim().toLowerCase())
+        .filter(Boolean)
+    )];
+
+    // basic email sanity check (keep simple)
+    const bad = recipients.find(e => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+    if (bad) {
+      return res.status(400).json({ error: `Invalid email: ${bad}` });
+    }
+
+    // must exist in user_carriers
+    const exists = await pool.query(
+      `SELECT 1 FROM user_carriers WHERE user_id = $1 AND carrier_dot = $2`,
+      [userId, dot]
+    );
+
+    if (exists.rowCount === 0) {
+      return res.status(404).json({ error: "Carrier not saved" });
+    }
+
+    // transaction: update toggle + replace recipients
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      await client.query(
+        `
+        UPDATE user_carriers
+        SET email_alerts = $3
+        WHERE user_id = $1 AND carrier_dot = $2
+        `,
+        [userId, dot, enabled ? "Y" : "N"]
+      );
+
+      await client.query(
+        `
+        DELETE FROM user_carrier_alert_recipients
+        WHERE user_id = $1 AND carrier_dot = $2
+        `,
+        [userId, dot]
+      );
+
+      if (recipients.length > 0) {
+        await client.query(
+          `
+          INSERT INTO user_carrier_alert_recipients (user_id, carrier_dot, email)
+          SELECT $1, $2, UNNEST($3::text[])
+          `,
+          [userId, dot, recipients]
+        );
+      }
+
+      await client.query("COMMIT");
+    } catch (e) {
+      await client.query("ROLLBACK");
+      throw e;
+    } finally {
+      client.release();
+    }
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("Error in PUT /api/my-carriers/:dot/alerts/email:", err);
+    return res.status(500).json({ error: "Failed to save email alert settings" });
+  }
+});
+
+
+
+
 // Remove a carrier from this user's list
-router.delete("/my-carriers/:dot", requireAuth, async (req, res) => {
+router.delete("", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const { dot } = req.params;
 
