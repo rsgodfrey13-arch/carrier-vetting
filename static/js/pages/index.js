@@ -474,25 +474,29 @@ function normDot(val) {
         const row = document.createElement("tr");
         const dotVal = c.dot || c.dotnumber || c.id || "";
 
-        // Checkbox cell (SEARCH mode: show ✓ My Carrier pill instead of checkbox when already saved)
+        // Checkbox cell (always a checkbox; if already saved, disable + mark row)
         const selectCell = document.createElement("td");
         selectCell.className = "col-select select-cell";
         
         const dotKey = normDot(dotVal);
         const isMine = myCarrierDots.has(dotKey);
-
+        
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.className = "row-select";
+        checkbox.dataset.dot = dotVal;
+        
+        // In SEARCH mode, if it's already in My Carriers: disable checkbox + show indicator via CSS
         if (gridMode === "SEARCH" && isMine) {
           row.classList.add("is-mine");
-          selectCell.innerHTML = `<span class="mine-pill">✓ My Carrier</span>`;
-        } else {
-          const checkbox = document.createElement("input");
-          checkbox.type = "checkbox";
-          checkbox.className = "row-select";
-          checkbox.dataset.dot = normDot(dotVal);
-          selectCell.appendChild(checkbox);
+          checkbox.disabled = true;
+          //checkbox.checked = true;           // optional; remove if you’d rather not show checked
+          checkbox.title = "Already in My Carriers";
         }
         
+        selectCell.appendChild(checkbox);
         row.appendChild(selectCell);
+
 
 
         // DOT link
