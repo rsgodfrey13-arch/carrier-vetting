@@ -2047,3 +2047,14 @@ tr.is-mine .col-select::after{
   display: none !important;
   background: none !important;
 }
+
+/* SEARCH mode: hide confusing actions, keep download */
+.carriers-card.mode-search #filters-btn,
+.carriers-card.mode-search #bulk-import-btn{
+  display: none !important;
+}
+
+/* Optional: if your buttons are inside a shared actions container and you want spacing perfect */
+.carriers-card.mode-search .carriers-header-actions{
+  gap: 10px; /* or whatever you already use */
+}
