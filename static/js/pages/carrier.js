@@ -418,14 +418,8 @@ try {
       if (checkRes.ok) {
         const checkData = await checkRes.json().catch(() => ({}));
     
-        // support multiple shapes
-        isSaved =
-          checkData.saved === true ||
-          checkData.exists === true ||
-          checkData.ok === true ||
-          //(!!checkData.carrier) ||
-          //(!!checkData.id) ||
-          (Array.isArray(checkData.rows) && checkData.rows.length > 0);
+      isSaved = checkData.saved === true || checkData.isSaved === true;
+
     
       } else if (checkRes.status === 404) {
         isSaved = false;
@@ -476,9 +470,30 @@ try {
           }
       
           if (res.ok && body.ok) {
-            await initCarrierButtons(dot); // ✅ THIS is the key line
-            return;                        // ✅ stop; don’t keep running old UI code
+            // update UI immediately
+            setState({ isSaved: true, isLoggedIn: true });
+          
+            if (emailBtn) {
+              emailBtn.classList.remove("pill-disabled");
+              emailBtn.onclick = () => openEmailAlertsModal(dot, emailBtn);
+          
+              // fetch alert state after add
+              try {
+                const r = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}/alerts/email`);
+                if (r.ok) {
+                  const s = await r.json();
+                  emailBtn.textContent = `Email Alerts: ${s.enabled ? "On" : "Off"}`;
+                } else {
+                  emailBtn.textContent = "Email Alerts: Off";
+                }
+              } catch {
+                emailBtn.textContent = "Email Alerts: Off";
+              }
+            }
+          
+            return;
           }
+
       
           alert(body.error || "Failed to add carrier.");
         } catch (err) {
