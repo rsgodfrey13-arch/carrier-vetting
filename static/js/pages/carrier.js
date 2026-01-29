@@ -1,8 +1,18 @@
 // static/js/pages/carrier.js
 (() => {
 
-    // holds the ONE canonical dot for this page
-    let CURRENT_DOT = "";
+  function getDotFromPath() {
+    // take first path segment only, ignore trailing slash / extra segments
+    const seg = window.location.pathname.split("/").filter(Boolean)[0] || "";
+    // DOT should be digits only
+    const digits = decodeURIComponent(seg).replace(/\D/g, "");
+    // strip leading zeros safely (optional)
+    const noLeading = digits.replace(/^0+/, "");
+    return noLeading || (digits ? "0" : "");
+  }
+
+  const CURRENT_DOT = getDotFromPath(); // ✅ now it's safe
+
   
   function setText(id, value) {
     const el = document.getElementById(id);
@@ -24,15 +34,7 @@
     }
   }
 
-  function getDotFromPath() {
-    // take first path segment only, ignore trailing slash / extra segments
-    const seg = window.location.pathname.split("/").filter(Boolean)[0] || "";
-    // DOT should be digits only
-    const digits = decodeURIComponent(seg).replace(/\D/g, "");
-    // strip leading zeros safely (optional)
-    const noLeading = digits.replace(/^0+/, "");
-    return noLeading || (digits ? "0" : "");
-  }
+
 
 
   function normalizeRating(r) {
@@ -544,7 +546,7 @@ if (data && data.source === "cache_stale") {
 
   // Run ONCE
 document.addEventListener("DOMContentLoaded", () => {
-  wireEmailModalOnce();
+    wireEmailModalOnce();
   loadCarrier();
 });
 
