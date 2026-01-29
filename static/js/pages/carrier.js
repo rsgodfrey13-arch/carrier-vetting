@@ -341,6 +341,12 @@ try {
   
       if (!addBtn || !removeBtn) return;
 
+  function wireEmailClick(dot) {
+  if (!emailBtn) return;
+  emailBtn.onclick = () => wireEmailClick(dot);
+}
+
+
     function setState({ isSaved, isLoggedIn }) {
       // NOT LOGGED IN
       if (!isLoggedIn) {
@@ -354,7 +360,6 @@ try {
         if (emailBtn) {
           emailBtn.textContent = "Email Alerts: —";
           emailBtn.classList.add("pill-disabled");
-          emailBtn.onclick = null;
         }
     
         return;
@@ -386,7 +391,6 @@ try {
         if (emailBtn) {
           emailBtn.textContent = "Email Alerts: —";
           emailBtn.classList.add("pill-disabled");
-          emailBtn.onclick = null;
         }
       }
     }
@@ -449,7 +453,7 @@ try {
 
       // STEP 4.7 — wire email pill click
       if (emailBtn && isSaved) {
-        emailBtn.onclick = () => openEmailAlertsModal(dot, emailBtn);
+        emailBtn.onclick = () => wireEmailClick(dot);
       }
              
       addBtn.onclick = async () => {
@@ -475,7 +479,7 @@ try {
           
             if (emailBtn) {
               emailBtn.classList.remove("pill-disabled");
-              emailBtn.onclick = () => openEmailAlertsModal(dot, emailBtn);
+              emailBtn.onclick = () => wireEmailClick(dot);
           
               // fetch alert state after add
               try {
@@ -526,7 +530,6 @@ try {
           if (emailBtn) {
             emailBtn.textContent = "Email Alerts: —";
             emailBtn.classList.add("pill-disabled");
-            emailBtn.onclick = null;
           }
         
           // OPTIONAL: confirm backend truth after a short delay
