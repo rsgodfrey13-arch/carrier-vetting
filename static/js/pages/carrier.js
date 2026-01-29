@@ -41,6 +41,22 @@
     return "—";
   }
 
+
+  // ----------------------------
+  // EMAIL ALERTS MODAL HELPERS
+  // ----------------------------
+  function showEmailModal() {
+    const el = document.getElementById("email-alerts-modal");
+    if (el) el.hidden = false;
+  }
+
+  function hideEmailModal() {
+    const el = document.getElementById("email-alerts-modal");
+    if (el) el.hidden = true;
+  }
+
+  
+
   async function loadCarrier() {
     const dot = getDotFromPath();
     if (!dot) return;
@@ -250,37 +266,63 @@ if (data && data.source === "cache_stale") {
   }
 
   async function initCarrierButtons(dot) {
-    const addBtn = document.getElementById("btn-add-carrier");
-    const removeBtn = document.getElementById("btn-remove-carrier");
-    if (!addBtn || !removeBtn) return;
+      async function initCarrierButtons(dot) {
+      const addBtn = document.getElementById("btn-add-carrier");
+      const removeBtn = document.getElementById("btn-remove-carrier");
+      const emailBtn = document.getElementById("btn-email-alerts"); // NEW
+  
+      if (!addBtn || !removeBtn) return;
 
     function setState({ isSaved, isLoggedIn }) {
+      // NOT LOGGED IN
       if (!isLoggedIn) {
         addBtn.textContent = "Login to Add";
         addBtn.classList.remove("added");
         addBtn.classList.add("pill-disabled");
-
+    
         removeBtn.classList.add("pill-disabled");
         removeBtn.classList.remove("active");
+    
+        if (emailBtn) {
+          emailBtn.textContent = "Email Alerts: —";
+          emailBtn.classList.add("pill-disabled");
+          emailBtn.onclick = null;
+        }
+    
         return;
       }
-
+    
+      // LOGGED IN + SAVED
       if (isSaved) {
         addBtn.textContent = "Added";
         addBtn.classList.add("added", "pill-disabled");
-
+    
         removeBtn.textContent = "Remove Carrier";
         removeBtn.classList.remove("pill-disabled");
         removeBtn.classList.add("active");
+    
+        if (emailBtn) {
+          emailBtn.classList.remove("pill-disabled");
+          // text will be filled after fetch
+        }
+    
+      // LOGGED IN BUT NOT SAVED
       } else {
         addBtn.textContent = "+ Add Carrier";
         addBtn.classList.remove("added", "pill-disabled");
-
+    
         removeBtn.textContent = "Remove Carrier";
         removeBtn.classList.add("pill-disabled");
         removeBtn.classList.remove("active");
+    
+        if (emailBtn) {
+          emailBtn.textContent = "Email Alerts: —";
+          emailBtn.classList.add("pill-disabled");
+          emailBtn.onclick = null;
+        }
       }
     }
+
 
     // logged in?
     let loggedIn = false;
@@ -295,8 +337,10 @@ if (data && data.source === "cache_stale") {
     if (!loggedIn) {
       setState({ isSaved: false, isLoggedIn: false });
       addBtn.onclick = () => (window.location.href = "/login.html");
+      if (emailBtn) emailBtn.onclick = () => (window.location.href = "/login.html");
       return;
     }
+
 
     // saved?
     let isSaved = false;
@@ -313,7 +357,30 @@ if (data && data.source === "cache_stale") {
     }
 
     setState({ isSaved, isLoggedIn: true });
+    // If saved, load current email alerts state and display it in the pill
+    if (emailBtn && isSaved) {
+      try {
+        const r = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}/alerts/email`);
+        if (r.ok) {
+          const s = await r.json();
+          emailBtn.textContent = `Email Alerts: ${s.enabled ? "On" : "Off"}`;
+        } else {
+          emailBtn.textContent = "Email Alerts: —";
+        }
+      } catch {
+        emailBtn.textContent = "Email Alerts: —";
+      }
+    }
 
+      // STEP 4.7 — wire email pill click
+      if (emailBtn && isSaved) {
+        emailBtn.onclick = async () => {
+          openEmailAlertsModal(dot, emailBtn);
+        };
+      }
+      
+
+        
     addBtn.onclick = async () => {
       if (addBtn.classList.contains("pill-disabled")) return;
 
