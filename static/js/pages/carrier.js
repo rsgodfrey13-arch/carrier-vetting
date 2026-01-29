@@ -55,7 +55,36 @@
     if (el) el.hidden = true;
   }
 
+  function wireEmailModalOnce() {
+  if (window.__emailModalWired) return;
+  window.__emailModalWired = true;
+
+  document.getElementById("email-alerts-close")?.addEventListener("click", hideEmailModal);
+  document.getElementById("email-alerts-cancel")?.addEventListener("click", hideEmailModal);
+
+  document.getElementById("email-alerts-modal")?.addEventListener("click", (e) => {
+    if (e.target && e.target.id === "email-alerts-modal") hideEmailModal();
+  });
+}
+
   
+function openEmailAlertsModal(dot, emailBtn) {
+  let data = null;
+
+  try {
+    const res = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}/alerts/email`);
+    if (res.ok) data = await res.json();
+  } catch {}
+
+  const enabledEl = document.getElementById("email-alerts-enabled");
+  const defaultEl = document.getElementById("email-alerts-default");
+
+  if (enabledEl) enabledEl.checked = !!(data && data.enabled);
+  if (defaultEl) defaultEl.textContent =
+    (data && data.defaultEmail) ? data.defaultEmail : "—";
+
+  showEmailModal();
+}
 
   async function loadCarrier() {
     const dot = getDotFromPath();
@@ -457,24 +486,11 @@ if (data && data.source === "cache_stale") {
     }
   });
 
-async function openEmailAlertsModal(dot, emailBtn) {
-  let data = null;
-
-  try {
-    const res = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}/alerts/email`);
-    if (res.ok) data = await res.json();
-  } catch {}
-
-  const enabledEl = document.getElementById("email-alerts-enabled");
-  const defaultEl = document.getElementById("email-alerts-default");
-
-  if (enabledEl) enabledEl.checked = !!(data && data.enabled);
-  if (defaultEl) defaultEl.textContent =
-    (data && data.defaultEmail) ? data.defaultEmail : "—";
-
-  showEmailModal();
-}
 
   // Run ONCE
-  document.addEventListener("DOMContentLoaded", loadCarrier);
-})();
+document.addEventListener("DOMContentLoaded", () => {
+  wireEmailModalOnce();
+  loadCarrier();
+});
+
+
