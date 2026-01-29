@@ -410,15 +410,28 @@ if (data && data.source === "cache_stale") {
     let isSaved = false;
     try {
       const checkRes = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}`);
+    
       if (checkRes.ok) {
-        const checkData = await checkRes.json();
-        isSaved = !!checkData.saved;
+        const checkData = await checkRes.json().catch(() => ({}));
+    
+        // support multiple shapes
+        isSaved =
+          checkData.saved === true ||
+          checkData.exists === true ||
+          checkData.ok === true ||
+          (!!checkData.carrier) ||
+          (!!checkData.id) ||
+          (Array.isArray(checkData.rows) && checkData.rows.length > 0);
+    
       } else if (checkRes.status === 404) {
         isSaved = false;
+      } else {
+        console.warn("saved check non-200:", checkRes.status);
       }
     } catch (err) {
       console.error("check saved failed", err);
     }
+
 
     setState({ isSaved, isLoggedIn: true });
     // If saved, load current email alerts state and display it in the pill
@@ -509,8 +522,17 @@ if (data && data.source === "cache_stale") {
         }
 
         if (res.ok && body.ok) {
-          setState({ isSaved: false, isLoggedIn: true });
-        } else {
+        setState({ isSaved: false, isLoggedIn: true });
+        // hard reset email pill + click (defensive)
+        if (emailBtn) {
+          emailBtn.textContent = "Email Alerts: —";
+          emailBtn.classList.add("pill-disabled");
+          emailBtn.onclick = null;
+        }
+        // then re-read the backend truth (avoids drift)
+        await initCarrierButtons(dot);
+      }
+ else {
           alert(body.error || "Failed to remove carrier.");
         }
       } catch (err) {
