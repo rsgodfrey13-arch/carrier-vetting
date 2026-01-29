@@ -278,7 +278,8 @@ router.post("/my-carriers/bulk/preview", requireAuth, async (req, res) => {
 });
 
 // Check if THIS dot is already saved for this user
-router.get("", requireAuth, async (req, res) => {
+
+router.get("/my-carriers/:dot", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const { dot } = req.params;
 
@@ -294,10 +295,11 @@ router.get("", requireAuth, async (req, res) => {
       return res.status(404).json({ saved: false });
     }
   } catch (err) {
-    console.error("Error in GET /api:", err);
-    res.status(500).json({ error: "Failed to check carrier" });
+    console.error("Error in GET /api/my-carriers/:dot:", err);
+    return res.status(500).json({ error: "Failed to check carrier" });
   }
 });
+
 
 
 // Get email alert settings for THIS carrier
@@ -436,9 +438,8 @@ router.put("/my-carriers/:dot/alerts/email", requireAuth, async (req, res) => {
 
 
 // Remove a carrier from this user's list
-router.delete("", requireAuth, async (req, res) => {
-  const userId = req.session.userId;
-  const { dot } = req.params;
+router.delete("/my-carriers/:dot", requireAuth, async (req, res) => {
+  const userId = req.session.userId;;
 
   try {
     const result = await pool.query(
