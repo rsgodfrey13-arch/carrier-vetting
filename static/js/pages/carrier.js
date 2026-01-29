@@ -423,8 +423,8 @@ try {
           checkData.saved === true ||
           checkData.exists === true ||
           checkData.ok === true ||
-          (!!checkData.carrier) ||
-          (!!checkData.id) ||
+          //(!!checkData.carrier) ||
+          //(!!checkData.id) ||
           (Array.isArray(checkData.rows) && checkData.rows.length > 0);
     
       } else if (checkRes.status === 404) {
@@ -504,16 +504,22 @@ try {
         }
 
         if (res.ok && body.ok) {
-        setState({ isSaved: false, isLoggedIn: true });
-        // hard reset email pill + click (defensive)
-        if (emailBtn) {
-          emailBtn.textContent = "Email Alerts: —";
-          emailBtn.classList.add("pill-disabled");
-          emailBtn.onclick = null;
+          // update UI immediately (trust the delete)
+          setState({ isSaved: false, isLoggedIn: true });
+        
+          // reset email pill
+          if (emailBtn) {
+            emailBtn.textContent = "Email Alerts: —";
+            emailBtn.classList.add("pill-disabled");
+            emailBtn.onclick = null;
+          }
+        
+          // OPTIONAL: confirm backend truth after a short delay
+          setTimeout(() => initCarrierButtons(dot), 300);
+        
+          return; // IMPORTANT: stop here so nothing else runs
         }
-        // then re-read the backend truth (avoids drift)
-        await initCarrierButtons(dot);
-      }
+
  else {
           alert(body.error || "Failed to remove carrier.");
         }
