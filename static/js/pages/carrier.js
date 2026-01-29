@@ -426,9 +426,7 @@ if (data && data.source === "cache_stale") {
 
       // STEP 4.7 — wire email pill click
       if (emailBtn && isSaved) {
-        emailBtn.onclick = async () => {
-          openEmailAlertsModal(dot, emailBtn);
-        };
+        emailBtn.onclick = () => openEmailAlertsModal(dot, emailBtn);
       }
       
 
@@ -537,6 +535,7 @@ if (data && data.source === "cache_stale") {
 document.addEventListener("DOMContentLoaded", () => {
   wireEmailModalOnce();
   loadCarrier();
-})();
+});
 
+})();
 
