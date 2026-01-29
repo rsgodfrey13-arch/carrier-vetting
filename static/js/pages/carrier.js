@@ -75,7 +75,7 @@
   document.getElementById("email-alerts-cancel")?.addEventListener("click", hideEmailModal);
 
   document.getElementById("email-alerts-save")?.addEventListener("click", async () => {
-  const dot = getDotFromPath();
+  const dot = CURRENT_DOT;
   const enabled = !!document.getElementById("email-alerts-enabled")?.checked;
 
   const res = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}/alerts/email`, {
@@ -123,8 +123,7 @@ async function openEmailAlertsModal(dot, emailBtn) {
 
 
   async function loadCarrier() {
-    const dot = getDotFromPath();
-    CURRENT_DOT = dot;
+    const dot = CURRENT_DOT;
     if (!dot) return;
 
     try {
