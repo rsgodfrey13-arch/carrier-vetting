@@ -452,9 +452,7 @@ try {
     }
 
       // STEP 4.7 — wire email pill click
-      if (emailBtn && isSaved) {
-        emailBtn.onclick = () => wireEmailClick(dot);
-      }
+      if (isSaved) wireEmailClick(dot);
              
       addBtn.onclick = async () => {
         if (addBtn.classList.contains("pill-disabled")) return;
