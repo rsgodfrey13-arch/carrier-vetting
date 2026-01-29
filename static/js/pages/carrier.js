@@ -453,58 +453,36 @@ if (data && data.source === "cache_stale") {
       if (emailBtn && isSaved) {
         emailBtn.onclick = () => openEmailAlertsModal(dot, emailBtn);
       }
+             
+      addBtn.onclick = async () => {
+        if (addBtn.classList.contains("pill-disabled")) return;
       
-
-        
-    addBtn.onclick = async () => {
-      if (addBtn.classList.contains("pill-disabled")) return;
-
-      try {
-        const res = await fetch("/api/my-carriers", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dot }),
-        });
-
-        const body = await res.json().catch(() => ({}));
-
-        if (res.status === 401) {
-          window.location.href = "/login.html";
-          return;
-        }
-
-        if (res.ok && body.ok) {
-          setState({ isSaved: true, isLoggedIn: true });
-        
-          // NEW: immediately enable + populate the Email Alerts pill
-          if (emailBtn) {
-            emailBtn.classList.remove("pill-disabled");
-        
-            // wire click now that it’s saved
-            emailBtn.onclick = () => openEmailAlertsModal(dot, emailBtn);
-        
-            // fetch current state (will be Off by default unless your DB sets it otherwise)
-            try {
-              const r = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}/alerts/email`);
-              if (r.ok) {
-                const s = await r.json();
-                emailBtn.textContent = `Email Alerts: ${s.enabled ? "On" : "Off"}`;
-              } else {
-                emailBtn.textContent = "Email Alerts: Off";
-              }
-            } catch {
-              emailBtn.textContent = "Email Alerts: Off";
-            }
+        try {
+          const res = await fetch("/api/my-carriers", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ dot }),
+          });
+      
+          const body = await res.json().catch(() => ({}));
+      
+          if (res.status === 401) {
+            window.location.href = "/login.html";
+            return;
           }
-        } else {
+      
+          if (res.ok && body.ok) {
+            await initCarrierButtons(dot); // ✅ THIS is the key line
+            return;                        // ✅ stop; don’t keep running old UI code
+          }
+      
           alert(body.error || "Failed to add carrier.");
+        } catch (err) {
+          console.error("add carrier failed", err);
+          alert("Network error adding carrier.");
         }
+      };
 
-      } catch (err) {
-        console.error("add carrier failed", err);
-        alert("Network error adding carrier.");
-      }
-    };
 
     removeBtn.onclick = async () => {
       if (removeBtn.classList.contains("pill-disabled")) return;
