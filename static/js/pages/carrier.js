@@ -458,6 +458,24 @@ if (data && data.source === "cache_stale") {
     }
   });
 
+async function openEmailAlertsModal(dot, emailBtn) {
+  let data = null;
+
+  try {
+    const res = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}/alerts/email`);
+    if (res.ok) data = await res.json();
+  } catch {}
+
+  const enabledEl = document.getElementById("email-alerts-enabled");
+  const defaultEl = document.getElementById("email-alerts-default");
+
+  if (enabledEl) enabledEl.checked = !!(data && data.enabled);
+  if (defaultEl) defaultEl.textContent =
+    (data && data.defaultEmail) ? data.defaultEmail : "—";
+
+  showEmailModal();
+}
+
   // Run ONCE
   document.addEventListener("DOMContentLoaded", loadCarrier);
 })();
