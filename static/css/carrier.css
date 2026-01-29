@@ -76,3 +76,23 @@
   font-size:13px;
   color:#E5F3FF;
 }
+
+/* place the alerts pill next to the carrier name */
+.carrier-name-row{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.btn-email-alerts{
+  white-space:nowrap;
+}
+
+/* keep long names from pushing layout too hard */
+#carrier-name{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  max-width: 100%;
+}
