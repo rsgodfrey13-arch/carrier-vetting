@@ -343,8 +343,9 @@ try {
 
   function wireEmailClick(dot) {
   if (!emailBtn) return;
-  emailBtn.onclick = () => wireEmailClick(dot);
+  emailBtn.onclick = () => openEmailAlertsModal(dot, emailBtn);
 }
+
 
 
     function setState({ isSaved, isLoggedIn }) {
@@ -477,7 +478,7 @@ try {
           
             if (emailBtn) {
               emailBtn.classList.remove("pill-disabled");
-              emailBtn.onclick = () => wireEmailClick(dot);
+              wireEmailClick(dot);
           
               // fetch alert state after add
               try {
