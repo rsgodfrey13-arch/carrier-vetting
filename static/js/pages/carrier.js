@@ -62,13 +62,37 @@
   document.getElementById("email-alerts-close")?.addEventListener("click", hideEmailModal);
   document.getElementById("email-alerts-cancel")?.addEventListener("click", hideEmailModal);
 
+  document.getElementById("email-alerts-save")?.addEventListener("click", async () => {
+  const dot = getDotFromPath();
+  const enabled = !!document.getElementById("email-alerts-enabled")?.checked;
+
+  const res = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}/alerts/email`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled })
+  });
+
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    alert(body.error || "Failed to save email alerts.");
+    return;
+  }
+
+  // update pill text immediately
+  const emailBtn = document.getElementById("btn-email-alerts");
+  if (emailBtn) emailBtn.textContent = `Email Alerts: ${enabled ? "On" : "Off"}`;
+
+  hideEmailModal();
+});
+
+
   document.getElementById("email-alerts-modal")?.addEventListener("click", (e) => {
     if (e.target && e.target.id === "email-alerts-modal") hideEmailModal();
   });
 }
 
   
-function openEmailAlertsModal(dot, emailBtn) {
+async function openEmailAlertsModal(dot, emailBtn) {
   let data = null;
 
   try {
@@ -80,11 +104,11 @@ function openEmailAlertsModal(dot, emailBtn) {
   const defaultEl = document.getElementById("email-alerts-default");
 
   if (enabledEl) enabledEl.checked = !!(data && data.enabled);
-  if (defaultEl) defaultEl.textContent =
-    (data && data.defaultEmail) ? data.defaultEmail : "—";
+  if (defaultEl) defaultEl.textContent = (data && data.defaultEmail) ? data.defaultEmail : "—";
 
   showEmailModal();
 }
+
 
   async function loadCarrier() {
     const dot = getDotFromPath();
@@ -513,6 +537,6 @@ if (data && data.source === "cache_stale") {
 document.addEventListener("DOMContentLoaded", () => {
   wireEmailModalOnce();
   loadCarrier();
-});
+})();
 
 
