@@ -45,6 +45,11 @@
       <div class="carrier-name-block">
         <div class="carrier-name-row">
           <div id="carrier-name" class="carrier-name">Loading…</div>
+        
+          <!-- Email Alerts toggle lives here (next to carrier name) -->
+          <button id="btn-email-alerts" class="carrier-pill ghost small btn-email-alerts" type="button">
+            Email Alerts: —
+          </button>
         </div>
 
         <div class="carrier-id-row">
@@ -427,6 +432,55 @@
     </section>
   </div>
 
+<!-- Email Alerts Modal -->
+<div id="email-alerts-modal" class="cs-modal-backdrop" hidden>
+  <div class="cs-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="email-alerts-title">
+    <div class="cs-modal-header">
+      <div>
+        <div id="email-alerts-title" class="cs-modal-title">Email Alerts</div>
+        <div class="cs-modal-subtitle">Get updates when something changes for this carrier.</div>
+      </div>
+      <button id="email-alerts-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
+    </div>
+
+    <div class="cs-modal-body">
+      <label class="cs-switch">
+        <input id="email-alerts-enabled" type="checkbox">
+        <span class="cs-switch-ui"></span>
+        <span class="cs-switch-text">Email Alerts</span>
+      </label>
+
+      <div class="cs-divider"></div>
+
+      <div class="cs-row">
+        <div class="cs-label">Default recipient</div>
+        <div id="email-alerts-default" class="cs-value">—</div>
+      </div>
+
+      <div class="cs-row cs-row-col">
+        <div class="cs-label">Additional recipients</div>
+
+        <div id="email-alerts-chips" class="cs-chips"></div>
+
+        <div class="cs-inline">
+          <input id="email-alerts-input" class="cs-input" type="email" placeholder="Add email (example@domain.com)">
+          <button id="email-alerts-add" class="carrier-pill ghost small" type="button">Add</button>
+        </div>
+
+        <div class="cs-hint">
+          Need more options? <a class="cs-link" href="/settings/alerts">Alert settings</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="cs-modal-footer">
+      <button id="email-alerts-cancel" class="carrier-pill ghost small" type="button">Cancel</button>
+      <button id="email-alerts-save" class="carrier-pill pill-ok" type="button">Save</button>
+    </div>
+  </div>
+</div>
+
+  
 <script src="/static/js/pages/carrier.js" defer></script>
   <script src="/js/shared/shared.js"></script>
 
