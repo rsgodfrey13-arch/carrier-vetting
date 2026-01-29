@@ -1,5 +1,9 @@
 // static/js/pages/carrier.js
 (() => {
+
+    // holds the ONE canonical dot for this page
+    let CURRENT_DOT = "";
+  
   function setText(id, value) {
     const el = document.getElementById(id);
     if (!el) return;
@@ -118,6 +122,7 @@ async function openEmailAlertsModal(dot, emailBtn) {
 
   async function loadCarrier() {
     const dot = getDotFromPath();
+    CURRENT_DOT = dot;
     if (!dot) return;
 
     try {
