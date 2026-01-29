@@ -11,8 +11,8 @@
     return noLeading || (digits ? "0" : "");
   }
 
-  const CURRENT_DOT = getDotFromPath(); // ✅ now it's safe
-
+  const CURRENT_DOT = getDotFromPath(); 
+  let initButtonsRunning = false; 
   
   function setText(id, value) {
     const el = document.getElementById(id);
@@ -331,6 +331,10 @@ if (data && data.source === "cache_stale") {
   }
 
   async function initCarrierButtons(dot) {
+      if (initButtonsRunning) return;
+  initButtonsRunning = true;
+
+try {
       const addBtn = document.getElementById("btn-add-carrier");
       const removeBtn = document.getElementById("btn-remove-carrier");
       const emailBtn = document.getElementById("btn-email-alerts"); // NEW
@@ -519,6 +523,10 @@ if (data && data.source === "cache_stale") {
       }
     };
   }
+  finally {
+    initButtonsRunning = false;
+  }
+}
 
   // Copy button handler (kept global for whole page)
   document.addEventListener("click", async (e) => {
