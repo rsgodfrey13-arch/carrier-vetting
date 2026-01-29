@@ -428,9 +428,31 @@ if (data && data.source === "cache_stale") {
 
         if (res.ok && body.ok) {
           setState({ isSaved: true, isLoggedIn: true });
+        
+          // NEW: immediately enable + populate the Email Alerts pill
+          if (emailBtn) {
+            emailBtn.classList.remove("pill-disabled");
+        
+            // wire click now that it’s saved
+            emailBtn.onclick = () => openEmailAlertsModal(dot, emailBtn);
+        
+            // fetch current state (will be Off by default unless your DB sets it otherwise)
+            try {
+              const r = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}/alerts/email`);
+              if (r.ok) {
+                const s = await r.json();
+                emailBtn.textContent = `Email Alerts: ${s.enabled ? "On" : "Off"}`;
+              } else {
+                emailBtn.textContent = "Email Alerts: Off";
+              }
+            } catch {
+              emailBtn.textContent = "Email Alerts: Off";
+            }
+          }
         } else {
           alert(body.error || "Failed to add carrier.");
         }
+
       } catch (err) {
         console.error("add carrier failed", err);
         alert("Network error adding carrier.");
