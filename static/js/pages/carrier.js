@@ -266,7 +266,6 @@ if (data && data.source === "cache_stale") {
   }
 
   async function initCarrierButtons(dot) {
-      async function initCarrierButtons(dot) {
       const addBtn = document.getElementById("btn-add-carrier");
       const removeBtn = document.getElementById("btn-remove-carrier");
       const emailBtn = document.getElementById("btn-email-alerts"); // NEW
