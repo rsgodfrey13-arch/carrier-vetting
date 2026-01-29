@@ -21,9 +21,15 @@
   }
 
   function getDotFromPath() {
-    const path = window.location.pathname.replace(/^\//, "");
-    return path ? decodeURIComponent(path) : "";
+    // take first path segment only, ignore trailing slash / extra segments
+    const seg = window.location.pathname.split("/").filter(Boolean)[0] || "";
+    // DOT should be digits only
+    const digits = decodeURIComponent(seg).replace(/\D/g, "");
+    // strip leading zeros safely (optional)
+    const noLeading = digits.replace(/^0+/, "");
+    return noLeading || (digits ? "0" : "");
   }
+
 
   function normalizeRating(r) {
     const val = (r || "").toString().trim().toUpperCase();
