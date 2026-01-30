@@ -98,8 +98,7 @@
   }
 
   // update pill text immediately
-  const emailBtn = document.getElementById("btn-email-alerts");
-  if (emailBtn) emailBtn.textContent = `Email Alerts: ${enabled ? "On" : "Off"}`;
+  setEmailAlertPill(enabled);
 
   hideEmailModal();
 });
@@ -464,16 +463,22 @@ try {
 }
 
 
-  function setEmailAlertPill(enabled){
+function setEmailAlertPill(enabled) {
   const pill = document.getElementById("btn-email-alerts");
   if (!pill) return;
 
-  const sw = pill.querySelector(".ios-switch");
-  if (!sw) return;
+  // if your fancy markup isn’t present, don’t destroy the button — just bail
+  const status = pill.querySelector(".email-alert-status");
+  const text = pill.querySelector(".status-text");
+  if (!status || !text) return;
 
-  sw.classList.toggle("on", !!enabled);
-  sw.classList.toggle("off", !enabled);
+  status.classList.toggle("on", enabled === true);
+  status.classList.toggle("off", enabled === false);
+  status.classList.toggle("unknown", enabled == null);
+
+  text.textContent = enabled === true ? "On" : enabled === false ? "Off" : "—";
 }
+
 
 
     function setState({ isSaved, isLoggedIn }) {
@@ -487,9 +492,10 @@ try {
         removeBtn.classList.remove("active");
     
         if (emailBtn) {
-          emailBtn.textContent = "Email Alerts: —";
           emailBtn.classList.add("pill-disabled");
+          setEmailAlertPill(null);
         }
+
     
         return;
       }
@@ -505,7 +511,6 @@ try {
     
         if (emailBtn) {
           emailBtn.classList.remove("pill-disabled");
-          // text will be filled after fetch
         }
     
       // LOGGED IN BUT NOT SAVED
@@ -518,9 +523,10 @@ try {
         removeBtn.classList.remove("active");
     
         if (emailBtn) {
-          emailBtn.textContent = "Email Alerts: —";
           emailBtn.classList.add("pill-disabled");
+          setEmailAlertPill(null);
         }
+
       }
     }
 
@@ -615,12 +621,12 @@ try {
                 const r = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}/alerts/email`);
                 if (r.ok) {
                   const s = await r.json();
-                  emailBtn.textContent = `Email Alerts: ${s.enabled ? "On" : "Off"}`;
+                  setEmailAlertPill(!!s.enabled);   // ✅ THIS is the line you were missing
                 } else {
-                  emailBtn.textContent = "Email Alerts: Off";
+                  setEmailAlertPill(null);
                 }
               } catch {
-                emailBtn.textContent = "Email Alerts: Off";
+                  setEmailAlertPill(null);
               }
             }
           
@@ -657,9 +663,10 @@ try {
         
           // reset email pill
           if (emailBtn) {
-            emailBtn.textContent = "Email Alerts: —";
             emailBtn.classList.add("pill-disabled");
+            setEmailAlertPill(null);
           }
+
         
           // OPTIONAL: confirm backend truth after a short delay
           setTimeout(() => initCarrierButtons(dot), 300);
