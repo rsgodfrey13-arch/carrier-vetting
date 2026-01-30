@@ -811,3 +811,77 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
 .cs-btn-manage:hover{
   opacity: 1;
 }
+
+
+/* Base pill */
+.email-alert-pill{
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+
+  padding: 8px 14px;
+  border-radius: 999px;
+
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+
+  color: rgba(255,255,255,.92);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .3px;
+
+  cursor: pointer;
+
+  transition:
+    background .18s ease,
+    border-color .18s ease,
+    box-shadow .18s ease,
+    transform .18s ease;
+}
+
+/* Hover = entire thing is interactive */
+.email-alert-pill:hover{
+  background: rgba(255,255,255,.10);
+  border-color: rgba(255,255,255,.18);
+  box-shadow: 0 6px 18px rgba(0,0,0,.25);
+  transform: translateY(-1px);
+}
+
+/* Label */
+.email-alert-label{
+  opacity: .9;
+}
+
+/* Status container */
+.email-alert-status{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Status dot */
+.status-dot{
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* ON state */
+.email-alert-status.on .status-dot{
+  background: #10b981;
+  box-shadow: 0 0 0 4px rgba(16,185,129,.25);
+}
+.email-alert-status.on .status-text{
+  color: #6ee7b7;
+}
+
+/* OFF state */
+.email-alert-status.off .status-dot{
+  background: rgba(255,255,255,.35);
+}
+.email-alert-status.off .status-text{
+  color: rgba(255,255,255,.6);
+}
