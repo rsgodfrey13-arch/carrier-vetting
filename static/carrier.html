@@ -435,50 +435,60 @@
 <!-- Email Alerts Modal -->
 <div id="email-alerts-modal" class="cs-modal-backdrop" hidden>
   <div class="cs-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="email-alerts-title">
+    
     <div class="cs-modal-header">
-      <div>
+      <div class="cs-modal-headings">
         <div id="email-alerts-title" class="cs-modal-title">Email Alerts</div>
         <div class="cs-modal-subtitle">Get updates when something changes for this carrier.</div>
       </div>
+
       <button id="email-alerts-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
     </div>
 
     <div class="cs-modal-body">
-      <label class="cs-switch">
-        <input id="email-alerts-enabled" type="checkbox">
-        <span class="cs-switch-ui"></span>
-        <span class="cs-switch-text">Email Alerts</span>
-      </label>
+
+      <!-- ON/OFF switch -->
+      <div class="cs-row cs-row-between">
+        <div>
+          <div class="cs-label">Alerts</div>
+          <div class="cs-hint">Turn on email notifications for carrier changes.</div>
+        </div>
+
+        <label class="cs-toggle" aria-label="Email Alerts On/Off">
+          <input id="email-alerts-enabled" type="checkbox">
+          <span class="cs-toggle-ui"></span>
+        </label>
+      </div>
 
       <div class="cs-divider"></div>
 
-      <div class="cs-row">
-        <div class="cs-label">Default recipient</div>
-        <div id="email-alerts-default" class="cs-value">—</div>
-      </div>
-
+      <!-- Recipients (default email shows as a selected removable chip too) -->
       <div class="cs-row cs-row-col">
-        <div class="cs-label">Additional recipients</div>
+        <div class="cs-label">Recipients</div>
 
+        <!-- Chips area includes the default email chip as "locked-on" until user removes -->
         <div id="email-alerts-chips" class="cs-chips"></div>
 
         <div class="cs-inline">
-          <input id="email-alerts-input" class="cs-input" type="email" placeholder="Add email (example@domain.com)">
-          <button id="email-alerts-add" class="carrier-pill ghost small" type="button">Add</button>
+          <input id="email-alerts-input" class="cs-input" type="email" placeholder="Add an email (name@company.com)">
+          <button id="email-alerts-add" class="cs-btn cs-btn-ghost" type="button">Add</button>
         </div>
 
-        <div class="cs-hint">
-          Need more options? <a class="cs-link" href="/settings/alerts">Alert settings</a>
-        </div>
+        <a class="cs-link" href="/settings/alerts">Manage Alert Settings</a>
       </div>
     </div>
 
     <div class="cs-modal-footer">
-      <button id="email-alerts-cancel" class="carrier-pill ghost small" type="button">Cancel</button>
-      <button id="email-alerts-save" class="carrier-pill pill-ok" type="button">Save</button>
+      <button id="email-alerts-cancel" class="cs-btn cs-btn-ghost" type="button">Cancel</button>
+      <button id="email-alerts-save" class="cs-btn cs-btn-primary" type="button">Save</button>
     </div>
+
   </div>
 </div>
+
+
+
+  
 
 <script src="/js/shared/shared.js"></script>  
 <script src="/static/js/pages/carrier.js" defer></script>
