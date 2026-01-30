@@ -76,11 +76,28 @@ function setEmailAlertPill(enabled) {
   const status = pill.querySelector(".email-alert-status");
   const text = pill.querySelector(".status-text");
 
-  // If your fancy inner markup isn’t present, at least keep the button usable.
-  if (!status || !text) {
-    pill.dataset.enabled = enabled === true ? "on" : enabled === false ? "off" : "unknown";
-    return;
-  }
+  pill.dataset.state = enabled === true ? "on" : enabled === false ? "off" : "unknown";
+
+  if (!status || !text) return;
+
+  status.classList.toggle("on", enabled === true);
+  status.classList.toggle("off", enabled === false);
+  status.classList.toggle("unknown", enabled == null);
+
+  text.textContent = enabled === true ? "On" : enabled === false ? "Off" : "—";
+}
+
+
+function toBool(v) {
+  if (v === true || v === 1) return true;
+  if (v === false || v === 0) return false;
+
+  const s = String(v ?? "").trim().toLowerCase();
+  if (s === "true" || s === "1" || s === "yes" || s === "y") return true;
+  if (s === "false" || s === "0" || s === "no" || s === "n" || s === "") return false;
+
+  return null; // unknown
+}
 
   status.classList.toggle("on", enabled === true);
   status.classList.toggle("off", enabled === false);
@@ -580,7 +597,7 @@ try {
         const r = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}/alerts/email`);
         if (r.ok) {
           const s = await r.json();
-          setEmailAlertPill(!!s.enabled);   
+          setEmailAlertPill(toBool(s.enabled));
           
         } else {
           
@@ -624,7 +641,7 @@ try {
                 const r = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}/alerts/email`);
                 if (r.ok) {
                   const s = await r.json();
-                  setEmailAlertPill(!!s.enabled);   // ✅ THIS is the line you were missing
+                  setEmailAlertPill(toBool(s.enabled));
                 } else {
                   setEmailAlertPill(null);
                 }
