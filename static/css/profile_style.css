@@ -750,10 +750,13 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   text-decoration: underline;
 }
 
-/* Manage button row (push it down a bit) */
+
+/* Manage button row (anchored above footer) */
 .cs-manage-row{
-  margin-top: 14px;   /* moves it down */
+  margin-top: 18px;
+  margin-bottom: 6px;
 }
+
 
 /* Bigger, sexier CTA-style link */
 .cs-btn-manage{
