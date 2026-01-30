@@ -709,7 +709,8 @@ if (data && data.source === "cache_stale") {
 try {
       const addBtn = document.getElementById("btn-add-carrier");
       const removeBtn = document.getElementById("btn-remove-carrier");
-      const emailBtn = document.getElementById("btn-email-alerts"); // NEW
+      const emailBtn = document.getElementById("btn-email-alerts"); 
+      const contractBtn = document.getElementById("btn-send-contract"); 
   
       if (!addBtn || !removeBtn) return;
 
@@ -718,6 +719,10 @@ try {
   emailBtn.onclick = () => openEmailAlertsModal(dot);
 }
 
+function wireContractClick(dot) {
+  if (!contractBtn) return;
+  contractBtn.onclick = () => openSendContractModal(dot, window.__carrierProfile || null);
+}
 
     function setState({ isSaved, isLoggedIn }) {
       // NOT LOGGED IN
@@ -732,6 +737,10 @@ try {
         if (emailBtn) {
           emailBtn.classList.add("pill-disabled");
           setEmailAlertPill(null);
+        }
+        
+        if (contractBtn) {
+          contractBtn.classList.add("pill-disabled");
         }
 
     
@@ -765,6 +774,10 @@ try {
           setEmailAlertPill(null);
         }
 
+          if (contractBtn) {
+          contractBtn.classList.add("pill-disabled");
+        }
+
       }
     }
 
@@ -783,6 +796,7 @@ try {
       setState({ isSaved: false, isLoggedIn: false });
       addBtn.onclick = () => (window.location.href = "/login.html");
       if (emailBtn) emailBtn.onclick = () => (window.location.href = "/login.html");
+      if (contractBtn) contractBtn.onclick = () => (window.location.href = "/login.html");
       return;
     }
 
@@ -831,6 +845,7 @@ try {
 
       // STEP 4.7 — wire email pill click
       if (isSaved) wireEmailClick(dot);
+      if (isSaved) wireContractClick(dot);
              
       addBtn.onclick = async () => {
         if (addBtn.classList.contains("pill-disabled")) return;
@@ -870,7 +885,11 @@ try {
                   setEmailAlertPill(null);
               }
             }
-          
+
+            if (contractBtn) {
+              contractBtn.classList.remove("pill-disabled");
+              wireContractClick(dot);
+            }         
             return;
           }
 
@@ -908,6 +927,9 @@ try {
             setEmailAlertPill(null);
           }
 
+          if (contractBtn) {
+            contractBtn.classList.add("pill-disabled");
+          }
         
           // OPTIONAL: confirm backend truth after a short delay
           setTimeout(() => initCarrierButtons(dot), 300);
@@ -955,6 +977,7 @@ try {
   // Run ONCE
 document.addEventListener("DOMContentLoaded", () => {
   wireEmailModalOnce();
+  wireSendContractModalOnce(); 
   loadCarrier();
 });
 
