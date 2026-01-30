@@ -73,34 +73,24 @@ function setEmailAlertPill(enabled) {
   const pill = document.getElementById("btn-email-alerts");
   if (!pill) return;
 
-  // Ensure inner markup exists (create it if missing)
-  let status = pill.querySelector(".email-alert-status");
-  let text = pill.querySelector(".status-text");
+  // ✅ If the iOS switch exists (your real UI), update it
+  const ios = pill.querySelector(".ios-switch");
+  if (ios) {
+    ios.classList.toggle("on", enabled === true);
+    ios.classList.toggle("off", enabled === false);
 
-  if (!status || !text) {
-    // If your HTML is different, we inject the pieces we need
-    // without blowing away your existing content.
-    status = document.createElement("span");
-    status.className = "email-alert-status";
+    // optional: unknown state (if you ever use it)
+    ios.classList.toggle("unknown", enabled == null);
 
-    text = document.createElement("span");
-    text.className = "status-text";
-    text.textContent = "—";
-
-    status.appendChild(text);
-    pill.appendChild(status);
+    // store state if you want for CSS hooks
+    pill.dataset.enabled = enabled === true ? "on" : enabled === false ? "off" : "unknown";
+    return;
   }
 
-  // Store state for CSS if you want it later
+  // -------- fallback (only if you ever render a different pill elsewhere) --------
   pill.dataset.enabled = enabled === true ? "on" : enabled === false ? "off" : "unknown";
-
-  // Update classes + text
-  status.classList.toggle("on", enabled === true);
-  status.classList.toggle("off", enabled === false);
-  status.classList.toggle("unknown", enabled == null);
-
-  text.textContent = enabled === true ? "On" : enabled === false ? "Off" : "—";
 }
+
 
 
   
