@@ -464,6 +464,17 @@ try {
 }
 
 
+  function setEmailAlertPill(enabled){
+  const pill = document.getElementById("btn-email-alerts");
+  if (!pill) return;
+
+  const status = pill.querySelector(".email-alert-status");
+  const text = pill.querySelector(".status-text");
+
+  status.classList.toggle("on", enabled);
+  status.classList.toggle("off", !enabled);
+  text.textContent = enabled ? "On" : "Off";
+}
 
     function setState({ isSaved, isLoggedIn }) {
       // NOT LOGGED IN
@@ -560,9 +571,11 @@ try {
         const r = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}/alerts/email`);
         if (r.ok) {
           const s = await r.json();
+          setEmailAlertPill(!!s.enabled);   
           emailBtn.textContent = `Email Alerts: ${s.enabled ? "On" : "Off"}`;
         } else {
           emailBtn.textContent = "Email Alerts: —";
+          setEmailAlertPill(false);
         }
       } catch {
         emailBtn.textContent = "Email Alerts: —";
@@ -690,17 +703,6 @@ try {
     }
   });
 
-  function setEmailAlertPill(enabled){
-  const pill = document.getElementById("btn-email-alerts");
-  if (!pill) return;
-
-  const status = pill.querySelector(".email-alert-status");
-  const text = pill.querySelector(".status-text");
-
-  status.classList.toggle("on", enabled);
-  status.classList.toggle("off", !enabled);
-  text.textContent = enabled ? "On" : "Off";
-}
 
   // Run ONCE
 document.addEventListener("DOMContentLoaded", () => {
