@@ -750,3 +750,34 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   text-decoration: underline;
 }
 
+/* Manage button row (push it down a bit) */
+.cs-manage-row{
+  margin-top: 14px;   /* moves it down */
+}
+
+/* Bigger, sexier CTA-style link */
+.cs-btn-manage{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+
+  height: 42px;
+  padding: 0 16px;
+
+  border-radius: 14px;
+  text-decoration: none;
+
+  border: 1px solid rgba(56,189,248,.38);
+  background: rgba(56,189,248,.10);
+  color: rgba(224,242,254,.95);
+}
+
+.cs-btn-manage:hover{
+  border-color: rgba(56,189,248,.60);
+  background: rgba(56,189,248,.16);
+}
+
+.cs-btn-arrow{
+  opacity: .9;
+  font-weight: 800;
+}
