@@ -60,11 +60,13 @@
   function showEmailModal() {
     const el = document.getElementById("email-alerts-modal");
     if (el) el.hidden = false;
+    document.body.style.overflow = "hidden";
   }
 
   function hideEmailModal() {
     const el = document.getElementById("email-alerts-modal");
     if (el) el.hidden = true;
+    document.body.style.overflow = "";
   }
 
   function wireEmailModalOnce() {
@@ -76,13 +78,18 @@
 
   document.getElementById("email-alerts-save")?.addEventListener("click", async () => {
   const dot = CURRENT_DOT;
-  const enabled = !!document.getElementById("email-alerts-enabled")?.checked;
-
-  const res = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}/alerts/email`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ enabled })
-  });
+  const enabled = !!document.getElementById("email-alerts-enabled")?.checked;     
+    
+      // pull recipients from state (chips)
+      const recipients = Array.isArray(EMAIL_ALERTS_STATE?.recipients)
+        ? EMAIL_ALERTS_STATE.recipients
+        : [];
+      
+      const res = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}/alerts/email`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled, recipients })
+      });
 
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -103,23 +110,133 @@
   });
 }
 
-  
-async function openEmailAlertsModal(dot, emailBtn) {
-  let data = null;
+// ----- Email Alerts modal state (chips) -----
+let EMAIL_ALERTS_STATE = {
+  dot: null,
+  enabled: false,
+  recipients: [] // normalized lowercase
+};
 
+function normalizeEmail(v) {
+  return String(v || "").trim().toLowerCase();
+}
+
+function isValidEmail(v) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+}
+
+function renderEmailChips() {
+  const wrap = document.getElementById("email-alerts-chips");
+  if (!wrap) return;
+
+  wrap.innerHTML = "";
+
+  if (!EMAIL_ALERTS_STATE.recipients.length) {
+    const empty = document.createElement("div");
+    empty.className = "cs-hint";
+    empty.textContent = "No recipients yet. Add one below.";
+    wrap.appendChild(empty);
+    return;
+  }
+
+  EMAIL_ALERTS_STATE.recipients.forEach((email) => {
+    const chip = document.createElement("span");
+    chip.className = "cs-chip";
+
+    const label = document.createElement("span");
+    label.textContent = email;
+
+    const x = document.createElement("button");
+    x.type = "button";
+    x.className = "cs-chip-x";
+    x.textContent = "×";
+    x.addEventListener("click", () => {
+      EMAIL_ALERTS_STATE.recipients = EMAIL_ALERTS_STATE.recipients.filter(e => e !== email);
+      renderEmailChips();
+    });
+
+    chip.appendChild(label);
+    chip.appendChild(x);
+    wrap.appendChild(chip);
+  });
+}
+
+function bindEmailAlertsUIOnce() {
+  if (window.__emailRecipientsWired) return;
+  window.__emailRecipientsWired = true;
+
+  const enabledEl = document.getElementById("email-alerts-enabled");
+  const inputEl = document.getElementById("email-alerts-input");
+  const addBtn = document.getElementById("email-alerts-add");
+
+  enabledEl?.addEventListener("change", () => {
+    EMAIL_ALERTS_STATE.enabled = !!enabledEl.checked;
+  });
+
+  function addFromInput() {
+    const raw = normalizeEmail(inputEl?.value);
+    if (!raw) return;
+
+    if (!isValidEmail(raw)) {
+      alert("Please enter a valid email address.");
+      inputEl?.focus();
+      return;
+    }
+
+    if (!EMAIL_ALERTS_STATE.recipients.includes(raw)) {
+      EMAIL_ALERTS_STATE.recipients.push(raw);
+      EMAIL_ALERTS_STATE.recipients.sort();
+      renderEmailChips();
+    }
+
+    if (inputEl) inputEl.value = "";
+    inputEl?.focus();
+  }
+
+  addBtn?.addEventListener("click", addFromInput);
+
+  inputEl?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addFromInput();
+    }
+  });
+}
+
+async function openEmailAlertsModal(dot) {
+  bindEmailAlertsUIOnce();
+
+  EMAIL_ALERTS_STATE = {
+    dot: String(dot || "").trim(),
+    enabled: false,
+    recipients: []
+  };
+
+  let data = null;
   try {
     const res = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}/alerts/email`);
     if (res.ok) data = await res.json();
   } catch {}
 
   const enabledEl = document.getElementById("email-alerts-enabled");
-  const defaultEl = document.getElementById("email-alerts-default");
 
-  if (enabledEl) enabledEl.checked = !!(data && data.enabled);
-  if (defaultEl) defaultEl.textContent = (data && data.defaultEmail) ? data.defaultEmail : "—";
+  EMAIL_ALERTS_STATE.enabled = !!data?.enabled;
+  if (enabledEl) enabledEl.checked = EMAIL_ALERTS_STATE.enabled;
 
+  const defaultEmail = normalizeEmail(data?.defaultEmail);
+  const extras = Array.isArray(data?.recipients) ? data.recipients.map(normalizeEmail) : [];
+
+  EMAIL_ALERTS_STATE.recipients = [...new Set(
+    []
+      .concat(defaultEmail ? [defaultEmail] : [])
+      .concat(extras)
+      .filter(Boolean)
+  )];
+
+  renderEmailChips();
   showEmailModal();
 }
+
 
 
   async function loadCarrier() {
@@ -343,7 +460,7 @@ try {
 
   function wireEmailClick(dot) {
   if (!emailBtn) return;
-  emailBtn.onclick = () => openEmailAlertsModal(dot, emailBtn);
+  emailBtn.onclick = () => openEmailAlertsModal(dot);
 }
 
 
