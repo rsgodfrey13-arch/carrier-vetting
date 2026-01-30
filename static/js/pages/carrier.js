@@ -764,6 +764,10 @@ function wireContractClick(dot) {
         if (emailBtn) {
           emailBtn.classList.remove("pill-disabled");
         }
+
+        if (contractBtn) {
+          contractBtn.classList.remove("pill-disabled");
+        }
     
       // LOGGED IN BUT NOT SAVED
       } else {
