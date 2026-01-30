@@ -69,6 +69,27 @@
     document.body.style.overflow = "";
   }
 
+function setEmailAlertPill(enabled) {
+  const pill = document.getElementById("btn-email-alerts");
+  if (!pill) return;
+
+  const status = pill.querySelector(".email-alert-status");
+  const text = pill.querySelector(".status-text");
+
+  // If your fancy inner markup isn’t present, at least keep the button usable.
+  if (!status || !text) {
+    pill.dataset.enabled = enabled === true ? "on" : enabled === false ? "off" : "unknown";
+    return;
+  }
+
+  status.classList.toggle("on", enabled === true);
+  status.classList.toggle("off", enabled === false);
+  status.classList.toggle("unknown", enabled == null);
+
+  text.textContent = enabled === true ? "On" : enabled === false ? "Off" : "—";
+}
+
+  
   function wireEmailModalOnce() {
   if (window.__emailModalWired) return;
   window.__emailModalWired = true;
@@ -461,24 +482,6 @@ try {
   if (!emailBtn) return;
   emailBtn.onclick = () => openEmailAlertsModal(dot);
 }
-
-
-function setEmailAlertPill(enabled) {
-  const pill = document.getElementById("btn-email-alerts");
-  if (!pill) return;
-
-  // if your fancy markup isn’t present, don’t destroy the button — just bail
-  const status = pill.querySelector(".email-alert-status");
-  const text = pill.querySelector(".status-text");
-  if (!status || !text) return;
-
-  status.classList.toggle("on", enabled === true);
-  status.classList.toggle("off", enabled === false);
-  status.classList.toggle("unknown", enabled == null);
-
-  text.textContent = enabled === true ? "On" : enabled === false ? "Off" : "—";
-}
-
 
 
     function setState({ isSaved, isLoggedIn }) {
