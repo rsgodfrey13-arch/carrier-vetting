@@ -690,10 +690,21 @@ try {
     }
   });
 
+  function setEmailAlertPill(enabled){
+  const pill = document.getElementById("btn-email-alerts");
+  if (!pill) return;
+
+  const status = pill.querySelector(".email-alert-status");
+  const text = pill.querySelector(".status-text");
+
+  status.classList.toggle("on", enabled);
+  status.classList.toggle("off", !enabled);
+  text.textContent = enabled ? "On" : "Off";
+}
 
   // Run ONCE
 document.addEventListener("DOMContentLoaded", () => {
-    wireEmailModalOnce();
+  wireEmailModalOnce();
   loadCarrier();
 });
 
