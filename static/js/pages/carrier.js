@@ -73,21 +73,35 @@ function setEmailAlertPill(enabled) {
   const pill = document.getElementById("btn-email-alerts");
   if (!pill) return;
 
-  const status = pill.querySelector(".email-alert-status");
-  const text = pill.querySelector(".status-text");
+  // Ensure inner markup exists (create it if missing)
+  let status = pill.querySelector(".email-alert-status");
+  let text = pill.querySelector(".status-text");
 
-  // If your fancy inner markup isn’t present, at least keep the button usable.
   if (!status || !text) {
-    pill.dataset.enabled = enabled === true ? "on" : enabled === false ? "off" : "unknown";
-    return;
+    // If your HTML is different, we inject the pieces we need
+    // without blowing away your existing content.
+    status = document.createElement("span");
+    status.className = "email-alert-status";
+
+    text = document.createElement("span");
+    text.className = "status-text";
+    text.textContent = "—";
+
+    status.appendChild(text);
+    pill.appendChild(status);
   }
 
+  // Store state for CSS if you want it later
+  pill.dataset.enabled = enabled === true ? "on" : enabled === false ? "off" : "unknown";
+
+  // Update classes + text
   status.classList.toggle("on", enabled === true);
   status.classList.toggle("off", enabled === false);
   status.classList.toggle("unknown", enabled == null);
 
   text.textContent = enabled === true ? "On" : enabled === false ? "Off" : "—";
 }
+
 
   
   function wireEmailModalOnce() {
