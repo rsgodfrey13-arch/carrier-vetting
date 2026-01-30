@@ -53,6 +53,21 @@
     return "—";
   }
 
+// ----------------------------
+// SEND CONTRACT MODAL HELPERS
+// ----------------------------
+function showSendContractModal() {
+  const el = document.getElementById("send-contract-modal");
+  if (el) el.hidden = false;
+  document.body.style.overflow = "hidden";
+}
+
+function hideSendContractModal() {
+  const el = document.getElementById("send-contract-modal");
+  if (el) el.hidden = true;
+  document.body.style.overflow = "";
+}
+
 
   // ----------------------------
   // EMAIL ALERTS MODAL HELPERS
@@ -262,6 +277,220 @@ async function openEmailAlertsModal(dot) {
 }
 
 
+let SEND_CONTRACT_STATE = {
+  dot: null,
+  defaultEmail: "",      // locked
+  recipients: [],        // extras (removable)
+  user_contract_id: ""   // required by backend
+};
+
+function renderSendContractDefaultChip() {
+  const wrap = document.getElementById("send-contract-default-chip");
+  if (!wrap) return;
+
+  wrap.innerHTML = "";
+
+  const email = normalizeEmail(SEND_CONTRACT_STATE.defaultEmail);
+  if (!email) {
+    const empty = document.createElement("div");
+    empty.className = "cs-hint";
+    empty.textContent = "No FMCSA contact email found for this carrier.";
+    wrap.appendChild(empty);
+    return;
+  }
+
+  const chip = document.createElement("span");
+  chip.className = "cs-chip";
+
+  const label = document.createElement("span");
+  label.textContent = email;
+
+  // locked: no X
+  chip.appendChild(label);
+  wrap.appendChild(chip);
+}
+
+function renderSendContractChips() {
+  const wrap = document.getElementById("send-contract-chips");
+  if (!wrap) return;
+
+  wrap.innerHTML = "";
+
+  if (!SEND_CONTRACT_STATE.recipients.length) {
+    const empty = document.createElement("div");
+    empty.className = "cs-hint";
+    empty.textContent = "No additional recipients yet. Add one below.";
+    wrap.appendChild(empty);
+    return;
+  }
+
+  SEND_CONTRACT_STATE.recipients.forEach((email) => {
+    const chip = document.createElement("span");
+    chip.className = "cs-chip";
+
+    const label = document.createElement("span");
+    label.textContent = email;
+
+    const x = document.createElement("button");
+    x.type = "button";
+    x.className = "cs-chip-x";
+    x.textContent = "×";
+    x.addEventListener("click", () => {
+      SEND_CONTRACT_STATE.recipients = SEND_CONTRACT_STATE.recipients.filter(e => e !== email);
+      renderSendContractChips();
+    });
+
+    chip.appendChild(label);
+    chip.appendChild(x);
+    wrap.appendChild(chip);
+  });
+}
+
+function wireSendContractModalOnce() {
+  if (window.__sendContractModalWired) return;
+  window.__sendContractModalWired = true;
+
+  document.getElementById("send-contract-close")?.addEventListener("click", hideSendContractModal);
+  document.getElementById("send-contract-cancel")?.addEventListener("click", hideSendContractModal);
+
+  document.getElementById("send-contract-modal")?.addEventListener("click", (e) => {
+    if (e.target && e.target.id === "send-contract-modal") hideSendContractModal();
+  });
+
+  // Add recipient behavior
+  const inputEl = document.getElementById("send-contract-input");
+  const addBtn = document.getElementById("send-contract-add");
+
+  function addFromInput() {
+    const raw = normalizeEmail(inputEl?.value);
+    if (!raw) return;
+
+    if (!isValidEmail(raw)) {
+      alert("Please enter a valid email address.");
+      inputEl?.focus();
+      return;
+    }
+
+    // Prevent duplicates and prevent adding the locked default as an "extra"
+    const def = normalizeEmail(SEND_CONTRACT_STATE.defaultEmail);
+    if (raw === def) {
+      if (inputEl) inputEl.value = "";
+      return;
+    }
+
+    if (!SEND_CONTRACT_STATE.recipients.includes(raw)) {
+      SEND_CONTRACT_STATE.recipients.push(raw);
+      SEND_CONTRACT_STATE.recipients.sort();
+      renderSendContractChips();
+    }
+
+    if (inputEl) inputEl.value = "";
+    inputEl?.focus();
+  }
+
+  addBtn?.addEventListener("click", addFromInput);
+  inputEl?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addFromInput();
+    }
+  });
+
+  // SEND button
+  document.getElementById("send-contract-send")?.addEventListener("click", async () => {
+    const dot = SEND_CONTRACT_STATE.dot;
+    const templateId = SEND_CONTRACT_STATE.user_contract_id;
+    const defaultEmail = normalizeEmail(SEND_CONTRACT_STATE.defaultEmail);
+
+    if (!dot) return alert("Missing DOT.");
+    if (!templateId) return alert("Please select a contract template.");
+    if (!defaultEmail) return alert("No FMCSA contact email found for this carrier.");
+
+    // backend expects email_to (string). We'll send comma-separated list.
+    const allRecipients = [defaultEmail].concat(SEND_CONTRACT_STATE.recipients || []);
+    const email_to = allRecipients.join(", ");
+
+    const res = await fetch(`/api/contracts/send/${encodeURIComponent(dot)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_contract_id: templateId,
+        email_to
+      })
+    });
+
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      alert(body.error || "Failed to send contract.");
+      return;
+    }
+
+    hideSendContractModal();
+    alert("Contract sent.");
+  });
+}
+
+async function openSendContractModal(dot, carrierObj) {
+  // ensure modal is wired
+  wireSendContractModalOnce();
+
+  // guess the FMCSA email from carrier payload (adjust field name if yours differs)
+  const guessedDefault =
+    carrierObj?.emailaddress ||
+    carrierObj?.email_address ||
+    carrierObj?.contact_email ||
+    carrierObj?.contactemail ||
+    "";
+
+  SEND_CONTRACT_STATE = {
+    dot: String(dot || "").trim(),
+    defaultEmail: guessedDefault,
+    recipients: [],
+    user_contract_id: ""
+  };
+
+  // Load templates
+  const sel = document.getElementById("send-contract-template");
+  if (sel) {
+    sel.innerHTML = `<option value="">Loading…</option>`;
+  }
+
+  try {
+    const r = await fetch("/api/user-contracts");
+    const data = r.ok ? await r.json() : null;
+    const rows = Array.isArray(data?.rows) ? data.rows : [];
+
+    if (!sel) return;
+
+    if (!rows.length) {
+      sel.innerHTML = `<option value="">No templates found</option>`;
+      SEND_CONTRACT_STATE.user_contract_id = "";
+    } else {
+      sel.innerHTML = `<option value="">Select a template…</option>` + rows.map((t) => {
+        const label = `${t.name || "Contract"}${t.version ? " v" + t.version : ""}`;
+        return `<option value="${t.id}">${label}</option>`;
+      }).join("");
+
+      // default to most recent template (first row based on your ORDER BY created_at DESC)
+      sel.value = rows[0].id;
+      SEND_CONTRACT_STATE.user_contract_id = rows[0].id;
+    }
+
+    sel.onchange = () => {
+      SEND_CONTRACT_STATE.user_contract_id = sel.value || "";
+    };
+
+  } catch (e) {
+    if (sel) sel.innerHTML = `<option value="">Failed to load templates</option>`;
+  }
+
+  renderSendContractDefaultChip();
+  renderSendContractChips();
+  showSendContractModal();
+}
+  
+
+  // Load Carrier Stuff
 
   async function loadCarrier() {
     const dot = CURRENT_DOT;
@@ -283,7 +512,9 @@ const data = await res.json();
 
 // support both old and new response shapes
 const c = data && data.carrier ? data.carrier : data;
+window.__carrierProfile = c;
 
+      
 // if backend returned stale data, re-fetch once after background refresh
 if (data && data.source === "cache_stale") {
   const key = `carrier_refetch_${dot}`;
