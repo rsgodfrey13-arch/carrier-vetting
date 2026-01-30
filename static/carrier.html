@@ -115,12 +115,14 @@
       -->
       <!-- ACTION BUTTONS, SEPARATE ROW -->
       <div class="carrier-actions">
-        <button id="btn-add-carrier" class="pill-btn pill-add">
-          + Add Carrier
+        <button id="btn-add-carrier" class="pill-btn pill-add">+ Add Carrier</button>
+      
+        <!-- NEW: Send Contract -->
+        <button id="btn-send-contract" class="pill-btn pill-add pill-disabled" type="button">
+          Send Contract
         </button>
-        <button id="btn-remove-carrier" class="pill-btn pill-remove pill-disabled">
-          Remove Carrier
-        </button>
+      
+        <button id="btn-remove-carrier" class="pill-btn pill-remove pill-disabled">Remove Carrier</button>
       </div>
     </div> <!-- end .carrier-right -->
   </div> <!-- end .carrier-header-top -->
@@ -504,6 +506,73 @@
 </div>
 
 
+<!-- Send Contract Modal -->
+<div id="send-contract-modal" class="cs-modal-backdrop" hidden>
+  <div class="cs-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="send-contract-title">
+
+    <div class="cs-modal-header">
+      <div class="cs-modal-headings">
+        <div id="send-contract-title" class="cs-modal-title">Send Contract</div>
+        <div class="cs-modal-subtitle">Send a contract to this carrier’s FMCSA contact and any additional recipients.</div>
+      </div>
+
+      <button id="send-contract-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
+    </div>
+
+    <div class="cs-modal-body">
+
+      <!-- Contract template -->
+      <div class="cs-row cs-row-col">
+        <div class="cs-label">Contract Template</div>
+        <div class="cs-hint">Choose which contract version to send.</div>
+
+        <select id="send-contract-template" class="cs-input" style="width:100%;">
+          <option value="">Loading…</option>
+        </select>
+      </div>
+
+      <div class="cs-divider"></div>
+
+      <!-- Default recipient (locked) -->
+      <div class="cs-row cs-row-col">
+        <div class="cs-label">FMCSA Contact</div>
+        <div class="cs-hint">This is the carrier contact email on file with FMCSA (can’t be removed).</div>
+
+        <div id="send-contract-default-chip" class="cs-chips"></div>
+      </div>
+
+      <div class="cs-divider"></div>
+
+      <!-- Additional recipients -->
+      <div class="cs-row cs-row-col">
+        <div class="cs-label">Additional Recipients</div>
+
+        <div id="send-contract-chips" class="cs-chips"></div>
+
+        <div class="cs-inline">
+          <input id="send-contract-input" class="cs-input" type="email" placeholder="Add an email (name@company.com)">
+          <button id="send-contract-add" class="cs-btn cs-btn-ghost" type="button">Add</button>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="cs-modal-footer">
+      <div class="cs-footer-left">
+        <a class="cs-btn cs-btn-manage" href="/settings/contracts">
+          Manage Contract Settings
+          <span class="cs-btn-arrow">→</span>
+        </a>
+      </div>
+
+      <div class="cs-footer-right">
+        <button id="send-contract-cancel" class="cs-btn cs-btn-ghost" type="button">Cancel</button>
+        <button id="send-contract-send" class="cs-btn cs-btn-primary" type="button">Send</button>
+      </div>
+    </div>
+
+  </div>
+</div>
 
   
 
