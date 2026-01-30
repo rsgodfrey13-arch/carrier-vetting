@@ -580,6 +580,9 @@ try {
         const r = await fetch(`/api/my-carriers/${encodeURIComponent(dot)}/alerts/email`);
         if (r.ok) {
           const s = await r.json();
+
+          console.log("ALERTS GET:", s); // 👈 ADD THIS LINE
+          
           setEmailAlertPill(!!s.enabled);   
           
         } else {
