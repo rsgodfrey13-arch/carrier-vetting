@@ -468,13 +468,13 @@ try {
   const pill = document.getElementById("btn-email-alerts");
   if (!pill) return;
 
-  const status = pill.querySelector(".email-alert-status");
-  const text = pill.querySelector(".status-text");
+  const sw = pill.querySelector(".ios-switch");
+  if (!sw) return;
 
-  status.classList.toggle("on", enabled);
-  status.classList.toggle("off", !enabled);
-  text.textContent = enabled ? "On" : "Off";
+  sw.classList.toggle("on", !!enabled);
+  sw.classList.toggle("off", !enabled);
 }
+
 
     function setState({ isSaved, isLoggedIn }) {
       // NOT LOGGED IN
