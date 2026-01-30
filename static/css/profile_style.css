@@ -804,3 +804,10 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   display: flex;
   gap: 10px;
 }
+
+.cs-btn-manage{
+  opacity: .9;
+}
+.cs-btn-manage:hover{
+  opacity: 1;
+}
