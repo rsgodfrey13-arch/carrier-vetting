@@ -906,3 +906,99 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   padding-top: 6px;          /* tune if needed */
   padding-bottom: 6px;
 }
+
+
+/* clickable control container */
+.email-toggle{
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 8px 12px;
+  border-radius: 999px;
+
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12);
+
+  color: rgba(255,255,255,.92);
+  font-weight: 700;
+  letter-spacing: .2px;
+
+  cursor: pointer;
+
+  transition: transform .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+.email-toggle:hover{
+  transform: translateY(-1px);
+  background: rgba(255,255,255,.10);
+  border-color: rgba(255,255,255,.18);
+  box-shadow: 0 10px 24px rgba(0,0,0,.25);
+}
+
+.email-toggle-text{
+  opacity: .95;
+  font-size: 13px;
+}
+
+/* iOS-ish switch */
+.ios-switch{
+  position: relative;
+  width: 86px;
+  height: 30px;
+  border-radius: 999px;
+
+  border: 1px solid rgba(255,255,255,.16);
+  background: rgba(148,163,184,.22);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 10px;
+  overflow: hidden;
+
+  transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+/* knob */
+.ios-knob{
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.92);
+  box-shadow: 0 8px 18px rgba(0,0,0,.35);
+  transition: transform .18s ease;
+}
+
+/* ON/OFF text */
+.ios-word{
+  position: relative;
+  z-index: 1;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .6px;
+  opacity: .85;
+}
+
+.ios-on{ color: rgba(255,255,255,.95); }
+.ios-off{ color: rgba(15,23,42,.85); }
+
+/* OFF state */
+.ios-switch.off{
+  background: rgba(148,163,184,.22);
+}
+
+/* ON state — make it noticeable (but not loud) */
+.ios-switch.on{
+  background: rgba(239,68,68,.45);          /* red tint */
+  border-color: rgba(239,68,68,.55);
+  box-shadow: 0 0 0 4px rgba(239,68,68,.12); /* soft glow */
+}
+
+.ios-switch.on .ios-knob{
+  transform: translateX(56px); /* moves knob right */
+}
