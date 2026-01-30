@@ -484,3 +484,269 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
 
 /* Optional: if you ever toggle with [hidden] */
 .cs-modal-backdrop[hidden]{ display: none !important; }
+
+/* ===== Modal Backdrop ===== */
+.cs-modal-backdrop{
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(2, 6, 23, .58);
+  z-index: 999999;
+}
+
+/* ===== Modal Container ===== */
+.cs-modal{
+  width: min(720px, 100%);
+  max-height: 86vh;
+  overflow: hidden;
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow:
+    0 30px 80px rgba(0,0,0,.65),
+    inset 0 1px 0 rgba(255,255,255,.06);
+  background: rgba(2, 6, 23, .78);
+  backdrop-filter: blur(16px);
+}
+
+/* Header */
+.cs-modal-header{
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px 18px 12px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.cs-modal-headings{ min-width: 0; }
+
+.cs-modal-title{
+  font-weight: 750;
+  letter-spacing: .2px;
+  font-size: 18px;
+  color: rgba(255,255,255,.95);
+}
+
+.cs-modal-subtitle{
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: rgba(226,232,240,.82);
+}
+
+.cs-modal-x{
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.90);
+  font-size: 18px;
+  line-height: 0;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: transform .12s ease, background .12s ease, border-color .12s ease;
+}
+.cs-modal-x:hover{
+  background: rgba(255,255,255,.10);
+  border-color: rgba(255,255,255,.16);
+  transform: translateY(-1px);
+}
+
+/* Body */
+.cs-modal-body{
+  padding: 16px 18px 18px;
+}
+
+.cs-row{
+  display: flex;
+  gap: 14px;
+}
+.cs-row-between{
+  align-items: center;
+  justify-content: space-between;
+}
+.cs-row-col{
+  flex-direction: column;
+}
+
+.cs-label{
+  font-size: 12px;
+  letter-spacing: .18px;
+  text-transform: uppercase;
+  color: rgba(148,163,184,.95);
+}
+
+.cs-hint{
+  margin-top: 4px;
+  font-size: 13px;
+  color: rgba(226,232,240,.78);
+}
+
+.cs-divider{
+  height: 1px;
+  background: rgba(255,255,255,.08);
+  margin: 14px 0;
+}
+
+/* ===== Toggle ===== */
+.cs-toggle{
+  position: relative;
+  width: 46px;
+  height: 28px;
+  display: inline-block;
+}
+.cs-toggle input{
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.cs-toggle-ui{
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(148,163,184,.25);
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+  transition: background .14s ease, border-color .14s ease;
+}
+.cs-toggle-ui::after{
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.92);
+  box-shadow: 0 6px 18px rgba(0,0,0,.45);
+  transition: transform .14s ease;
+}
+.cs-toggle input:checked + .cs-toggle-ui{
+  background: rgba(16,185,129,.35);
+  border-color: rgba(16,185,129,.55);
+}
+.cs-toggle input:checked + .cs-toggle-ui::after{
+  transform: translateX(18px);
+}
+
+/* ===== Recipients chips ===== */
+.cs-chips{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.04);
+}
+
+.cs-chip{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(2, 6, 23, .35);
+  color: rgba(255,255,255,.92);
+  font-size: 13px;
+  letter-spacing: .1px;
+}
+.cs-chip .cs-chip-x{
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 0;
+  background: rgba(255,255,255,.10);
+  color: rgba(255,255,255,.92);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+/* ===== Input row ===== */
+.cs-inline{
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.cs-input{
+  flex: 1;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(2,6,23,.35);
+  color: rgba(255,255,255,.92);
+  outline: none;
+}
+.cs-input::placeholder{
+  color: rgba(148,163,184,.85);
+}
+.cs-input:focus{
+  border-color: rgba(56,189,248,.55);
+  box-shadow: 0 0 0 4px rgba(56,189,248,.12);
+}
+
+/* ===== Buttons ===== */
+.cs-btn{
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 12px;
+  font-weight: 700;
+  letter-spacing: .2px;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.92);
+  transition: transform .12s ease, background .12s ease, border-color .12s ease;
+}
+.cs-btn:hover{
+  transform: translateY(-1px);
+  background: rgba(255,255,255,.10);
+  border-color: rgba(255,255,255,.18);
+}
+.cs-btn:active{
+  transform: translateY(0px);
+}
+
+.cs-btn-ghost{
+  background: rgba(255,255,255,.05);
+}
+
+.cs-btn-primary{
+  border-color: rgba(16,185,129,.55);
+  background: rgba(16,185,129,.18);
+}
+.cs-btn-primary:hover{
+  background: rgba(16,185,129,.24);
+  border-color: rgba(16,185,129,.70);
+}
+
+/* Footer */
+.cs-modal-footer{
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 18px 16px;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+
+.cs-link{
+  margin-top: 6px;
+  display: inline-block;
+  font-size: 13px;
+  color: rgba(56,189,248,.95);
+  text-decoration: none;
+}
+.cs-link:hover{
+  text-decoration: underline;
+}
+
