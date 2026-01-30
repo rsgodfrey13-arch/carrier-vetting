@@ -578,13 +578,13 @@ function setEmailAlertPill(enabled) {
         if (r.ok) {
           const s = await r.json();
           setEmailAlertPill(!!s.enabled);   
-          emailBtn.textContent = `Email Alerts: ${s.enabled ? "On" : "Off"}`;
+          
         } else {
-          emailBtn.textContent = "Email Alerts: —";
-          setEmailAlertPill(false);
+          
+          setEmailAlertPill(null);
         }
       } catch {
-        emailBtn.textContent = "Email Alerts: —";
+        setEmailAlertPill(null);
       }
     }
 
