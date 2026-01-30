@@ -434,13 +434,18 @@ async function openSendContractModal(dot, carrierObj) {
   // ensure modal is wired
   wireSendContractModalOnce();
 
-  // guess the FMCSA email from carrier payload (adjust field name if yours differs)
-  const guessedDefault =
-    carrierObj?.emailaddress ||
-    carrierObj?.email_address ||
-    carrierObj?.contact_email ||
-    carrierObj?.contactemail ||
-    "";
+  // ✅ For now: only use carriers.email_address
+// Later you can expand this to FMCSA contact fields if you add them.
+const guessedDefault = carrierObj?.email_address || "";
+
+// --- FUTURE (optional) --- FUUU TURREE FUUUU TURRREEE
+// If you later add FMCSA fields or parse from FMCSA API, you can do:
+// const guessedDefault =
+//   carrierObj?.email_address ||
+//   carrierObj?.fmcsa_email ||
+//   carrierObj?.fmcsa_contact_email ||
+//   carrierObj?.contact_email ||
+//   "";
 
   SEND_CONTRACT_STATE = {
     dot: String(dot || "").trim(),
