@@ -885,3 +885,24 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
 .email-alert-status.off .status-text{
   color: rgba(255,255,255,.6);
 }
+
+.carrier-name-row{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.carrier-name-row{
+  align-items: center; /* keep */
+}
+
+#carrier-name{
+  line-height: 1.1; /* helps vertical alignment */
+}
+
+#btn-email-alerts{
+  align-self: center;        /* forces it onto the same baseline */
+  line-height: 1;            /* prevents sag */
+  padding-top: 6px;          /* tune if needed */
+  padding-bottom: 6px;
+}
