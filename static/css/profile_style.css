@@ -1167,3 +1167,30 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
 #btn-email-alerts .ios-switch {
   transition: transform .18s ease, box-shadow .18s ease, opacity .18s ease;
 }
+
+
+/* Contract button — sleek gold */
+.pill-btn.pill-contract{
+  border: 1px solid rgba(255, 210, 120, .35);
+  background: linear-gradient(180deg,
+    rgba(255, 200, 90, .22) 0%,
+    rgba(180, 120, 35, .18) 100%);
+  color: rgba(255, 245, 220, .95);
+  box-shadow:
+    0 10px 28px rgba(0,0,0,.25),
+    0 0 0 1px rgba(255, 200, 90, .10) inset;
+}
+
+.pill-btn.pill-contract:hover{
+  transform: translateY(-1px);
+  border-color: rgba(255, 215, 140, .55);
+  background: linear-gradient(180deg,
+    rgba(255, 210, 110, .30) 0%,
+    rgba(190, 125, 35, .22) 100%);
+}
+
+.pill-btn.pill-contract:active{
+  transform: translateY(0px);
+}
+
+/* Disabled state still uses your existing .pill-disabled look */
