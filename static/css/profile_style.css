@@ -1041,3 +1041,101 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   transform: translateY(-1px);
   box-shadow: 0 10px 30px rgba(0,0,0,.25);
 }
+
+
+/* ===== Email Alerts pill toggle: make it clean + readable ===== */
+
+/* container pill */
+#btn-email-alerts.email-toggle{
+  padding: 7px 12px;
+  gap: 12px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.055);
+  box-shadow:
+    0 10px 26px rgba(0,0,0,.22),
+    inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+#btn-email-alerts.email-toggle:hover{
+  background: rgba(255,255,255,.085);
+  border-color: rgba(255,255,255,.20);
+}
+
+/* switch body */
+#btn-email-alerts .ios-switch{
+  width: 92px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+
+  border: 1px solid rgba(255,255,255,.16);
+  background: rgba(148,163,184,.18);
+
+  box-shadow:
+    inset 0 0 0 1px rgba(2,6,23,.55),
+    inset 0 10px 18px rgba(2,6,23,.35);
+}
+
+/* knob */
+#btn-email-alerts .ios-knob{
+  width: 24px;
+  height: 24px;
+  top: 3px;
+  left: 3px;
+  background: rgba(255,255,255,.92);
+  box-shadow:
+    0 10px 22px rgba(0,0,0,.35),
+    inset 0 1px 0 rgba(255,255,255,.55);
+}
+
+/* words */
+#btn-email-alerts .ios-word{
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .18em;
+  opacity: .42;                 /* default: dim */
+  transition: opacity .15s ease, color .15s ease;
+}
+
+/* OFF state: subtle red vibe */
+#btn-email-alerts .ios-switch.off{
+  background: rgba(239,68,68,.16);
+  border-color: rgba(239,68,68,.28);
+  box-shadow:
+    inset 0 0 0 1px rgba(2,6,23,.55),
+    inset 0 10px 18px rgba(2,6,23,.35),
+    0 0 0 4px rgba(239,68,68,.06);
+}
+
+#btn-email-alerts .ios-switch.off .ios-off{
+  opacity: .92;
+  color: rgba(255,255,255,.92);
+}
+#btn-email-alerts .ios-switch.off .ios-on{
+  opacity: .22;
+  color: rgba(226,232,240,.65);
+}
+
+/* ON state: calm green */
+#btn-email-alerts .ios-switch.on{
+  background: rgba(16,185,129,.20);
+  border-color: rgba(16,185,129,.34);
+  box-shadow:
+    inset 0 0 0 1px rgba(2,6,23,.55),
+    inset 0 10px 18px rgba(2,6,23,.35),
+    0 0 0 4px rgba(16,185,129,.07);
+}
+
+#btn-email-alerts .ios-switch.on .ios-on{
+  opacity: .92;
+  color: rgba(255,255,255,.92);
+}
+#btn-email-alerts .ios-switch.on .ios-off{
+  opacity: .22;
+  color: rgba(226,232,240,.65);
+}
+
+/* move knob right when ON */
+#btn-email-alerts .ios-switch.on .ios-knob{
+  transform: translateX(58px);
+}
