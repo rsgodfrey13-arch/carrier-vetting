@@ -15,6 +15,27 @@
     security: $("tab-security"),
   };
 
+  function setPlanBadge(planRaw) {
+  const el = document.getElementById("plan-badge");
+  if (!el) return;
+
+  const tier = String(planRaw || "").trim().toLowerCase(); // "gold", "silver", etc
+
+  // text
+  el.textContent = tier ? tier.toUpperCase() : "—";
+
+  // base class for the fancy badge styling
+  el.classList.add("plan-badge");
+
+  // clear old tier classes
+  el.classList.remove("plan-bronze", "plan-silver", "plan-gold", "plan-platinum");
+
+  // apply tier class (only if valid)
+  const allowed = new Set(["bronze", "silver", "gold", "platinum"]);
+  if (allowed.has(tier)) el.classList.add(`plan-${tier}`);
+}
+
+
   function setActiveTab(name) {
     railItems.forEach((b) =>
       b.classList.toggle("is-active", b.dataset.tab === name)
@@ -165,15 +186,17 @@
     if ($("me-email")) $("me-email").textContent = me?.email || me?.user?.email || "—";
     if ($("me-company")) $("me-company").textContent = me?.company || me?.user?.company || "—";
     if ($("me-plan")) $("me-plan").textContent = me?.plan || me?.user?.plan || "—";
-
+setPlanBadge(me?.plan || me?.user?.plan);
     setPill("me-email_alerts", me?.email_alerts);
     setPill("me-rest_alerts", me?.rest_alerts);
     setPill("me-webhook_alerts", me?.webhook_alerts);
 
     // Plan badge: keep it simple for now (no “tier logic”)
-    const planBadge = $("plan-badge");
-    if (planBadge) planBadge.textContent = me?.plan || me?.user?.plan || "—";
+   // const planBadge = $("plan-badge");
+  // if (planBadge) planBadge.textContent = me?.plan || me?.user?.plan || "—";
 
+
+    
     // 2) Agreements (only if that section exists)
     if ($("agreements-tbody")) {
       const ag = await apiGet("/api/user/agreements");
