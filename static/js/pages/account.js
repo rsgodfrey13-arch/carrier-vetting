@@ -175,6 +175,104 @@
       .join("");
   }
 
+
+// -----------------------------
+// Email alert fields (per-user)
+// -----------------------------
+let emailFieldsOriginal = [];
+let emailFieldsCurrent = [];
+
+function clone(obj) {
+  return JSON.parse(JSON.stringify(obj));
+}
+
+function renderEmailAlertFields(fields) {
+  const host = document.getElementById("email-alert-fields");
+  if (!host) return;
+
+  // group by category
+  const groups = new Map();
+  for (const f of fields) {
+    const cat = f.category || "Other";
+    if (!groups.has(cat)) groups.set(cat, []);
+    groups.get(cat).push(f);
+  }
+
+  host.innerHTML = Array.from(groups.entries()).map(([cat, items]) => {
+    const inner = items.map((f) => {
+      const checked = f.enabled ? "checked" : "";
+      const label = f.label || f.field_key;
+      return `
+        <label class="toggle">
+          <input type="checkbox" data-field-key="${f.field_key}" ${checked}>
+          <span>${label}</span>
+        </label>
+      `;
+    }).join("");
+
+    return `
+      <div class="alert-cat">
+        <div class="alert-cat-title">${cat}</div>
+        <div class="toggle-grid">
+          ${inner}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  // bind changes
+  host.querySelectorAll('input[type="checkbox"][data-field-key]').forEach((cb) => {
+    cb.addEventListener("change", () => {
+      const key = cb.getAttribute("data-field-key");
+      const row = emailFieldsCurrent.find((x) => x.field_key === key);
+      if (row) row.enabled = cb.checked;
+      updateEmailFieldsSaveState();
+    });
+  });
+}
+
+function updateEmailFieldsSaveState() {
+  const btn = document.getElementById("btn-save-alert-fields");
+  if (!btn) return;
+  const dirty = JSON.stringify(emailFieldsCurrent) !== JSON.stringify(emailFieldsOriginal);
+  btn.disabled = !dirty;
+}
+
+async function loadEmailAlertFields() {
+  // You implement these endpoints on backend
+  const data = await apiGet("/api/account/email-alert-fields");
+  const fields = data?.fields || [];
+
+  emailFieldsOriginal = clone(fields);
+  emailFieldsCurrent  = clone(fields);
+
+  renderEmailAlertFields(emailFieldsCurrent);
+  updateEmailFieldsSaveState();
+}
+
+async function saveEmailAlertFields() {
+  const btn = document.getElementById("btn-save-alert-fields");
+  if (btn) btn.disabled = true;
+
+  // send only changes
+  const updates = [];
+  const origMap = new Map(emailFieldsOriginal.map((x) => [x.field_key, x.enabled]));
+  for (const cur of emailFieldsCurrent) {
+    if (origMap.get(cur.field_key) !== cur.enabled) {
+      updates.push({ field_key: cur.field_key, enabled: cur.enabled });
+    }
+  }
+
+  if (!updates.length) return;
+
+  await apiPost("/api/account/email-alert-fields", { updates });
+
+  emailFieldsOriginal = clone(emailFieldsCurrent);
+  updateEmailFieldsSaveState();
+}
+
+
+  
   // -----------------------------
   // Main load
   // -----------------------------
@@ -195,6 +293,10 @@ setPlanBadge(me?.plan || me?.user?.plan);
    // const planBadge = $("plan-badge");
   // if (planBadge) planBadge.textContent = me?.plan || me?.user?.plan || "—";
 
+// Load per-field categories only if the container exists
+if (document.getElementById("email-alert-fields")) {
+  await loadEmailAlertFields();
+}
 
     
     // 2) Agreements (only if that section exists)
@@ -216,5 +318,10 @@ setPlanBadge(me?.plan || me?.user?.plan);
     }
   }
 
+  document.getElementById("btn-save-alert-fields")?.addEventListener("click", () => {
+  saveEmailAlertFields().catch(console.error);
+});
+
+  
   loadEverything().catch((err) => console.error(err));
 })();
