@@ -174,6 +174,12 @@
     setPill("me-rest_alerts",    !!me?.rest_alerts);
     setPill("me-webhook_alerts", !!me?.webhook_alerts);
 
+    // plan (simple string only)
+    const planText = me?.plan || me?.user?.plan || "—";
+    const planBadge = document.getElementById("plan-badge");
+    if (planBadge) planBadge.textContent = planText;
+
+
     // 2) alert settings (ONLY binds if those elements exist)
     const settings = await apiGet("/api/user/alert-settings").catch(() => null);
     const fallback = {
