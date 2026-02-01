@@ -13,3 +13,7 @@ body.login-page {
 .login-card { width: 100%; max-width: 440px; padding: 18px; }
 */
 html, body { margin: 0; padding: 0; }
+
+body.carrier-list .page{
+  padding:0 18px 52px;
+}
