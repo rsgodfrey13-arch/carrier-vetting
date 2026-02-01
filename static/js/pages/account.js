@@ -16,15 +16,18 @@
   let originalSettings = null;
   let currentSettings = null;
 
+  // These may not exist if you removed that section (that's fine)
   const savebar = $("savebar");
   const saveText = $("savebar-text");
 
   function setActiveTab(name) {
-    railItems.forEach((b) => b.classList.toggle("is-active", b.dataset.tab === name));
+    railItems.forEach((b) =>
+      b.classList.toggle("is-active", b.dataset.tab === name)
+    );
     Object.entries(panels).forEach(([k, el]) => {
-        if (!el) return;
-        el.classList.toggle("is-active", k === name);
-      });
+      if (!el) return;
+      el.classList.toggle("is-active", k === name);
+    });
   }
 
   railItems.forEach((btn) => {
@@ -35,51 +38,68 @@
     btn.addEventListener("click", () => setActiveTab(btn.dataset.tabJump));
   });
 
-function setPill(id, enabled) {
-  const el = document.getElementById(id);
-  if (!el) return;
+  function setPill(id, enabled) {
+    const el = document.getElementById(id);
+    if (!el) return;
 
-  el.classList.toggle("is-on", enabled === true);
-  el.classList.toggle("is-off", enabled === false);
-}
+    el.classList.toggle("is-on", enabled === true);
+    el.classList.toggle("is-off", enabled === false);
+  }
 
-  
   function deepClone(obj) {
     return JSON.parse(JSON.stringify(obj));
   }
 
   function isDirty() {
+    // If you removed the save/edit section, this might never be set. Treat as not dirty.
+    if (!currentSettings || !originalSettings) return false;
     return JSON.stringify(currentSettings) !== JSON.stringify(originalSettings);
   }
 
   function updateSavebar() {
+    // If savebar is removed from HTML, do nothing (no crash).
+    if (!savebar || !saveText) return;
     const dirty = isDirty();
     savebar.classList.toggle("hidden", !dirty);
     saveText.textContent = dirty ? "Unsaved changes" : "";
   }
 
   function bindSettingsToUI() {
-    // Master toggles
-    $("alerts-master-toggle").checked = !!currentSettings.enabled;
-    $("alerts-enabled").checked = !!currentSettings.enabled;
+    if (!currentSettings) return;
 
-    $("alerts-frequency").value = currentSettings.frequency || "instant";
-    $("alerts-preset").value = currentSettings.preset || "balanced";
+    // All of these elements might be removed from HTML — guard each one.
+    const master = $("alerts-master-toggle");
+    const enabled = $("alerts-enabled");
+    const freq = $("alerts-frequency");
+    const preset = $("alerts-preset");
+    const status = $("alerts-status");
 
-    // category toggles
+    if (master) master.checked = !!currentSettings.enabled;
+    if (enabled) enabled.checked = !!currentSettings.enabled;
+
+    if (freq) freq.value = currentSettings.frequency || "instant";
+    if (preset) preset.value = currentSettings.preset || "balanced";
+
     document.querySelectorAll("[data-cat]").forEach((el) => {
       const key = el.getAttribute("data-cat");
       el.checked = !!currentSettings.categories?.[key];
     });
 
-    // overview pill
-    $("alerts-status").textContent = currentSettings.enabled ? "On" : "Off";
+    if (status) status.textContent = currentSettings.enabled ? "On" : "Off";
   }
 
   function readUIToSettings() {
-    currentSettings.enabled = $("alerts-enabled").checked;
-    currentSettings.frequency = $("alerts-frequency").value;
-    currentSettings.preset = $("alerts-preset").value;
+    if (!currentSettings) return;
+
+    const enabled = $("alerts-enabled");
+    const freq = $("alerts-frequency");
+    const preset = $("alerts-preset");
+    const master = $("alerts-master-toggle");
+    const status = $("alerts-status");
+
+    if (enabled) currentSettings.enabled = !!enabled.checked;
+    if (freq) currentSettings.frequency = freq.value;
+    if (preset) currentSettings.preset = preset.value;
 
     currentSettings.categories = currentSettings.categories || {};
     document.querySelectorAll("[data-cat]").forEach((el) => {
@@ -87,28 +107,30 @@ function setPill(id, enabled) {
       currentSettings.categories[key] = !!el.checked;
     });
 
-    // keep overview toggle synced
-    $("alerts-master-toggle").checked = currentSettings.enabled;
-    $("alerts-status").textContent = currentSettings.enabled ? "On" : "Off";
+    // keep overview toggle synced (only if those elements exist)
+    if (master) master.checked = !!currentSettings.enabled;
+    if (status) status.textContent = currentSettings.enabled ? "On" : "Off";
   }
 
   function attachChangeHandlers() {
-    const inputs = [
-      $("alerts-master-toggle"),
-      $("alerts-enabled"),
-      $("alerts-frequency"),
-      $("alerts-preset"),
-      ...Array.from(document.querySelectorAll("[data-cat]")),
-    ];
+    const master = $("alerts-master-toggle");
+    const enabled = $("alerts-enabled");
+    const freq = $("alerts-frequency");
+    const preset = $("alerts-preset");
+    const cats = Array.from(document.querySelectorAll("[data-cat]"));
+
+    // Build list but remove nulls so addEventListener never hits null
+    const inputs = [master, enabled, freq, preset, ...cats].filter(Boolean);
+
+    // If you deleted those controls from HTML, there will be nothing to attach — that's fine.
+    if (!inputs.length) return;
 
     inputs.forEach((el) => {
       el.addEventListener("change", () => {
-        // sync master toggle
-        if (el === $("alerts-master-toggle")) {
-          $("alerts-enabled").checked = $("alerts-master-toggle").checked;
-        }
-        if (el === $("alerts-enabled")) {
-          $("alerts-master-toggle").checked = $("alerts-enabled").checked;
+        // sync master toggle if both exist
+        if (master && enabled) {
+          if (el === master) enabled.checked = master.checked;
+          if (el === enabled) master.checked = enabled.checked;
         }
 
         readUIToSettings();
@@ -135,18 +157,24 @@ function setPill(id, enabled) {
   }
 
   async function loadEverything() {
-    // 1) me
+    // 1) me (snapshot)
     const me = await apiGet("/api/account/overview");
-    $("me-name").textContent = me?.name || me?.user?.name || "—";
-    $("me-email").textContent = me?.email || me?.user?.email || "—";
-    $("me-company").textContent = me?.company || me?.user?.company || "—";
-    $("me-plan").textContent = me?.plan || me?.user?.plan || "—";
 
-  setPill("me-email_alerts",   !!me?.email_alerts);
-  setPill("me-rest_alerts",    !!me?.rest_alerts);
-  setPill("me-webhook_alerts", !!me?.webhook_alerts);
+    const meName = $("me-name");
+    const meEmail = $("me-email");
+    const meCompany = $("me-company");
+    const mePlan = $("me-plan");
 
-    // 2) alert settings
+    if (meName) meName.textContent = me?.name || me?.user?.name || "—";
+    if (meEmail) meEmail.textContent = me?.email || me?.user?.email || "—";
+    if (meCompany) meCompany.textContent = me?.company || me?.user?.company || "—";
+    if (mePlan) mePlan.textContent = me?.plan || me?.user?.plan || "—";
+
+    setPill("me-email_alerts",   !!me?.email_alerts);
+    setPill("me-rest_alerts",    !!me?.rest_alerts);
+    setPill("me-webhook_alerts", !!me?.webhook_alerts);
+
+    // 2) alert settings (ONLY binds if those elements exist)
     const settings = await apiGet("/api/user/alert-settings").catch(() => null);
     const fallback = {
       enabled: false,
@@ -154,58 +182,72 @@ function setPill(id, enabled) {
       preset: "balanced",
       categories: { insurance: true, authority: true, safety: true, operations: false },
     };
-    
-    originalSettings = deepClone(settings || fallback);
-    currentSettings  = deepClone(settings || fallback);
 
+    originalSettings = deepClone(settings || fallback);
+    currentSettings = deepClone(settings || fallback);
 
     bindSettingsToUI();
     attachChangeHandlers();
 
-    // 3) agreements
-    const ag = await apiGet("/api/user/agreements");
-    renderAgreements(ag);
+    // 3) agreements (ONLY if table exists)
+    const tbody = $("agreements-tbody");
+    if (tbody) {
+      const ag = await apiGet("/api/user/agreements");
+      renderAgreements(ag);
+    }
 
-    // 4) api
-    const api = await apiGet("/api/user/api");
-    $("api-key-masked").textContent = api?.masked_key || "—";
+    // 4) api (ONLY if element exists)
+    const apiKeyEl = $("api-key-masked");
+    if (apiKeyEl) {
+      const api = await apiGet("/api/user/api");
+      apiKeyEl.textContent = api?.masked_key || "—";
+    }
 
-    // 5) plan
-    const plan = await apiGet("/api/user/plan");
-    $("plan-badge").textContent = plan?.name ? plan.name : "—";
-    renderPlans(plan);
+    // 5) plan (ONLY if elements exist)
+    const planBadge = $("plan-badge");
+    const planGrid = $("plan-grid");
+    if (planBadge || planGrid) {
+      const plan = await apiGet("/api/user/plan");
+      if (planBadge) planBadge.textContent = plan?.name ? plan.name : "—";
+      if (planGrid) renderPlans(plan);
+    }
   }
 
   function renderAgreements(data) {
     const tbody = $("agreements-tbody");
+    if (!tbody) return;
+
     const list = data?.agreements || [];
     const defaultId = data?.default_agreement_id;
 
     const defaultAgreement = list.find((x) => x.id === defaultId);
-    $("default-agreement-label").textContent = defaultAgreement ? defaultAgreement.name : "—";
+    const defLabel = $("default-agreement-label");
+    if (defLabel) defLabel.textContent = defaultAgreement ? defaultAgreement.name : "—";
 
     if (!list.length) {
       tbody.innerHTML = `<tr><td colspan="4">No agreements found.</td></tr>`;
       return;
     }
 
-    tbody.innerHTML = list.map((a) => {
-      const isDefault = a.id === defaultId;
-      return `
-        <tr data-id="${a.id}">
-          <td>
-            ${a.name}
-            ${isDefault ? `<span class="badge" style="margin-left:8px;">Default</span>` : ``}
-          </td>
-          <td>${a.type || "—"}</td>
-          <td>${a.updated_at ? new Date(a.updated_at).toLocaleDateString() : "—"}</td>
-          <td style="text-align:right;">
-            <button class="pill-btn pill-btn-secondary" data-preview="${a.id}">Preview</button>
-            <button class="pill-btn" data-make-default="${a.id}">Set default</button>
-          </td>
-        </tr>
-      `;
-    }).join("");
+    tbody.innerHTML = list
+      .map((a) => {
+        const isDefault = a.id === defaultId;
+        return `
+          <tr data-id="${a.id}">
+            <td>
+              ${a.name}
+              ${isDefault ? `<span class="badge" style="margin-left:8px;">Default</span>` : ``}
+            </td>
+            <td>${a.type || "—"}</td>
+            <td>${a.updated_at ? new Date(a.updated_at).toLocaleDateString() : "—"}</td>
+            <td style="text-align:right;">
+              <button class="pill-btn pill-btn-secondary" data-preview="${a.id}">Preview</button>
+              <button class="pill-btn" data-make-default="${a.id}">Set default</button>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
 
     tbody.querySelectorAll("[data-make-default]").forEach((btn) => {
       btn.addEventListener("click", async () => {
@@ -226,6 +268,8 @@ function setPill(id, enabled) {
 
   function renderPlans(plan) {
     const el = $("plan-grid");
+    if (!el) return;
+
     const plans = plan?.available || [
       { id: "starter", name: "Starter", desc: "Lightweight monitoring for small teams." },
       { id: "pro", name: "Pro", desc: "More watched carriers, faster refresh, richer alerts." },
@@ -234,47 +278,57 @@ function setPill(id, enabled) {
 
     const current = plan?.current_id;
 
-    el.innerHTML = plans.map((p) => {
-      const active = p.id === current;
-      return `
-        <div class="card" style="padding:14px;">
-          <div class="card-head">
-            <h2 style="font-size:.95rem;">${p.name}</h2>
-            ${active ? `<span class="badge">Current</span>` : ``}
+    el.innerHTML = plans
+      .map((p) => {
+        const active = p.id === current;
+        return `
+          <div class="card" style="padding:14px;">
+            <div class="card-head">
+              <h2 style="font-size:.95rem;">${p.name}</h2>
+              ${active ? `<span class="badge">Current</span>` : ``}
+            </div>
+            <div class="muted" style="margin-top:0;">${p.desc}</div>
+            <div style="margin-top:12px;">
+              <button class="pill-btn ${active ? "pill-btn-secondary" : ""}" data-select-plan="${p.id}">
+                ${active ? "Selected" : "Select"}
+              </button>
+            </div>
           </div>
-          <div class="muted" style="margin-top:0;">${p.desc}</div>
-          <div style="margin-top:12px;">
-            <button class="pill-btn ${active ? "pill-btn-secondary" : ""}" data-select-plan="${p.id}">
-              ${active ? "Selected" : "Select"}
-            </button>
-          </div>
-        </div>
-      `;
-    }).join("");
+        `;
+      })
+      .join("");
   }
 
-  $("btn-reset").addEventListener("click", () => {
-    currentSettings = deepClone(originalSettings);
-    bindSettingsToUI();
-    updateSavebar();
-  });
+  // These buttons might not exist if you removed the save section — guard them.
+  const btnReset = $("btn-reset");
+  if (btnReset) {
+    btnReset.addEventListener("click", () => {
+      currentSettings = deepClone(originalSettings);
+      bindSettingsToUI();
+      updateSavebar();
+    });
+  }
 
-  $("btn-save").addEventListener("click", async () => {
-    // save alert settings
-    await apiPost("/api/user/alert-settings", currentSettings);
-    originalSettings = deepClone(currentSettings);
-    updateSavebar();
-  });
+  const btnSave = $("btn-save");
+  if (btnSave) {
+    btnSave.addEventListener("click", async () => {
+      await apiPost("/api/user/alert-settings", currentSettings);
+      originalSettings = deepClone(currentSettings);
+      updateSavebar();
+    });
+  }
 
-  // Keep overview + alerts toggles in sync
-  $("alerts-master-toggle").addEventListener("change", () => {
-    $("alerts-enabled").checked = $("alerts-master-toggle").checked;
-  });
+  // Keep overview + alerts toggles in sync (only if both exist)
+  const master = $("alerts-master-toggle");
+  const enabled = $("alerts-enabled");
+  if (master && enabled) {
+    master.addEventListener("change", () => {
+      enabled.checked = master.checked;
+    });
+  }
 
-  
   // kickoff
   loadEverything().catch((err) => {
     console.error(err);
-    // You can add a toast later; keeping simple for now.
   });
 })();
