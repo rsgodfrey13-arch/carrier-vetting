@@ -14,7 +14,7 @@ body.account-page{
 .account-page .page{
   max-width: 1200px;
   margin: 0 auto;
-  padding: 28px 18px 60px;
+  padding: 0 18px 60px;
 }
 
 .account-header{
