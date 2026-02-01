@@ -14,9 +14,10 @@ router.get("/account/overview", async (req, res) => {
   const { rows } = await req.db.query(
     `
     SELECT
-      'testname' AS name,
+      u.name,
       u.email,
-      'testco' AS company
+      u.company,
+      u.email_alerts, u.rest_alerts, u.webhook_alerts, u.plan
     FROM users u
     WHERE u.id = $1
     `,
