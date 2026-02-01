@@ -12,7 +12,9 @@
   }
 
   const CURRENT_DOT = getDotFromPath(); 
-  let initButtonsRunning = false; 
+  let initButtonsRunning = false;
+  let initButtonsRerun = false; // NEW: queue reruns instead of dropping
+
   
   function setText(id, value) {
     const el = document.getElementById(id);
@@ -708,10 +710,13 @@ if (data && data.source === "cache_stale") {
   }
 
   async function initCarrierButtons(dot) {
-      if (initButtonsRunning) return;
-  initButtonsRunning = true;
-
-try {
+    if (initButtonsRunning) {
+      initButtonsRerun = true;   // NEW
+      return;
+    }
+    initButtonsRunning = true;
+  
+    try {
       const addBtn = document.getElementById("btn-add-carrier");
       const removeBtn = document.getElementById("btn-remove-carrier");
       const emailBtn = document.getElementById("btn-email-alerts"); 
@@ -954,9 +959,14 @@ function wireContractClick(dot) {
         alert("Network error removing carrier.");
       }
     };
-  }
-  finally {
+  } finally {
     initButtonsRunning = false;
+
+    // If someone tried to run again while we were busy, run once more.
+    if (initButtonsRerun) {
+      initButtonsRerun = false;
+      setTimeout(() => initCarrierButtons(dot), 0);
+    }
   }
 }
 
