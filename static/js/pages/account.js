@@ -131,7 +131,10 @@
     $("me-name").textContent = me?.name || me?.user?.name || "—";
     $("me-email").textContent = me?.email || me?.user?.email || "—";
     $("me-company").textContent = me?.company || me?.user?.company || "—";
-    $("me-plan").textContent = me?.company || me?.user?.company || "—";
+    $("me-plan").textContent = me?.plan || me?.user?.plan || "—";
+    $("me-email_alerts").textContent = me?.email_alerts || me?.user?.email_alerts || "—";
+    $("me-rest_alerts").textContent = me?.rest_alerts || me?.user?.rest_alerts || "—";
+    $("me-webhook_alerts").textContent = me?.webhook_alerts || me?.user?.webhook_alerts || "—";
 
     // 2) alert settings
     const settings = await apiGet("/api/user/alert-settings").catch(() => null);
