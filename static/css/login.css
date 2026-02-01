@@ -5,6 +5,8 @@
 /* Put your login page body theme here */
 body.login-page {
   background: radial-gradient(circle at top left, #0ea5e9 0, #020617 55%, #020617 100%);
+  padding:0 18px 52px;
+  margin:0 auto;
 }
 
 /* Example: center a login card */
@@ -14,6 +16,3 @@ body.login-page {
 */
 html, body { margin: 0; padding: 0; }
 
-body.carrier-list .page{
-  padding:0 18px 52px;
-}
