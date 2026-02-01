@@ -1,0 +1,284 @@
+<!-- /public/account (or /profile) -->
+<body class="account-page">
+  <div class="page">
+    <header class="account-header">
+      <div>
+        <h1 class="page-title">Account</h1>
+        <p class="page-subtitle">Manage alerts, agreements, API access, and your plan.</p>
+      </div>
+
+      <div class="account-header-actions">
+        <button id="btn-support" class="pill-btn pill-btn-secondary">Help</button>
+        <button id="btn-signout" class="pill-btn pill-btn-secondary">Sign out</button>
+      </div>
+    </header>
+
+    <div class="account-shell">
+      <!-- LEFT NAV -->
+      <aside class="account-rail">
+        <button class="rail-item is-active" data-tab="overview">
+          <span class="rail-dot"></span>
+          Overview
+        </button>
+        <button class="rail-item" data-tab="alerts">
+          <span class="rail-dot"></span>
+          Email Alerts
+        </button>
+        <button class="rail-item" data-tab="agreements">
+          <span class="rail-dot"></span>
+          Agreements
+        </button>
+        <button class="rail-item" data-tab="api">
+          <span class="rail-dot"></span>
+          API
+        </button>
+        <button class="rail-item" data-tab="plan">
+          <span class="rail-dot"></span>
+          Plan
+        </button>
+        <button class="rail-item" data-tab="security">
+          <span class="rail-dot"></span>
+          Security
+        </button>
+      </aside>
+
+      <!-- RIGHT CONTENT -->
+      <main class="account-panel">
+        <!-- OVERVIEW -->
+        <section class="tab-panel is-active" id="tab-overview">
+          <div class="card">
+            <div class="card-head">
+              <h2>Account Snapshot</h2>
+              <span class="badge" id="plan-badge">—</span>
+            </div>
+
+            <div class="kv-grid">
+              <div class="kv">
+                <div class="kv-label">Name</div>
+                <div class="kv-value" id="me-name">—</div>
+              </div>
+              <div class="kv">
+                <div class="kv-label">Email</div>
+                <div class="kv-value" id="me-email">—</div>
+              </div>
+              <div class="kv">
+                <div class="kv-label">Company</div>
+                <div class="kv-value" id="me-company">—</div>
+              </div>
+              <div class="kv">
+                <div class="kv-label">Alerts</div>
+                <div class="kv-value">
+                  <span class="status-pill" id="alerts-status">—</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Quick Controls</h2>
+              <p class="muted">Fast changes. No clutter.</p>
+            </div>
+
+            <div class="row">
+              <div>
+                <div class="row-title">Email Alerts</div>
+                <div class="row-sub">Global delivery + category defaults. Carrier-level toggles live on each carrier page.</div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="alerts-master-toggle">
+                <span class="switch-ui"></span>
+              </label>
+            </div>
+
+            <div class="row">
+              <div>
+                <div class="row-title">Default Agreement</div>
+                <div class="row-sub">Used when sending contracts unless overridden.</div>
+              </div>
+              <button class="pill-btn" data-tab-jump="agreements">Manage</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ALERTS -->
+        <section class="tab-panel" id="tab-alerts">
+          <div class="card">
+            <div class="card-head">
+              <h2>Email Alerts</h2>
+              <p class="muted">Set global delivery preferences. Carrier-specific alert switches live on the carrier profile.</p>
+            </div>
+
+            <div class="row">
+              <div>
+                <div class="row-title">Alerts Master Switch</div>
+                <div class="row-sub">If off, you won’t receive any carrier alerts by email.</div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="alerts-enabled">
+                <span class="switch-ui"></span>
+              </label>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="form-grid">
+              <div class="field">
+                <label>Delivery</label>
+                <select id="alerts-frequency" class="f-select">
+                  <option value="instant">Instant</option>
+                  <option value="daily">Daily digest</option>
+                  <option value="weekly">Weekly digest</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label>Preset</label>
+                <select id="alerts-preset" class="f-select">
+                  <option value="balanced">Balanced (recommended)</option>
+                  <option value="quiet">Quiet (important only)</option>
+                  <option value="all">All signals</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <h3 class="section-h3">Categories</h3>
+            <div class="toggle-grid">
+              <label class="toggle">
+                <input type="checkbox" data-cat="insurance">
+                <span>Insurance</span>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" data-cat="authority">
+                <span>Authority & Identity</span>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" data-cat="safety">
+                <span>Safety & Compliance</span>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" data-cat="operations">
+                <span>Operations</span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <!-- AGREEMENTS -->
+        <section class="tab-panel" id="tab-agreements">
+          <div class="card">
+            <div class="card-head">
+              <h2>Agreements</h2>
+              <p class="muted">Pick your default agreement and manage templates.</p>
+            </div>
+
+            <div class="row">
+              <div>
+                <div class="row-title">Default Agreement</div>
+                <div class="row-sub" id="default-agreement-label">—</div>
+              </div>
+              <button class="pill-btn" id="btn-set-default">Set default</button>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Updated</th>
+                    <th style="text-align:right;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="agreements-tbody">
+                  <tr><td colspan="4">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- API -->
+        <section class="tab-panel" id="tab-api">
+          <div class="card">
+            <div class="card-head">
+              <h2>API</h2>
+              <p class="muted">Everything you need to integrate Carrier Shark into your workflow.</p>
+            </div>
+
+            <div class="row">
+              <div>
+                <div class="row-title">API Key</div>
+                <div class="row-sub" id="api-key-masked">—</div>
+              </div>
+              <div class="row-actions">
+                <button class="pill-btn pill-btn-secondary" id="btn-copy-key">Copy</button>
+                <button class="pill-btn" id="btn-rotate-key">Rotate</button>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="row">
+              <div>
+                <div class="row-title">Documentation</div>
+                <div class="row-sub">Auth, endpoints, examples, error formats.</div>
+              </div>
+              <button class="pill-btn" id="btn-api-docs">Open docs</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- PLAN -->
+        <section class="tab-panel" id="tab-plan">
+          <div class="card">
+            <div class="card-head">
+              <h2>Plan</h2>
+              <p class="muted">Upgrade when you’re ready. No nonsense.</p>
+            </div>
+
+            <div class="plan-grid" id="plan-grid">
+              <!-- populated by JS -->
+            </div>
+          </div>
+        </section>
+
+        <!-- SECURITY -->
+        <section class="tab-panel" id="tab-security">
+          <div class="card">
+            <div class="card-head">
+              <h2>Security</h2>
+              <p class="muted">Keep your account tight.</p>
+            </div>
+
+            <div class="row">
+              <div>
+                <div class="row-title">Password</div>
+                <div class="row-sub">Change your password anytime.</div>
+              </div>
+              <button class="pill-btn" id="btn-change-password">Change</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Sticky Save -->
+        <div class="savebar hidden" id="savebar">
+          <div class="savebar-left">
+            <span class="savebar-dot"></span>
+            <span id="savebar-text">Unsaved changes</span>
+          </div>
+          <div class="savebar-actions">
+            <button class="pill-btn pill-btn-secondary" id="btn-reset">Reset</button>
+            <button class="pill-btn" id="btn-save">Save changes</button>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="/static/js/pages/account.js"></script>
+</body>
