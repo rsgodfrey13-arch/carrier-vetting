@@ -150,3 +150,5 @@ a,
   color:var(--text-main);
   border-color:rgba(148, 163, 184, 0.7);
 }
+
+html, body { margin: 0; padding: 0; }
