@@ -131,6 +131,7 @@
     $("me-name").textContent = me?.name || me?.user?.name || "—";
     $("me-email").textContent = me?.email || me?.user?.email || "—";
     $("me-company").textContent = me?.company || me?.user?.company || "—";
+    $("me-plan").textContent = me?.company || me?.user?.company || "—";
 
     // 2) alert settings
     const settings = await apiGet("/api/user/alert-settings").catch(() => null);
