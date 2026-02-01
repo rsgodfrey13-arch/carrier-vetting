@@ -12,3 +12,4 @@ body.login-page {
 .login-wrap { min-height: calc(100vh - 80px); display:flex; align-items:center; justify-content:center; }
 .login-card { width: 100%; max-width: 440px; padding: 18px; }
 */
+html, body { margin: 0; padding: 0; }
