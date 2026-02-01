@@ -35,9 +35,6 @@ function internalRoutes({ pool } = {}) {
   router.use(healthInternalRoutes);   // GET /api/health-internal
 
 
-  // Needs the Pool
-  app.use("/api", internalRoutes({ pool }));
-
 
   // Existing internal routers
   router.use(authRoutes);
@@ -48,6 +45,7 @@ function internalRoutes({ pool } = {}) {
   router.use(contractsRoutes);
   router.use(insuranceRoutes);
   router.use(debugRoutes);
+  router.use(meRoutes);
   router.use(publicCarriersRoutes);
 
   return router;
