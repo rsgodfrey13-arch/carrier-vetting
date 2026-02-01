@@ -8,7 +8,7 @@ const carriersRoutes = require("./carriers.routes");
 const myCarriersRoutes = require("./myCarriers.routes");
 const contractsRoutes = require("./contracts.routes");
 const insuranceRoutes = require("./insurance.routes");
-//const meRoutes = require("./me.routes");
+const accountRoutes = require("./account.routes");
 const debugRoutes = require("./debug.routes");
 
 const healthInternalRoutes = require("./healthInternal.routes"); // router export
@@ -45,7 +45,7 @@ function internalRoutes({ pool } = {}) {
   router.use(contractsRoutes);
   router.use(insuranceRoutes);
   router.use(debugRoutes);
-  //router.use(meRoutes);
+  router.use(accountRoutes);
   router.use(publicCarriersRoutes);
 
   return router;
