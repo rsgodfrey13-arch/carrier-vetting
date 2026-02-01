@@ -10,6 +10,7 @@ async function loadHeader() {
 
     // Header is now in the DOM → wire buttons
     await initAuthUI();
+    await initAccountLink();
   } catch (err) {
     console.error("Header load failed:", err);
   }
@@ -73,6 +74,27 @@ async function initAuthUI() {
     logoutBtn.style.display = "none";
   }
 }
+
+
+async function initAccountLink() {
+  const accountLink = document.getElementById("account-link");
+  if (!accountLink) return;
+
+  try {
+    const res = await fetch("/api/me", { cache: "no-store" });
+    const data = await res.json();
+
+    if (data && data.user) {
+      // Logged in → upgrade link
+      accountLink.href = "/account";
+    }
+    // Not logged in → leave href as /login.html
+  } catch {
+    // On any error, do nothing.
+    // Default /login.html remains correct.
+  }
+}
+
 
 // Run both on page load
 document.addEventListener("DOMContentLoaded", () => {
