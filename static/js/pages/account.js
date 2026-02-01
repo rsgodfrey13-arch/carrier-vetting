@@ -2,6 +2,9 @@
 (() => {
   const $ = (id) => document.getElementById(id);
 
+  // -----------------------------
+  // Tabs
+  // -----------------------------
   const railItems = Array.from(document.querySelectorAll(".rail-item"));
   const panels = {
     overview: $("tab-overview"),
@@ -11,14 +14,6 @@
     plan: $("tab-plan"),
     security: $("tab-security"),
   };
-
-  // state
-  let originalSettings = null;
-  let currentSettings = null;
-
-  // These may not exist if you removed that section (that's fine)
-  const savebar = $("savebar");
-  const saveText = $("savebar-text");
 
   function setActiveTab(name) {
     railItems.forEach((b) =>
@@ -38,107 +33,21 @@
     btn.addEventListener("click", () => setActiveTab(btn.dataset.tabJump));
   });
 
+  // -----------------------------
+  // Pills
+  // -----------------------------
   function setPill(id, enabled) {
     const el = document.getElementById(id);
     if (!el) return;
 
+    // IMPORTANT: you said these are booleans. So we only treat true/false as truthy/falsey.
     el.classList.toggle("is-on", enabled === true);
     el.classList.toggle("is-off", enabled === false);
   }
 
-  function deepClone(obj) {
-    return JSON.parse(JSON.stringify(obj));
-  }
-
-  function isDirty() {
-    // If you removed the save/edit section, this might never be set. Treat as not dirty.
-    if (!currentSettings || !originalSettings) return false;
-    return JSON.stringify(currentSettings) !== JSON.stringify(originalSettings);
-  }
-
-  function updateSavebar() {
-    // If savebar is removed from HTML, do nothing (no crash).
-    if (!savebar || !saveText) return;
-    const dirty = isDirty();
-    savebar.classList.toggle("hidden", !dirty);
-    saveText.textContent = dirty ? "Unsaved changes" : "";
-  }
-
-  function bindSettingsToUI() {
-    if (!currentSettings) return;
-
-    // All of these elements might be removed from HTML — guard each one.
-    const master = $("alerts-master-toggle");
-    const enabled = $("alerts-enabled");
-    const freq = $("alerts-frequency");
-    const preset = $("alerts-preset");
-    const status = $("alerts-status");
-
-    if (master) master.checked = !!currentSettings.enabled;
-    if (enabled) enabled.checked = !!currentSettings.enabled;
-
-    if (freq) freq.value = currentSettings.frequency || "instant";
-    if (preset) preset.value = currentSettings.preset || "balanced";
-
-    document.querySelectorAll("[data-cat]").forEach((el) => {
-      const key = el.getAttribute("data-cat");
-      el.checked = !!currentSettings.categories?.[key];
-    });
-
-    if (status) status.textContent = currentSettings.enabled ? "On" : "Off";
-  }
-
-  function readUIToSettings() {
-    if (!currentSettings) return;
-
-    const enabled = $("alerts-enabled");
-    const freq = $("alerts-frequency");
-    const preset = $("alerts-preset");
-    const master = $("alerts-master-toggle");
-    const status = $("alerts-status");
-
-    if (enabled) currentSettings.enabled = !!enabled.checked;
-    if (freq) currentSettings.frequency = freq.value;
-    if (preset) currentSettings.preset = preset.value;
-
-    currentSettings.categories = currentSettings.categories || {};
-    document.querySelectorAll("[data-cat]").forEach((el) => {
-      const key = el.getAttribute("data-cat");
-      currentSettings.categories[key] = !!el.checked;
-    });
-
-    // keep overview toggle synced (only if those elements exist)
-    if (master) master.checked = !!currentSettings.enabled;
-    if (status) status.textContent = currentSettings.enabled ? "On" : "Off";
-  }
-
-  function attachChangeHandlers() {
-    const master = $("alerts-master-toggle");
-    const enabled = $("alerts-enabled");
-    const freq = $("alerts-frequency");
-    const preset = $("alerts-preset");
-    const cats = Array.from(document.querySelectorAll("[data-cat]"));
-
-    // Build list but remove nulls so addEventListener never hits null
-    const inputs = [master, enabled, freq, preset, ...cats].filter(Boolean);
-
-    // If you deleted those controls from HTML, there will be nothing to attach — that's fine.
-    if (!inputs.length) return;
-
-    inputs.forEach((el) => {
-      el.addEventListener("change", () => {
-        // sync master toggle if both exist
-        if (master && enabled) {
-          if (el === master) enabled.checked = master.checked;
-          if (el === enabled) master.checked = enabled.checked;
-        }
-
-        readUIToSettings();
-        updateSavebar();
-      });
-    });
-  }
-
+  // -----------------------------
+  // API
+  // -----------------------------
   async function apiGet(url) {
     const r = await fetch(url, { credentials: "include" });
     if (!r.ok) throw new Error(`GET ${url} failed: ${r.status}`);
@@ -156,69 +65,9 @@
     return r.json();
   }
 
-  async function loadEverything() {
-    // 1) me (snapshot)
-    const me = await apiGet("/api/account/overview");
-
-    const meName = $("me-name");
-    const meEmail = $("me-email");
-    const meCompany = $("me-company");
-    const mePlan = $("me-plan");
-
-    if (meName) meName.textContent = me?.name || me?.user?.name || "—";
-    if (meEmail) meEmail.textContent = me?.email || me?.user?.email || "—";
-    if (meCompany) meCompany.textContent = me?.company || me?.user?.company || "—";
-    if (mePlan) mePlan.textContent = me?.plan || me?.user?.plan || "—";
-
-    setPill("me-email_alerts",   !!me?.email_alerts);
-    setPill("me-rest_alerts",    !!me?.rest_alerts);
-    setPill("me-webhook_alerts", !!me?.webhook_alerts);
-
-    // plan (simple string only)
-    const planText = me?.plan || me?.user?.plan || "—";
-    const planBadge = document.getElementById("plan-badge");
-    if (planBadge) planBadge.textContent = planText;
-
-
-    // 2) alert settings (ONLY binds if those elements exist)
-    const settings = await apiGet("/api/user/alert-settings").catch(() => null);
-    const fallback = {
-      enabled: false,
-      frequency: "instant",
-      preset: "balanced",
-      categories: { insurance: true, authority: true, safety: true, operations: false },
-    };
-
-    originalSettings = deepClone(settings || fallback);
-    currentSettings = deepClone(settings || fallback);
-
-    bindSettingsToUI();
-    attachChangeHandlers();
-
-    // 3) agreements (ONLY if table exists)
-    const tbody = $("agreements-tbody");
-    if (tbody) {
-      const ag = await apiGet("/api/user/agreements");
-      renderAgreements(ag);
-    }
-
-    // 4) api (ONLY if element exists)
-    const apiKeyEl = $("api-key-masked");
-    if (apiKeyEl) {
-      const api = await apiGet("/api/user/api");
-      apiKeyEl.textContent = api?.masked_key || "—";
-    }
-
-    // 5) plan (ONLY if elements exist)
-    const planBadge = $("plan-badge");
-    const planGrid = $("plan-grid");
-    if (planBadge || planGrid) {
-      const plan = await apiGet("/api/user/plan");
-      if (planBadge) planBadge.textContent = plan?.name ? plan.name : "—";
-      if (planGrid) renderPlans(plan);
-    }
-  }
-
+  // -----------------------------
+  // Renderers (optional sections)
+  // -----------------------------
   function renderAgreements(data) {
     const tbody = $("agreements-tbody");
     if (!tbody) return;
@@ -305,36 +154,44 @@
       .join("");
   }
 
-  // These buttons might not exist if you removed the save section — guard them.
-  const btnReset = $("btn-reset");
-  if (btnReset) {
-    btnReset.addEventListener("click", () => {
-      currentSettings = deepClone(originalSettings);
-      bindSettingsToUI();
-      updateSavebar();
-    });
+  // -----------------------------
+  // Main load
+  // -----------------------------
+  async function loadEverything() {
+    // 1) Snapshot
+    const me = await apiGet("/api/account/overview");
+
+    if ($("me-name")) $("me-name").textContent = me?.name || me?.user?.name || "—";
+    if ($("me-email")) $("me-email").textContent = me?.email || me?.user?.email || "—";
+    if ($("me-company")) $("me-company").textContent = me?.company || me?.user?.company || "—";
+    if ($("me-plan")) $("me-plan").textContent = me?.plan || me?.user?.plan || "—";
+
+    setPill("me-email_alerts", me?.email_alerts);
+    setPill("me-rest_alerts", me?.rest_alerts);
+    setPill("me-webhook_alerts", me?.webhook_alerts);
+
+    // Plan badge: keep it simple for now (no “tier logic”)
+    const planBadge = $("plan-badge");
+    if (planBadge) planBadge.textContent = me?.plan || me?.user?.plan || "—";
+
+    // 2) Agreements (only if that section exists)
+    if ($("agreements-tbody")) {
+      const ag = await apiGet("/api/user/agreements");
+      renderAgreements(ag);
+    }
+
+    // 3) API (only if that section exists)
+    if ($("api-key-masked")) {
+      const api = await apiGet("/api/user/api");
+      $("api-key-masked").textContent = api?.masked_key || "—";
+    }
+
+    // 4) Plan grid (only if you kept that section)
+    if ($("plan-grid")) {
+      const plan = await apiGet("/api/user/plan");
+      renderPlans(plan);
+    }
   }
 
-  const btnSave = $("btn-save");
-  if (btnSave) {
-    btnSave.addEventListener("click", async () => {
-      await apiPost("/api/user/alert-settings", currentSettings);
-      originalSettings = deepClone(currentSettings);
-      updateSavebar();
-    });
-  }
-
-  // Keep overview + alerts toggles in sync (only if both exist)
-  const master = $("alerts-master-toggle");
-  const enabled = $("alerts-enabled");
-  if (master && enabled) {
-    master.addEventListener("change", () => {
-      enabled.checked = master.checked;
-    });
-  }
-
-  // kickoff
-  loadEverything().catch((err) => {
-    console.error(err);
-  });
+  loadEverything().catch((err) => console.error(err));
 })();
