@@ -82,9 +82,17 @@
               <div class="kv">
                 <div class="kv-label">Alerts</div>
                 <div class="kv-value">
-                  <span class="status-pill" id="alerts-status">—</span>
+                  <div class="pill-row" id="alerts-pills">
+                    <span class="status-pill is-off" id="me-email_alerts">Email</span>
+                    <span class="status-pill is-off" id="me-rest_alerts">REST</span>
+                    <span class="status-pill is-off" id="me-webhook_alerts">Webhook</span>
+                  </div>
                 </div>
               </div>
+              <div class="kv">
+              <div class="kv-label">Plan</div>
+              <div class="kv-value" id="me-plan">—</div>
+            </div>
             </div>
           </div>
 
