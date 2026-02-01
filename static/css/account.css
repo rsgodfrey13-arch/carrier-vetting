@@ -417,3 +417,38 @@ body.account-page .page{
   opacity: .45;
   filter: grayscale(1);
 }
+
+/* default badge look (if you don't already have one) */
+.badge{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 10px;
+  border-radius:999px;
+  font-size:.75rem;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.06);
+}
+
+/* tier variants */
+.badge.tier-bronze{
+  border-color: rgba(205,127,50,.55);
+  box-shadow: 0 0 0 1px rgba(205,127,50,.25) inset;
+}
+
+.badge.tier-silver{
+  border-color: rgba(192,192,192,.55);
+  box-shadow: 0 0 0 1px rgba(192,192,192,.25) inset;
+}
+
+.badge.tier-gold{
+  border-color: rgba(255,215,0,.55);
+  box-shadow: 0 0 0 1px rgba(255,215,0,.25) inset;
+}
+
+.badge.tier-platinum{
+  border-color: rgba(120,220,255,.55);
+  box-shadow: 0 0 0 1px rgba(120,220,255,.25) inset;
+}
