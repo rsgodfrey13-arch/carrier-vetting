@@ -35,6 +35,20 @@
     btn.addEventListener("click", () => setActiveTab(btn.dataset.tabJump));
   });
 
+function setPill(id, enabled) {
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  el.classList.toggle("is-on", enabled === true);
+  el.classList.toggle("is-off", enabled === false);
+}
+
+// booleans straight from API
+setPill("me-email_alerts",   me.email_alerts);
+setPill("me-rest_alerts",    me.rest_alerts);
+setPill("me-webhook_alerts", me.webhook_alerts);
+
+  
   function deepClone(obj) {
     return JSON.parse(JSON.stringify(obj));
   }
@@ -261,6 +275,7 @@
     $("alerts-enabled").checked = $("alerts-master-toggle").checked;
   });
 
+  
   // kickoff
   loadEverything().catch((err) => {
     console.error(err);
