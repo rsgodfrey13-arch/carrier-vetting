@@ -127,7 +127,7 @@
 
   async function loadEverything() {
     // 1) me
-    const me = await apiGet("/api/me");
+    const me = await apiGet("/api/account/overview");
     $("me-name").textContent = me?.name || me?.user?.name || "—";
     $("me-email").textContent = me?.email || me?.user?.email || "—";
     $("me-company").textContent = me?.company || me?.user?.company || "—";
