@@ -40,13 +40,12 @@ async function trackHomepageView() {
 async function initAuthUI() {
   const loginBtn = document.getElementById("login-btn");
   const logoutBtn = document.getElementById("logout-btn");
-  const accountLink = document.getElementById("account-link");
 
   // If this page doesn't have the header, just skip.
   if (!loginBtn || !logoutBtn) return;
 
   loginBtn.onclick = () => {
-    window.location.href = "/login";
+    window.location.href = "/login.html";
   };
 
   try {
@@ -54,48 +53,26 @@ async function initAuthUI() {
     const data = await res.json();
 
     if (data.user) {
-      // ✅ Logged in
+      // Logged in
       loginBtn.style.display = "none";
       logoutBtn.style.display = "inline-block";
-
-      if (accountLink) {
-        accountLink.style.display = "inline-block";
-        accountLink.onclick = () => {
-          window.location.href = "/account";
-        };
-      }
 
       logoutBtn.onclick = async () => {
         await fetch("/api/logout", { method: "POST" });
         window.location.href = "/";
       };
     } else {
-      // ❌ Not logged in
+      // Not logged in
       loginBtn.style.display = "inline-block";
       logoutBtn.style.display = "none";
-
-      if (accountLink) {
-        accountLink.style.display = "inline-block";
-        accountLink.onclick = () => {
-          window.location.href = "/login";
-        };
-      }
     }
   } catch (err) {
     console.error("auth ui error", err);
-
+    // If /api/me fails, default to showing Login
     loginBtn.style.display = "inline-block";
     logoutBtn.style.display = "none";
-
-    if (accountLink) {
-      accountLink.style.display = "inline-block";
-      accountLink.onclick = () => {
-        window.location.href = "/login";
-      };
-    }
   }
 }
-
 
 // Run both on page load
 document.addEventListener("DOMContentLoaded", () => {
