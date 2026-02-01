@@ -377,3 +377,5 @@ body.account-page{
   .toggle-grid{ grid-template-columns: 1fr; }
   .plan-grid{ grid-template-columns: 1fr; }
 }
+
+html, body { margin: 0; padding: 0; }
