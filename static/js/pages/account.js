@@ -21,7 +21,10 @@
 
   function setActiveTab(name) {
     railItems.forEach((b) => b.classList.toggle("is-active", b.dataset.tab === name));
-    Object.entries(panels).forEach(([k, el]) => el.classList.toggle("is-active", k === name));
+    Object.entries(panels).forEach(([k, el]) => {
+        if (!el) return;
+        el.classList.toggle("is-active", k === name);
+      });
   }
 
   railItems.forEach((btn) => {
@@ -130,9 +133,17 @@
     $("me-company").textContent = me?.company || me?.user?.company || "—";
 
     // 2) alert settings
-    const settings = await apiGet("/api/user/alert-settings");
-    originalSettings = deepClone(settings);
-    currentSettings = deepClone(settings);
+    const settings = await apiGet("/api/user/alert-settings").catch(() => null);
+    const fallback = {
+      enabled: false,
+      frequency: "instant",
+      preset: "balanced",
+      categories: { insurance: true, authority: true, safety: true, operations: false },
+    };
+    
+    originalSettings = deepClone(settings || fallback);
+    currentSettings  = deepClone(settings || fallback);
+
 
     bindSettingsToUI();
     attachChangeHandlers();
