@@ -29,4 +29,73 @@ router.get("/account/overview", async (req, res) => {
   res.json(rows[0]);
 });
 
+// Get Email Alert Fields
+router.get("/email-alert-fields", async (req, res) => {
+  if (!req.session?.userId) return res.status(401).json({ error: "unauthorized" });
+
+  const userId = req.session.userId;
+
+  const { rows } = await pool.query(`
+    SELECT
+      u.field_key,
+      u.enabled,
+      COALESCE(u.label, af.label, u.field_key) AS label,
+      COALESCE(u.category, af.category, 'Other') AS category
+    FROM public.user_email_alert_fields u
+    LEFT JOIN public.alert_fields af
+      ON af.field_key = u.field_key
+    WHERE u.user_id = $1
+    ORDER BY COALESCE(u.category, af.category, 'Other'),
+             COALESCE(u.label, af.label, u.field_key);
+  `, [userId]);
+
+  res.json({ fields: rows });
+});
+
+// Save Email Alert Fields
+
+router.post("/email-alert-fields", async (req, res) => {
+  if (!req.session?.userId) return res.status(401).json({ error: "unauthorized" });
+
+  const userId = req.session.userId;
+  const updates = Array.isArray(req.body?.updates) ? req.body.updates : [];
+
+  // basic validation
+  for (const u of updates) {
+    if (!u || typeof u.field_key !== "string" || typeof u.enabled !== "boolean") {
+      return res.status(400).json({ error: "invalid payload" });
+    }
+  }
+
+  if (!updates.length) return res.json({ ok: true, updated: 0 });
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    for (const u of updates) {
+      await client.query(
+        `
+        UPDATE public.user_email_alert_fields
+        SET enabled = $3,
+            updated_at = now()
+        WHERE user_id = $1
+          AND field_key = $2
+        `,
+        [userId, u.field_key, u.enabled]
+      );
+    }
+
+    await client.query("COMMIT");
+    res.json({ ok: true, updated: updates.length });
+  } catch (e) {
+    await client.query("ROLLBACK");
+    console.error(e);
+    res.status(500).json({ error: "server error" });
+  } finally {
+    client.release();
+  }
+});
+
+
 module.exports = router;
