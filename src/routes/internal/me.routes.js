@@ -1,38 +1,33 @@
 "use strict";
 
 const express = require("express");
+const router = express.Router();
 
-function meRoutes({ pool }) {
-  if (!pool) throw new Error("meRoutes requires pool");
+router.get("/me", async (req, res) => {
+  const userId = req.user?.id || req.session?.user_id;
 
-  const router = express.Router();
+  if (!userId) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
 
-  router.get("/me", async (req, res) => {
-    // however you identify the logged-in user
-    const userId = req.user?.id || req.session?.user_id;
+  const { rows } = await req.db.query(
+    `
+    SELECT
+      'testname' AS name,
+      u.email,
+      'testco' AS company
+    FROM users u
 
-    if (!userId) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
+    WHERE u.id = $1
+    `,
+    [userId]
+  );
 
-    const { rows } = await pool.query(
-      `
-      SELECT
-        u.email
-      FROM users u
-      WHERE u.id = $1
-      `,
-      [userId]
-    );
+  if (!rows.length) {
+    return res.status(404).json({ error: "User not found" });
+  }
 
-    if (!rows.length) {
-      return res.status(404).json({ error: "User not found" });
-    }
+  res.json(rows[0]);
+});
 
-    res.json(rows[0]);
-  });
-
-  return router;
-}
-
-module.exports = meRoutes;
+module.exports = router;
