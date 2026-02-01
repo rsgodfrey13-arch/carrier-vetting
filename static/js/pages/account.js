@@ -43,11 +43,6 @@ function setPill(id, enabled) {
   el.classList.toggle("is-off", enabled === false);
 }
 
-// booleans straight from API
-setPill("me-email_alerts",   me.email_alerts);
-setPill("me-rest_alerts",    me.rest_alerts);
-setPill("me-webhook_alerts", me.webhook_alerts);
-
   
   function deepClone(obj) {
     return JSON.parse(JSON.stringify(obj));
@@ -146,6 +141,10 @@ setPill("me-webhook_alerts", me.webhook_alerts);
     $("me-email").textContent = me?.email || me?.user?.email || "—";
     $("me-company").textContent = me?.company || me?.user?.company || "—";
     $("me-plan").textContent = me?.plan || me?.user?.plan || "—";
+
+  setPill("me-email_alerts",   !!me?.email_alerts);
+  setPill("me-rest_alerts",    !!me?.rest_alerts);
+  setPill("me-webhook_alerts", !!me?.webhook_alerts);
 
     // 2) alert settings
     const settings = await apiGet("/api/user/alert-settings").catch(() => null);
