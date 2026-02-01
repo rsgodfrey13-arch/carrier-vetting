@@ -6,13 +6,37 @@ const { pool } = require("../../db/pool");
 
 const router = express.Router();
 
+
 // who am I? (used by UI + Postman to check login)
-router.get("/me", (req, res) => {
+router.get("/me", async (req, res) => {
   if (!req.session?.userId) {
     return res.json({ user: null });
   }
-  res.json({ user: { id: req.session.userId } });
+
+  try {
+    const { rows } = await pool.query(
+      `
+      SELECT
+        id,
+        email,
+      FROM users
+      WHERE id = $1
+      `,
+      [req.session.userId]
+    );
+
+    if (!rows.length) {
+      return res.json({ user: null });
+    }
+
+    // keep compatibility: return under "user"
+    res.json({ user: rows[0] });
+  } catch (err) {
+    console.error("Error in GET /api/me:", err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
+
 
 // login: expects { "email": "x", "password": "y" }
 router.post("/login", async (req, res) => {
