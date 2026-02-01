@@ -390,3 +390,30 @@ body.account-page .page{
   margin:0 auto;
   padding:28px 18px 52px;
 }
+
+.status-pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  border: 1px solid rgba(255,255,255,.25);
+  transition: all .15s ease;
+}
+
+/* ON = enabled */
+.status-pill.is-on {
+  background: rgba(64, 220, 160, .15);
+  border-color: rgba(64, 220, 160, .8);
+  color: #7CFFD2;
+  box-shadow: 0 0 0 1px rgba(64, 220, 160, .15) inset;
+}
+
+/* OFF = clearly disabled */
+.status-pill.is-off {
+  background: transparent;
+  border-color: rgba(255,255,255,.18);
+  color: rgba(255,255,255,.35);
+  opacity: .45;
+  filter: grayscale(1);
+}
