@@ -124,7 +124,7 @@ function renderAgreementsTiles({ templates, defaultId }) {
       const isDefault = String(t.id) === String(defaultId);
       const isSelected = String(t.id) === String(agreementsSelectedId);
 
-      const subtitle = [t.version ? `v${t.version}` : null, t.storage_provider || null]
+      const subtitle = ""; // intentionally blank (we're hiding version/provider for clean UI)
         .filter(Boolean)
         .join(" • ");
 
@@ -147,7 +147,7 @@ function renderAgreementsTiles({ templates, defaultId }) {
               <div class="tile-name">${escapeHtml(t.name || "Untitled")}</div>
       
               <div class="tile-actions">
-                ${isDefault ? `<span class="badge">Default</span>` : ``}
+                ${isDefault ? `<span class="pill-badge pill-badge--on">DEFAULT</span>` : ``}
       
                 <button
                   class="pill-btn pill-btn-secondary tile-open"
