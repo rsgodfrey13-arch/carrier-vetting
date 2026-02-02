@@ -320,6 +320,11 @@ async function saveEmailAlertFields() {
 }
 
 
+function setAgreementsDefaultButtonState() {
+  const btn = document.getElementById("btn-set-default");
+  if (!btn) return;
+  btn.disabled = !agreementsSelectedId;
+}
 
   
   // -----------------------------
@@ -372,6 +377,17 @@ getSaveButtons().forEach((btn) => {
   });
 });
 
+document.getElementById("btn-set-default")?.addEventListener("click", async () => {
+  if (!agreementsSelectedId) return;
+
+  try {
+    await apiPost("/api/agreements/default", { user_contract_id: agreementsSelectedId });
+    await loadAgreements(); // refresh tiles + "Default Agreement" label
+  } catch (err) {
+    console.error(err);
+    alert("Failed to set default agreement.");
+  }
+});
 
   
   loadEverything().catch((err) => console.error(err));
