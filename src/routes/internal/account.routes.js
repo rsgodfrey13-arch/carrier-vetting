@@ -46,8 +46,7 @@ router.get("/account/email-alert-fields", async (req, res) => {
     LEFT JOIN public.alert_fields af
       ON af.field_key = u.field_key
     WHERE u.user_id = $1
-    ORDER BY COALESCE(u.category, af.category, 'Other'),
-             COALESCE(u.label, af.label, u.field_key);
+    ORDER BY af.sort_order
     `,
     [userId]
   );
