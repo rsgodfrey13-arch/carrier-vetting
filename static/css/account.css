@@ -558,3 +558,43 @@ body.account-page .page{
   content: "✦";
 }
 
+/* --- Email alerts: category spacing --- */
+
+/* each category section (Address / Authority / etc.) */
+.alert-cat{
+  margin-top: 18px;          /* space between categories */
+  padding-top: 10px;         /* a little air above the title */
+}
+
+.alert-cat:first-child{
+  margin-top: 0;
+  padding-top: 0;
+}
+
+/* optional: subtle divider between categories */
+.alert-cat + .alert-cat{
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+
+/* keep the category title from hugging the first row */
+.alert-cat-title{
+  margin-bottom: 10px;
+}
+
+/* space between the checkbox rows inside a category */
+.alert-cat .toggle-grid{
+  gap: 12px 14px;            /* row-gap col-gap */
+}
+
+/* --- Save button spacing --- */
+
+/* if your save button is inside a wrapper */
+.alert-save{
+  margin-top: 18px;          /* space above Save changes */
+  padding-top: 12px;
+}
+
+/* if you DON'T have a wrapper yet, this still helps */
+#btn-save-alert-fields{
+  margin-top: 18px;
+}
