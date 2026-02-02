@@ -125,8 +125,6 @@ function renderAgreementsTiles({ templates, defaultId }) {
       const isSelected = String(t.id) === String(agreementsSelectedId);
 
       const subtitle = ""; // intentionally blank (we're hiding version/provider for clean UI)
-        .filter(Boolean)
-        .join(" • ");
 
       return `
         <button class="agreement-tile ${isDefault ? "is-default" : ""} ${isSelected ? "is-selected" : ""}"
@@ -160,7 +158,6 @@ function renderAgreementsTiles({ templates, defaultId }) {
               </div>
             </div>
       
-            <div class="tile-sub muted">${escapeHtml(subtitle || "—")}</div>
             <div class="tile-meta muted">Updated ${escapeHtml(fmtDate(t.created_at))}</div>
           </div>
         </button>
