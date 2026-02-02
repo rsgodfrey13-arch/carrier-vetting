@@ -147,7 +147,7 @@ function renderAgreementsTiles({ templates, defaultId }) {
               <div class="paper-line w60"></div>
             </div>
             <div class="pdf-chip">OPEN PDF</div>
-          </div>
+          </button>
       
           <div class="tile-body">
             <div class="tile-top">
