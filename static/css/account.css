@@ -1142,3 +1142,62 @@ body.account-page .page{
 .tile-actions {
   min-height: 34px;
 }
+
+.agreement-tile{
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+}
+
+.agreement-tile.is-selected{
+  border-color: rgba(120,220,255,.35);
+  box-shadow:
+    0 14px 40px rgba(0,0,0,.35),
+    0 0 0 2px rgba(0,183,255,.18);
+}
+
+.tile-name{
+  font-size: 1.08rem;
+  font-weight: 800;
+  letter-spacing: .01em;
+  color: rgba(255,255,255,.95);
+  margin-top: 2px;
+}
+.tile-meta{
+  opacity: .55;
+}
+
+.tile-preview--clickable .pdf-chip{
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity .12s ease, transform .12s ease;
+}
+
+.tile-preview--clickable:hover .pdf-chip,
+.tile-preview--clickable:focus-visible .pdf-chip{
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.tile-preview--clickable .pdf-chip{
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.14);
+  color: rgba(255,255,255,.9);
+}
+
+.pill-badge--on{
+  font-size: 11px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(34,197,94,.14);   /* subtle green */
+  border: 1px solid rgba(34,197,94,.30);
+  color: rgba(220,255,235,.95);
+}
+
+.tile-preview{
+  border-radius: 16px;
+}
+
+.tile-preview .paper{
+  border-radius: 14px;
+  background: rgba(255,255,255,.92);
+}
