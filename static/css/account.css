@@ -1128,3 +1128,13 @@ body.account-page .page{
   opacity:.75;
   font-size:.78rem;
 }
+
+.tile-name {
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.25;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
