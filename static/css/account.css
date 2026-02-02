@@ -698,3 +698,78 @@ body.account-page .page{
 
 .tile-sub{ margin-bottom:8px; }
 .tile-meta{ font-size: 12px; opacity:.85; }
+
+/* Tile layout: preview (left) + body (right) */
+.agreement-tile{
+  display:grid;
+  grid-template-columns: 96px 1fr;
+  gap:14px;
+  align-items:stretch;
+  text-align:left;
+}
+
+.tile-preview{
+  position:relative;
+  border-radius:14px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.10);
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:10px;
+}
+
+.tile-preview .paper{
+  width:100%;
+  height:100%;
+  border-radius:10px;
+  background: rgba(255,255,255,.92);
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+  padding:10px 10px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.tile-preview .paper-line{
+  height:6px;
+  border-radius:999px;
+  background: rgba(10,20,40,.18);
+}
+
+.tile-preview .paper-line.w90{ width:90%; }
+.tile-preview .paper-line.w70{ width:70%; }
+.tile-preview .paper-line.w85{ width:85%; }
+.tile-preview .paper-line.w60{ width:60%; }
+
+.tile-preview .pdf-chip{
+  position:absolute;
+  top:8px;
+  left:8px;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.08em;
+  padding:4px 8px;
+  border-radius:999px;
+  background: rgba(0,0,0,.35);
+  border: 1px solid rgba(255,255,255,.20);
+}
+
+.tile-body{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.tile-actions{
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+
+.tile-open{
+  padding:7px 10px;
+  border-radius:999px;
+  font-weight:700;
+}
