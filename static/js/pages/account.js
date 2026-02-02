@@ -153,10 +153,8 @@ function renderAgreementsTiles({ templates, defaultId }) {
             <div class="tile-actions">
               <!-- default badge if default -->
             </div>
-          
-            <div class="tile-name">Test Contract</div>
-          
-            <div class="tile-meta muted">Updated ...</div>
+              <div class="tile-name">${escapeHtml(t.name || "Untitled")}</div>
+              <div class="tile-meta muted">Updated ${escapeHtml(fmtDate(t.created_at))}</div>
           </div>
         </div>
       `;
