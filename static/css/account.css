@@ -1138,3 +1138,7 @@ body.account-page .page{
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.tile-actions {
+  min-height: 34px;
+}
