@@ -196,13 +196,6 @@ function renderAgreementsTiles({ templates, defaultId }) {
   const templates = tplRes?.rows || [];
   const defaultId = defRes?.row?.default_user_contract_id || null;
 
-  // update label under “Default Agreement”
-  const defLabel = document.getElementById("default-agreement-label");
-  if (defLabel) {
-    defLabel.textContent = defRes?.row
-      ? `${defRes.row.name}${defRes.row.version ? ` (v${defRes.row.version})` : ""}`
-      : "—";
-  }
 
   renderAgreementsTiles({ templates, defaultId });
 }
