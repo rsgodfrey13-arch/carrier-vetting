@@ -1090,3 +1090,41 @@ body.account-page .page{
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Right-side content */
+.tile-body{
+  display:grid;
+  grid-template-rows: auto auto 1fr;
+  min-width:0;
+}
+
+/* Row 1: badge aligned right */
+.tile-actions{
+  justify-self:end;
+  align-self:start;
+}
+
+/* Row 2: name gets full width */
+.tile-name{
+  margin-top:6px;
+  font-size:1.12rem;
+  font-weight:900;
+  line-height:1.1;
+  min-width:0;
+
+  /* pick ONE behavior: wrap or ellipsis */
+  white-space: normal;        /* WRAP */
+  word-break: break-word;
+  /* or:
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  */
+}
+
+/* Row 3: updated goes to bottom */
+.tile-meta{
+  align-self:end;
+  opacity:.75;
+  font-size:.78rem;
+}
