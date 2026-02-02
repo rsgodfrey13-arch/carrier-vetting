@@ -1074,3 +1074,19 @@ body.account-page .page{
   gap:10px;
   min-width:0;
 }
+
+/* the card MUST clip its children */
+.agreement-tile{
+  overflow: hidden;
+}
+
+/* prevent the right side from forcing wider layout */
+.tile-body{ min-width: 0; }
+
+/* long contract names: ellipsis + no pushing */
+.tile-name{
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
