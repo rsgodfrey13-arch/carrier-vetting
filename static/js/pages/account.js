@@ -243,11 +243,13 @@ function renderEmailAlertFields(fields) {
 }
 
 function updateEmailFieldsSaveState() {
-  const btn = document.getElementById("btn-save-alert-fields");
-  if (!btn) return;
-  const dirty = JSON.stringify(emailFieldsCurrent) !== JSON.stringify(emailFieldsOriginal);
-  btn.disabled = !dirty;
+  const dirty =
+    JSON.stringify(emailFieldsCurrent) !== JSON.stringify(emailFieldsOriginal);
+
+  // enable/disable BOTH buttons
+  setSaveButtonsDisabled(!dirty);
 }
+
 
 async function loadEmailAlertFields() {
   // You implement these endpoints on backend
@@ -262,8 +264,8 @@ async function loadEmailAlertFields() {
 }
 
 async function saveEmailAlertFields() {
-  const btn = document.getElementById("btn-save-alert-fields");
-  if (btn) btn.disabled = true;
+  // disable BOTH while saving
+  setSaveButtonsDisabled(true);
 
   // send only changes
   const updates = [];
@@ -274,13 +276,18 @@ async function saveEmailAlertFields() {
     }
   }
 
-  if (!updates.length) return;
+  // nothing to save -> keep disabled
+  if (!updates.length) {
+    updateEmailFieldsSaveState();
+    return;
+  }
 
   await apiPost("/api/account/email-alert-fields", { updates });
 
   emailFieldsOriginal = clone(emailFieldsCurrent);
-  updateEmailFieldsSaveState();
+  updateEmailFieldsSaveState(); // will disable both now (not dirty)
 }
+
 
 
   
@@ -329,9 +336,12 @@ if (document.getElementById("email-alert-fields")) {
     }
   }
 
-  document.getElementById("btn-save-alert-fields")?.addEventListener("click", () => {
-  saveEmailAlertFields().catch(console.error);
+getSaveButtons().forEach((btn) => {
+  btn.addEventListener("click", () => {
+    saveEmailAlertFields().catch(console.error);
+  });
 });
+
 
   
   loadEverything().catch((err) => console.error(err));
