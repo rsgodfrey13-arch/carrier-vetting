@@ -871,3 +871,85 @@ body.account-page .page{
 .tile-open{
   white-space:nowrap;
 }
+
+/* Make the grid own the layout, not the tile contents */
+#agreements-grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 360px));
+  gap:14px;
+  align-items:start;
+}
+
+/* Ensure tile fills the column width */
+.agreement-tile{
+  width:100%;
+  max-width:100%;
+  box-sizing:border-box;
+}
+
+.tile-top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  min-width:0; /* IMPORTANT: allows text to shrink/ellipsis */
+}
+
+/* Let the name take available space and wrap nicely */
+.tile-name{
+  flex: 1 1 auto;
+  min-width:0;
+  font-size: 1.05rem;   /* bigger */
+  line-height: 1.1;
+  font-weight: 800;
+  white-space: normal;  /* allow wrap */
+  word-break: break-word;
+}
+
+/* Keep the action pills from pushing width */
+.tile-actions{
+  flex: 0 0 auto;
+  display:flex;
+  gap:8px;
+  align-items:center;
+  max-width: 46%;
+  justify-content:flex-end;
+}
+
+.tile-name{
+  flex: 1 1 auto;
+  min-width:0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tile-open{
+  padding: 7px 10px;
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tile-body{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  min-width:0;
+}
+
+.tile-meta{
+  margin-top:auto;
+  font-size:.78rem;
+  opacity:.75;
+}
+
+.agreement-tile{
+  min-height: 122px;
+}
+.tile-preview{
+  height: 94px;
+}
