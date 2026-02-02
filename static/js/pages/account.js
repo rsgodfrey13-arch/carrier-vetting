@@ -128,9 +128,11 @@ function renderAgreementsTiles({ templates, defaultId }) {
       const subtitle = ""; // intentionally blank (we're hiding version/provider for clean UI)
 
       return `
-        <button class="agreement-tile ${isDefault ? "is-default" : ""} ${isSelected ? "is-selected" : ""}"
-                type="button"
-                data-id="${t.id}">
+        <div class="agreement-tile ${isDefault ? "is-default" : ""} ${isSelected ? "is-selected" : ""}"
+             role="button"
+             tabindex="0"
+             data-id="${t.id}">
+      
           <div class="tile-preview" aria-hidden="true">
             <div class="paper">
               <div class="paper-line w90"></div>
@@ -161,7 +163,7 @@ function renderAgreementsTiles({ templates, defaultId }) {
       
             <div class="tile-meta muted">Updated ${escapeHtml(fmtDate(t.created_at))}</div>
           </div>
-        </button>
+        </div>
       `;
     })
     .join("");
@@ -175,6 +177,17 @@ function renderAgreementsTiles({ templates, defaultId }) {
     });
   });
 
+grid.querySelectorAll(".agreement-tile").forEach((tile) => {
+  tile.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      tile.click();
+    }
+  });
+});
+
+
+  
   grid.querySelectorAll("[data-open-pdf]").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
