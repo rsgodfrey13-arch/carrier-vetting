@@ -118,6 +118,7 @@ function renderAgreementsTiles({ templates, defaultId }) {
   }
 
   agreementsSelectedId = defaultId || null;
+  setAgreementsDefaultButtonState();
 
   grid.innerHTML = templates
     .map((t) => {
@@ -170,6 +171,7 @@ function renderAgreementsTiles({ templates, defaultId }) {
       agreementsSelectedId = btn.getAttribute("data-id");
       grid.querySelectorAll(".agreement-tile").forEach((b) => b.classList.remove("is-selected"));
       btn.classList.add("is-selected");
+      setAgreementsDefaultButtonState();
     });
   });
 
