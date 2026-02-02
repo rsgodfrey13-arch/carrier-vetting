@@ -30,12 +30,13 @@ router.get("/account/overview", async (req, res) => {
 });
 
 // Get Email Alert Fields
-router.get("/email-alert-fields", async (req, res) => {
+router.get("/account/email-alert-fields", async (req, res) => {
   if (!req.session?.userId) return res.status(401).json({ error: "unauthorized" });
 
   const userId = req.session.userId;
 
-  const { rows } = await pool.query(`
+  const { rows } = await req.db.query(
+    `
     SELECT
       u.field_key,
       u.enabled,
@@ -47,20 +48,20 @@ router.get("/email-alert-fields", async (req, res) => {
     WHERE u.user_id = $1
     ORDER BY COALESCE(u.category, af.category, 'Other'),
              COALESCE(u.label, af.label, u.field_key);
-  `, [userId]);
+    `,
+    [userId]
+  );
 
   res.json({ fields: rows });
 });
 
 // Save Email Alert Fields
-
-router.post("/email-alert-fields", async (req, res) => {
+router.post("/account/email-alert-fields", async (req, res) => {
   if (!req.session?.userId) return res.status(401).json({ error: "unauthorized" });
 
   const userId = req.session.userId;
   const updates = Array.isArray(req.body?.updates) ? req.body.updates : [];
 
-  // basic validation
   for (const u of updates) {
     if (!u || typeof u.field_key !== "string" || typeof u.enabled !== "boolean") {
       return res.status(400).json({ error: "invalid payload" });
@@ -69,7 +70,7 @@ router.post("/email-alert-fields", async (req, res) => {
 
   if (!updates.length) return res.json({ ok: true, updated: 0 });
 
-  const client = await pool.connect();
+  const client = await req.db.connect();
   try {
     await client.query("BEGIN");
 
@@ -96,6 +97,7 @@ router.post("/email-alert-fields", async (req, res) => {
     client.release();
   }
 });
+
 
 
 module.exports = router;
