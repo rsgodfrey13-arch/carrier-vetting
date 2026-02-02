@@ -146,7 +146,7 @@ function renderAgreementsTiles({ templates, defaultId }) {
               <div class="paper-line w85"></div>
               <div class="paper-line w60"></div>
             </div>
-            <div class="pdf-chip">PDF</div>
+            <div class="pdf-chip">OPEN PDF</div>
           </div>
       
           <div class="tile-body">
@@ -155,15 +155,7 @@ function renderAgreementsTiles({ templates, defaultId }) {
       
               <div class="tile-actions">
                 ${isDefault ? `<span class="pill-badge pill-badge--on">DEFAULT</span>` : ``}
-      
-                <button
-                  class="pill-btn pill-btn-secondary tile-open"
-                  type="button"
-                  data-open-pdf="${t.id}"
-                  title="Open PDF"
-                >
-                  Open PDF
-                </button>
+                
               </div>
             </div>
       
