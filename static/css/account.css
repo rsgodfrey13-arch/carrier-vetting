@@ -773,3 +773,57 @@ body.account-page .page{
   border-radius:999px;
   font-weight:700;
 }
+
+/* Make the right-side "actions" look like a clean capsule box */
+.tile-actions{
+  display:flex;
+  gap:10px;
+  align-items:center;
+
+  padding:6px;
+  border-radius:999px;
+  background: rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.10);
+  backdrop-filter: blur(10px);
+}
+
+/* Open PDF button should feel like it belongs in that capsule */
+.tile-open{
+  padding:7px 12px;
+  border-radius:999px;
+  font-weight:800;
+  letter-spacing:.02em;
+  border:1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+}
+
+.tile-open:hover{
+  border-color: rgba(0,183,255,.45);
+  background: rgba(0,183,255,.12);
+}
+
+/* DEFAULT badge that pops like your green "EMAIL" pill */
+.pill-badge{
+  display:inline-flex;
+  align-items:center;
+  height:32px;
+  padding:0 12px;
+  border-radius:999px;
+  font-weight:900;
+  letter-spacing:.08em;
+  font-size:12px;
+  border:1px solid rgba(255,255,255,.12);
+}
+
+.pill-badge--on{
+  background: rgba(45, 213, 161, .20);
+  border-color: rgba(45, 213, 161, .55);
+  color: rgba(230, 255, 248, .98);
+  box-shadow: 0 0 0 2px rgba(45, 213, 161, .10) inset;
+}
+
+
+.agreement-tile.is-default{
+  border-color: rgba(45, 213, 161, .35);
+  box-shadow: 0 0 0 1px rgba(45, 213, 161, .18), 0 10px 30px rgba(0,0,0,.18);
+}
