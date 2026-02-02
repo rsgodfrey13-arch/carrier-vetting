@@ -229,4 +229,91 @@ router.get("/contracts/:dot", requireAuth, async (req, res) => {
   }
 });
 
+
+// ---------- DEFAULT CONTRACT TEMPLATE ----------
+router.get("/agreements/default", requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+
+  try {
+    const { rows } = await pool.query(
+      `
+      SELECT
+        d.default_user_contract_id,
+        uc.name,
+        uc.version,
+        uc.created_at
+      FROM public.user_contract_defaults d
+      JOIN public.user_contracts uc
+        ON uc.id = d.default_user_contract_id
+      WHERE d.user_id = $1
+      LIMIT 1;
+      `,
+      [userId]
+    );
+
+    if (rows.length === 0) return res.json({ row: null });
+    return res.json({ row: rows[0] });
+  } catch (err) {
+    console.error("GET /api/agreements/default error:", err);
+    return res.status(500).json({ error: "Failed to load default agreement" });
+  }
+});
+
+
+router.post("/agreements/default", requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const { user_contract_id } = req.body || {};
+
+  if (!user_contract_id) {
+    return res.status(400).json({ error: "user_contract_id is required" });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // validate template belongs to user
+    const ok = await client.query(
+      `
+      SELECT 1
+      FROM public.user_contracts
+      WHERE id = $1 AND user_id = $2
+      LIMIT 1;
+      `,
+      [user_contract_id, userId]
+    );
+
+    if (ok.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "Invalid template (not yours)" });
+    }
+
+    // upsert default
+    await client.query(
+      `
+      INSERT INTO public.user_contract_defaults (user_id, default_user_contract_id)
+      VALUES ($1, $2)
+      ON CONFLICT (user_id)
+      DO UPDATE SET
+        default_user_contract_id = EXCLUDED.default_user_contract_id,
+        updated_at = NOW();
+      `,
+      [userId, user_contract_id]
+    );
+
+    await client.query("COMMIT");
+    return res.json({ ok: true, default_user_contract_id: user_contract_id });
+  } catch (err) {
+    try { await client.query("ROLLBACK"); } catch {}
+    console.error("POST /api/agreements/default error:", err);
+    return res.status(500).json({ error: "Failed to set default agreement" });
+  } finally {
+    client.release();
+  }
+});
+
+
+
+
+
 module.exports = router;
