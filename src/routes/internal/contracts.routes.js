@@ -7,6 +7,9 @@ const { pool } = require("../../db/pool");
 const { requireAuth } = require("../../middleware/requireAuth");
 const { sendContractEmail } = require("../../clients/mailgun");
 
+const { spaces } = require("../../clients/spacesS3v2");
+
+
 const router = express.Router();
 
 function makeToken() {
@@ -40,6 +43,71 @@ router.get("/user-contracts", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Failed to load contract templates" });
   }
 });
+
+/** ---------- CONTRACT TEMPLATE PDF (broker-side preview) ---------- **/
+router.get("/user-contracts/:id/pdf", requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const templateId = String(req.params.id || "").trim();
+  if (!templateId) return res.status(400).send("Missing template id");
+
+  try {
+    const { rows } = await pool.query(
+      `
+      SELECT
+        storage_provider,
+        storage_key,
+        name
+      FROM public.user_contracts
+      WHERE id = $1
+        AND user_id = $2
+      LIMIT 1;
+      `,
+      [templateId, userId]
+    );
+
+    if (rows.length === 0) return res.status(404).send("Not found");
+
+    const row = rows[0];
+
+    if (row.storage_provider !== "DO_SPACES") {
+      return res.status(500).send("Storage provider not configured");
+    }
+    if (!row.storage_key) {
+      return res.status(500).send("Missing storage key");
+    }
+
+    const Bucket = process.env.SPACES_BUCKET;
+    const Key = row.storage_key;
+
+    // Stream from Spaces
+    const obj = spaces.getObject({ Bucket, Key }).createReadStream();
+
+    obj.on("error", (err) => {
+      console.error("SPACES getObject error:", err?.code, err?.message, err);
+      if (err?.code === "NoSuchKey") return res.status(404).send("PDF not found");
+      return res.status(500).send("Failed to load PDF");
+    });
+
+    const safeName = String(row.name || "contract")
+      .replace(/[^\w\-]+/g, "_")
+      .slice(0, 60);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="${safeName}.pdf"`
+    );
+    // Private caching is fine for broker-side templates
+    res.setHeader("Cache-Control", "private, max-age=300");
+
+    obj.pipe(res);
+  } catch (err) {
+    console.error("GET /api/user-contracts/:id/pdf error:", err?.message, err);
+    return res.status(500).send("Server error");
+  }
+});
+
+
 
 /** ---------- CONTRACT SEND ROUTE ---------- **/
 router.post("/contracts/send/:dot", requireAuth, async (req, res) => {
