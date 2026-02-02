@@ -89,58 +89,89 @@
   // -----------------------------
   // Renderers (optional sections)
   // -----------------------------
-  function renderAgreements(data) {
-    const tbody = $("agreements-tbody");
-    if (!tbody) return;
+function escapeHtml(str) {
+  return String(str ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
 
-    const list = data?.agreements || [];
-    const defaultId = data?.default_agreement_id;
+function fmtDate(ts) {
+  if (!ts) return "—";
+  const d = new Date(ts);
+  return isNaN(d.getTime())
+    ? "—"
+    : d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "2-digit" });
+}
 
-    const defaultAgreement = list.find((x) => x.id === defaultId);
-    const defLabel = $("default-agreement-label");
-    if (defLabel) defLabel.textContent = defaultAgreement ? defaultAgreement.name : "—";
+let agreementsSelectedId = null;
 
-    if (!list.length) {
-      tbody.innerHTML = `<tr><td colspan="4">No agreements found.</td></tr>`;
-      return;
-    }
+function renderAgreementsTiles({ templates, defaultId }) {
+  const grid = document.getElementById("agreements-grid");
+  if (!grid) return;
 
-    tbody.innerHTML = list
-      .map((a) => {
-        const isDefault = a.id === defaultId;
-        return `
-          <tr data-id="${a.id}">
-            <td>
-              ${a.name}
-              ${isDefault ? `<span class="badge" style="margin-left:8px;">Default</span>` : ``}
-            </td>
-            <td>${a.type || "—"}</td>
-            <td>${a.updated_at ? new Date(a.updated_at).toLocaleDateString() : "—"}</td>
-            <td style="text-align:right;">
-              <button class="pill-btn pill-btn-secondary" data-preview="${a.id}">Preview</button>
-              <button class="pill-btn" data-make-default="${a.id}">Set default</button>
-            </td>
-          </tr>
-        `;
-      })
-      .join("");
-
-    tbody.querySelectorAll("[data-make-default]").forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        const id = btn.getAttribute("data-make-default");
-        await apiPost("/api/user/agreements/default", { agreement_id: id });
-        const ag = await apiGet("/api/user/agreements");
-        renderAgreements(ag);
-      });
-    });
-
-    tbody.querySelectorAll("[data-preview]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const id = btn.getAttribute("data-preview");
-        window.open(`/agreements/${encodeURIComponent(id)}/preview`, "_blank");
-      });
-    });
+  if (!templates?.length) {
+    grid.innerHTML = `<div class="muted">No templates yet. Import one to get started.</div>`;
+    return;
   }
+
+  agreementsSelectedId = defaultId || null;
+
+  grid.innerHTML = templates
+    .map((t) => {
+      const isDefault = String(t.id) === String(defaultId);
+      const isSelected = String(t.id) === String(agreementsSelectedId);
+
+      const subtitle = [t.version ? `v${t.version}` : null, t.storage_provider || null]
+        .filter(Boolean)
+        .join(" • ");
+
+      return `
+        <button class="agreement-tile ${isDefault ? "is-default" : ""} ${isSelected ? "is-selected" : ""}"
+                type="button"
+                data-id="${t.id}">
+          <div class="tile-top">
+            <div class="tile-name">${escapeHtml(t.name || "Untitled")}</div>
+            ${isDefault ? `<span class="badge">Default</span>` : ``}
+          </div>
+          <div class="tile-sub muted">${escapeHtml(subtitle || "—")}</div>
+          <div class="tile-meta muted">Updated ${escapeHtml(fmtDate(t.created_at))}</div>
+        </button>
+      `;
+    })
+    .join("");
+
+  grid.querySelectorAll(".agreement-tile").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      agreementsSelectedId = btn.getAttribute("data-id");
+      grid.querySelectorAll(".agreement-tile").forEach((b) => b.classList.remove("is-selected"));
+      btn.classList.add("is-selected");
+    });
+  });
+}
+
+  async function loadAgreements() {
+  const [tplRes, defRes] = await Promise.all([
+    apiGet("/api/user-contracts"),
+    apiGet("/api/agreements/default"),
+  ]);
+
+  const templates = tplRes?.rows || [];
+  const defaultId = defRes?.row?.default_user_contract_id || null;
+
+  // update label under “Default Agreement”
+  const defLabel = document.getElementById("default-agreement-label");
+  if (defLabel) {
+    defLabel.textContent = defRes?.row
+      ? `${defRes.row.name}${defRes.row.version ? ` (v${defRes.row.version})` : ""}`
+      : "—";
+  }
+
+  renderAgreementsTiles({ templates, defaultId });
+}
+
 
   function renderPlans(plan) {
     const el = $("plan-grid");
@@ -318,9 +349,8 @@ if (document.getElementById("email-alert-fields")) {
 
     
     // 2) Agreements (only if that section exists)
-    if ($("agreements-tbody")) {
-      const ag = await apiGet("/api/user/agreements");
-      renderAgreements(ag);
+    if (document.getElementById("agreements-grid")) {
+      await loadAgreements();
     }
 
     // 3) API (only if that section exists)
