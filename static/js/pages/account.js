@@ -382,12 +382,13 @@ document.getElementById("btn-set-default")?.addEventListener("click", async () =
 
   try {
     await apiPost("/api/agreements/default", { user_contract_id: agreementsSelectedId });
-    await loadAgreements(); // refresh tiles + "Default Agreement" label
+    await loadAgreements();
   } catch (err) {
     console.error(err);
     alert("Failed to set default agreement.");
   }
 });
+
 
   
   loadEverything().catch((err) => console.error(err));
