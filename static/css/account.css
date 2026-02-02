@@ -589,7 +589,7 @@ body.account-page .page{
 /* --- Save button spacing --- */
 
 /* if your save button is inside a wrapper */
-.alert-save{
+.alert-row{
   margin-top: 18px;          /* space above Save changes */
   padding-top: 12px;
 }
@@ -597,4 +597,36 @@ body.account-page .page{
 /* if you DON'T have a wrapper yet, this still helps */
 #btn-save-alert-fields{
   margin-top: 18px;
+}
+
+.alert-cat{
+  margin-top: 20px;
+}
+
+.alert-cat-title{
+  margin-bottom: 12px;
+}
+
+.toggle-grid{
+  gap: 12px 16px;
+}
+
+/* Space above the Save Changes button */
+.alerts-save-row{
+  margin-top: 24px;          /* separation from last category */
+  padding-top: 12px;
+}
+
+/* Optional: subtle divider above save row */
+.alerts-save-row::before{
+  content: "";
+  display: block;
+  height: 1px;
+  margin-bottom: 16px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(255,255,255,.12),
+    transparent
+  );
 }
