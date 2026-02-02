@@ -132,12 +132,37 @@ function renderAgreementsTiles({ templates, defaultId }) {
         <button class="agreement-tile ${isDefault ? "is-default" : ""} ${isSelected ? "is-selected" : ""}"
                 type="button"
                 data-id="${t.id}">
-          <div class="tile-top">
-            <div class="tile-name">${escapeHtml(t.name || "Untitled")}</div>
-            ${isDefault ? `<span class="badge">Default</span>` : ``}
+          <div class="tile-preview" aria-hidden="true">
+            <div class="paper">
+              <div class="paper-line w90"></div>
+              <div class="paper-line w70"></div>
+              <div class="paper-line w85"></div>
+              <div class="paper-line w60"></div>
+            </div>
+            <div class="pdf-chip">PDF</div>
           </div>
-          <div class="tile-sub muted">${escapeHtml(subtitle || "—")}</div>
-          <div class="tile-meta muted">Updated ${escapeHtml(fmtDate(t.created_at))}</div>
+      
+          <div class="tile-body">
+            <div class="tile-top">
+              <div class="tile-name">${escapeHtml(t.name || "Untitled")}</div>
+      
+              <div class="tile-actions">
+                ${isDefault ? `<span class="badge">Default</span>` : ``}
+      
+                <button
+                  class="pill-btn pill-btn-secondary tile-open"
+                  type="button"
+                  data-open-pdf="${t.id}"
+                  title="Open PDF"
+                >
+                  Open PDF
+                </button>
+              </div>
+            </div>
+      
+            <div class="tile-sub muted">${escapeHtml(subtitle || "—")}</div>
+            <div class="tile-meta muted">Updated ${escapeHtml(fmtDate(t.created_at))}</div>
+          </div>
         </button>
       `;
     })
@@ -150,6 +175,17 @@ function renderAgreementsTiles({ templates, defaultId }) {
       btn.classList.add("is-selected");
     });
   });
+
+  grid.querySelectorAll("[data-open-pdf]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation(); // IMPORTANT: do not select tile / re-render
+      const id = btn.getAttribute("data-open-pdf");
+      if (!id) return;
+      window.open(`/api/user-contracts/${encodeURIComponent(id)}/pdf`, "_blank", "noopener");
+    });
+  });
+  
 }
 
   async function loadAgreements() {
