@@ -175,6 +175,17 @@
       .join("");
   }
 
+function getSaveButtons() {
+  return [
+    document.getElementById("btn-save-alert-fields"),
+    document.getElementById("btn-save-alert-fields-top"),
+  ].filter(Boolean);
+}
+
+function setSaveButtonsDisabled(disabled) {
+  getSaveButtons().forEach((b) => (b.disabled = !!disabled));
+}
+
 
 // -----------------------------
 // Email alert fields (per-user)
