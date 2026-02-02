@@ -133,7 +133,13 @@ function renderAgreementsTiles({ templates, defaultId }) {
              tabindex="0"
              data-id="${t.id}">
       
-          <div class="tile-preview" aria-hidden="true">
+          <button
+            class="tile-preview tile-preview--clickable"
+            type="button"
+            data-open-pdf="${t.id}"
+            aria-label="Open PDF"
+          >
+
             <div class="paper">
               <div class="paper-line w90"></div>
               <div class="paper-line w70"></div>
