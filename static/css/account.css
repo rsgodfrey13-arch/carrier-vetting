@@ -827,3 +827,47 @@ body.account-page .page{
   border-color: rgba(45, 213, 161, .35);
   box-shadow: 0 0 0 1px rgba(45, 213, 161, .18), 0 10px 30px rgba(0,0,0,.18);
 }
+
+/* Make tiles actually tile */
+#agreements-grid{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(260px, 1fr));
+  gap:14px;
+}
+
+/* Each tile should be a self-contained card, not a full-row bar */
+.agreement-tile{
+  width:100%;
+  display:grid;
+  grid-template-columns: 92px 1fr;
+  gap:12px;
+  align-items:stretch;
+
+  padding:14px;
+  border-radius:18px;
+}
+
+.tile-body{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.tile-meta{
+  margin-top:auto; /* pushes updated date to bottom of tile */
+}
+
+.tile-actions{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  justify-content:flex-end;  /* keeps it tucked right */
+
+  padding:6px;
+  border-radius:999px;
+  background: rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.10);
+}
+.tile-open{
+  white-space:nowrap;
+}
