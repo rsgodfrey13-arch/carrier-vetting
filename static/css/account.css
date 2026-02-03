@@ -1692,3 +1692,17 @@ body.account-page .page{
   color: rgba(148,163,184,.9);
   line-height: 1.35;
 }
+
+.help-footer-note{
+  margin-top: 10px;
+  font-size: .8rem;
+  color: rgba(148,163,184,.9);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.help-footer-note strong{
+  color: rgba(226,232,240,.95);
+  font-weight: 600;
+}
