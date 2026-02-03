@@ -1396,3 +1396,12 @@ body.account-page .page{
   border-color: #2ee6b7;
   box-shadow: 0 0 0 2px rgba(46,230,183,.15);
 }
+
+/* Give breathing room under the Webhook URL label */
+#tab-api .api-left .row-title {
+  margin-bottom: 6px;
+}
+
+#tab-api .api-left .row-title {
+  margin-bottom: 8px;
+}
