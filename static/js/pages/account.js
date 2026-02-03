@@ -37,15 +37,19 @@
 }
 
 
-  function setActiveTab(name) {
-    railItems.forEach((b) =>
-      b.classList.toggle("is-active", b.dataset.tab === name)
-    );
-    Object.entries(panels).forEach(([k, el]) => {
-      if (!el) return;
-      el.classList.toggle("is-active", k === name);
-    });
-  }
+function setActiveTab(name) {
+  railItems.forEach((b) =>
+    b.classList.toggle("is-active", b.dataset.tab === name)
+  );
+  Object.entries(panels).forEach(([k, el]) => {
+    if (!el) return;
+    el.classList.toggle("is-active", k === name);
+  });
+
+  // When Help opens, load ticket list
+  if (name === "help") loadTickets().catch(console.error);
+}
+
 
   railItems.forEach((btn) => {
     btn.addEventListener("click", () => setActiveTab(btn.dataset.tab));
