@@ -1866,10 +1866,12 @@ body.account-page .page{
   );
   backdrop-filter: blur(4px);
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;   /* 👈 top align */
+  justify-content: center;   /* keep horizontal center */
+  padding-top: 28px;         /* 👈 breathing room from top */
   border-radius: 14px;
 }
+
 
 .alerts-lock-content {
   text-align: center;
