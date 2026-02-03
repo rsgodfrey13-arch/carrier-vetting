@@ -1854,3 +1854,42 @@ body.account-page .page{
   box-shadow: 0 0 0 4px rgba(45, 212, 191, .18);
 }
 
+/* EMAIL ALERTS LOCK OVERLAY */
+.alerts-lock-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: linear-gradient(
+    180deg,
+    rgba(12, 42, 66, 0.92),
+    rgba(10, 32, 54, 0.88)
+  );
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+}
+
+.alerts-lock-content {
+  text-align: center;
+  max-width: 420px;
+  padding: 28px;
+}
+
+.alerts-lock-title {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.alerts-lock-sub {
+  margin-top: 10px;
+  margin-bottom: 20px;
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1.5;
+}
+
+#tab-alerts .card {
+  position: relative;
+}
