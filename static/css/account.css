@@ -1662,3 +1662,19 @@ body.account-page .page{
 @media (max-width: 920px){
   .help-grid{ grid-template-columns: 1fr; }
 }
+
+.help-meta{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:.82rem;
+  color:rgba(148,163,184,.9);
+}
+
+.help-dot{
+  width:6px;
+  height:6px;
+  border-radius:999px;
+  background:#38bdf8;
+  box-shadow:0 0 0 3px rgba(56,189,248,.15);
+}
