@@ -367,79 +367,126 @@ function setAgreementsDefaultButtonState() {
 
 
 // -----------------------------
-// Help & Support (shell)
+// Help & Support
 // -----------------------------
+const helpContactEmail = $("help-contact-email");
+const helpContactPhone = $("help-contact-phone");
 const helpSubject = $("help-subject");
 const helpMessage = $("help-message");
 const helpSend = $("btn-help-send");
+const ticketList = $("ticket-list");
 const helpErr = $("help-error");
 const helpOk = $("help-ok");
 
 function setHelpMsg(type, msg){
-  if (!helpErr || !helpOk) return;
-  helpErr.style.display = "none";
-  helpOk.style.display = "none";
+  helpErr && (helpErr.style.display = "none");
+  helpOk && (helpOk.style.display = "none");
 
-  if (type === "error") {
+  if (type === "error" && helpErr) {
     helpErr.textContent = msg || "Something went wrong.";
     helpErr.style.display = "block";
-  } else if (type === "ok") {
+  }
+  if (type === "ok" && helpOk) {
     helpOk.textContent = msg || "Sent.";
     helpOk.style.display = "block";
   }
 }
 
 function updateHelpSendState(){
-  if (!helpSend) return;
-  const subj = (helpSubject?.value || "").trim();
-  const msg  = (helpMessage?.value || "").trim();
-  helpSend.disabled = !(subj.length >= 3 && msg.length >= 10);
+  const email = (helpContactEmail?.value || "").trim();
+  const subj  = (helpSubject?.value || "").trim();
+  const msg   = (helpMessage?.value || "").trim();
+
+  const okEmail = email.includes("@") && email.length >= 6;
+  helpSend.disabled = !(okEmail && subj.length >= 3 && msg.length >= 10);
 }
 
-helpSubject?.addEventListener("input", updateHelpSendState);
-helpMessage?.addEventListener("input", updateHelpSendState);
-
-$("btn-help-contact")?.addEventListener("click", () => {
-  // stay on help tab, just focus the form for a "snappy" feel
-  setActiveTab("help");
-  setTimeout(() => helpSubject?.focus(), 0);
+[helpContactEmail, helpContactPhone, helpSubject, helpMessage].forEach((el) => {
+  el?.addEventListener("input", updateHelpSendState);
 });
 
-$("btn-help-docs")?.addEventListener("click", () => {
-  window.open("/docs", "_blank", "noopener");
-});
+function renderTickets(tickets){
+  if (!ticketList) return;
 
-$("btn-help-faq")?.addEventListener("click", () => {
-  // for now, keep it honest. later this becomes /help or knowledge base
-  alert("FAQ is coming soon. For now, send us a message and we’ll help.");
-});
+  if (!tickets?.length) {
+    ticketList.innerHTML = `<div class="muted">No tickets yet.</div>`;
+    return;
+  }
 
-// IMPORTANT: shell only — replace endpoint when ready
+  ticketList.innerHTML = tickets.map(t => {
+    const id = `#${t.id}`;
+    const subj = escapeHtml(t.subject || "—");
+    const when = t.created_at ? new Date(t.created_at).toLocaleString() : "";
+    const status = escapeHtml(t.status || "open");
+    return `
+      <div class="ticket-item">
+        <div class="ticket-top">
+          <div class="ticket-id">${id}</div>
+          <div class="ticket-meta">${status}</div>
+        </div>
+        <div class="ticket-subject">${subj}</div>
+        <div class="ticket-meta">${escapeHtml(when)}</div>
+      </div>
+    `;
+  }).join("");
+}
+
+// simple escape for innerHTML
+function escapeHtml(str){
+  return String(str ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
+async function loadTickets(){
+  if (!ticketList) return;
+  ticketList.innerHTML = `<div class="muted">Loading…</div>`;
+
+  const r = await fetch("/api/support/tickets", { credentials: "include" });
+  if (!r.ok) {
+    ticketList.innerHTML = `<div class="muted">Couldn’t load tickets.</div>`;
+    return;
+  }
+  const data = await r.json();
+  renderTickets(data.tickets || []);
+}
+
 helpSend?.addEventListener("click", async () => {
+  const contact_email = (helpContactEmail?.value || "").trim();
+  const contact_phone = (helpContactPhone?.value || "").trim();
   const subject = (helpSubject?.value || "").trim();
   const message = (helpMessage?.value || "").trim();
-  if (!subject || !message) return;
 
   helpSend.disabled = true;
   setHelpMsg(null, "");
 
   try {
-    // If you don't have this endpoint yet, keep this as a placeholder:
-    // await apiPost("/api/support/contact", { subject, message });
+    const r = await fetch("/api/support/tickets", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contact_email, contact_phone, subject, message }),
+    });
 
-    // For now: mailto fallback (no backend needed)
-    const email = "support@carriershark.com";
-    const body = encodeURIComponent(message);
-    const subj = encodeURIComponent(`[Carrier Shark] ${subject}`);
-    window.location.href = `mailto:${email}?subject=${subj}&body=${body}`;
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || "Failed to send.");
 
-    setHelpMsg("ok", "Opening your email client…");
+    setHelpMsg("ok", `Sent. Ticket #${data.ticket_id}`);
+    // clear message only (keep contact info)
+    helpSubject.value = "";
+    helpMessage.value = "";
+    updateHelpSendState();
+    await loadTickets();
   } catch (e) {
     console.error(e);
-    setHelpMsg("error", "Could not send. Email us at support@carriershark.com");
-    helpSend.disabled = false;
+    setHelpMsg("error", e.message || "Could not send.");
+    updateHelpSendState();
   }
 });
+
 
   
   // -----------------------------
