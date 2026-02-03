@@ -10,6 +10,8 @@ const contractsRoutes = require("./contracts.routes");
 const insuranceRoutes = require("./insurance.routes");
 const accountRoutes = require("./account.routes");
 const debugRoutes = require("./debug.routes");
+const userApiRoutes = require("./userApi.routes");
+
 
 const healthInternalRoutes = require("./healthInternal.routes"); // router export
 const { healthRoutes } = require("./health.routes"); // factory export
@@ -29,12 +31,9 @@ function internalRoutes({ pool } = {}) {
   throw new Error("test crash");
 });
 
-
   // Health first (no auth/session dependency)
   router.use(healthRoutes({ pool })); // GET /api/health
   router.use(healthInternalRoutes);   // GET /api/health-internal
-
-
 
   // Existing internal routers
   router.use(authRoutes);
@@ -46,6 +45,7 @@ function internalRoutes({ pool } = {}) {
   router.use(insuranceRoutes);
   router.use(debugRoutes);
   router.use(accountRoutes);
+  router.use(userApiRoutes);
   router.use(publicCarriersRoutes);
 
   return router;
