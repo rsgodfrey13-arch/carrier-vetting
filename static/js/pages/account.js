@@ -423,7 +423,7 @@ function renderTickets(tickets){
   }
 
   ticketList.innerHTML = tickets.map(t => {
-    const id = `#${t.id}`;
+    const id = t.public_id || `CS-${String(t.id).padStart(6, "0")}`;
     const subj = escapeHtml(t.subject || "—");
     const when = t.created_at ? new Date(t.created_at).toLocaleString() : "";
     const status = escapeHtml(t.status || "open");
