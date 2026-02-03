@@ -1728,3 +1728,7 @@ body.account-page .page{
   color: rgba(226,232,240,.95);
   font-weight:600;
 }
+
+.btn-ghost {
+  cursor: pointer;
+}
