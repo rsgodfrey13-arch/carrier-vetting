@@ -25,4 +25,28 @@ async function sendContractEmail({ to, dotnumber, link }) {
   });
 }
 
-module.exports = { sendContractEmail };
+async function sendPasswordResetEmail({ to, link }) {
+  const domain = process.env.MAILGUN_DOMAIN;
+
+  return mg.messages.create(domain, {
+    from: process.env.MAILGUN_FROM,
+    to,
+    subject: "Reset your Carrier Shark password",
+    text: [
+      "We received a request to reset your password.",
+      "",
+      "Reset link:",
+      link,
+      "",
+      "This link expires in 60 minutes.",
+      "",
+      "If you didn’t request this, you can ignore this email.",
+      "",
+      "Carrier Shark",
+    ].join("\n"),
+  });
+}
+
+module.exports = { sendContractEmail, sendPasswordResetEmail };
+
+
