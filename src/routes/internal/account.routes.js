@@ -97,6 +97,37 @@ router.post("/account/email-alert-fields", async (req, res) => {
   }
 });
 
+// inside account.routes.js
+router.get("/account/email-alerts-enabled", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id; // or req.session.userId depending on your auth
+    const { rows } = await pool.query(
+      "SELECT COALESCE(email_alerts_enabled, true) AS email_alerts_enabled FROM users WHERE id = $1",
+      [userId]
+    );
+    return res.json({ email_alerts_enabled: rows[0]?.email_alerts_enabled ?? true });
+  } catch (e) {
+    console.error("email-alerts-enabled GET error", e);
+    return res.status(500).json({ error: "Failed to load setting" });
+  }
+});
+
+router.post("/account/email-alerts-enabled", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const enabled = !!req.body?.email_alerts_enabled;
+
+    const { rows } = await pool.query(
+      "UPDATE users SET email_alerts_enabled = $1 WHERE id = $2 RETURNING COALESCE(email_alerts_enabled, true) AS email_alerts_enabled",
+      [enabled, userId]
+    );
+
+    return res.json({ email_alerts_enabled: rows[0]?.email_alerts_enabled ?? enabled });
+  } catch (e) {
+    console.error("email-alerts-enabled POST error", e);
+    return res.status(500).json({ error: "Failed to update setting" });
+  }
+});
 
 
 module.exports = router;
