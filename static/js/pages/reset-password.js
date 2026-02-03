@@ -23,7 +23,12 @@ document.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
     if (errEl) { errEl.style.display = "none"; errEl.textContent = ""; }
 
-    if (!token) return showErr("Missing reset token. Please use the link from your email.");
+    if (!token) {
+  showErr("Missing reset token. Please use the link from your email.");
+  form.querySelector("button[type='submit']").disabled = true;
+  return;
+}
+
 
     const newPassword = document.getElementById("newPassword")?.value || "";
     const confirmPassword = document.getElementById("confirmPassword")?.value || "";
