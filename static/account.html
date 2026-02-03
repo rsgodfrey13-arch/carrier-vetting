@@ -197,48 +197,73 @@
               <p class="muted">Everything you need to integrate Carrier Shark into your workflow.</p>
             </div>
 
-            <div class="row">
-              <div>
-                <div class="row-title">API Key</div>
-                <div class="row-sub" id="api-key-masked">—</div>
-              </div>
-              <div class="row-actions">
-                <button class="btn-ghost" id="btn-copy-key">Copy</button>
-                <button class="btn-primary" id="btn-rotate-key">Rotate</button>
-              </div>
-            </div>
 
-            <div class="divider"></div>
+              <div class="row" id="api-key-row">
+                <div>
+                  <div class="row-title">API Key</div>
+                  <div class="row-sub" id="api-key-masked">—</div>
+                </div>
+                <div class="row-actions">
+                  <button class="btn-ghost" id="btn-copy-key">Copy</button>
+                  <button class="btn-primary" id="btn-rotate-key">Rotate</button>
+                </div>
+              </div>
+              
+              <div class="feature-locked" id="api-key-locked" style="display:none;">
+                <span class="lock-dot"></span>
+                <span>
+                  <strong>Upgrade required.</strong> API access is not enabled on your plan.
+                  <button class="link-btn" type="button" data-tab-jump="plan">Upgrade your plan</button>
+                </span>
+              </div>
+              
+              <div class="divider"></div>
 
-              <div class="api-row">
-                <div class="api-left">
-                  <div class="row-title">Webhook URL</div>
+              <div id="webhook-row">
+                <div class="api-row">
+                  <div class="api-left">
+                    <div class="row-title">Webhook URL</div>
+                  </div>
+              
+                  <div class="api-right">
+                    <input
+                      id="webhook-url"
+                      type="url"
+                      placeholder="https://example.com/webhooks/carrier-shark"
+                      class="api-input"
+                    />
+                    <button class="btn-ghost" id="btn-save-webhook" disabled>
+                      Save
+                    </button>
+                  </div>
                 </div>
               
-                <div class="api-right">
-                  <input
-                    id="webhook-url"
-                    type="url"
-                    placeholder="https://example.com/webhooks/carrier-shark"
-                    class="api-input"
-                  />
-                  <button class="btn-ghost" id="btn-save-webhook" disabled>
-                    Save
-                  </button>
+                <div class="feature-locked" id="webhook-locked" style="display:none;">
+                  <span class="lock-dot"></span>
+                  <span>
+                    <strong>Upgrade required.</strong> Webhooks aren’t enabled on your plan.
+                    <button class="link-btn" type="button" data-tab-jump="plan">Upgrade your plan</button>
+                  </span>
                 </div>
               </div>
-            
-            <div class="divider"></div>
-            
-            <div class="row">
-              <div>
-                <div class="row-title">Documentation</div>
-                <div class="row-sub">Auth, endpoints, examples, error formats.</div>
+              
+              <div class="divider"></div>
+
+              <div class="row" id="docs-row">
+                <div>
+                  <div class="row-title">Documentation</div>
+                  <div class="row-sub">Auth, endpoints, examples, error formats.</div>
+                </div>
+                <button class="btn-primary" id="btn-api-docs">Open docs</button>
               </div>
-              <button class="btn-primary" id="btn-api-docs">Open docs</button>
-            </div>
-          </div>
-        </section>
+              
+              <div class="feature-locked" id="docs-locked" style="display:none;">
+                <span class="lock-dot"></span>
+                <span>
+                  <strong>Upgrade required.</strong> Enable API access to view docs.
+                  <button class="link-btn" type="button" data-tab-jump="plan">Upgrade your plan</button>
+                </span>
+              </div>
 
         <!-- PLAN -->
         <section class="tab-panel" id="tab-plan">
