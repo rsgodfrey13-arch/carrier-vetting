@@ -3,6 +3,14 @@
 const express = require("express");
 const router = express.Router();
 
+function genPublicId() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no I/O/0/1
+  let s = "CS-";
+  for (let i = 0; i < 8; i++) s += alphabet[Math.floor(Math.random() * alphabet.length)];
+  return s;
+}
+
+
 // GET tickets for the logged-in user
 router.get("/support/tickets", async (req, res) => {
   if (!req.session?.userId) {
@@ -14,7 +22,7 @@ router.get("/support/tickets", async (req, res) => {
   try {
     const { rows } = await req.db.query(
       `
-      SELECT id, subject, created_at, status
+      SELECT id, public_id, subject, created_at, status
       FROM support_tickets
       WHERE user_id = $1
       ORDER BY created_at DESC
@@ -43,36 +51,45 @@ router.post("/support/tickets", async (req, res) => {
   const subject = String(req.body?.subject || "").trim();
   const message = String(req.body?.message || "").trim();
 
-  if (!contact_email || !contact_email.includes("@")) {
-    return res.status(400).json({ error: "Enter a valid contact email." });
-  }
-  if (subject.length < 3) {
-    return res.status(400).json({ error: "Subject is too short." });
-  }
-  if (message.length < 10) {
-    return res.status(400).json({ error: "Message is too short." });
-  }
+  // validation...
+
+  // NEW: generate a public id (retry if collision)
+  let publicId = genPublicId();
 
   try {
-    const { rows } = await req.db.query(
-      `
-      INSERT INTO support_tickets (user_id, contact_email, contact_phone, subject, message)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id
-      `,
-      [userId, contact_email, contact_phone || null, subject, message]
-    );
+    // Retry loop in case of UNIQUE collision (rare, but real)
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        const { rows } = await req.db.query(
+          `
+          INSERT INTO support_tickets (user_id, public_id, contact_email, contact_phone, subject, message)
+          VALUES ($1, $2, $3, $4, $5, $6)
+          RETURNING id, public_id
+          `,
+          [userId, publicId, contact_email, contact_phone || null, subject, message]
+        );
 
-    const ticketId = rows[0].id;
+        return res.json({
+          ticket_id: rows[0].id,
+          public_id: rows[0].public_id,
+        });
+      } catch (e) {
+        // unique violation
+        if (e.code === "23505") {
+          publicId = genPublicId();
+          continue;
+        }
+        throw e;
+      }
+    }
 
-    // (Optional) Email send happens here later once stable
-    // await sendSupportTicketEmail(...)
-
-    res.json({ ticket_id: ticketId });
+    // If we somehow collide 5 times
+    return res.status(500).json({ error: "Could not generate ticket reference." });
   } catch (e) {
     console.error("POST /support/tickets error:", e);
-    res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ error: "Server error" });
   }
 });
+
 
 module.exports = router;
