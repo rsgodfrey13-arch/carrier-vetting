@@ -1512,3 +1512,54 @@ body.account-page .page{
   .help-grid{ grid-template-columns: 1fr; }
   .help-hint{ max-width: 100%; }
 }
+
+.help-actions--tight{
+  justify-content:flex-end;
+}
+
+.help-steps--tight{
+  margin-top: 10px;
+}
+
+.ticket-list{
+  margin-top: 12px;
+  display:flex;
+  flex-direction:column;
+  gap: 10px;
+  max-height: 340px;
+  overflow:auto;
+  padding-right: 4px;
+}
+
+.ticket-item{
+  border-radius: 12px;
+  border: 1px solid rgba(148,163,184,.16);
+  background: rgba(2, 6, 23, .28);
+  padding: 10px 10px;
+}
+
+.ticket-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+}
+
+.ticket-id{
+  font-weight: 900;
+  letter-spacing: .03em;
+  color: rgba(229,231,235,.92);
+}
+
+.ticket-subject{
+  margin-top: 6px;
+  font-weight: 750;
+  color: rgba(229,231,235,.92);
+  line-height: 1.2;
+}
+
+.ticket-meta{
+  margin-top: 4px;
+  font-size: .78rem;
+  color: rgba(148,163,184,.85);
+}
