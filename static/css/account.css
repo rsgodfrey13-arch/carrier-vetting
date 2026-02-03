@@ -1343,6 +1343,7 @@ body.account-page .page{
 }
 .field-input{
   width:100%;
+  box-sizing: border-box;  
   padding: 12px 12px;
   border-radius: 12px;
   border: 1px solid rgba(255,255,255,.12);
@@ -1368,4 +1369,8 @@ body.account-page .page{
   border-radius: 12px;
   background: rgba(34,197,94,.12);
   border: 1px solid rgba(34,197,94,.25);
+}
+
+.modal * {
+  box-sizing: border-box;
 }
