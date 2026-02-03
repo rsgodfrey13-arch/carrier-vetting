@@ -242,6 +242,43 @@
     </div>
   </div>
 
+<!-- Change Password Modal -->
+<div class="modal-backdrop" id="pw-modal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pw-title">
+    <div class="modal-head">
+      <h3 id="pw-title">Change password</h3>
+      <button class="icon-btn" type="button" id="pw-close" aria-label="Close">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="field">
+        <label class="field-label" for="pw-current">Current password</label>
+        <input class="field-input" id="pw-current" type="password" autocomplete="current-password" />
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="pw-new">New password</label>
+        <input class="field-input" id="pw-new" type="password" autocomplete="new-password" />
+        <div class="muted" style="margin-top:6px;">Minimum 8 characters.</div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="pw-confirm">Confirm new password</label>
+        <input class="field-input" id="pw-confirm" type="password" autocomplete="new-password" />
+      </div>
+
+      <div class="form-error" id="pw-error" style="display:none;"></div>
+      <div class="form-ok" id="pw-ok" style="display:none;"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-ghost" type="button" id="pw-cancel">Cancel</button>
+      <button class="btn-primary" type="button" id="pw-save">Update password</button>
+    </div>
+  </div>
+</div>
+
+  
   <script src="/js/shared/shared.js" defer></script>
   <script src="/static/js/pages/account.js"></script>
   
