@@ -398,6 +398,34 @@ function applyEmailAlertsLock(user) {
   overlay.style.display = enabled ? "none" : "flex";
 }
 
+// -----------------------------
+// Email Alerts master switch (enabled on/off)
+// -----------------------------
+async function loadEmailAlertsEnabled(me) {
+  const toggle = document.getElementById("alerts-enabled");
+  if (!toggle) return;
+
+  // If they don't have the feature, leave it off (overlay blocks anyway)
+  if (me?.email_alerts !== true) {
+    toggle.checked = false;
+    toggle.disabled = true; // optional but clean
+    return;
+  }
+
+  toggle.disabled = false;
+
+  try {
+    const r = await fetch("/api/account/email-alerts-enabled", {
+      credentials: "include",
+    });
+    if (!r.ok) throw new Error(`GET failed: ${r.status}`);
+
+    const data = await r.json();
+    toggle.checked = !!data.email_alerts_enabled;
+  } catch (err) {
+    console.error("Failed to load email_alerts_enabled:", err);
+  }
+}
 
   
 // -----------------------------
@@ -635,6 +663,11 @@ if (document.getElementById("email-alert-fields")) {
       const plan = await apiGet("/api/user/plan");
       renderPlans(plan);
     }
+
+    // Email Alerts feature gate (single overlay)
+    applyEmailAlertsLock(me);
+    await loadEmailAlertsEnabled(me);
+    
   }
 
 getSaveButtons().forEach((btn) => {
@@ -657,6 +690,31 @@ document.getElementById("btn-set-default")?.addEventListener("click", async () =
   }
 });
 
+
+
+document.getElementById("alerts-enabled")?.addEventListener("change", async (e) => {
+  const toggle = e.currentTarget;
+
+  try {
+    const r = await fetch("/api/account/email-alerts-enabled", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email_alerts_enabled: toggle.checked }),
+    });
+
+    if (!r.ok) {
+      const text = await r.text().catch(() => "");
+      throw new Error(`POST failed: ${r.status} ${text}`);
+    }
+  } catch (err) {
+    console.error("Failed to update email_alerts_enabled:", err);
+
+    // revert UI if save fails (feels premium)
+    toggle.checked = !toggle.checked;
+    alert("Could not update the email alerts switch. Please try again.");
+  }
+});
 
 
 // -----------------------------
