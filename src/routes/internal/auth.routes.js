@@ -6,6 +6,10 @@ const { pool } = require("../../db/pool");
 
 const router = express.Router();
 
+const crypto = require("crypto");
+const { sendPasswordResetEmail } = require("../../clients/mailgun");
+
+
 // who am I? (used by UI + Postman to check login)
 router.get("/me", (req, res) => {
   if (!req.session?.userId) {
@@ -103,6 +107,148 @@ router.post("/change-password", async (req, res) => {
   } catch (err) {
     console.error("Error in POST /api/change-password:", err);
     res.status(500).json({ error: "Server error" });
+  }
+});
+
+
+// Functions for Password Resets
+
+function makeResetToken() {
+  return crypto.randomBytes(32).toString("hex"); // 64 chars
+}
+
+function hashToken(token) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+// POST /api/forgot-password  { email }
+// Always returns ok:true to prevent account enumeration.
+router.post("/forgot-password", async (req, res) => {
+  const emailRaw = String(req.body?.email || "").trim().toLowerCase();
+  if (!emailRaw) return res.json({ ok: true });
+
+  try {
+    const { rows } = await pool.query(
+      "SELECT id, email FROM users WHERE lower(email) = $1 LIMIT 1",
+      [emailRaw]
+    );
+
+    if (rows.length === 0) {
+      // don't reveal whether account exists
+      return res.json({ ok: true });
+    }
+
+    const user = rows[0];
+
+    const token = makeResetToken();
+    const tokenHash = hashToken(token);
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 60 minutes
+
+    await pool.query(
+      `
+      INSERT INTO public.password_reset_tokens
+        (user_id, token_hash, expires_at, request_ip, user_agent)
+      VALUES
+        ($1, $2, $3, $4, $5)
+      `,
+      [
+        user.id,
+        tokenHash,
+        expiresAt.toISOString(),
+        req.ip || null,
+        req.get("user-agent") || null,
+      ]
+    );
+
+    const link = `https://carriershark.com/reset-password/${token}`;
+
+    // send email (if Mailgun fails, we still return ok:true)
+    try {
+      await sendPasswordResetEmail({ to: user.email, link });
+    } catch (e) {
+      console.error("sendPasswordResetEmail failed:", e?.message || e);
+    }
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("Error in POST /api/forgot-password:", err);
+    // still ok:true so attackers can't distinguish errors vs no-account
+    return res.json({ ok: true });
+  }
+});
+
+// POST /api/reset-password  { token, newPassword }
+// On success: updates hash, marks token used, logs user in (session), returns ok:true
+router.post("/reset-password", async (req, res) => {
+  const token = String(req.body?.token || "").trim();
+  const newPassword = String(req.body?.newPassword || "");
+
+  if (!token) return res.status(400).json({ error: "Missing token" });
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: "Password must be at least 8 characters" });
+  }
+
+  const tokenHash = hashToken(token);
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const { rows } = await client.query(
+      `
+      SELECT prt.id AS reset_id, prt.user_id
+      FROM public.password_reset_tokens prt
+      WHERE prt.token_hash = $1
+        AND prt.used_at IS NULL
+        AND prt.expires_at > now()
+      LIMIT 1
+      FOR UPDATE
+      `,
+      [tokenHash]
+    );
+
+    if (rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "Invalid or expired reset link" });
+    }
+
+    const { reset_id, user_id } = rows[0];
+
+    const nextHash = await bcrypt.hash(newPassword, 12);
+
+    await client.query(
+      "UPDATE public.users SET password_hash = $1 WHERE id = $2",
+      [nextHash, user_id]
+    );
+
+    await client.query(
+      "UPDATE public.password_reset_tokens SET used_at = now() WHERE id = $1",
+      [reset_id]
+    );
+
+    await client.query("COMMIT");
+
+    // Auto-login (Option B)
+    if (typeof req.session.regenerate === "function") {
+      return req.session.regenerate((err) => {
+        if (err) {
+          console.error("session regenerate failed:", err);
+          req.session.userId = user_id;
+          return res.json({ ok: true });
+        }
+        req.session.userId = user_id;
+        return res.json({ ok: true });
+      });
+    }
+
+    req.session.userId = user_id;
+    return res.json({ ok: true });
+  } catch (err) {
+    try { await client.query("ROLLBACK"); } catch {}
+    console.error("Error in POST /api/reset-password:", err);
+    return res.status(500).json({ error: "Server error" });
+  } finally {
+    client.release();
   }
 });
 
