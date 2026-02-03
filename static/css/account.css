@@ -1253,3 +1253,34 @@ body.account-page .page{
   border: 0;
   box-shadow: none;
 }
+
+.kv-inline{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.kv-mask{
+  font-weight:800;
+  letter-spacing:.12em;
+  opacity:.9;
+}
+
+/* clean text-link button */
+.link-btn{
+  appearance:none;
+  border:0;
+  background:transparent;
+  color: rgba(56,189,248,.95);
+  font-weight:800;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  font-size:.74rem;
+  padding:0;
+  cursor:pointer;
+}
+
+.link-btn:hover{
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
