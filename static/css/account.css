@@ -1405,3 +1405,110 @@ body.account-page .page{
 #tab-api .api-left .row-title {
   margin-bottom: 8px;
 }
+
+/* -----------------------------
+   Help & Support
+----------------------------- */
+
+.help-grid{
+  display:grid;
+  grid-template-columns: 1.25fr .75fr;
+  gap: 14px;
+  align-items:start;
+}
+
+.help-card{
+  border-radius: 16px;
+  border: 1px solid rgba(148,163,184,.18);
+  background: rgba(15,23,42,.55);
+  padding: 14px;
+}
+
+.help-card-title{
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  font-size: .78rem;
+  color: rgba(229,231,235,.92);
+}
+
+.help-textarea{
+  resize: vertical;
+  min-height: 140px;
+}
+
+.help-actions{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.help-hint{
+  max-width: 70%;
+  line-height: 1.35;
+}
+
+.help-link{
+  color: rgba(56,189,248,.95);
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.help-link:hover{
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.help-steps{
+  display:flex;
+  flex-direction:column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.help-step{
+  display:flex;
+  gap: 10px;
+  align-items:flex-start;
+}
+
+.help-step-dot{
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(56,189,248,.85);
+  box-shadow: 0 0 0 3px rgba(56,189,248,.14);
+  margin-top: 4px;
+  flex: 0 0 auto;
+}
+
+.help-step-title{
+  font-weight: 850;
+  letter-spacing: .01em;
+}
+
+.help-step-sub{
+  margin-top: 2px;
+  font-size: .82rem;
+}
+
+.help-mini{
+  display:flex;
+  flex-direction:column;
+  gap: 6px;
+}
+
+.help-mini-title{
+  font-weight: 850;
+}
+
+.help-mini-sub{
+  margin: 0;
+}
+
+@media (max-width: 920px){
+  .help-grid{ grid-template-columns: 1fr; }
+  .help-hint{ max-width: 100%; }
+}
