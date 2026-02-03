@@ -71,6 +71,7 @@
   // -----------------------------
   
   let API_KEY_FULL = null;
+  let WEBHOOK_ORIGINAL = "";
   
   async function apiGet(url) {
     const r = await fetch(url, { credentials: "include" });
@@ -399,6 +400,20 @@ if (document.getElementById("email-alert-fields")) {
     if ($("api-key-masked")) {
       const api = await apiGet("/api/user/api");
       $("api-key-masked").textContent = api?.masked_key || "—";
+    
+      const wh = await apiGet("/api/user/webhook");
+      const input = $("webhook-url");
+      const btn = $("btn-save-webhook");
+    
+      if (input && btn) {
+        input.value = wh?.webhook_url || "";
+        WEBHOOK_ORIGINAL = input.value;
+        btn.disabled = true;
+    
+        input.addEventListener("input", () => {
+          btn.disabled = input.value.trim() === WEBHOOK_ORIGINAL;
+        });
+      }
     }
 
     // 4) Plan grid (only if you kept that section)
@@ -433,6 +448,27 @@ document.getElementById("btn-set-default")?.addEventListener("click", async () =
 // -----------------------------
 // API buttons
 // -----------------------------
+
+
+$("btn-save-webhook")?.addEventListener("click", async () => {
+  const input = $("webhook-url");
+  if (!input) return;
+
+  const url = input.value.trim();
+
+  try {
+    await apiPost("/api/user/webhook", { webhook_url: url });
+    WEBHOOK_ORIGINAL = url;
+    $("btn-save-webhook").disabled = true;
+    alert("Webhook saved.");
+  } catch (e) {
+    console.error(e);
+    alert("Failed to save webhook URL.");
+  }
+});
+
+
+  
 $("btn-copy-key")?.addEventListener("click", async () => {
   try {
     if (!API_KEY_FULL) {
