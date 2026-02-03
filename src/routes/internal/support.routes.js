@@ -9,13 +9,20 @@ const { sendSupportTicketEmail } = require("../../clients/mailgun");
 // NOTE: assumes you already have auth middleware for internal routes
 // and you can access req.user (id/email). If your app uses something else,
 // swap it in below.
-function getUser(req) {
-  return req.user || null;
+function getUserId(req) {
+  // Common patterns
+  return (
+    req.session?.userId ||
+    req.session?.user?.id ||
+    req.session?.user?.userId ||
+    null
+  );
 }
 
+
 router.get("/support/tickets", async (req, res) => {
-  const me = getUser(req);
-  if (!me?.id) return res.status(401).json({ error: "Unauthorized" });
+  const userId = getUserId(req);
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
   const { rows } = await pool.query(
     `
@@ -25,15 +32,16 @@ router.get("/support/tickets", async (req, res) => {
     ORDER BY created_at DESC
     LIMIT 25
     `,
-    [me.id]
+    [userId]
   );
 
   res.json({ tickets: rows });
 });
 
+
 router.post("/support/tickets", async (req, res) => {
-  const me = getUser(req);
-  if (!me?.id) return res.status(401).json({ error: "Unauthorized" });
+  const userId = getUserId(req);
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
   const contact_email = String(req.body?.contact_email || "").trim();
   const contact_phone = String(req.body?.contact_phone || "").trim();
