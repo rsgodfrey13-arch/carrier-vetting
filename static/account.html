@@ -284,75 +284,84 @@
         
             <div class="divider"></div>
         
-            <!-- contact shell -->
-            <div class="help-grid">
-              <div class="help-card">
-                <div class="help-card-title">Message</div>
-                <div class="muted" style="margin-top:6px;">We typically reply within 1 business day.</div>
-        
-                <div class="help-form" id="help-form">
-                  <div class="field">
-                  <label class="field-label" for="help-contact-email">Contact email</label>
-                  <input class="field-input" id="help-contact-email" type="email" placeholder="you@company.com" />
-                </div>
-                
-                <div class="field">
-                  <label class="field-label" for="help-contact-phone">Contact phone (optional)</label>
-                  <input class="field-input" id="help-contact-phone" type="tel" placeholder="(555) 555-5555" />
-                </div>
-                  <div class="field">
-                    <label class="field-label" for="help-subject">Subject</label>
-                    <input class="field-input" id="help-subject" type="text" placeholder="What can we help with?" />
-                  </div>
-        
-                  <div class="field">
-                    <label class="field-label" for="help-message">Message</label>
-                    <textarea class="field-input help-textarea" id="help-message" rows="6"
-                      placeholder="Include any details that help us solve this quickly."></textarea>
-                  </div>
-        
-                  <div class="help-actions">
-                  <div class="help-actions help-actions--tight">
-                    <button class="btn-primary" id="btn-help-send" type="button" disabled>Send</button>
-                  </div>   
-                  <div class="form-error" id="help-error" style="display:none;"></div>
-                  <div class="form-ok" id="help-ok" style="display:none;"></div>
-                </div>
-              </div>
-        
-              <div class="help-card">
-                <div class="help-card-title">What happens next</div>
-              
-                <div class="help-steps help-steps--tight">
-                  <div class="help-step">
-                    <div class="help-step-dot"></div>
-                    <div>
-                      <div class="help-step-title">We read it</div>
-                      <div class="help-step-sub muted">A human reviews your message.</div>
-                    </div>
-                  </div>
-              
-                  <div class="help-step">
-                    <div class="help-step-dot"></div>
-                    <div>
-                      <div class="help-step-title">We reply</div>
-                      <div class="help-step-sub muted">You’ll get an email back with next steps.</div>
-                    </div>
-                  </div>
-                </div>
-              
-                <div class="divider"></div>
-              
-                <div class="help-card-title" style="margin-top:2px;">Your tickets</div>
-                <div class="muted" style="margin-top:6px;">Recent requests from this account.</div>
-              
-                <div class="ticket-list" id="ticket-list">
-                  <div class="muted">Loading…</div>
-                </div>
-              </div>
+            <!-- help shell -->
+<div class="help-grid">
+  <!-- LEFT: form -->
+  <div class="help-card">
+    <div class="help-card-title">Message</div>
+    <div class="muted" style="margin-top:6px;">We typically reply within 1 business day.</div>
 
-            </div>
+    <div class="help-form">
+      <div class="field">
+        <label class="field-label" for="help-contact-email">Contact email</label>
+        <input class="field-input" id="help-contact-email" type="email" placeholder="you@company.com" />
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="help-contact-phone">Contact phone (optional)</label>
+        <input class="field-input" id="help-contact-phone" type="tel" placeholder="(555) 555-5555" />
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="help-subject">Subject</label>
+        <input class="field-input" id="help-subject" type="text" placeholder="What can we help with?" />
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="help-message">Message</label>
+        <textarea class="field-input help-textarea" id="help-message" rows="7"
+          placeholder="Include any details that help us solve this quickly."></textarea>
+      </div>
+
+      <div class="help-actions help-actions--tight">
+        <button class="btn-primary" id="btn-help-send" type="button" disabled>Send</button>
+      </div>
+
+      <div class="form-error" id="help-error" style="display:none;"></div>
+      <div class="form-ok" id="help-ok" style="display:none;"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: what happens next + tickets -->
+  <div class="help-side">
+    <div class="help-card help-card--compact">
+      <div class="help-card-title">What happens next</div>
+
+      <div class="help-steps help-steps--tight">
+        <div class="help-step">
+          <div class="help-step-dot"></div>
+          <div>
+            <div class="help-step-title">We read it</div>
+            <div class="help-step-sub muted">A human reviews your message.</div>
           </div>
+        </div>
+
+        <div class="help-step">
+          <div class="help-step-dot"></div>
+          <div>
+            <div class="help-step-title">We reply</div>
+            <div class="help-step-sub muted">You’ll get an email back with next steps.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="help-micro">
+        <span class="pill pill--ok">Typical response</span>
+        <span class="muted">1 business day</span>
+      </div>
+    </div>
+
+    <div class="help-card">
+      <div class="help-card-title">Your tickets</div>
+      <div class="muted" style="margin-top:6px;">Recent requests from this account.</div>
+
+      <div class="ticket-list" id="ticket-list">
+        <div class="muted">Loading…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
         </section>
 
 
