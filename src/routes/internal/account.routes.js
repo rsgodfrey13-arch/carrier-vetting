@@ -97,32 +97,52 @@ router.post("/account/email-alert-fields", async (req, res) => {
   }
 });
 
-// inside account.routes.js
-router.get("/account/email-alerts-enabled", requireAuth, async (req, res) => {
+// Get Email Alerts master switch (enabled/disabled)
+router.get("/account/email-alerts-enabled", async (req, res) => {
+  if (!req.session?.userId) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const userId = req.session.userId;
+
   try {
-    const userId = req.user.id; // or req.session.userId depending on your auth
-    const { rows } = await pool.query(
-      "SELECT COALESCE(email_alerts_enabled, true) AS email_alerts_enabled FROM users WHERE id = $1",
+    const { rows } = await req.db.query(
+      `SELECT COALESCE(email_alerts_enabled, true) AS email_alerts_enabled
+       FROM users
+       WHERE id = $1`,
       [userId]
     );
-    return res.json({ email_alerts_enabled: rows[0]?.email_alerts_enabled ?? true });
+
+    if (!rows.length) return res.status(404).json({ error: "User not found" });
+
+    return res.json({ email_alerts_enabled: rows[0].email_alerts_enabled });
   } catch (e) {
     console.error("email-alerts-enabled GET error", e);
     return res.status(500).json({ error: "Failed to load setting" });
   }
 });
 
-router.post("/account/email-alerts-enabled", requireAuth, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const enabled = !!req.body?.email_alerts_enabled;
+// Update Email Alerts master switch (enabled/disabled)
+router.post("/account/email-alerts-enabled", async (req, res) => {
+  if (!req.session?.userId) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
 
-    const { rows } = await pool.query(
-      "UPDATE users SET email_alerts_enabled = $1 WHERE id = $2 RETURNING COALESCE(email_alerts_enabled, true) AS email_alerts_enabled",
+  const userId = req.session.userId;
+  const enabled = !!req.body?.email_alerts_enabled;
+
+  try {
+    const { rows } = await req.db.query(
+      `UPDATE users
+       SET email_alerts_enabled = $1
+       WHERE id = $2
+       RETURNING COALESCE(email_alerts_enabled, true) AS email_alerts_enabled`,
       [enabled, userId]
     );
 
-    return res.json({ email_alerts_enabled: rows[0]?.email_alerts_enabled ?? enabled });
+    if (!rows.length) return res.status(404).json({ error: "User not found" });
+
+    return res.json({ email_alerts_enabled: rows[0].email_alerts_enabled });
   } catch (e) {
     console.error("email-alerts-enabled POST error", e);
     return res.status(500).json({ error: "Failed to update setting" });
