@@ -456,7 +456,9 @@ async function loadTickets(){
 
   const r = await fetch("/api/support/tickets", { credentials: "include" });
   if (!r.ok) {
-    ticketList.innerHTML = `<div class="muted">Couldn’t load tickets.</div>`;
+    const text = await r.text().catch(() => "");
+    console.error("GET /api/support/tickets failed:", r.status, text);
+    ticketList.innerHTML = `<div class="muted">Couldn’t load tickets (${r.status}).</div>`;
     return;
   }
   const data = await r.json();
