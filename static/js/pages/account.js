@@ -37,7 +37,12 @@
 }
 
 
+let activeTab = "overview";
+
 function setActiveTab(name) {
+  if (name === activeTab) return;
+  activeTab = name;
+
   railItems.forEach((b) =>
     b.classList.toggle("is-active", b.dataset.tab === name)
   );
@@ -46,9 +51,9 @@ function setActiveTab(name) {
     el.classList.toggle("is-active", k === name);
   });
 
-  // When Help opens, load ticket list
   if (name === "help") loadTickets().catch(console.error);
 }
+
 
 
   railItems.forEach((btn) => {
