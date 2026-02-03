@@ -390,8 +390,12 @@ function applyEmailAlertsLock(user) {
   const overlay = document.getElementById("email-alerts-locked");
   if (!overlay) return;
 
-  const locked = String(user?.email_alerts || "").toUpperCase() !== "Y";
-  overlay.style.display = locked ? "flex" : "none";
+  const enabled =
+    user?.email_alerts === true ||
+    user?.email_alerts === "Y" ||
+    String(user?.email_alerts).toUpperCase() === "Y";
+
+  overlay.style.display = enabled ? "none" : "flex";
 }
 
 
