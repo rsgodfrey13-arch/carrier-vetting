@@ -69,6 +69,9 @@
   // -----------------------------
   // API
   // -----------------------------
+  
+  let API_KEY_FULL = null;
+  
   async function apiGet(url) {
     const r = await fetch(url, { credentials: "include" });
     if (!r.ok) throw new Error(`GET ${url} failed: ${r.status}`);
@@ -425,6 +428,52 @@ document.getElementById("btn-set-default")?.addEventListener("click", async () =
   }
 });
 
+
+
+// -----------------------------
+// API buttons
+// -----------------------------
+$("btn-copy-key")?.addEventListener("click", async () => {
+  try {
+    if (!API_KEY_FULL) {
+      alert("For security, the full key is only shown right after rotation. Click Rotate to generate a new one.");
+      return;
+    }
+
+    await navigator.clipboard.writeText(API_KEY_FULL);
+    $("btn-copy-key").textContent = "Copied";
+    setTimeout(() => ($("btn-copy-key").textContent = "Copy"), 900);
+  } catch (e) {
+    console.error(e);
+    alert("Copy failed.");
+  }
+});
+
+$("btn-rotate-key")?.addEventListener("click", async () => {
+  if (!confirm("Rotate API key? This will break anything using the old key.")) return;
+
+  try {
+    const r = await apiPost("/api/user/api/rotate", {});
+    $("api-key-masked").textContent = r?.masked_key || "—";
+    API_KEY_FULL = r?.full_key || null;
+
+    if (API_KEY_FULL) {
+      await navigator.clipboard.writeText(API_KEY_FULL);
+      $("btn-copy-key").textContent = "Copied";
+      setTimeout(() => ($("btn-copy-key").textContent = "Copy"), 900);
+    }
+  } catch (e) {
+    console.error(e);
+    alert("Failed to rotate API key.");
+  }
+});
+
+$("btn-api-docs")?.addEventListener("click", () => {
+  window.open("/docs", "_blank", "noopener");
+});
+
+
+  
 // -----------------------------
 // Change Password Modal
 // -----------------------------
