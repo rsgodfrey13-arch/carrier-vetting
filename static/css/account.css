@@ -1751,3 +1751,92 @@ body.account-page .page{
   text-decoration-color: rgba(56,189,248,.35);
   text-underline-offset: 3px;
 }
+
+/* LOCKED STATE: make the section feel "disabled" */
+.lock-wrap{
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  row-gap: 10px;
+}
+
+/* Top content (title/sub + actions) */
+.lock-wrap .lock-main{
+  grid-column: 1;
+  grid-row: 1;
+}
+.lock-wrap .row-actions{
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+}
+
+/* Footer message (sits on its own row) */
+.lock-wrap .lock-footer{
+  grid-column: 1 / -1;
+  grid-row: 2;
+  padding-top: 10px;
+  margin-top: 2px;
+  border-top: 1px solid rgba(255,255,255,.07); /* ties it to the divider vibe */
+}
+
+/* Muting when locked */
+.is-locked .row-title,
+.is-locked .row-sub{
+  color: rgba(148,163,184,.7);
+}
+
+.is-locked .row-actions{
+  opacity: .45;
+  filter: saturate(.85);
+}
+
+.is-locked input{
+  opacity: .65;
+}
+
+/* Keep buttons visually disabled but still "premium" */
+.is-locked .btn-primary,
+.is-locked .btn-ghost,
+.is-locked input{
+  pointer-events: none;
+}
+
+/* LOCK FOOTER LOOK: hugged, confident, warm */
+.lock-footer{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: .82rem;
+  color: rgba(251,191,36,.95); /* amber */
+}
+
+.lock-footer strong{
+  color: rgba(252,211,77,.98);
+  font-weight: 700;
+}
+
+/* Dot that feels intentional */
+.lock-dot{
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(251,191,36,.95);
+  box-shadow: 0 0 0 4px rgba(251,191,36,.14);
+}
+
+/* Upgrade link: keep your accent, but make it feel "actionable" */
+.lock-footer .link-btn{
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin-left: 6px;
+  font: inherit;
+  font-weight: 700;
+  color: rgba(56,189,248,.95);
+  text-decoration: underline;
+  text-decoration-color: rgba(56,189,248,.35);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
