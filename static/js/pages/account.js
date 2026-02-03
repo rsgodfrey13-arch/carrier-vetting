@@ -384,6 +384,19 @@ function setAgreementsDefaultButtonState() {
 
 
 // -----------------------------
+// Email Alerts lock overlay
+// -----------------------------
+function applyEmailAlertsLock(user) {
+  const overlay = document.getElementById("email-alerts-locked");
+  if (!overlay) return;
+
+  const locked = String(user?.email_alerts || "").toUpperCase() !== "Y";
+  overlay.style.display = locked ? "flex" : "none";
+}
+
+
+  
+// -----------------------------
 // Help & Support
 // -----------------------------
 const helpContactEmail = $("help-contact-email");
@@ -534,11 +547,17 @@ function setDisabled(id, disabled) {
     if ($("me-email")) $("me-email").textContent = me?.email || me?.user?.email || "—";
     if ($("me-company")) $("me-company").textContent = me?.company || me?.user?.company || "—";
     if ($("me-plan")) $("me-plan").textContent = me?.plan || me?.user?.plan || "—";
-setPlanBadge(me?.plan || me?.user?.plan);
+
+  // Email Alerts feature gate (single overlay)
+  applyEmailAlertsLock(me);
+    
+    setPlanBadge(me?.plan || me?.user?.plan);
     setPill("me-email_alerts", me?.email_alerts);
     setPill("me-rest_alerts", me?.rest_alerts);
     setPill("me-webhook_alerts", me?.webhook_alerts);
 
+
+    
 const canRest = me?.rest_alerts === true;
 const canWebhook = me?.webhook_alerts === true;
 
