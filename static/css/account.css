@@ -1840,3 +1840,16 @@ body.account-page .page{
   text-underline-offset: 3px;
   cursor: pointer;
 }
+
+.lock-footer{
+  color: rgba(125, 211, 252, .95); /* soft cyan */
+}
+
+.lock-footer strong{
+  color: rgba(186, 230, 253, .98);
+}
+
+.lock-dot{
+  background: rgba(125, 211, 252, .95);
+  box-shadow: 0 0 0 4px rgba(125, 211, 252, .18);
+}
