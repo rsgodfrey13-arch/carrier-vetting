@@ -91,25 +91,35 @@ router.get("/user/webhook", async (req, res) => {
   res.json({ webhook_url: rows[0]?.webhook_url || "" });
 });
 
-// POST /api/user/webhook
 router.post("/user/webhook", async (req, res) => {
   if (!req.session?.userId) {
     return res.status(401).json({ error: "Not logged in" });
   }
 
-  const url = String(req.body?.webhook_url || "").trim();
+  let url = String(req.body?.webhook_url || "").trim();
 
-  if (url && !/^https?:\/\//i.test(url)) {
-    return res.status(400).json({ error: "Webhook must start with http or https" });
+  // allow clearing
+  if (!url) {
+    await pool.query(
+      "UPDATE PUBLIC.USERS SET WEBHOOK_URL = NULL WHERE ID = $1",
+      [req.session.userId]
+    );
+    return res.json({ ok: true });
+  }
+
+  // normalize if they forgot https
+  if (!/^https?:\/\//i.test(url)) {
+    url = "https://" + url;
   }
 
   await pool.query(
     "UPDATE PUBLIC.USERS SET WEBHOOK_URL = $1 WHERE ID = $2",
-    [url || null, req.session.userId]
+    [url, req.session.userId]
   );
 
-  res.json({ ok: true });
+  res.json({ ok: true, webhook_url: url });
 });
+
 
 
 module.exports = router;
