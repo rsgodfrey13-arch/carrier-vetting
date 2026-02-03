@@ -429,6 +429,85 @@ document.getElementById("btn-set-default")?.addEventListener("click", async () =
   }
 });
 
+// -----------------------------
+// Change Password Modal
+// -----------------------------
+const pwModal = $("pw-modal");
+const pwClose = $("pw-close");
+const pwCancel = $("pw-cancel");
+const pwSave = $("pw-save");
+const pwErr = $("pw-error");
+const pwOk = $("pw-ok");
+
+const pwCurrent = $("pw-current");
+const pwNew = $("pw-new");
+const pwConfirm = $("pw-confirm");
+
+function openPwModal() {
+  if (!pwModal) return;
+  pwErr.style.display = "none";
+  pwOk.style.display = "none";
+  pwErr.textContent = "";
+  pwOk.textContent = "";
+  pwCurrent.value = "";
+  pwNew.value = "";
+  pwConfirm.value = "";
+  pwSave.disabled = false;
+
+  pwModal.classList.add("is-open");
+  pwModal.setAttribute("aria-hidden", "false");
+  setTimeout(() => pwCurrent?.focus(), 0);
+}
+
+function closePwModal() {
+  if (!pwModal) return;
+  pwModal.classList.remove("is-open");
+  pwModal.setAttribute("aria-hidden", "true");
+}
+
+function showPwError(msg) {
+  pwOk.style.display = "none";
+  pwErr.textContent = msg || "Something went wrong.";
+  pwErr.style.display = "block";
+}
+
+function showPwOk(msg) {
+  pwErr.style.display = "none";
+  pwOk.textContent = msg || "Password updated.";
+  pwOk.style.display = "block";
+}
+
+$("btn-change-password")?.addEventListener("click", openPwModal);
+
+pwClose?.addEventListener("click", closePwModal);
+pwCancel?.addEventListener("click", closePwModal);
+pwModal?.addEventListener("click", (e) => {
+  if (e.target === pwModal) closePwModal();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && pwModal?.classList.contains("is-open")) closePwModal();
+});
+
+pwSave?.addEventListener("click", async () => {
+  const currentPassword = pwCurrent.value || "";
+  const newPassword = pwNew.value || "";
+  const confirm = pwConfirm.value || "";
+
+  if (!currentPassword) return showPwError("Enter your current password.");
+  if (newPassword.length < 8) return showPwError("New password must be at least 8 characters.");
+  if (newPassword !== confirm) return showPwError("New passwords do not match.");
+
+  pwSave.disabled = true;
+
+  try {
+    await apiPost("/api/change-password", { currentPassword, newPassword });
+    showPwOk("Password updated.");
+    setTimeout(closePwModal, 700);
+  } catch (err) {
+    showPwError("Could not update password. Check your current password and try again.");
+    pwSave.disabled = false;
+  }
+});
 
   
   loadEverything().catch((err) => console.error(err));
