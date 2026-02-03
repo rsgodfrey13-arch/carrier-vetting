@@ -16,18 +16,6 @@
   <div id="site-header"></div>
   <div class="page">
     
-    <!--
-    <header class="page-header">
-      <div class="page-header-left">
-        <h1 class="page-title">Carrier Shark</h1>
-        <p class="page-subtitle">Login to see your carriers</p>
-      </div>
-      <nav class="page-header-nav">
-        <a href="/">Home</a>
-        <a href="/privacy.html">Privacy Policy</a>
-      </nav>
-    </header>
-    -->
 
     <main class="page-main">
       <section class="card" style="max-width:400px;margin:40px auto;padding:24px;">
@@ -47,10 +35,39 @@
             Login
           </button>
           <p id="login-error" style="color:#f97316;margin-top:12px;display:none;"></p>
+          <div style="display:flex;justify-content:flex-end;margin-top:-8px;margin-bottom:14px;">
+            <button type="button" id="btn-forgot" class="link-btn">Forgot password?</button>
+          </div>
         </form>
       </section>
     </main>
   </div>
+
+<div class="modal-backdrop" id="fp-modal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="fp-title">
+    <div class="modal-head">
+      <h3 id="fp-title">Reset password</h3>
+      <button class="icon-btn" type="button" id="fp-close" aria-label="Close">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="field">
+        <label class="field-label" for="fp-email">Email</label>
+        <input class="field-input" id="fp-email" type="email" autocomplete="email" />
+      </div>
+
+      <div class="form-ok" id="fp-ok" style="display:none;"></div>
+      <div class="form-error" id="fp-error" style="display:none;"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-ghost" type="button" id="fp-cancel">Cancel</button>
+      <button class="btn-primary" type="button" id="fp-send">Send reset link</button>
+    </div>
+  </div>
+</div>
+
+  
 <script src="/static/js/pages/login.js" defer></script>
   <script src="/js/shared/shared.js"></script>
 
