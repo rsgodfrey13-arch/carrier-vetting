@@ -16,6 +16,8 @@
     help: $("tab-help"),
   };
 
+
+  
   function setPlanBadge(planRaw) {
   const el = document.getElementById("plan-badge");
   if (!el) return;
@@ -60,6 +62,12 @@ function setActiveTab(name) {
     btn.addEventListener("click", () => setActiveTab(btn.dataset.tab));
   });
 
+document.getElementById("btn-signout")?.addEventListener("click", (e) => {
+  e.currentTarget.disabled = true;
+  document.getElementById("logout-btn")?.click();
+});
+
+  
   document.querySelectorAll("[data-tab-jump]").forEach((btn) => {
     btn.addEventListener("click", () => setActiveTab(btn.dataset.tabJump));
   });
