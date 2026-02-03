@@ -1167,8 +1167,8 @@ body.account-page .page{
 }
 
 .tile-preview--clickable .pdf-chip{
-  opacity: 0;
-  transform: translateY(-2px);
+
+
   transition: opacity .12s ease, transform .12s ease;
 }
 
@@ -1200,4 +1200,56 @@ body.account-page .page{
 .tile-preview .paper{
   border-radius: 14px;
   background: rgba(255,255,255,.92);
+}
+
+/* ALWAYS show Open PDF */
+.tile-preview--clickable .pdf-chip{
+  opacity: 1 !important;
+  transform: none !important;
+
+  /* make it darker + more button-like */
+  background: rgba(0,0,0,.35);
+  border: 1px solid rgba(255,255,255,.18);
+  color: rgba(255,255,255,.92);
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
+/* optional: make it pop slightly on hover */
+.tile-preview--clickable:hover .pdf-chip{
+  background: rgba(0,0,0,.48);
+  border-color: rgba(255,255,255,.28);
+}
+
+.tile-name{
+  font-size: 1.08rem;
+  font-weight: 800;
+  line-height: 1.2;
+  margin-top: 6px;
+
+  /* 2-line wrap */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+
+  /* remove any old ellipsis setup */
+  white-space: normal;
+  text-overflow: unset;
+}
+
+.tile-body{ min-width: 0; }
+
+.tile-actions { min-height: 34px; }
+
+.tile-actions{
+  min-height: 34px;        /* keeps layout consistent */
+  display:flex;
+  justify-content:flex-end;
+  align-items:flex-start;
+
+  /* IMPORTANT: actions container should be invisible */
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
