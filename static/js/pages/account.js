@@ -13,6 +13,7 @@
     api: $("tab-api"),
     plan: $("tab-plan"),
     security: $("tab-security"),
+    help: $("tab-help"),
   };
 
   function setPlanBadge(planRaw) {
@@ -363,6 +364,82 @@ function setAgreementsDefaultButtonState() {
   if (!btn) return;
   btn.disabled = !agreementsSelectedId;
 }
+
+
+// -----------------------------
+// Help & Support (shell)
+// -----------------------------
+const helpSubject = $("help-subject");
+const helpMessage = $("help-message");
+const helpSend = $("btn-help-send");
+const helpErr = $("help-error");
+const helpOk = $("help-ok");
+
+function setHelpMsg(type, msg){
+  if (!helpErr || !helpOk) return;
+  helpErr.style.display = "none";
+  helpOk.style.display = "none";
+
+  if (type === "error") {
+    helpErr.textContent = msg || "Something went wrong.";
+    helpErr.style.display = "block";
+  } else if (type === "ok") {
+    helpOk.textContent = msg || "Sent.";
+    helpOk.style.display = "block";
+  }
+}
+
+function updateHelpSendState(){
+  if (!helpSend) return;
+  const subj = (helpSubject?.value || "").trim();
+  const msg  = (helpMessage?.value || "").trim();
+  helpSend.disabled = !(subj.length >= 3 && msg.length >= 10);
+}
+
+helpSubject?.addEventListener("input", updateHelpSendState);
+helpMessage?.addEventListener("input", updateHelpSendState);
+
+$("btn-help-contact")?.addEventListener("click", () => {
+  // stay on help tab, just focus the form for a "snappy" feel
+  setActiveTab("help");
+  setTimeout(() => helpSubject?.focus(), 0);
+});
+
+$("btn-help-docs")?.addEventListener("click", () => {
+  window.open("/docs", "_blank", "noopener");
+});
+
+$("btn-help-faq")?.addEventListener("click", () => {
+  // for now, keep it honest. later this becomes /help or knowledge base
+  alert("FAQ is coming soon. For now, send us a message and we’ll help.");
+});
+
+// IMPORTANT: shell only — replace endpoint when ready
+helpSend?.addEventListener("click", async () => {
+  const subject = (helpSubject?.value || "").trim();
+  const message = (helpMessage?.value || "").trim();
+  if (!subject || !message) return;
+
+  helpSend.disabled = true;
+  setHelpMsg(null, "");
+
+  try {
+    // If you don't have this endpoint yet, keep this as a placeholder:
+    // await apiPost("/api/support/contact", { subject, message });
+
+    // For now: mailto fallback (no backend needed)
+    const email = "support@carriershark.com";
+    const body = encodeURIComponent(message);
+    const subj = encodeURIComponent(`[Carrier Shark] ${subject}`);
+    window.location.href = `mailto:${email}?subject=${subj}&body=${body}`;
+
+    setHelpMsg("ok", "Opening your email client…");
+  } catch (e) {
+    console.error(e);
+    setHelpMsg("error", "Could not send. Email us at support@carriershark.com");
+    helpSend.disabled = false;
+  }
+});
 
   
   // -----------------------------
