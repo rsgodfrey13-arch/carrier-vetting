@@ -1706,3 +1706,25 @@ body.account-page .page{
   color: rgba(226,232,240,.95);
   font-weight: 600;
 }
+
+.help-actions-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-top: 12px;
+  gap: 16px;
+}
+
+.help-footer-note{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:.8rem;
+  color: rgba(148,163,184,.9);
+  line-height:1.35;
+}
+
+.help-footer-note strong{
+  color: rgba(226,232,240,.95);
+  font-weight:600;
+}
