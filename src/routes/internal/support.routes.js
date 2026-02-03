@@ -54,6 +54,8 @@ function supportRoutes({ pool }) {
     }
   });
 
+const { sendSupportTicketEmail } = require("../../clients/mailgun");
+  
   router.post("/support/tickets", async (req, res) => {
     try {
       const userId = getUserId(req);
