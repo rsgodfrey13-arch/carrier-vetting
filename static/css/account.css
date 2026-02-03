@@ -1732,3 +1732,22 @@ body.account-page .page{
 .btn-ghost {
   cursor: pointer;
 }
+.link-mini{
+  margin-left: 10px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+  color: rgba(56,189,248,.95);     /* your accent */
+  cursor: pointer;
+}
+
+.link-mini:hover{
+  color: rgba(147,197,253,.98);
+  text-decoration: underline;
+  text-decoration-color: rgba(56,189,248,.35);
+  text-underline-offset: 3px;
+}
