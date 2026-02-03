@@ -506,7 +506,22 @@ helpSend?.addEventListener("click", async () => {
   }
 });
 
+// API section lock/unlock helpers
 
+  function setLocked(rowId, lockedId, locked) {
+  const row = document.getElementById(rowId);
+  const msg = document.getElementById(lockedId);
+  if (row) row.classList.toggle("is-locked", !!locked);
+  if (msg) msg.style.display = locked ? "flex" : "none";
+}
+
+function setDisabled(id, disabled) {
+  const el = document.getElementById(id);
+  if (el) el.disabled = !!disabled;
+}
+
+
+  
   
   // -----------------------------
   // Main load
@@ -524,6 +539,27 @@ setPlanBadge(me?.plan || me?.user?.plan);
     setPill("me-rest_alerts", me?.rest_alerts);
     setPill("me-webhook_alerts", me?.webhook_alerts);
 
+const canRest = me?.rest_alerts === true;
+const canWebhook = me?.webhook_alerts === true;
+
+// Lock/unlock UI
+setLocked("api-key-row", "api-key-locked", !canRest);
+setLocked("webhook-row", "webhook-locked", !canWebhook);
+
+// Disable buttons/inputs when locked
+setDisabled("btn-copy-key", !canRest);
+setDisabled("btn-rotate-key", !canRest);
+
+setDisabled("webhook-url", !canWebhook);
+setDisabled("btn-save-webhook", true); // stays true until changed (your existing logic)
+
+// Docs require at least one API channel enabled
+const docsLocked = !(canRest || canWebhook);
+setLocked("docs-row", "docs-locked", docsLocked);
+setDisabled("btn-api-docs", docsLocked);
+
+
+    
     // Plan badge: keep it simple for now (no “tier logic”)
    // const planBadge = $("plan-badge");
   // if (planBadge) planBadge.textContent = me?.plan || me?.user?.plan || "—";
@@ -540,24 +576,36 @@ if (document.getElementById("email-alert-fields")) {
     }
 
     // 3) API (only if that section exists)
-    if ($("api-key-masked")) {
-      const api = await apiGet("/api/user/api");
-      $("api-key-masked").textContent = api?.masked_key || "—";
-    
-      const wh = await apiGet("/api/user/webhook");
-      const input = $("webhook-url");
-      const btn = $("btn-save-webhook");
-    
-      if (input && btn) {
-        input.value = wh?.webhook_url || "";
-        WEBHOOK_ORIGINAL = input.value;
-        btn.disabled = true;
-    
-        input.addEventListener("input", () => {
-          btn.disabled = input.value.trim() === WEBHOOK_ORIGINAL;
-        });
+      if ($("api-key-masked")) {
+        // Only fetch API key if REST access is enabled
+        if (canRest) {
+          const api = await apiGet("/api/user/api");
+          $("api-key-masked").textContent = api?.masked_key || "—";
+        } else {
+          $("api-key-masked").textContent = "Upgrade required";
+        }
+      
+        // Only fetch webhook value if webhook access is enabled
+        if (canWebhook) {
+          const wh = await apiGet("/api/user/webhook");
+          const input = $("webhook-url");
+          const btn = $("btn-save-webhook");
+      
+          if (input && btn) {
+            input.value = wh?.webhook_url || "";
+            WEBHOOK_ORIGINAL = input.value;
+            btn.disabled = true;
+      
+            input.addEventListener("input", () => {
+              btn.disabled = input.value.trim() === WEBHOOK_ORIGINAL;
+            });
+          }
+        } else {
+          const input = $("webhook-url");
+          if (input) input.value = "";
+        }
       }
-    }
+
 
     // 4) Plan grid (only if you kept that section)
     if ($("plan-grid")) {
@@ -736,3 +784,4 @@ pwSave?.addEventListener("click", async () => {
   
   loadEverything().catch((err) => console.error(err));
 })();
+
