@@ -47,6 +47,31 @@ async function sendPasswordResetEmail({ to, link }) {
   });
 }
 
-module.exports = { sendContractEmail, sendPasswordResetEmail };
+async function sendSupportTicketEmail({ to, ticketId, contactEmail, contactPhone, subject, message, userEmail }) {
+  const domain = process.env.MAILGUN_DOMAIN;
+
+  return mg.messages.create(domain, {
+    from: process.env.MAILGUN_FROM,
+    to,
+    subject: `Carrier Shark Support Ticket #${ticketId}: ${subject}`,
+    text: [
+      `Ticket ID: #${ticketId}`,
+      userEmail ? `Account Email: ${userEmail}` : null,
+      `Contact Email: ${contactEmail}`,
+      contactPhone ? `Contact Phone: ${contactPhone}` : null,
+      ``,
+      `Subject: ${subject}`,
+      ``,
+      `Message:`,
+      message,
+      ``,
+      `Carrier Shark`,
+    ].filter(Boolean).join("\n"),
+  });
+}
+
+
+module.exports = { sendContractEmail, sendPasswordResetEmail, sendSupportTicketEmail };
+
 
 
