@@ -411,10 +411,6 @@ getSaveButtons().forEach((btn) => {
   });
 });
 
-document.getElementById("btn-change-password")?.addEventListener("click", () => {
-  // TODO: replace with your real password flow (modal or redirect)
-  alert("Password change flow coming next. (Bravo release: 2FA + password modal)");
-});
 
   
 document.getElementById("btn-set-default")?.addEventListener("click", async () => {
