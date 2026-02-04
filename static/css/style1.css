@@ -2085,3 +2085,33 @@ body.carrier-list #site-header{
   position: relative;
   z-index: 1;
 }
+
+/* ===== FULL-BLEED BACKDROP (kills the "boxed" region) ===== */
+body.carrier-list{
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* force the two backdrop layers to cover the entire viewport */
+body.carrier-list .bg-gradient,
+body.carrier-list .bg-grid{
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  margin: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+
+/* keep your real content above the backdrop layers */
+body.carrier-list #site-header,
+body.carrier-list .page{
+  position: relative;
+  z-index: 1;
+}
