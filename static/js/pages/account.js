@@ -707,6 +707,18 @@ document.getElementById("alerts-enabled")?.addEventListener("change", async (e) 
       const text = await r.text().catch(() => "");
       throw new Error(`POST failed: ${r.status} ${text}`);
     }
+
+    // 👇 ADD THIS BLOCK
+    const footer = document.getElementById("alerts-footer-status");
+    if (footer) {
+      footer.textContent = toggle.checked
+        ? "Email alerts turned on"
+        : "Email alerts turned off";
+
+      footer.classList.toggle("off", !toggle.checked);
+      footer.style.opacity = "1";
+    }
+    
   } catch (err) {
     console.error("Failed to update email_alerts_enabled:", err);
 
