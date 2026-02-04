@@ -1895,3 +1895,27 @@ body.account-page .page{
 #tab-alerts .card {
   position: relative;
 }
+
+
+/* Email Alerts master switch OFF state */
+.alerts-switch:not(.on) {
+  background: rgba(239, 68, 68, 0.35); /* muted red */
+  box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.6);
+}
+
+.alerts-switch:not(.on) .switch-thumb {
+  background: #fff;
+}
+
+.alerts-footer-status {
+  margin-top: 14px;
+  font-size: 0.72rem;
+  color: rgba(94, 234, 212, 0.9); /* teal */
+  text-align: right;
+  opacity: 0.85;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.alerts-footer-status.off {
+  color: rgba(239, 68, 68, 0.75); /* muted red */
+}
