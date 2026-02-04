@@ -398,6 +398,28 @@ function applyEmailAlertsLock(user) {
   overlay.style.display = enabled ? "none" : "flex";
 }
 
+function setAlertsSwitchColor(enabled) {
+  const wrap = document.querySelector(".alerts-switch-wrap");
+  if (!wrap) return;
+
+  wrap.classList.toggle("is-on", !!enabled);
+  wrap.classList.toggle("is-off", !enabled);
+}
+
+function setAlertsFooter(enabled) {
+  const wrap = document.querySelector(".alerts-switch-wrap");
+  const footer = document.getElementById("alerts-footer-status");
+  if (!wrap || !footer) return;
+
+  wrap.classList.add("has-choice"); // <-- makes footer visible
+  footer.textContent = enabled ? "Email alerts turned on" : "Email alerts turned off";
+
+  footer.classList.toggle("is-on", !!enabled);
+  footer.classList.toggle("is-off", !enabled);
+}
+
+
+  
 // -----------------------------
 // Email Alerts master switch (enabled on/off)
 // -----------------------------
@@ -405,33 +427,32 @@ async function loadEmailAlertsEnabled(me) {
   const toggle = document.getElementById("alerts-enabled");
   if (!toggle) return;
 
-// ✅ No confirmation text on load (blank footer), BUT switch still shows on/off color
-const wrap = document.querySelector(".alerts-switch-wrap");
-const footer = document.getElementById("alerts-footer-status");
-if (wrap) wrap.classList.remove("has-choice");
-if (footer) {
-  footer.textContent = "";
-  footer.classList.remove("is-on", "is-off");
-}
+  const wrap = document.querySelector(".alerts-switch-wrap");
+  const footer = document.getElementById("alerts-footer-status");
 
-// default color while we load real value (optional but feels consistent)
-setAlertsSwitchColor(false);
+  // 1) Always start: footer blank + hidden (no confirmation on load)
+  if (wrap) wrap.classList.remove("has-choice");
+  if (footer) {
+    footer.textContent = "";
+    footer.classList.remove("is-on", "is-off");
+  }
 
+  // 2) Make the SWITCH show *something* immediately (default unchecked => red)
+  setAlertsSwitchColor(toggle.checked);
 
-  // If they don't have the feature, leave it off (overlay blocks anyway)
+  // 3) If plan doesn’t include email alerts, lock it off
   if (me?.email_alerts !== true) {
     toggle.checked = false;
+    toggle.disabled = true;
     setAlertsSwitchColor(false);
-    toggle.disabled = true; // optional but clean
     return;
   }
 
   toggle.disabled = false;
 
+  // 4) Load saved value, set switch color to match (still no footer text)
   try {
-    const r = await fetch("/api/account/email-alerts-enabled", {
-      credentials: "include",
-    });
+    const r = await fetch("/api/account/email-alerts-enabled", { credentials: "include" });
     if (!r.ok) throw new Error(`GET failed: ${r.status}`);
 
     const data = await r.json();
@@ -441,6 +462,7 @@ setAlertsSwitchColor(false);
     console.error("Failed to load email_alerts_enabled:", err);
   }
 }
+
 
   
 // -----------------------------
