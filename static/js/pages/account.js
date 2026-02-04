@@ -56,6 +56,24 @@ function setActiveTab(name) {
   if (name === "help") loadTickets().catch(console.error);
 }
 
+// -----------------------------
+// Deep link support: /account?tab=alerts  (or /account#alerts)
+// -----------------------------
+(function bootTabFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const tabFromQuery = (params.get("tab") || "").trim().toLowerCase();
+  const tabFromHash = (window.location.hash || "").replace("#", "").trim().toLowerCase();
+
+  const requested = tabFromQuery || tabFromHash;
+  if (!requested) return;
+
+  // only allow tabs you actually support (prevents typos breaking anything)
+  const allowed = new Set(Object.keys(panels)); // overview, alerts, agreements, api, plan, security, help
+  if (!allowed.has(requested)) return;
+
+  setActiveTab(requested);
+  window.scrollTo({ top: 0, behavior: "auto" });
+})();
 
 
   railItems.forEach((btn) => {
