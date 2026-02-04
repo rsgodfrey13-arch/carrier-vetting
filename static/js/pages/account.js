@@ -405,6 +405,15 @@ async function loadEmailAlertsEnabled(me) {
   const toggle = document.getElementById("alerts-enabled");
   if (!toggle) return;
 
+    // ✅ Neutral on load (no “turned on/off” message, no red/blue)
+  const wrap = document.querySelector(".alerts-switch-wrap");
+  const footer = document.getElementById("alerts-footer-status");
+  if (wrap) wrap.classList.remove("has-choice");
+  if (footer) {
+    footer.textContent = "";
+    footer.classList.remove("is-on", "is-off");
+  }
+
   // If they don't have the feature, leave it off (overlay blocks anyway)
   if (me?.email_alerts !== true) {
     toggle.checked = false;
@@ -565,6 +574,18 @@ function setDisabled(id, disabled) {
   if (el) el.disabled = !!disabled;
 }
 
+function setAlertsFooter(checked) {
+  const wrap = document.querySelector(".alerts-switch-wrap");
+  const footer = document.getElementById("alerts-footer-status");
+  if (!wrap || !footer) return;
+
+  // once user flips it, we "confirm" visually
+  wrap.classList.add("has-choice");
+
+  footer.textContent = checked ? "Email alerts turned on" : "Email alerts turned off";
+  footer.classList.toggle("is-on", !!checked);
+  footer.classList.toggle("is-off", !checked);
+}
 
   
   
@@ -708,16 +729,8 @@ document.getElementById("alerts-enabled")?.addEventListener("change", async (e) 
       throw new Error(`POST failed: ${r.status} ${text}`);
     }
 
-    // 👇 ADD THIS BLOCK
-    const footer = document.getElementById("alerts-footer-status");
-    if (footer) {
-      footer.textContent = toggle.checked
-        ? "Email alerts turned on"
-        : "Email alerts turned off";
-
-      footer.classList.toggle("off", !toggle.checked);
-      footer.style.opacity = "1";
-    }
+    // ✅ show confirmation only AFTER user toggles
+    setAlertsFooter(toggle.checked);
     
   } catch (err) {
     console.error("Failed to update email_alerts_enabled:", err);
