@@ -46,7 +46,7 @@ async function initAuthUI() {
   if (!loginBtn || !logoutBtn) return;
 
   loginBtn.onclick = () => {
-    window.location.href = "/login.html";
+    window.location.href = "/login";
   };
 
   try {
