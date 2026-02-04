@@ -2178,3 +2178,21 @@ body.carrier-list .page-header,
 body.carrier-list .search-shell{
   background: transparent !important;
 }
+
+/* ===== HOME: remove the “boxed column” seam ===== */
+body.carrier-list .page{
+  width: 100% !important;
+  max-width: none !important;   /* kills the 1280 boundary */
+  margin: 0 !important;
+  padding: 28px clamp(18px, 3.2vw, 64px) 52px !important;
+  background: transparent !important;
+}
+
+/* constrain the actual content blocks instead (Apple-style gutters) */
+body.carrier-list .page-header,
+body.carrier-list .search-shell,
+body.carrier-list .carriers-card{
+  max-width: 1560px;   /* try 1440 / 1560 / 1720 */
+  margin-left: auto;
+  margin-right: auto;
+}
