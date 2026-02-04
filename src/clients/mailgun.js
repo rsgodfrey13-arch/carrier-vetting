@@ -29,7 +29,25 @@ async function sendContractEmail({
       dotnumber,
       agreement_type,
       link
-    })
+    }),
+
+    // Plain-text fallback (for basic email clients)
+    text: [
+      `${broker_name} sent you a carrier agreement to review.`,
+      ``,
+      `Carrier: ${carrier_name || "N/A"}`,
+      `DOT: ${dotnumber}`,
+      `Agreement: ${agreement_type}`,
+      ``,
+      `Review and accept here:`,
+      link,
+      ``,
+      `This link expires in 72 hours.`,
+      ``,
+      `If you did not expect this, you can ignore this email.`,
+      ``,
+      `— Carrier Shark`
+    ].join("\n")
   });
 }
 
@@ -40,21 +58,21 @@ async function sendPasswordResetEmail({ to, link }) {
   return mg.messages.create(domain, {
     from: process.env.MAILGUN_FROM,
     to,
-    subject: "Reset your Carrier Shark password",
+    template: "password reset",
+    "h:X-Mailgun-Variables": JSON.stringify({ link }),
     text: [
-      "We received a request to reset your password.",
+      "We received a request to reset your Carrier Shark password.",
       "",
       "Reset link:",
       link,
       "",
       "This link expires in 60 minutes.",
       "",
-      "If you didn’t request this, you can ignore this email.",
-      "",
-      "Carrier Shark",
-    ].join("\n"),
+      "If you didn’t request this, you can ignore this email."
+    ].join("\n")
   });
 }
+
 
 async function sendSupportTicketEmail({ to, ticketId, contactEmail, contactPhone, subject, message, userEmail }) {
   const domain = process.env.MAILGUN_DOMAIN;
