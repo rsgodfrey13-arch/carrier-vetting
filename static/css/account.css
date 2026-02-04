@@ -1919,3 +1919,22 @@ body.account-page .page{
 .alerts-footer-status.off {
   color: rgba(239, 68, 68, 0.75); /* muted red */
 }
+
+.alerts-switch-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.alerts-footer-status {
+  font-size: 0.8rem;
+  color: var(--teal-400); /* same family as API upgrade text */
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.alerts-footer-status.off {
+  color: var(--red-400);
+}
+
