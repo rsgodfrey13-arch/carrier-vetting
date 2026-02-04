@@ -112,7 +112,7 @@ router.get("/user-contracts/:id/pdf", requireAuth, async (req, res) => {
 /** ---------- CONTRACT SEND ROUTE ---------- **/
 router.post("/contracts/send/:dot", requireAuth, async (req, res) => {
   const dotnumber = req.params.dot;
-  const { user_contract_id, email_to } = req.body || {};
+  const { user_contract_id, email_to,carrier_name } = req.body || {};
   const user_id = req.session.userId;
 
   if (!user_contract_id || !email_to) {
@@ -203,7 +203,7 @@ const broker_name = templateRes.rows[0].display_name || "Carrier Agreement";
     await sendContractEmail({
       to: email_to,
       broker_name,
-      carrier_name: "", // optional for now
+      carrier_name: carrier_name || "", // optional for now
       dotnumber: String(dotnumber),
       agreement_type,
       link
