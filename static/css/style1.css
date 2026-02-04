@@ -2115,3 +2115,19 @@ body.carrier-list .page{
   position: relative;
   z-index: 1;
 }
+/* ===== Home: stop looking like a centered "panel" ===== */
+body.carrier-list .page{
+  width: 100%;
+  max-width: none; /* <-- kills the hard 1280 boundary */
+  margin: 0;
+  padding: 28px clamp(18px, 3.2vw, 56px) 52px; /* premium fluid gutters */
+}
+
+/* keep your content from getting TOO wide by constraining the main sections instead */
+body.carrier-list .page-header,
+body.carrier-list .search-shell,
+body.carrier-list .carriers-card{
+  max-width: 1560px;   /* adjust: 1440 / 1560 / 1720 */
+  margin-left: auto;
+  margin-right: auto;
+}
