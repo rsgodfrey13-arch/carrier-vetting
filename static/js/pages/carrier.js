@@ -283,7 +283,8 @@ let SEND_CONTRACT_STATE = {
   dot: null,
   defaultEmail: "",      // locked
   recipients: [],        // extras (removable)
-  user_contract_id: ""   // required by backend
+  user_contract_id: "",  // required by backend
+  carrier_name: ""       // NEW
 };
 
 function renderSendContractDefaultChip() {
@@ -416,9 +417,10 @@ function wireSendContractModalOnce() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        user_contract_id: templateId,
-        email_to
-      })
+      user_contract_id: templateId,
+      email_to,
+      carrier_name: SEND_CONTRACT_STATE.carrier_name || ""
+    })
     });
 
     const body = await res.json().catch(() => ({}));
@@ -440,6 +442,9 @@ async function openSendContractModal(dot, carrierObj) {
 // Later you can expand this to FMCSA contact fields if you add them.
 const guessedDefault = carrierObj?.email_address || "";
 
+const carrierName =
+  (carrierObj?.legalname || carrierObj?.dbaname || "").toString().trim();
+
 // --- FUTURE (optional) --- FUUU TURREE FUUUU TURRREEE
 // If you later add FMCSA fields or parse from FMCSA API, you can do:
 // const guessedDefault =
@@ -453,7 +458,8 @@ const guessedDefault = carrierObj?.email_address || "";
     dot: String(dot || "").trim(),
     defaultEmail: guessedDefault,
     recipients: [],
-    user_contract_id: ""
+    user_contract_id: "",
+    carrier_name: carrierName
   };
 
   // Load templates
