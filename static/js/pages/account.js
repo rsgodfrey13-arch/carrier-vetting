@@ -405,18 +405,23 @@ async function loadEmailAlertsEnabled(me) {
   const toggle = document.getElementById("alerts-enabled");
   if (!toggle) return;
 
-    // ✅ Neutral on load (no “turned on/off” message, no red/blue)
-  const wrap = document.querySelector(".alerts-switch-wrap");
-  const footer = document.getElementById("alerts-footer-status");
-  if (wrap) wrap.classList.remove("has-choice");
-  if (footer) {
-    footer.textContent = "";
-    footer.classList.remove("is-on", "is-off");
-  }
+// ✅ No confirmation text on load (blank footer), BUT switch still shows on/off color
+const wrap = document.querySelector(".alerts-switch-wrap");
+const footer = document.getElementById("alerts-footer-status");
+if (wrap) wrap.classList.remove("has-choice");
+if (footer) {
+  footer.textContent = "";
+  footer.classList.remove("is-on", "is-off");
+}
+
+// default color while we load real value (optional but feels consistent)
+setAlertsSwitchColor(false);
+
 
   // If they don't have the feature, leave it off (overlay blocks anyway)
   if (me?.email_alerts !== true) {
     toggle.checked = false;
+    setAlertsSwitchColor(false);
     toggle.disabled = true; // optional but clean
     return;
   }
@@ -431,6 +436,7 @@ async function loadEmailAlertsEnabled(me) {
 
     const data = await r.json();
     toggle.checked = !!data.email_alerts_enabled;
+    setAlertsSwitchColor(toggle.checked);
   } catch (err) {
     console.error("Failed to load email_alerts_enabled:", err);
   }
@@ -574,6 +580,15 @@ function setDisabled(id, disabled) {
   if (el) el.disabled = !!disabled;
 }
 
+function setAlertsSwitchColor(checked) {
+  const wrap = document.querySelector(".alerts-switch-wrap");
+  if (!wrap) return;
+
+  wrap.classList.toggle("is-on", !!checked);
+  wrap.classList.toggle("is-off", !checked);
+}
+
+  
 function setAlertsFooter(checked) {
   const wrap = document.querySelector(".alerts-switch-wrap");
   const footer = document.getElementById("alerts-footer-status");
@@ -730,7 +745,9 @@ document.getElementById("alerts-enabled")?.addEventListener("change", async (e) 
     }
 
     // ✅ show confirmation only AFTER user toggles
+    setAlertsSwitchColor(toggle.checked);
     setAlertsFooter(toggle.checked);
+
     
   } catch (err) {
     console.error("Failed to update email_alerts_enabled:", err);
