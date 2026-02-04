@@ -2058,3 +2058,40 @@ tr.is-mine .col-select::after{
 .carriers-card.mode-search .carriers-header-actions{
   gap: 10px; /* or whatever you already use */
 }
+
+
+/* ==========================
+   CLEAN OVERRIDE (stop the square)
+   ========================== */
+
+/* 1) Stop the stacked background hacks (you have multiple ::before definitions now) */
+body.carrier-list::before{
+  content: none !important;
+}
+
+/* 2) Keep ONE background system: the body background you already had */
+body.carrier-list{
+  background:
+    radial-gradient(circle at 80% 40%, rgba(56,189,248,0.32), transparent 60%),
+    radial-gradient(circle at 10% 0%, rgba(56,189,248,0.18), transparent 55%),
+    linear-gradient(120deg, #0ea5e9 0%, #031728 45%, #020617 100%) !important;
+}
+
+/* 3) Make "glass-card" actually glass so it blends with what's behind it */
+.glass-card{
+  background: rgba(15,23,42,0.55) !important;          /* less “panel” */
+  border: 1px solid rgba(148,163,184,0.22) !important;
+  backdrop-filter: blur(16px) saturate(1.25) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(1.25) !important;
+}
+
+/* 4) Your table card is currently forcing itself opaque — undo that */
+.carriers-card{
+  background: rgba(15,23,42,0.55) !important;
+  box-shadow: 0 18px 40px rgba(15,23,42,0.65) !important;
+}
+
+/* 5) Kill the huge rectangular glow behind the search card */
+.search-shell::before{
+  content: none !important;
+}
