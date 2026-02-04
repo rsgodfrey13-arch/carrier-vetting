@@ -2201,3 +2201,17 @@ tr.is-mine td{
   --mode-accent-1: var(--accent-1) !important;
   --mode-accent-2: var(--accent-1) !important;
 }
+
+/* ✅ FIX: allow autocomplete dropdown to render outside the search card */
+.search-shell,
+.search-card,
+.glass-card.search-shell {
+  overflow: visible !important;
+}
+
+/* make sure the dropdown can sit above the next section */
+.search-shell { position: relative; z-index: 5; }
+.carriers-card { position: relative; z-index: 1; }
+
+/* optional: tiny gap so it doesn't look glued to the input */
+.carrier-suggestions { margin-top: 10px !important; }
