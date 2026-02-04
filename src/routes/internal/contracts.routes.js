@@ -129,23 +129,30 @@ router.post("/contracts/send/:dot", requireAuth, async (req, res) => {
   try {
     await client.query("BEGIN");
 
-    const templateCheck = await client.query(
-      `
-      SELECT 1
-      FROM public.user_contracts
-      WHERE id = $1
-        AND user_id = $2
-        AND storage_provider = 'DO_SPACES'
-        AND storage_key IS NOT NULL
-      `,
-      [user_contract_id, user_id]
-    );
+const templateRes = await client.query(
+  `
+  SELECT
+    name,
+    display_name
+  FROM public.user_contracts
+  WHERE id = $1
+    AND user_id = $2
+    AND storage_provider = 'DO_SPACES'
+    AND storage_key IS NOT NULL
+  LIMIT 1;
+  `,
+  [user_contract_id, user_id]
+);
 
-    if (templateCheck.rowCount === 0) {
-      throw Object.assign(new Error("Invalid or unauthorized contract template"), {
-        statusCode: 400
-      });
-    }
+if (templateRes.rowCount === 0) {
+  throw Object.assign(new Error("Invalid or unauthorized contract template"), {
+    statusCode: 400
+  });
+}
+
+const agreement_type = templateRes.rows[0].name || "Carrier Agreement";
+const broker_name = templateRes.rows[0].display_name || "Carrier Agreement";
+
 
     const insertSql = `
       INSERT INTO public.contracts
@@ -169,12 +176,12 @@ router.post("/contracts/send/:dot", requireAuth, async (req, res) => {
           'SENT',
           'EMAIL',
           'MAILGUN',
-          '{}'::jsonb,
+          $3::jsonb,
           NOW(),
-          $3,
           $4,
           $5,
-          $6
+          $6,
+          $7
         )
       RETURNING contract_id;
     `;
@@ -182,18 +189,23 @@ router.post("/contracts/send/:dot", requireAuth, async (req, res) => {
     const { rows } = await client.query(insertSql, [
       user_id,
       dotnumber,
+      JSON.stringify({ broker_name, agreement_type }),
       token,
       token_expires_at.toISOString(),
       email_to,
       user_contract_id
     ]);
 
+
     const contract_id = rows[0]?.contract_id;
     if (!contract_id) throw new Error("Failed to create contract");
 
     await sendContractEmail({
       to: email_to,
-      dotnumber,
+      broker_name,
+      carrier_name: "", // optional for now
+      dotnumber: String(dotnumber),
+      agreement_type,
       link
     });
 
