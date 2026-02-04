@@ -4561,3 +4561,74 @@ tr.is-mine td{
 .carriers-table tbody tr:hover{
   background: rgba(148,163,184,0.10) !important;
 }
+
+/* =========================
+   APPLE MINIMAL (PILL) FINAL
+   ========================= */
+
+/* softer glass + hairline border */
+.glass-card,
+.carriers-card{
+  background: rgba(15,23,42,0.38) !important;
+  border: 1px solid rgba(148,163,184,0.16) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    0 16px 40px rgba(0,0,0,0.32) !important;
+}
+
+/* remove “neon” lines on table wrapper */
+.carriers-table-wrap{
+  border-top: 1px solid rgba(148,163,184,0.14) !important;
+}
+
+/* calm table lines */
+.carriers-table thead th{
+  border-bottom: 1px solid rgba(148,163,184,0.14) !important;
+  color: rgba(148,163,184,0.82) !important;
+}
+.carriers-table tbody tr{
+  border-bottom: 1px solid rgba(148,163,184,0.10) !important;
+}
+
+/* calmer hover (no big glow) */
+.carriers-table tbody tr:hover{
+  background: rgba(148,163,184,0.08) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* keep “Authorized” green but less loud */
+.carriers-table td.status-ok{
+  color: rgba(34,197,94,0.85) !important;
+  font-weight: 600 !important;
+}
+
+/* pills: flatter, crisp, consistent */
+#filters-btn,
+#bulk-import-btn,
+#download-btn,
+.search-btn{
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.06),
+    0 10px 22px rgba(0,0,0,.22) !important;
+}
+
+/* primary pills: less gradient, more “Apple calm” */
+#bulk-import-btn,
+#download-btn{
+  background: rgba(56,189,248,0.92) !important;
+  border-color: rgba(56,189,248,0.45) !important;
+  color: rgba(6,20,37,0.95) !important;
+}
+#bulk-import-btn:hover,
+#download-btn:hover{
+  background: rgba(56,189,248,1) !important;
+  box-shadow: 0 14px 28px rgba(0,0,0,.26) !important;
+}
+
+/* suggestions dropdown: clean + crisp */
+.carrier-suggestions{
+  border: 1px solid rgba(148,163,184,0.16) !important;
+  background: rgba(2,6,23,0.92) !important;
+  box-shadow: 0 14px 30px rgba(0,0,0,0.35) !important;
+}
