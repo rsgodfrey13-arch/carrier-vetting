@@ -2010,3 +2010,13 @@ body.account-page .page{
   color: #2bb0ff;
 }
 
+
+/* ON = blue */
+.alerts-switch-wrap.is-on .switch-ui {
+  /* your current blue background styles */
+}
+
+/* OFF = red */
+.alerts-switch-wrap.is-off .switch-ui {
+  /* your current red background styles */
+}
