@@ -2215,3 +2215,67 @@ tr.is-mine td{
 
 /* optional: tiny gap so it doesn't look glued to the input */
 .carrier-suggestions { margin-top: 10px !important; }
+
+/* =========================
+   APPLE MINIMAL SKIN (calm + clean)
+   ========================= */
+:root{
+  --radius: 18px;
+  --radius-lg: 22px;
+}
+
+/* flatter cards, subtle hairline borders, less neon */
+.glass-card,
+.carriers-card{
+  background: rgba(15,23,42,0.42) !important;
+  border: 1px solid rgba(148,163,184,0.18) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    0 18px 45px rgba(0,0,0,0.35) !important;
+  border-radius: var(--radius-lg) !important;
+}
+
+/* Search button: keep it blue (no green), less “gaming” glow */
+.search-btn{
+  border-color: rgba(56,189,248,0.45) !important;
+  background: rgba(15,23,42,0.85) !important;
+  box-shadow: none !important;
+}
+.search-btn:hover{
+  border-color: rgba(56,189,248,0.80) !important;
+  background: rgba(15,23,42,0.92) !important;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.28) !important;
+  transform: translateY(-1px);
+}
+
+/* Input: calmer focus ring */
+#carrier-search-input:focus{
+  box-shadow: 0 0 0 3px rgba(56,189,248,0.18) !important;
+  border-color: rgba(56,189,248,0.70) !important;
+}
+
+/* Autocomplete dropdown: clean, crisp, no heavy glow */
+.carrier-suggestions{
+  border-radius: 16px !important;
+  border: 1px solid rgba(148,163,184,0.18) !important;
+  background: rgba(15,23,42,0.96) !important;
+  box-shadow: 0 14px 30px rgba(0,0,0,0.35) !important;
+}
+.carrier-suggestion-item{
+  padding: 10px 12px !important;
+}
+.carrier-suggestion-item:hover{
+  background: rgba(148,163,184,0.12) !important;
+}
+
+/* Make “MY” pill subtle so it doesn’t fight the blue theme */
+.my-carrier-pill{
+  border-color: rgba(34,197,94,0.25) !important;
+  background: rgba(34,197,94,0.08) !important;
+  color: rgba(187,247,208,0.92) !important;
+}
+
+/* Table hover: subtle lift, not loud */
+.carriers-table tbody tr:hover{
+  background: rgba(148,163,184,0.10) !important;
+}
