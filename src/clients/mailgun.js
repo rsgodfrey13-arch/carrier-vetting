@@ -7,23 +7,32 @@ const mg = mailgun.client({
   key: process.env.MAILGUN_API_KEY
 });
 
-async function sendContractEmail({ to, dotnumber, link }) {
+async function sendContractEmail({
+  to,
+  broker_name,
+  carrier_name,
+  dotnumber,
+  agreement_type,
+  link
+}) {
   const domain = process.env.MAILGUN_DOMAIN;
 
   return mg.messages.create(domain, {
     from: process.env.MAILGUN_FROM,
     to,
-    subject: `Carrier Agreement – Action Required (DOT ${dotnumber})`,
-    text: [
-      `Please review and accept the carrier agreement:`,
-      link,
-      ``,
-      `This link expires in 72 hours.`,
-      ``,
-      `Carrier Shark`
-    ].join("\n")
+    template: "carrier agreement",
+
+    // Variables for the HTML template + subject
+    "h:X-Mailgun-Variables": JSON.stringify({
+      broker_name,
+      carrier_name,
+      dotnumber,
+      agreement_type,
+      link
+    })
   });
 }
+
 
 async function sendPasswordResetEmail({ to, link }) {
   const domain = process.env.MAILGUN_DOMAIN;
