@@ -1938,3 +1938,54 @@ body.account-page .page{
   color: var(--red-400);
 }
 
+/* --- Master switch: tri-state UX (neutral until user toggles) --- */
+.alerts-switch-wrap{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;     /* right aligned */
+  justify-content:flex-end; /* bottom aligned */
+  gap:8px;
+}
+
+/* footer text: hidden by default (neutral on load) */
+.alerts-footer-status{
+  font-size:.78rem;
+  letter-spacing:.02em;
+  opacity:0;                /* blank until user toggles */
+  transition: opacity .18s ease, color .18s ease;
+}
+
+/* after user toggles, show footer */
+.alerts-switch-wrap.has-choice .alerts-footer-status{
+  opacity:1;
+}
+
+/* ON: teal/blue */
+.alerts-switch-wrap.has-choice .alerts-footer-status.is-on{
+  color: rgba(60, 220, 255, .95); /* match your theme teal */
+}
+
+/* OFF: red */
+.alerts-switch-wrap.has-choice .alerts-footer-status.is-off{
+  color: rgba(255, 90, 90, .95);
+}
+
+/* Switch background stays neutral until user toggles */
+.alerts-switch-wrap .switch-ui{
+  background: rgba(255,255,255,.12); /* neutral */
+  border: 1px solid rgba(255,255,255,.16);
+}
+
+/* ON (only after user toggles) */
+.alerts-switch-wrap.has-choice .switch input:checked + .switch-ui{
+  background: rgba(60, 220, 255, .85);
+  border-color: rgba(60, 220, 255, .95);
+}
+
+/* OFF (only after user toggles) */
+.alerts-switch-wrap.has-choice .switch input:not(:checked) + .switch-ui{
+  background: rgba(255, 90, 90, .85);
+  border-color: rgba(255, 90, 90, .95);
+}
+
+.alerts-switch-wrap{ margin-top: 18px; }
