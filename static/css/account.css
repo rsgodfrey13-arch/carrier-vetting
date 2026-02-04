@@ -1989,3 +1989,24 @@ body.account-page .page{
 }
 
 .alerts-switch-wrap{ margin-top: 18px; }
+
+
+/* OFF state (default) */
+.alerts-switch-wrap.is-off .switch-ui {
+  background: rgba(220, 53, 69, 0.9); /* red */
+  box-shadow: 0 0 0 1px rgba(220, 53, 69, 0.35);
+}
+
+.alerts-switch-wrap.is-off .alerts-footer-status {
+  color: #dc3545;
+}
+
+/* ON state */
+.alerts-switch-wrap.is-on .switch-ui {
+  background: #2bb0ff; /* your blue */
+}
+
+.alerts-switch-wrap.is-on .alerts-footer-status {
+  color: #2bb0ff;
+}
+
