@@ -72,10 +72,6 @@ router.post("/support/tickets", async (req, res) => {
           [userId, publicId, contact_email, contact_phone || null, subject, message]
         );
 
-        return res.json({
-          ticket_id: rows[0].id,
-          public_id: rows[0].public_id,
-        });
 
         await sendSupportTicketEmail({
           to: process.env.SUPPORT_INBOX,  // <— this is now centralized
@@ -86,6 +82,13 @@ router.post("/support/tickets", async (req, res) => {
           message,
           userEmail: req.session?.userEmail || null
         });
+        
+        return res.json({
+          ticket_id: rows[0].id,
+          public_id: rows[0].public_id,
+        });
+
+
         
       } catch (e) {
         // unique violation
