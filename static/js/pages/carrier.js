@@ -124,6 +124,25 @@ function wireQuickJump() {
   });
 }
 
+  function wireBackToOverview() {
+  const btn = document.getElementById("back-to-overview");
+  const hero = document.getElementById("carrier-header");
+  if (!btn || !hero) return;
+
+  btn.addEventListener("click", () => {
+    smoothJumpToId("carrier-header");
+  });
+
+  window.addEventListener("scroll", () => {
+    const showAfter = 320;
+    if (window.scrollY > showAfter) {
+      btn.classList.add("is-visible");
+    } else {
+      btn.classList.remove("is-visible");
+    }
+  });
+}
+
   
 function humanCoverageType(t, raw) {
   const v = (t || "").toUpperCase().trim();
@@ -1216,6 +1235,7 @@ document.addEventListener("DOMContentLoaded", () => {
   wireEmailModalOnce();
   wireSendContractModalOnce(); 
   wireQuickJump();
+  wireBackToOverview();
   loadCarrier();
 });
 
