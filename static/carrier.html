@@ -126,7 +126,15 @@
       </div>
     </div> <!-- end .carrier-right -->
   </div> <!-- end .carrier-header-top -->
-
+    <!-- Quick Jump (subtle) -->
+    <nav class="quick-jump" aria-label="Quick jump">
+      <span class="quick-jump-label">Jump to</span>
+  
+      <button type="button" class="quick-jump-link is-active" data-jump="carrier-header">Overview</button>
+      <button type="button" class="quick-jump-link" data-jump="section-safety">Safety</button>
+      <button type="button" class="quick-jump-link" data-jump="section-inspections">Inspections</button>
+      <button type="button" class="quick-jump-link" data-jump="ins-coverages-card">Insurance</button>
+    </nav>
   <div class="hero-accent-line"></div>
 </section>
 
@@ -135,7 +143,7 @@
     <section class="card-grid">
 
       <!-- Equipment Summary -->
-      <article class="info-card glass-card">
+      <article id="section-equipment" class="info-card glass-card">
         <div class="card-header">
           <h2>Equipment Summary</h2>
           <span class="card-tag">Assets</span>
@@ -153,7 +161,7 @@
       </article>
       
       <!-- Safety Rating -->
-      <article class="info-card glass-card">
+      <article id="section-safety" class="info-card glass-card">
         <div class="card-header">
           <h2>Safety Rating</h2>
           <span class="card-tag">Snapshot</span>
@@ -183,7 +191,7 @@
       </article>
 
       <!-- Operations & Authority -->
-<article class="info-card glass-card">
+<article id="section-ops" class="info-card glass-card">
   <div class="card-header">
     <h2>Operations &amp; Authority</h2>
     <span class="card-tag">Profile</span>
@@ -215,7 +223,7 @@
 
       
       <!-- Crashes -->
-      <article class="info-card glass-card">
+      <article id="section-crashes" class="info-card glass-card">
         <div class="card-header">
           <h2>Crashes</h2>
           <span class="card-tag">Events</span>
@@ -241,7 +249,7 @@
       </article>
 
       <!-- Inspections & OOS -->
-      <article class="info-card wide glass-card">
+      <article id="section-inspections" class="info-card wide glass-card">
         <div class="card-header">
           <h2>Inspections &amp; OOS</h2>
           <span class="card-tag">Roadside</span>
@@ -312,7 +320,7 @@
 
       <!------ Cargo Carried -->
 
-      <article class="info-card wide glass-card">
+      <article id="section-cargo" class="info-card wide glass-card">
         <div class="card-header">
           <h2>Cargo Carried</h2>
           <span class="card-tag">FREIGHT</span>
