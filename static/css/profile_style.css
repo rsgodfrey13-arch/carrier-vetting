@@ -1642,3 +1642,13 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
 .quick-jump-link.is-active{
   border: 0 !important;
 }
+
+/* Insurance should always be full width */
+#ins-coverages-card {
+  grid-column: 1 / -1;
+}
+
+#ins-coverages-card {
+  grid-column: 1 / -1;
+  margin-top: 6px;
+}
