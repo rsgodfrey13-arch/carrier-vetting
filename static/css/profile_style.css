@@ -1628,3 +1628,17 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   border-radius: 999px;
   background: rgba(56,189,248,.55);
 }
+
+/* ===== QUICK JUMP: remove faint active "pill" (keep underline) ===== */
+.quick-jump-link,
+.quick-jump-link:hover,
+.quick-jump-link.is-active{
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+/* (optional) if any border sneaks in from resets */
+.quick-jump-link.is-active{
+  border: 0 !important;
+}
