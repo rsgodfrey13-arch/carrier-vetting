@@ -36,6 +36,9 @@
     }
   }
 
+
+
+  
 function fmtDate(d) {
   if (!d) return "—";
   // if backend returns YYYY-MM-DD
@@ -57,6 +60,71 @@ function fmtMoney(amount, currency) {
   }
 }
 
+
+function getScrollOffset() {
+  // If your #site-header is fixed/sticky, this makes landing perfect.
+  const header = document.getElementById("site-header");
+  const h = header ? header.offsetHeight : 0;
+
+  // add a little breathing room so the section title isn't glued to the top
+  return Math.max(72, h + 18);
+}
+
+function smoothJumpToId(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  const offset = getScrollOffset();
+  const y = el.getBoundingClientRect().top + window.scrollY - offset;
+
+  window.scrollTo({ top: y, behavior: "smooth" });
+}
+
+function wireQuickJump() {
+  const nav = document.querySelector(".quick-jump");
+  if (!nav || nav.__wired) return;
+  nav.__wired = true;
+
+  // click -> scroll
+  nav.addEventListener("click", (e) => {
+    const btn = e.target.closest(".quick-jump-link");
+    if (!btn) return;
+
+    const id = btn.dataset.jump;
+    if (!id) return;
+
+    smoothJumpToId(id);
+  });
+
+  // highlight active section (very light)
+  const links = Array.from(nav.querySelectorAll(".quick-jump-link"));
+  const ids = links.map(b => b.dataset.jump).filter(Boolean);
+
+  const obs = new IntersectionObserver((entries) => {
+    // pick the most "visible" entry
+    let best = null;
+    for (const en of entries) {
+      if (!en.isIntersecting) continue;
+      if (!best || en.intersectionRatio > best.intersectionRatio) best = en;
+    }
+    if (!best) return;
+
+    const activeId = best.target.id;
+    links.forEach((b) => b.classList.toggle("is-active", b.dataset.jump === activeId));
+  }, {
+    root: null,
+    // start considering a section "active" when it's near the top area
+    rootMargin: `-${getScrollOffset()}px 0px -65% 0px`,
+    threshold: [0.08, 0.18, 0.28, 0.38]
+  });
+
+  ids.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) obs.observe(el);
+  });
+}
+
+  
 function humanCoverageType(t, raw) {
   const v = (t || "").toUpperCase().trim();
   if (v === "GENERAL_LIABILITY") return "Commercial General Liability";
@@ -1147,6 +1215,7 @@ function wireContractClick(dot) {
 document.addEventListener("DOMContentLoaded", () => {
   wireEmailModalOnce();
   wireSendContractModalOnce(); 
+  wireQuickJump();
   loadCarrier();
 });
 
