@@ -1279,3 +1279,59 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
 
 .ins-limit-label{ opacity: .80; }
 .ins-limit-value{ text-align:right; font-weight: 600; }
+
+/* ===== Quick Jump (hero) ===== */
+.quick-jump{
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.03);
+}
+
+.quick-jump-label{
+  font-size: 11px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: rgba(148,163,184,.95);
+  padding-right: 2px;
+}
+
+.quick-jump-link{
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: rgba(226,232,240,.78);
+
+  font-size: 12px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-weight: 800;
+
+  padding: 6px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+
+  transition: background .15s ease, color .15s ease, transform .12s ease, box-shadow .15s ease;
+}
+
+.quick-jump-link:hover{
+  color: rgba(255,255,255,.92);
+  background: rgba(255,255,255,.06);
+  transform: translateY(-1px);
+}
+
+.quick-jump-link.is-active{
+  color: rgba(255,255,255,.92);
+  background: rgba(56,189,248,.12);
+  box-shadow: 0 0 0 1px rgba(56,189,248,.16) inset;
+}
+
+@media (max-width: 900px){
+  .quick-jump{ justify-content: flex-start; }
+}
