@@ -1335,3 +1335,53 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
 @media (max-width: 900px){
   .quick-jump{ justify-content: flex-start; }
 }
+
+/* ===== Back to Overview ===== */
+.back-to-overview{
+  position: fixed;
+  right: 22px;
+  bottom: 18px;
+  z-index: 40;
+
+  appearance: none;
+  border: none;
+  background: transparent;
+
+  font-size: 12px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  font-weight: 800;
+
+  color: rgba(226,232,240,.65);
+  cursor: pointer;
+
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(6px);
+
+  transition:
+    opacity .25s ease,
+    transform .25s ease,
+    color .15s ease;
+}
+
+.back-to-overview .arrow{
+  margin-left: 4px;
+  opacity: .45;
+  transition: opacity .15s ease, transform .15s ease;
+}
+
+.back-to-overview:hover{
+  color: rgba(255,255,255,.9);
+}
+
+.back-to-overview:hover .arrow{
+  opacity: .9;
+  transform: translateY(-2px);
+}
+
+.back-to-overview.is-visible{
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
