@@ -1194,3 +1194,88 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
 }
 
 /* Disabled state still uses your existing .pill-disabled look */
+
+
+.ins-coverages-body{
+  display: grid;
+  gap: 14px;
+}
+
+.ins-coverage{
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.04);
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.ins-title-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom: 10px;
+}
+
+.ins-title{
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+
+.ins-letter{
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.03);
+}
+
+.ins-meta{
+  display:grid;
+  gap: 6px;
+}
+
+.ins-meta-row{
+  display:flex;
+  justify-content:space-between;
+  gap: 14px;
+  font-size: 13px;
+}
+
+.ins-k{ opacity: .75; }
+.ins-v{ text-align:right; opacity: .95; }
+
+.ins-flags{
+  margin-top: 10px;
+  display:flex;
+  flex-wrap:wrap;
+  gap: 8px;
+}
+
+.ins-flag{
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(0,0,0,.10);
+}
+
+.ins-divider{
+  height:1px;
+  background: rgba(255,255,255,.08);
+  margin: 12px 0;
+}
+
+.ins-limits{
+  display:grid;
+  gap: 8px;
+}
+
+.ins-limit-row{
+  display:flex;
+  justify-content:space-between;
+  gap: 14px;
+  font-size: 13px;
+}
+
+.ins-limit-label{ opacity: .80; }
+.ins-limit-value{ text-align:right; font-weight: 600; }
