@@ -36,6 +36,148 @@
     }
   }
 
+function fmtDate(d) {
+  if (!d) return "—";
+  // if backend returns YYYY-MM-DD
+  const s = String(d).slice(0, 10);
+  const [y, m, day] = s.split("-");
+  if (!y || !m || !day) return s;
+  return `${m}/${day}/${y}`;
+}
+
+function fmtMoney(amount, currency) {
+  if (amount === null || amount === undefined || amount === "") return "—";
+  const n = Number(amount);
+  if (Number.isNaN(n)) return String(amount);
+  try {
+    // keep it simple & US-looking (ACORD-style)
+    return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  } catch {
+    return String(amount);
+  }
+}
+
+function humanCoverageType(t, raw) {
+  const v = (t || "").toUpperCase().trim();
+  if (v === "GENERAL_LIABILITY") return "Commercial General Liability";
+  if (v === "AUTO_LIABILITY") return "Automobile Liability";
+  if (v === "MOTOR_TRUCK_CARGO") return "Motor Truck Cargo";
+  // fall back to what you parsed off the PDF if you have it
+  return raw || t || "Coverage";
+}
+
+function safeText(v) {
+  const s = (v ?? "").toString().trim();
+  return s ? s : "—";
+}
+
+  function renderInsuranceCoverages(rows) {
+  const wrap = document.getElementById("ins-coverages-body");
+  if (!wrap) return;
+
+  if (!Array.isArray(rows) || rows.length === 0) {
+    wrap.innerHTML = `<div class="cs-hint">No insurance coverages found.</div>`;
+    return;
+  }
+
+  // Each row should look like:
+  // { id, coverage_type, coverage_type_raw, insurer_name, policy_number, insurer_letter, effective_date, expiration_date,
+  //   additional_insured, subrogation_waived, limits: [{ label, currency, amount, ... }] }
+
+  wrap.innerHTML = "";
+
+  rows.forEach((c) => {
+    const title = humanCoverageType(c.coverage_type, c.coverage_type_raw);
+    const insurer = safeText(c.insurer_name);
+    const policy = safeText(c.policy_number);
+    const eff = fmtDate(c.effective_date);
+    const exp = fmtDate(c.expiration_date);
+
+    const addl = (c.additional_insured || "").toString().trim();
+    const subr = (c.subrogation_waived || "").toString().trim();
+
+    const flags = []
+      .concat(addl ? [`<span class="ins-flag">ADDL INSD: ${addl}</span>`] : [])
+      .concat(subr ? [`<span class="ins-flag">SUBR WVD: ${subr}</span>`] : [])
+      .join("");
+
+    const limits = Array.isArray(c.limits) ? c.limits : [];
+
+    const limitsHtml = limits.length
+      ? `
+        <div class="ins-limits">
+          ${limits.map((l) => {
+            const label = safeText(l.label);
+            const value =
+              (l.value_text && String(l.value_text).trim()) ||
+              (l.amount_text && String(l.amount_text).trim()) ||
+              (l.amount_primary != null || l.amount_secondary != null)
+                ? [
+                    l.amount_primary != null ? fmtMoney(l.amount_primary, l.currency) : null,
+                    l.amount_secondary != null ? fmtMoney(l.amount_secondary, l.currency) : null
+                  ].filter(Boolean).join(" / ")
+                : (l.amount != null ? fmtMoney(l.amount, l.currency) : "—");
+
+            return `
+              <div class="ins-limit-row">
+                <div class="ins-limit-label">${label}</div>
+                <div class="ins-limit-value">${value}</div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      `
+      : `<div class="cs-hint">No limits parsed.</div>`;
+
+    const card = document.createElement("div");
+    card.className = "ins-coverage";
+
+    card.innerHTML = `
+      <div class="ins-top">
+        <div class="ins-title-row">
+          <div class="ins-title">${title}</div>
+          <div class="ins-letter">${safeText(c.insurer_letter)}</div>
+        </div>
+
+        <div class="ins-meta">
+          <div class="ins-meta-row"><span class="ins-k">Insurer</span><span class="ins-v">${insurer}</span></div>
+          <div class="ins-meta-row"><span class="ins-k">Policy</span><span class="ins-v">${policy}</span></div>
+          <div class="ins-meta-row"><span class="ins-k">Effective</span><span class="ins-v">${eff}</span></div>
+          <div class="ins-meta-row"><span class="ins-k">Expires</span><span class="ins-v">${exp}</span></div>
+        </div>
+
+        ${flags ? `<div class="ins-flags">${flags}</div>` : ``}
+      </div>
+
+      <div class="ins-divider"></div>
+
+      ${limitsHtml}
+    `;
+
+    wrap.appendChild(card);
+  });
+}
+
+async function loadInsuranceCoverages(dot) {
+  const wrap = document.getElementById("ins-coverages-body");
+  if (wrap) wrap.innerHTML = `<div class="cs-hint">Loading…</div>`;
+
+  try {
+    const res = await fetch(`/api/carriers/${encodeURIComponent(dot)}/insurance-coverages`);
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      if (wrap) wrap.innerHTML = `<div class="cs-hint">Unable to load coverages.</div>`;
+      console.warn("insurance coverages failed", res.status, data);
+      return;
+    }
+
+    renderInsuranceCoverages(Array.isArray(data.rows) ? data.rows : []);
+  } catch (e) {
+    console.error("insurance coverages error", e);
+    if (wrap) wrap.innerHTML = `<div class="cs-hint">Unable to load coverages.</div>`;
+  }
+}
 
 
 
@@ -705,6 +847,8 @@ if (data && data.source === "cache_stale") {
           cargoListEl.innerHTML = "<li>—</li>";
         }
       }
+      
+      await loadInsuranceCoverages(dot);
 
       // Buttons
       await initCarrierButtons(dot);
