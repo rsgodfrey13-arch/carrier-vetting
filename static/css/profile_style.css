@@ -1479,3 +1479,80 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
 @media (max-width: 720px){
   .quick-jump::after{ width: 320px; }
 }
+
+/* ===== Quick Jump (underline-only, no box) ===== */
+.quick-jump{
+  margin-top: 14px;
+  padding: 0;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+
+  background: transparent;
+  border: none;
+  opacity: .9;
+}
+
+.quick-jump-label{
+  font-size: 11px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: rgba(148,163,184,.65);
+  margin-right: 2px;
+}
+
+/* links */
+.quick-jump-link{
+  appearance: none;
+  border: 0;
+  background: transparent;
+
+  font-size: 12px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  font-weight: 800;
+
+  padding: 2px 0;
+  cursor: pointer;
+
+  color: rgba(226,232,240,.60);
+  transition: color .15s ease;
+}
+
+.quick-jump-link:hover{
+  color: rgba(255,255,255,.9);
+}
+
+/* active state = underline only */
+.quick-jump-link.is-active{
+  color: rgba(255,255,255,.95);
+  position: relative;
+}
+
+.quick-jump-link.is-active::after{
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -8px;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(56,189,248,.55); /* cyan accent */
+}
+
+/* faint hero rail under the whole group */
+.quick-jump::after{
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -14px;
+  width: 460px; /* tweak to taste */
+  height: 1px;
+  background: rgba(255,255,255,.08);
+  border-radius: 999px;
+}
+
+.quick-jump:hover{
+  opacity: 1;
+}
