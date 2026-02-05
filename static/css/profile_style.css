@@ -1556,3 +1556,75 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
 .quick-jump:hover{
   opacity: 1;
 }
+
+/* ===== FINAL QUICK JUMP: underline-only, no container ===== */
+.quick-jump{
+  margin-top: 10px;
+  padding: 0;
+
+  display: inline-flex;
+  align-items: baseline;
+  gap: 14px;
+
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+
+  position: static !important;
+}
+
+/* kill any container rail */
+.quick-jump::after{
+  content: none !important;
+}
+
+/* label stays subtle */
+.quick-jump-label{
+  font-size: 11px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: rgba(148,163,184,.6);
+  margin-right: 2px;
+}
+
+/* links = pure text */
+.quick-jump-link{
+  appearance: none;
+  border: 0 !important;
+  background: transparent !important;
+
+  font-size: 12px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  font-weight: 800;
+
+  padding: 0 !important;   /* <- this removes the “box feel” */
+  margin: 0;
+
+  color: rgba(226,232,240,.60);
+  cursor: pointer;
+
+  transition: color .15s ease;
+}
+
+.quick-jump-link:hover{
+  color: rgba(255,255,255,.9);
+}
+
+/* active = underline ONLY */
+.quick-jump-link.is-active{
+  color: rgba(255,255,255,.95);
+  position: relative;
+}
+
+.quick-jump-link.is-active::after{
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -8px;
+
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(56,189,248,.55);
+}
