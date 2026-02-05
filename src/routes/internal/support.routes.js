@@ -50,6 +50,9 @@ router.post("/support/tickets", async (req, res) => {
   const contact_phone = String(req.body?.contact_phone || "").trim();
   const subject = String(req.body?.subject || "").trim();
   const message = String(req.body?.message || "").trim();
+  const { sendSupportTicketEmail } = require("../../clients/mailgun"); 
+// adjust path if needed
+
 
   // validation...
 
@@ -73,6 +76,17 @@ router.post("/support/tickets", async (req, res) => {
           ticket_id: rows[0].id,
           public_id: rows[0].public_id,
         });
+
+        await sendSupportTicketEmail({
+          to: process.env.SUPPORT_INBOX,  // <— this is now centralized
+          ticketId: rows[0].public_id,
+          contactEmail: contact_email,
+          contactPhone: contact_phone,
+          subject,
+          message,
+          userEmail: req.session?.userEmail || null
+        });
+        
       } catch (e) {
         // unique violation
         if (e.code === "23505") {
