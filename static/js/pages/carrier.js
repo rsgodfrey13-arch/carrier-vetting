@@ -158,7 +158,7 @@ function safeText(v) {
   return s ? s : "—";
 }
 
-  function renderInsuranceCoverages(rows) {
+  function renderInsuranceCoverages(rows, dot) {
   const wrap = document.getElementById("ins-coverages-body");
   if (!wrap) return;
 
@@ -179,6 +179,9 @@ function safeText(v) {
     const policy = safeText(c.policy_number);
     const eff = fmtDate(c.effective_date);
     const exp = fmtDate(c.expiration_date);
+    const openBtn = c.document_id
+      ? `<button class="ins-open-coi" type="button" data-open-ins-doc="${c.document_id}">OPEN COI</button>`
+      : ``;
 
     const addl = (c.additional_insured || "").toString().trim();
     const subr = (c.subrogation_waived || "").toString().trim();
@@ -223,7 +226,10 @@ function safeText(v) {
       <div class="ins-top">
         <div class="ins-title-row">
           <div class="ins-title">${title}</div>
+          <div class="ins-title-actions">
+              ${openBtn}
           <div class="ins-letter">${safeText(c.insurer_letter)}</div>
+          </div>
         </div>
 
         <div class="ins-meta">
@@ -259,7 +265,7 @@ async function loadInsuranceCoverages(dot) {
       return;
     }
 
-    renderInsuranceCoverages(Array.isArray(data.rows) ? data.rows : []);
+    renderInsuranceCoverages(Array.isArray(data.rows) ? data.rows : [], dot);
   } catch (e) {
     console.error("insurance coverages error", e);
     if (wrap) wrap.innerHTML = `<div class="cs-hint">Unable to load coverages.</div>`;
