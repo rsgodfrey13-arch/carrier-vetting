@@ -158,6 +158,43 @@ function safeText(v) {
   return s ? s : "—";
 }
 
+function renderInsuranceDocumentOnly(doc, dot) {
+  const wrap = document.getElementById("ins-coverages-body");
+  if (!wrap) return;
+
+  wrap.innerHTML = `
+    <div class="ins-coverage ins-coverage--doconly">
+      <div class="ins-top">
+        <div class="ins-title-row">
+          <div class="ins-title">Insurance Certificate on File</div>
+          <div class="ins-title-actions">
+            <button class="ins-open-coi" type="button" data-open-ins-doc="${doc.id}">
+              View Insurance Certificate
+            </button>
+          </div>
+        </div>
+        <div class="cs-hint" style="margin-top:10px;">
+          Open the certificate to view coverage details.
+        </div>
+      </div>
+    </div>
+  `;
+
+  wrap.querySelectorAll("[data-open-ins-doc]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const id = btn.getAttribute("data-open-ins-doc");
+      if (!id) return;
+      window.open(
+        `/api/carriers/${encodeURIComponent(dot)}/insurance-documents/${encodeURIComponent(id)}/pdf`,
+        "_blank",
+        "noopener"
+      );
+    });
+  });
+}
+
+  
   function renderInsuranceCoverages(rows, dot) {
   const wrap = document.getElementById("ins-coverages-body");
   if (!wrap) return;
@@ -276,7 +313,22 @@ async function loadInsuranceCoverages(dot) {
       return;
     }
 
-    renderInsuranceCoverages(Array.isArray(data.rows) ? data.rows : [], dot);
+    const mode = (data.mode || "").toUpperCase();
+    const rows = Array.isArray(data.rows) ? data.rows : [];
+    const doc = data.document || null;
+    
+    if (mode === "STRUCTURED") {
+      renderInsuranceCoverages(rows, dot);
+      return;
+    }
+    
+    if (mode === "ON_FILE" && doc?.id) {
+      renderInsuranceDocumentOnly(doc, dot);
+      return;
+    }
+    
+    // default: missing / unknown
+    renderInsuranceCoverages([], dot);
   } catch (e) {
     console.error("insurance coverages error", e);
     if (wrap) wrap.innerHTML = `<div class="cs-hint">Unable to load coverages.</div>`;
