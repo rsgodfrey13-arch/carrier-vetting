@@ -180,7 +180,7 @@ function safeText(v) {
     const eff = fmtDate(c.effective_date);
     const exp = fmtDate(c.expiration_date);
     const openBtn = c.document_id
-      ? `<button class="ins-open-coi" type="button" data-open-ins-doc="${c.document_id}">OPEN COI</button>`
+      ? `<button class="ins-open-coi" type="button" data-open-ins-doc="${c.document_id}">View Insurance Certificate</button>`
       : ``;
 
     const addl = (c.additional_insured || "").toString().trim();
@@ -228,7 +228,6 @@ function safeText(v) {
           <div class="ins-title">${title}</div>
           <div class="ins-title-actions">
               ${openBtn}
-          <div class="ins-letter">${safeText(c.insurer_letter)}</div>
           </div>
         </div>
 
