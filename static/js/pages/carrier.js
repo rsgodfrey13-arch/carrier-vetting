@@ -36,6 +36,39 @@
     }
   }
 
+async function getMe() {
+  try {
+    const r = await fetch("/api/me", { credentials: "include" });
+    const j = await r.json().catch(() => ({}));
+    return j?.user || null; // your /api/me returns { user: ... }
+  } catch {
+    return null;
+  }
+}
+
+function applyInsuranceLock(me) {
+  const overlay = document.getElementById("insurance-locked");
+  const upgradeBtn = document.getElementById("btn-upgrade-insurance");
+  if (!overlay) return;
+
+  // not logged in -> locked (same “blocked off” feel)
+  const allowed = me?.view_insurance  === true;
+
+  overlay.style.display = allowed ? "none" : "flex";
+
+  // optional: if locked, prevent clicks on “View Insurance Certificate” buttons
+  document.querySelectorAll(".ins-open-coi").forEach((b) => {
+    b.disabled = !allowed;
+    b.style.pointerEvents = allowed ? "" : "none";
+    b.style.opacity = allowed ? "" : "0.6";
+  });
+
+  if (upgradeBtn) {
+    upgradeBtn.onclick = () => {
+      window.location.href = "/account?tab=plan";
+    };
+  }
+}
 
 
   
@@ -1003,6 +1036,18 @@ if (data && data.source === "cache_stale") {
           cargoListEl.innerHTML = "<li>—</li>";
         }
       }
+
+      const me = await getMe();
+      applyInsuranceLock(me);
+      
+      // Only load insurance if unlocked (optional)
+      if (me?.view_insurance === true) {
+        await loadInsuranceCoverages(dot);
+      } else {
+        const wrap = document.getElementById("ins-coverages-body");
+        if (wrap) wrap.innerHTML = `<div class="cs-hint">Upgrade to view insurance.</div>`;
+      }
+
       
       await loadInsuranceCoverages(dot);
 
