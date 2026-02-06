@@ -58,10 +58,38 @@ const sql = `
     c.created_at DESC;
 `;
 
-
   try {
+    // 1) Load coverages (existing logic)
     const { rows } = await pool.query(sql, [dot]);
-    return res.json({ rows });
+  
+    // If parsed coverages exist, we're done
+    if (rows.length > 0) {
+      return res.json({ mode: "STRUCTURED", rows, document: null });
+    }
+  
+    // 2) No coverages → check if there's a COI document on file
+    const docRes = await pool.query(
+      `
+      SELECT id, uploaded_at
+      FROM public.insurance_documents
+      WHERE dot_number = $1
+        AND document_type = 'COI'
+      ORDER BY uploaded_at DESC NULLS LAST
+      LIMIT 1;
+      `,
+      [dot]
+    );
+  
+    if (docRes.rows.length > 0) {
+      return res.json({
+        mode: "ON_FILE",
+        rows: [],
+        document: docRes.rows[0], // { id, uploaded_at }
+      });
+    }
+  
+    // 3) Nothing at all
+    return res.json({ mode: "MISSING", rows: [], document: null });
   } catch (e) {
     console.error("carrier insurance coverages error", e);
     return res.status(500).json({ error: "Failed to load insurance coverages" });
