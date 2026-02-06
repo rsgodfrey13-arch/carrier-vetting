@@ -249,6 +249,18 @@ function safeText(v) {
 
     wrap.appendChild(card);
   });
+      wrap.querySelectorAll("[data-open-ins-doc]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const id = btn.getAttribute("data-open-ins-doc");
+        if (!id) return;
+        window.open(
+          `/api/carriers/${encodeURIComponent(dot)}/insurance-documents/${encodeURIComponent(id)}/pdf`,
+          "_blank",
+          "noopener"
+        );
+      });
+    });
 }
 
 async function loadInsuranceCoverages(dot) {
