@@ -1694,3 +1694,50 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   background:rgba(255,255,255,.10);
   border-color:rgba(255,255,255,.24);
 }
+
+.ins-open-coi{
+  border: 1px solid rgba(56,189,248,.38);
+  background: rgba(56,189,248,.08);
+  color: rgba(224,242,254,.95);
+
+  font-weight: 800;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+  font-size: .70rem;
+
+  padding: 9px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+
+  box-shadow:
+    0 10px 26px rgba(0,0,0,.22),
+    inset 0 1px 0 rgba(255,255,255,.06);
+
+  transition:
+    transform .12s ease,
+    background .12s ease,
+    border-color .12s ease,
+    box-shadow .12s ease,
+    color .12s ease;
+}
+
+.ins-open-coi:hover{
+  transform: translateY(-1px);
+  background: rgba(56,189,248,.14);
+  border-color: rgba(56,189,248,.60);
+  box-shadow:
+    0 14px 34px rgba(0,0,0,.28),
+    0 0 0 4px rgba(56,189,248,.10);
+}
+
+.ins-open-coi:active{
+  transform: translateY(0px);
+  background: rgba(56,189,248,.10);
+}
+
+.ins-open-coi{
+  width: 100%;
+  justify-content: center;
+  display: inline-flex;
+}
+.ins-title-actions{ width: 100%; }
