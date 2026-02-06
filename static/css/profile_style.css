@@ -1671,3 +1671,26 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
 .ins-coverage{
   padding: 12px; /* was 14px */
 }
+
+.ins-title-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.ins-open-coi{
+  border:1px solid rgba(255,255,255,.16);
+  background:rgba(255,255,255,.06);
+  color:#fff;
+  font-weight:700;
+  letter-spacing:.06em;
+  font-size:.72rem;
+  padding:8px 10px;
+  border-radius:999px;
+  cursor:pointer;
+}
+
+.ins-open-coi:hover{
+  background:rgba(255,255,255,.10);
+  border-color:rgba(255,255,255,.24);
+}
