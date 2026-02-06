@@ -1044,11 +1044,9 @@ if (data && data.source === "cache_stale") {
       if (me?.view_insurance === true) {
         await loadInsuranceCoverages(dot);
       } else {
-        const wrap = document.getElementById("ins-coverages-body");
-        if (wrap) wrap.innerHTML = `<div class="cs-hint">Upgrade to view insurance.</div>`;
-      }
-
-
+      const wrap = document.getElementById("ins-coverages-body");
+      if (wrap) wrap.innerHTML = `<div class="cs-hint">—</div>`;
+    }
 
       // Buttons
       await initCarrierButtons(dot);
