@@ -11,11 +11,34 @@ const { sendPasswordResetEmail } = require("../../clients/mailgun");
 
 
 // who am I? (used by UI + Postman to check login)
-router.get("/me", (req, res) => {
+router.get("/me", async (req, res) => {
   if (!req.session?.userId) {
     return res.json({ user: null });
   }
-  res.json({ user: { id: req.session.userId } });
+
+  try {
+    const { rows } = await pool.query(
+      `
+      SELECT
+        id,
+        email,
+        view_insurance
+      FROM users
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [req.session.userId]
+    );
+
+    if (!rows.length) {
+      return res.json({ user: null });
+    }
+
+    return res.json({ user: rows[0] });
+  } catch (err) {
+    console.error("GET /api/me failed:", err);
+    return res.status(500).json({ error: "Server error" });
+  }
 });
 
 // login: expects { "email": "x", "password": "y" }
