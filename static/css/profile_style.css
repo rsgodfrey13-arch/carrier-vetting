@@ -1752,3 +1752,12 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   width: 100%;
   text-align: center;
 }
+
+#ins-coverages-card { position: relative; }
+
+#insurance-locked.alerts-lock-overlay{
+  position: absolute;
+  inset: 0;
+  border-radius: 16px; /* match your card rounding */
+  z-index: 10;
+}
