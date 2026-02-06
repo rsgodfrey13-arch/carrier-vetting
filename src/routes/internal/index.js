@@ -13,8 +13,7 @@ const debugRoutes = require("./debug.routes");
 const userApiRoutes = require("./userApi.routes");
 const supportRoutes = require("./support.routes");
 const InsuranceCoveragesRoutes = require("./InsuranceCoverages.routes");
-
-
+const insuranceDocumentsRoutes = require("./insuranceDocuments.routes");
 const healthInternalRoutes = require("./healthInternal.routes"); // router export
 const { healthRoutes } = require("./health.routes"); // factory export
 
@@ -50,6 +49,7 @@ function internalRoutes({ pool } = {}) {
   router.use(accountRoutes);
   router.use(userApiRoutes);
   router.use(supportRoutes);
+  router.use(insuranceDocumentsRoutes);
   router.use(publicCarriersRoutes);
   return router;
 }
