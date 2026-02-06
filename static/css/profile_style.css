@@ -1740,4 +1740,15 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   justify-content: center;
   display: inline-flex;
 }
-.ins-title-actions{ width: 60%; }
+.ins-title-actions{ width: 100%; }
+
+.ins-title-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ins-open-coi {
+  max-width: 320px;   /* ← tune this */
+  width: 100%;
+  text-align: center;
+}
