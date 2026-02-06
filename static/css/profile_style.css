@@ -1761,3 +1761,58 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   border-radius: 16px; /* match your card rounding */
   z-index: 10;
 }
+
+
+/* Make the insurance card the containing block for the overlay */
+#ins-coverages-card { position: relative; overflow: hidden; }
+
+/* Full overlay (same vibe as account lock) */
+#ins-coverages-card .alerts-lock-overlay{
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 22px;
+  border-radius: 16px;              /* match your card rounding */
+  background: rgba(6, 10, 22, .72); /* dark glass */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* The “card” inside the overlay */
+#ins-coverages-card .alerts-lock-content{
+  width: min(520px, 92%);
+  text-align: center;
+
+  padding: 22px 18px;
+  border-radius: 16px;
+
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 22px 60px rgba(0,0,0,.35);
+}
+
+#ins-coverages-card .alerts-lock-title{
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: .02em;
+  margin-bottom: 8px;
+}
+
+#ins-coverages-card .alerts-lock-sub{
+  opacity: .85;
+  margin-bottom: 14px;
+  line-height: 1.35;
+}
+
+/* Optional: blur/disable underlying content while locked */
+#ins-coverages-card.is-locked #ins-coverages-body{
+  filter: blur(2px);
+  opacity: .35;
+  pointer-events: none;
+  user-select: none;
+}
