@@ -1559,7 +1559,7 @@ bulkRemoveBtn.addEventListener("click", async () => {
     wireBulkRemove();
     wireBulkImportWizard();
   
-    await buildMyCarrierDots();   // <-- build first
+    //await buildMyCarrierDots();   // <-- build first
     setGridMode("MY");
     loadCarriers();
   });
