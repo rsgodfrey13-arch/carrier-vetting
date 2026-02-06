@@ -41,10 +41,12 @@ router.get("/search-carriers", async (req, res) => {
     let params = [];
 
     if (isNumericish) {
-      // numeric-ish search: DOT/MC prefix match
-      const likePrefix = qDigits + "%";
-      whereSql = `WHERE dotnumber::text LIKE $1 OR mc_number::text LIKE $1`;
-      params = [likePrefix];
+      // numeric-ish search: DOT/MC prefix using integer range (index-friendly)
+      const low = Number(qDigits);
+      const high = Number(qDigits + "9".repeat(10));
+    
+      whereSql = `WHERE (dotnumber BETWEEN $1 AND $2) OR (mc_number BETWEEN $1 AND $2)`;
+      params = [low, high];
     } else {
       // name search: prefix first, then contains (carrier_name_norm already lower)
       const prefix = qNorm + "%";
@@ -68,43 +70,73 @@ router.get("/search-carriers", async (req, res) => {
 
     // rows
     // NOTE: we keep a "rank" so results feel good for name searches (prefix first).
-    const rowsResult = await pool.query(
-      `
-      SELECT
-        dotnumber AS dot,
-        mc_number,
-        legalname,
-        dbaname,
-        phycity,
-        phystate,
-        allowedtooperate,
-        commonauthoritystatus,
-        contractauthoritystatus,
-        brokerauthoritystatus,
-        safetyrating,
-        carrier_name_norm,
-        ${
-          isNumericish
-            ? `CASE
-                 WHEN dotnumber::text = $2 THEN 0
-                 WHEN mc_number::text = $2 THEN 1
-                 ELSE 2
-               END AS rank`
-            : `CASE
-                 WHEN carrier_name_norm LIKE $1 THEN 0
-                 ELSE 1
-               END AS rank`
-        }
-      FROM public.carriers
-      ${whereSql}
-      ORDER BY rank ASC, ${orderExpr} ${sortDirRaw}
-      LIMIT $${params.length + (isNumericish ? 2 : 0) + 1}
-      OFFSET $${params.length + (isNumericish ? 2 : 0) + 2};
-      `,
-      isNumericish
-        ? [...params, qDigits, pageSize, offset]
-        : [...params, pageSize, offset]
-    );
+    let rowsResult;
+    
+    if (isNumericish) {
+      const low = params[0];
+      const high = params[1];
+      const exact = Number(qDigits);
+    
+      rowsResult = await pool.query(
+        `
+        SELECT
+          dotnumber AS dot,
+          mc_number,
+          legalname,
+          dbaname,
+          phycity,
+          phystate,
+          allowedtooperate,
+          commonauthoritystatus,
+          contractauthoritystatus,
+          brokerauthoritystatus,
+          safetyrating,
+          carrier_name_norm,
+          CASE
+            WHEN dotnumber = $3 THEN 0
+            WHEN mc_number = $3 THEN 1
+            ELSE 2
+          END AS rank
+        FROM public.carriers
+        WHERE (dotnumber BETWEEN $1 AND $2)
+           OR (mc_number BETWEEN $1 AND $2)
+        ORDER BY rank ASC, ${orderExpr} ${sortDirRaw}
+        LIMIT $4
+        OFFSET $5;
+        `,
+        [low, high, exact, pageSize, offset]
+      );
+    } else {
+      rowsResult = await pool.query(
+        `
+        SELECT
+          dotnumber AS dot,
+          mc_number,
+          legalname,
+          dbaname,
+          phycity,
+          phystate,
+          allowedtooperate,
+          commonauthoritystatus,
+          contractauthoritystatus,
+          brokerauthoritystatus,
+          safetyrating,
+          carrier_name_norm,
+          CASE
+            WHEN carrier_name_norm LIKE $1 THEN 0
+            ELSE 1
+          END AS rank
+        FROM public.carriers
+        WHERE carrier_name_norm LIKE $1
+           OR carrier_name_norm LIKE $2
+        ORDER BY rank ASC, ${orderExpr} ${sortDirRaw}
+        LIMIT $3
+        OFFSET $4;
+        `,
+        [params[0], params[1], pageSize, offset]
+      );
+    }
+
 
     return res.json({ rows: rowsResult.rows, total });
   } catch (err) {
