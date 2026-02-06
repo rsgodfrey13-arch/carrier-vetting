@@ -23,7 +23,8 @@ const sql = `
       c.subrogation_waived,
       c.effective_date,
       c.expiration_date,
-      c.created_at
+      c.created_at,
+      c.document_id
     FROM public.insurance_coverages c
     WHERE c.dot_number = $1
   )
