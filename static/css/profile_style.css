@@ -1816,3 +1816,37 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   pointer-events: none;
   user-select: none;
 }
+
+/* --- Insurance lock overlay (match Account lock behavior) --- */
+#ins-coverages-card {
+  position: relative;     /* critical: lets overlay position against the card */
+  overflow: hidden;       /* keeps overlay corners clean */
+}
+
+/* When locked, dim/disable the content behind */
+#ins-coverages-card.is-locked #ins-coverages-body {
+  opacity: 0.35;
+  filter: blur(2px);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Full-card overlay */
+#insurance-locked.alerts-lock-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+
+  display: flex;          /* you already toggle this in JS */
+  align-items: center;
+  justify-content: center;
+
+  padding: 22px;
+  background: rgba(7, 12, 24, 0.55);
+  backdrop-filter: blur(10px);
+}
+
+/* Ensure there’s always enough height for the lock to look right */
+#ins-coverages-body {
+  min-height: 220px;
+}
