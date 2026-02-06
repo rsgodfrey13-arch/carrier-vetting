@@ -10,7 +10,8 @@ const { externalV1Routes } = require("../routes/external/v1.routes");
 const { logApiFailures } = require("../middleware/logApiFailures");
 const { pool } = require("../db/pool");
 const { errorHandler } = require("../middleware/errorHandler");
-const RedisStore = require("connect-redis").default;
+const { RedisStore } = require("connect-redis");
+
 
 
 function createApp({ redisClient } = {}) {
