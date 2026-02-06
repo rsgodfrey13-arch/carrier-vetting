@@ -54,14 +54,7 @@ function applyInsuranceLock(me) {
   // not logged in -> locked (same “blocked off” feel)
   const allowed = me?.view_insurance  === true;
 
-  overlay.style.display = allowed ? "none" : "flex";
-
-  // optional: if locked, prevent clicks on “View Insurance Certificate” buttons
-  document.querySelectorAll(".ins-open-coi").forEach((b) => {
-    b.disabled = !allowed;
-    b.style.pointerEvents = allowed ? "" : "none";
-    b.style.opacity = allowed ? "" : "0.6";
-  });
+  setInsuranceLocked(!allowed);
 
   if (upgradeBtn) {
     upgradeBtn.onclick = () => {
@@ -70,6 +63,13 @@ function applyInsuranceLock(me) {
   }
 }
 
+function setInsuranceLocked(locked) {
+  const card = document.getElementById("ins-coverages-card");
+  const overlay = document.getElementById("insurance-locked");
+
+  if (overlay) overlay.style.display = locked ? "flex" : "none";
+  if (card) card.classList.toggle("is-locked", locked);
+}
 
   
 function fmtDate(d) {
@@ -1048,8 +1048,7 @@ if (data && data.source === "cache_stale") {
         if (wrap) wrap.innerHTML = `<div class="cs-hint">Upgrade to view insurance.</div>`;
       }
 
-      
-      await loadInsuranceCoverages(dot);
+
 
       // Buttons
       await initCarrierButtons(dot);
