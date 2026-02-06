@@ -48,10 +48,6 @@ router.get("/carrier-search", async (req, res) => {
       return res.json(result.rows);
     }
 
-
-      return res.json(result.rows);
-    }
-
     // Name: prefix hits first, then contains/fuzzy fallback (trigram index)
     const prefix = qNorm + "%";
     const contains = "%" + qNorm + "%";
