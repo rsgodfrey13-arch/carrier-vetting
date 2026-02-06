@@ -26,7 +26,7 @@ router.get("/search-carriers", async (req, res) => {
     dot: "dotnumber",
     mc: "mc_number",
     carrier: "carrier_name_norm",
-    location: "phystate, phycity",
+    location: "phycity, phystate",
     operating: "allowedtooperate",
     common: "commonauthoritystatus",
     contract: "contractauthoritystatus",
@@ -43,7 +43,11 @@ router.get("/search-carriers", async (req, res) => {
     if (isNumericish) {
       // numeric-ish search: DOT/MC prefix using integer range (index-friendly)
       const low = Number(qDigits);
-      const high = Number(qDigits + "9".repeat(10));
+      if (!Number.isFinite(low)) return res.json({ rows: [], total: 0 });
+      
+      const highStr = qDigits + "9".repeat(10);
+      let high = Number(highStr);
+      if (!Number.isFinite(high)) high = Number.MAX_SAFE_INTEGER;
     
       whereSql = `WHERE (dotnumber BETWEEN $1 AND $2) OR (mc_number BETWEEN $1 AND $2)`;
       params = [low, high];
@@ -75,7 +79,10 @@ router.get("/search-carriers", async (req, res) => {
     if (isNumericish) {
       const low = params[0];
       const high = params[1];
-      const exact = Number(qDigits);
+    
+      // guard exact too (same reason as low/high)
+      let exact = Number(qDigits);
+      if (!Number.isFinite(exact)) exact = -1; // will never match a real DOT/MC
     
       rowsResult = await pool.query(
         `
@@ -106,7 +113,8 @@ router.get("/search-carriers", async (req, res) => {
         `,
         [low, high, exact, pageSize, offset]
       );
-    } else {
+    }
+    else {
       rowsResult = await pool.query(
         `
         SELECT
