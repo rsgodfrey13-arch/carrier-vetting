@@ -10,8 +10,10 @@ const { externalV1Routes } = require("../routes/external/v1.routes");
 const { logApiFailures } = require("../middleware/logApiFailures");
 const { pool } = require("../db/pool");
 const { errorHandler } = require("../middleware/errorHandler");
+const RedisStore = require("connect-redis").default;
 
-function createApp() {
+
+function createApp({ redisClient } = {}) {
   const app = express();
 
   // Behind Cloudflare / DO App Platform / any proxy
@@ -32,16 +34,26 @@ function createApp() {
   // Sessions (used for internal routes)
   app.use(
     session({
+      name: "cs.sid",
       secret: process.env.SESSION_SECRET || "dev-secret-change-me",
       resave: false,
       saveUninitialized: false,
+
+      // ✅ Redis session store (premium production setup)
+      store: redisClient
+        ? new RedisStore({ client: redisClient, prefix: "cs:sess:" })
+        : undefined, // allow local dev without Redis if you want
+
+      rolling: true, // keep active users logged in
       cookie: {
         httpOnly: true,
         sameSite: "lax",
         secure: process.env.NODE_ENV === "production",
+        maxAge: 1000 * 60 * 60 * 24 * 14, // 14 days
       },
     })
   );
+
 
   // ✅ Attach DB for any route that needs req.db (track uses it)
   app.use((req, res, next) => {
