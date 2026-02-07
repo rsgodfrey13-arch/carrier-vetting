@@ -93,7 +93,30 @@ function fmtMoney(amount, currency) {
   }
 }
 
+function setRefreshUi(state, message) {
+  const btn = document.getElementById("btn-refresh-carrier");
+  const msg = document.getElementById("carrier-refresh-status");
 
+  if (msg) msg.textContent = message || "";
+
+  if (!btn) return;
+
+  if (state === "loading") {
+    btn.disabled = true;
+    btn.classList.add("is-spinning");
+  } else {
+    btn.disabled = false;
+    btn.classList.remove("is-spinning");
+  }
+}
+
+// allow a manual click to re-run the “cache_stale retry once” behavior
+function clearStaleGuard(dot) {
+  const key = `carrier_refetch_${dot}`;
+  window[key] = false;
+}
+
+  
 function getScrollOffset() {
   // If your #site-header is fixed/sticky, this makes landing perfect.
   const header = document.getElementById("site-header");
@@ -836,9 +859,14 @@ const carrierName =
 
   // Load Carrier Stuff
 
-  async function loadCarrier() {
+  async function loadCarrier(opts = {}) {
     const dot = CURRENT_DOT;
     if (!dot) return;
+
+      if (opts.manual === true) {
+        clearStaleGuard(dot);
+        setRefreshUi("loading", "Refreshing…");
+      }
 
     try {
       const res = await fetch("/api/carriers/" + encodeURIComponent(dot));
@@ -1048,10 +1076,19 @@ if (data && data.source === "cache_stale") {
       if (wrap) wrap.innerHTML = `<div class="cs-hint">—</div>`;
     }
 
+      if (opts.manual === true) {
+        setRefreshUi("idle", "Updated just now");
+        setTimeout(() => setRefreshUi("idle", ""), 2200);
+      }
+
+
       // Buttons
       await initCarrierButtons(dot);
     } catch (err) {
       console.error("Error fetching carrier:", err);
+      if (opts.manual === true) {
+        setRefreshUi("idle", "Couldn’t refresh");
+        setTimeout(() => setRefreshUi("idle", ""), 2200);
       const nameEl = document.getElementById("carrier-name");
       if (nameEl) nameEl.textContent = "Error loading carrier";
     }
@@ -1347,6 +1384,9 @@ document.addEventListener("DOMContentLoaded", () => {
   wireSendContractModalOnce(); 
   wireQuickJump();
   wireBackToOverview();
+  document.getElementById("btn-refresh-carrier")?.addEventListener("click", () => {
+    loadCarrier({ manual: true });
+  });
   loadCarrier();
 });
 
