@@ -301,4 +301,41 @@ router.get("/carriers/:dot", async (req, res) => {
   }
 });
 
+// --- MANUAL REFRESH (premium button) ---
+router.post("/carriers/:dot/refresh", async (req, res) => {
+  const dot = req.params.dot;
+
+  // optional: if locked, return quickly
+  const result = await refresh_carrier_in_db(dot, 15000);
+
+  if (result.ok) {
+    // pull the updated row so the client can immediately update "Last Verified"
+    const updated = await pool.query(
+      `
+      select
+        dotnumber as dot,
+        phystreet as address1,
+        null as address2,
+        phycity as city,
+        phystate as state,
+        phyzipcode as zip,
+        to_char(
+          (coalesce(profile_fetched_at, updated_at) AT TIME ZONE 'America/New_York'),
+          'Mon DD, YYYY HH12:MI AM'
+        ) || ' ET' as retrieval_date_formatted,
+        *
+      from carriers
+      where dotnumber = $1
+      `,
+      [dot]
+    );
+
+    return res.json({ ok: true, status: "done", carrier: updated.rows[0] });
+  }
+
+  // If locked/timeout/error, don't break UX. Treat as queued.
+  return res.json({ ok: true, status: result.reason || "queued" });
+});
+
+
 module.exports = router;
