@@ -90,8 +90,24 @@
 
         <div class="meta-pair">
           <div class="meta-label">Last Verified</div>
-          <div id="field-retrieval_date_formatted" class="meta-value">—</div>
+        
+          <div class="meta-value meta-verified">
+            <span id="field-retrieval_date_formatted">—</span>
+        
+            <button
+              id="btn-refresh-carrier"
+              class="meta-refresh"
+              type="button"
+              title="Re-check carrier data"
+              aria-label="Refresh carrier data"
+            >
+              ↻ Refresh
+            </button>
+        
+            <span id="carrier-refresh-status" class="meta-refresh-status" aria-live="polite"></span>
+          </div>
         </div>
+
       </div>
     </div> <!-- end .carrier-left -->
 
