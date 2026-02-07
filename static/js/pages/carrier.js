@@ -1093,6 +1093,7 @@ if (data && data.source === "cache_stale") {
       if (nameEl) nameEl.textContent = "Error loading carrier";
     }
   }
+  }
 
   async function initCarrierButtons(dot) {
     if (initButtonsRunning) {
