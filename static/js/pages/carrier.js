@@ -855,7 +855,48 @@ const carrierName =
   renderSendContractChips();
   showSendContractModal();
 }
-  
+
+  async function manualRefresh(dot) {
+  // show spinner + "Checking..."
+  setRefreshUi("loading", "Checking…");
+
+  // capture what the page currently shows as "Last Verified"
+  const before =
+    document.getElementById("field-retrieval_date_formatted")?.textContent?.trim() || "";
+
+  try {
+    // 🔥 NEW: trigger backend refresh (your step 1 route)
+    await fetch(`/api/carriers/${encodeURIComponent(dot)}/refresh`, {
+      method: "POST"
+    });
+
+    // now poll your existing GET a few times to see if "Last Verified" changes
+    const start = Date.now();
+    while (Date.now() - start < 10000) {
+      await new Promise((r) => setTimeout(r, 1200));
+
+      const res = await fetch(`/api/carriers/${encodeURIComponent(dot)}`);
+      const data = await res.json().catch(() => ({}));
+      const c = data && data.carrier ? data.carrier : data;
+
+      const after = (c?.retrieval_date_formatted || "").trim();
+
+      if (after && after !== before) {
+        // ✅ updated — re-render the whole page using your existing code
+        await loadCarrier({ manual: true });
+        return;
+      }
+    }
+
+    // nothing changed
+    setRefreshUi("idle", "No changes found");
+    setTimeout(() => setRefreshUi("idle", ""), 2200);
+  } catch (e) {
+    setRefreshUi("idle", "Couldn’t refresh");
+    setTimeout(() => setRefreshUi("idle", ""), 2200);
+  }
+}
+
 
   // Load Carrier Stuff
 
@@ -1387,7 +1428,9 @@ document.addEventListener("DOMContentLoaded", () => {
   wireQuickJump();
   wireBackToOverview();
   document.getElementById("btn-refresh-carrier")?.addEventListener("click", () => {
-    loadCarrier({ manual: true });
+    const dot = CURRENT_DOT;
+    if (!dot) return;
+    manualRefresh(dot);
   });
   loadCarrier();
 });
