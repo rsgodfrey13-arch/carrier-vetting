@@ -3,7 +3,7 @@
 
   function getDotFromPath() {
     // take first path segment only, ignore trailing slash / extra segments
-    const seg = window.location.pathname.split("/").filter(Boolean)[0] || "";
+    const seg = window.location.pathname.split("/").filter(Boolean).pop() || "";
     // DOT should be digits only
     const digits = decodeURIComponent(seg).replace(/\D/g, "");
     // strip leading zeros safely (optional)
@@ -1089,11 +1089,12 @@ if (data && data.source === "cache_stale") {
       if (opts.manual === true) {
         setRefreshUi("idle", "Couldn’t refresh");
         setTimeout(() => setRefreshUi("idle", ""), 2200);
+      }
       const nameEl = document.getElementById("carrier-name");
       if (nameEl) nameEl.textContent = "Error loading carrier";
     }
   }
-  }
+  
 
   async function initCarrierButtons(dot) {
     if (initButtonsRunning) {
