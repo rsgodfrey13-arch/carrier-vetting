@@ -1850,3 +1850,60 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
 #ins-coverages-body {
   min-height: 220px;
 }
+
+
+/* Last Verified refresh (quiet control, not a CTA) */
+.meta-verified{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.meta-refresh{
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+
+  color: rgba(56,189,248,.78);
+  cursor: pointer;
+
+  transition: color .15s ease, transform .12s ease, opacity .15s ease;
+}
+
+.meta-refresh:hover{
+  color: rgba(56,189,248,.95);
+  transform: translateY(-1px);
+}
+
+.meta-refresh:disabled{
+  opacity: .45;
+  cursor: default;
+  transform: none;
+}
+
+.meta-refresh.is-spinning{
+  pointer-events: none;
+}
+
+.meta-refresh.is-spinning::before{
+  content: "↻ ";
+  display: inline-block;
+  animation: csSpin .9s linear infinite;
+}
+
+@keyframes csSpin{
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.meta-refresh-status{
+  font-size: 12px;
+  color: rgba(226,232,240,.70);
+}
