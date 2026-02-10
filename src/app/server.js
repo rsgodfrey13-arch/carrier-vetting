@@ -1,5 +1,7 @@
 "use strict";
 
+require("./instrument");
+
 require("../config/bootstrap");
 
 const { createClient } = require("redis");

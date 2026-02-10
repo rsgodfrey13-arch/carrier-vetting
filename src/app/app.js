@@ -1,5 +1,8 @@
 "use strict";
 
+const Sentry = require("@sentry/node");
+
+
 const express = require("express");
 const path = require("path");
 const session = require("express-session");
@@ -74,6 +77,13 @@ function createApp({ redisClient } = {}) {
 
   // External v1 APIs (webhooks + apiAuth protected routes)
   app.use("/api/v1", externalV1Routes());
+
+  app.get("/debug-sentry", (req, res) => {
+    throw new Error("Sentry test error");
+  });
+
+
+  Sentry.setupExpressErrorHandler(app);
 
   app.use(errorHandler);
 
