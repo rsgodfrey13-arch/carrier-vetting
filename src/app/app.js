@@ -31,7 +31,7 @@ function createApp({ redisClient } = {}) {
 
 
   
-  // Behind Cloudflare / DO App Platform / any proxy
+  // Behind Cloudflare / DO App Platform / any proxy.
   app.set("trust proxy", 1);
 
   const staticDir = path.join(__dirname, "../../static");
