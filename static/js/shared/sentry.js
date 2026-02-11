@@ -2,6 +2,19 @@
 (function () {
   if (!window.Sentry) return;
 
+  // ===============================
+  // FRONTEND TRACES (TEMPORARY)
+  // ===============================
+  
+  // 🔥 Uncomment to enable frontend performance traces
+  
+  window.Sentry.getCurrentHub().getClient()?.getOptions().tracesSampleRate = 0.1;
+  
+  // ===============================
+  // END FRONTEND TRACES
+  // ===============================
+
+
   // Prevent accidental double wiring
   if (window.__SENTRY_HELPERS__) return;
   window.__SENTRY_HELPERS__ = true;
