@@ -20,8 +20,15 @@ const { RedisStore } = require("connect-redis");
 function createApp({ redisClient } = {}) {
   const app = express();
 
-  app.use(Sentry.Handlers.requestHandler());
-  app.use(Sentry.Handlers.tracingHandler());
+  // Sentry (support both older/newer SDK shapes)
+  if (Sentry?.Handlers?.requestHandler) {
+    app.use(Sentry.Handlers.requestHandler());
+  }
+
+  if (Sentry?.Handlers?.tracingHandler) {
+    app.use(Sentry.Handlers.tracingHandler());
+  }
+
 
   
   // Behind Cloudflare / DO App Platform / any proxy
