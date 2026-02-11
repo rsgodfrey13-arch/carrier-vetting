@@ -2,7 +2,6 @@
 
 const Sentry = require("@sentry/node");
 
-
 const express = require("express");
 const path = require("path");
 const session = require("express-session");
@@ -15,34 +14,29 @@ const { pool } = require("../db/pool");
 const { errorHandler } = require("../middleware/errorHandler");
 const { RedisStore } = require("connect-redis");
 
-
-
 function createApp({ redisClient } = {}) {
   const app = express();
 
-  // Sentry (support both older/newer SDK shapes)
-  if (Sentry?.Handlers?.requestHandler) {
+  // ✅ Sentry middleware (only if supported by your installed SDK)
+  if (Sentry && Sentry.Handlers && typeof Sentry.Handlers.requestHandler === "function") {
     app.use(Sentry.Handlers.requestHandler());
   }
-
-  if (Sentry?.Handlers?.tracingHandler) {
+  if (Sentry && Sentry.Handlers && typeof Sentry.Handlers.tracingHandler === "function") {
     app.use(Sentry.Handlers.tracingHandler());
   }
 
-
-  
-  // Behind Cloudflare / DO App Platform / any proxy.
+  // Behind Cloudflare / DO App Platform / any proxy
   app.set("trust proxy", 1);
 
   const staticDir = path.join(__dirname, "../../static");
 
-  // ✅ Serve static at root so "/" loads index.html
+  // Serve static at root so "/" loads index.html
   app.use(express.static(staticDir));
 
-  // ✅ Also serve the same static files under /static/*
+  // Also serve the same static files under /static/*
   app.use("/static", express.static(staticDir));
 
-  // ✅ Parse incoming request bodies BEFORE routes
+  // Parse incoming request bodies BEFORE routes
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ extended: false, limit: "10mb" }));
 
@@ -54,12 +48,10 @@ function createApp({ redisClient } = {}) {
       resave: false,
       saveUninitialized: false,
 
-      // ✅ Redis session store (premium production setup)
-      store: redisClient
-        ? new RedisStore({ client: redisClient, prefix: "cs:sess:" })
-        : undefined, // allow local dev without Redis if you want
+      // Redis session store (optional if REDIS_URL not set)
+      store: redisClient ? new RedisStore({ client: redisClient, prefix: "cs:sess:" }) : undefined,
 
-      rolling: true, // keep active users logged in
+      rolling: true,
       cookie: {
         httpOnly: true,
         sameSite: "lax",
@@ -69,8 +61,7 @@ function createApp({ redisClient } = {}) {
     })
   );
 
-
-  // ✅ Attach DB for any route that needs req.db (track uses it)
+  // Attach DB for any route that needs req.db
   app.use((req, res, next) => {
     req.db = pool;
     next();
@@ -79,9 +70,8 @@ function createApp({ redisClient } = {}) {
   // Log failures (400+ etc) into Postgres
   app.use(logApiFailures);
 
-  // ✅ Public "site" routes at root (/:dot, /privacy, etc.)
+  // Public "site" routes at root (/:dot, /privacy, etc.)
   app.use(publicRoutes());
-
 
   // Internal session-based APIs
   app.use("/api", internalRoutes({ pool }));
@@ -93,9 +83,12 @@ function createApp({ redisClient } = {}) {
     throw new Error("Sentry test error");
   });
 
+  // ✅ Sentry error handler (only if supported by your SDK)
+  if (Sentry && typeof Sentry.setupExpressErrorHandler === "function") {
+    Sentry.setupExpressErrorHandler(app);
+  }
 
-  Sentry.setupExpressErrorHandler(app);
-
+  // Your app’s error handler last
   app.use(errorHandler);
 
   return app;
