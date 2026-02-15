@@ -434,6 +434,13 @@ router.post("/contract/:token/mfa/start", async (req, res) => {
     // 6) Send email OTP
     await sendContractOtpEmail({ to: email_to, otp });
 
+    await client.query(
+      `UPDATE public.contract_mfa_events
+       SET delivered_at = now()
+       WHERE id = $1`,
+      [mfa_event_id]
+    );
+
     return res.json({
       status: "OTP_SENT",
       mfa_event_id,
