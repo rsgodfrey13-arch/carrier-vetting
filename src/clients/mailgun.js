@@ -98,7 +98,31 @@ async function sendSupportTicketEmail({ to, ticketId, contactEmail, contactPhone
 }
 
 
-module.exports = { sendContractEmail, sendPasswordResetEmail, sendSupportTicketEmail };
+async function sendContractOtpEmail({ to, otp }) {
+  const domain = process.env.MAILGUN_DOMAIN;
+
+  return mg.messages.create(domain, {
+    from: process.env.MAILGUN_FROM,
+    to,
+    subject: "Carrier Shark security code",
+
+    // Plain text fallback (simple + defensible wording)
+    text: [
+      `Your Carrier Shark security code is: ${otp}`,
+      ``,
+      `This code expires in 5 minutes.`,
+      ``,
+      `If you did not request this code, you can ignore this email.`,
+      ``,
+      `— Carrier Shark`
+    ].join("\n")
+  });
+}
 
 
-
+module.exports = {
+  sendContractEmail,
+  sendContractOtpEmail,
+  sendPasswordResetEmail,
+  sendSupportTicketEmail
+};
