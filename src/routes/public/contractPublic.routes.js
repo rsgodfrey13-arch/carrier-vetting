@@ -678,10 +678,12 @@ router.post("/contract/:token/ack", async (req, res) => {
             accepted_email = EXCLUDED.accepted_email,
             accepted_at = NOW(),
             accepted_ip = EXCLUDED.accepted_ip,
-            accepted_user_agent = EXCLUDED.accepted_user_agent;
+            accepted_user_agent = EXCLUDED.accepted_user_agent,
+            mfa_event_id = EXCLUDED.mfa_event_id;
       `,
-      [contract_id, accepted_name, accepted_title, accepted_email, accepted_ip, accepted_user_agent]
+      [contract_id, accepted_name, accepted_title, accepted_email, accepted_ip, accepted_user_agent, mfa_event_id]
     );
+
 
     await client.query(
       `
