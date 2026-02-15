@@ -178,13 +178,28 @@ router.get("/contract/:token", async (req, res) => {
           alreadyAccepted
             ? `<div class="msg ok"><strong>Accepted.</strong> This agreement has already been acknowledged.</div>`
             : `
-        <div class="checkline">
-          <input id="ack" type="checkbox" />
-          <div>
-            <div style="font-weight:700;">I acknowledge and accept this agreement.</div>
-            <div class="muted">By submitting, you confirm you are authorized to accept on behalf of the carrier.</div>
-          </div>
-        </div>
+<div class="card" style="margin-top:14px; background: rgba(255,255,255,0.04);">
+  <div style="font-size:13px; line-height:1.5;">
+    <strong>Platform Notice:</strong><br/>
+    Carrier Shark provides technology for document delivery and electronic acceptance.
+    Carrier Shark is <strong>not a party</strong> to this agreement and assumes no obligations under it.
+    Carrier Shark does not verify identity, authority, insurance coverage, or regulatory status of any party.
+    Users are responsible for independent verification.
+  </div>
+</div>
+
+<div class="checkline" style="margin-top:14px;">
+  <input id="ack" type="checkbox" />
+  <div>
+    <div style="font-weight:700;">
+      I acknowledge and accept this agreement.
+    </div>
+    <div class="muted">
+      By submitting, you represent that you are authorized to accept on behalf of the carrier.
+    </div>
+  </div>
+</div>
+
 
         <div class="row">
           <div>
