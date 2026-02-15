@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Carrier Shark — Terms of Service</title>
+
+  <!-- Your existing stylesheet -->
+  <link rel="stylesheet" href="/public/css/style1.css" />
+
+  <!-- OPTIONAL: Page-specific polish (matches your design language) -->
+  <style>
+    :root{
+      /* fallbacks if vars aren’t defined elsewhere */
+      --radius: 18px;
+      --radius-lg: 22px;
+      --border: rgba(148,163,184,.22);
+      --text-main: #e5e7eb;
+      --text-muted: rgba(148,163,184,.95);
+      --accent-1: #38bdf8;
+      --accent-2: #0ea5e9;
+    }
+
+    /* Terms-specific typography that still feels like your site */
+    .tos-nav{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top:10px;
+    }
+    .tos-chip{
+      display:inline-flex;
+      align-items:center;
+      height:28px;
+      padding:0 12px;
+      border-radius:999px;
+      border:1px solid rgba(148,163,184,.18);
+      background:rgba(15,23,42,0.55);
+      color:rgba(229,231,235,.92);
+      text-decoration:none;
+      font-size:12px;
+      font-weight:700;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      transition:transform .12s ease, border-color .18s ease, background .18s ease;
+    }
+    .tos-chip:hover{
+      transform:translateY(-1px);
+      border-color:rgba(56,189,248,.55);
+      background:rgba(15,23,42,0.72);
+    }
+
+    .tos-h2{
+      margin:0 0 8px;
+      font-size:18px;
+      letter-spacing:.3px;
+      text-transform:none;
+    }
+    .tos-h3{
+      margin:14px 0 6px;
+      font-size:14px;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      color:rgba(148,163,184,.95);
+    }
+
+    .tos-body p{
+      margin:8px 0;
+      line-height:1.55;
+      color:rgba(229,231,235,.92);
+      font-size:13px;
+    }
+    .tos-body ul{
+      margin:8px 0 8px 18px;
+      padding:0;
+    }
+    .tos-body li{
+      margin:6px 0;
+      color:rgba(229,231,235,.92);
+      font-size:13px;
+      line-height:1.55;
+    }
+
+    .tos-callout{
+      border-radius: var(--radius-lg);
+      border:1px solid rgba(148,163,184,.22);
+      background:rgba(15,23,42,0.60);
+      box-shadow: 0 18px 40px rgba(15,23,42,0.65);
+      padding:14px 16px;
+      margin:12px 0;
+    }
+    .tos-callout strong{
+      color:#f9fafb;
+    }
+
+    /* Make the limitation section unmistakably prominent */
+    .tos-danger{
+      border-color: rgba(248,113,113,.55);
+      background: radial-gradient(circle at top left, rgba(248,113,113,.12), rgba(15,23,42,.75));
+    }
+    .tos-danger-title{
+      margin:0 0 8px;
+      font-size:12px;
+      letter-spacing:.16em;
+      text-transform:uppercase;
+      font-weight:900;
+      color:#fee2e2;
+    }
+
+    .tos-micro{
+      margin-top:10px;
+      font-size:12px;
+      color:rgba(148,163,184,.95);
+    }
+
+    /* clean anchors */
+    .tos-body a{ color:#7DD3FC; text-decoration:none; font-weight:600; }
+    .tos-body a:hover{ text-decoration:underline; }
+
+    /* small “definition table” style using your existing table system */
+    .defs table{ table-layout:auto; }
+    .defs td{ white-space:normal; }
+  </style>
+</head>
+
+<body class="">
+  <div class="page">
+    <h1 class="page-title">Terms of Service</h1>
+
+    <div class="carrier-header">
+      <div class="carrier-header-top">
+        <div class="carrier-name-block">
+          <div class="carrier-name">Carrier Shark</div>
+          <div class="carrier-ids">
+            Neutral document facilitation • E-sign workflows • Insurance uploads + OCR • FMCSA display
+          </div>
+        </div>
+        <div class="carrier-pill">Legal Terms</div>
+      </div>
+
+      <div class="carrier-meta-row">
+        <div class="meta-block">
+          <div class="meta-label">Effective Date</div>
+          <div class="meta-value">[Insert Effective Date]</div>
+        </div>
+        <div class="meta-block">
+          <div class="meta-label">Last Updated</div>
+          <div class="meta-value">[Insert Last Updated]</div>
+        </div>
+        <div class="meta-block">
+          <div class="meta-label">Contact</div>
+          <div class="meta-value">[support@carriershark.com]</div>
+        </div>
+      </div>
+
+      <div class="tos-nav">
+        <a class="tos-chip" href="#key-clauses">Key Clauses</a>
+        <a class="tos-chip" href="#not-a-party">Not a Party</a>
+        <a class="tos-chip" href="#no-verification">No Verification</a>
+        <a class="tos-chip" href="#limitation">Limitation</a>
+        <a class="tos-chip" href="#arbitration">Arbitration</a>
+        <a class="tos-chip" href="#ga-law">Georgia Law</a>
+      </div>
+    </div>
+
+    <!-- Intro / Summary -->
+    <div class="list-card tos-body" id="key-clauses">
+      <h2 class="tos-h2">1. Agreement to These Terms</h2>
+      <p class="help-text">
+        These Terms of Service (“Terms”) govern your access to and use of the Carrier Shark platform and related services (collectively, the “Platform”).
+      </p>
+
+      <p>
+        The Platform is operated by <strong>[Carrier Shark Legal Name, LLC]</strong>, a Georgia company (“Carrier Shark,” “we,” “us,” or “our”).
+        By accessing or using the Platform, creating an account, or clicking “I Agree” (or equivalent), you agree to be bound by these Terms.
+      </p>
+
+      <div class="tos-callout">
+        <strong>IMPORTANT:</strong> These Terms apply only to the relationship between <strong>You ↔ Carrier Shark</strong>.
+        Any broker–carrier agreement (or other agreement) executed using the Platform is a separate contract between the signing parties only.
+      </div>
+
+      <h3 class="tos-h3">Definitions (selected)</h3>
+      <div class="defs">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 180px;">Term</th>
+              <th>Meaning</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>“User” / “you”</strong></td>
+              <td>Any person or entity that accesses or uses the Platform, including brokers/3PLs, carriers, shippers, and their personnel.</td>
+            </tr>
+            <tr>
+              <td><strong>“Broker–Carrier Agreement”</strong></td>
+              <td>Any agreement between a broker/3PL and a motor carrier (or their agents) that is transmitted, executed, or stored using the Platform.</td>
+            </tr>
+            <tr>
+              <td><strong>“OCR Data”</strong></td>
+              <td>Any extracted, parsed, or inferred data produced by automated document processing (including OCR) for convenience.</td>
+            </tr>
+            <tr>
+              <td><strong>“Third-Party Data”</strong></td>
+              <td>Information supplied by users, insurers, or third parties (including governmental sources such as FMCSA datasets).</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Platform role -->
+    <div class="list-card tos-body">
+      <h2 class="tos-h2">2. Nature of the Platform</h2>
+      <p>
+        Carrier Shark is a <strong>neutral technology provider</strong> that offers software tools for document transmission, workflow automation,
+        electronic signature facilitation, storage, and display of Third-Party Data.
+      </p>
+      <ul>
+        <li><strong>NOT a freight broker.</strong> Carrier Shark does not arrange transportation and does not offer or provide broker services.</li>
+        <li><strong>NOT a motor carrier.</strong> Carrier Shark does not transport cargo.</li>
+        <li><strong>NOT a 4PL.</strong> Carrier Shark does not manage transportation operations or assume operational control.</li>
+        <li><strong>NOT an insurer</strong> and does not provide insurance, adjust claims, or resolve coverage disputes.</li>
+      </ul>
+    </div>
+
+    <!-- Not a party / separation -->
+    <div class="list-card tos-body" id="not-a-party">
+      <h2 class="tos-h2">3. Platform Is Not a Party; Separation of Agreements</h2>
+      <p>
+        Carrier Shark is <strong>not a party</strong> to any Broker–Carrier Agreement or other agreement transmitted, executed, or stored using the Platform.
+      </p>
+      <ul>
+        <li>Carrier Shark does not assume duties, obligations, or liabilities under any Broker–Carrier Agreement.</li>
+        <li>Carrier Shark does not negotiate terms, advise on legal meaning, or provide legal counsel.</li>
+        <li>Carrier Shark does not enforce agreements and is not responsible for performance or non-performance by any signing party.</li>
+      </ul>
+
+      <div class="tos-callout">
+        <strong>Attribution:</strong> Any signature, submission, or representation made through an account is attributable to the User controlling that account.
+        Users are responsible for access controls, internal authorization, and identity/authority verification.
+      </div>
+    </div>
+
+    <!-- No agency -->
+    <div class="list-card tos-body">
+      <h2 class="tos-h2">4. No Agency; No Fiduciary Relationship</h2>
+      <p>
+        Nothing in these Terms or your use of the Platform creates any partnership, joint venture, employment relationship, fiduciary relationship, or agency relationship.
+        Carrier Shark does not act as agent for any broker, carrier, shipper, insurer, or other User.
+      </p>
+    </div>
+
+    <!-- Eligibility / account -->
+    <div class="list-card tos-body">
+      <h2 class="tos-h2">5. Accounts, Access, and Security</h2>
+      <ul>
+        <li><strong>Eligibility:</strong> You must be at least 18 and able to form a binding contract.</li>
+        <li><strong>Account Security:</strong> You are responsible for safeguarding credentials and for all activity under your account.</li>
+        <li><strong>Administrative Controls:</strong> If you create an account for an entity, you represent you are authorized to bind that entity to these Terms.</li>
+      </ul>
+    </div>
+
+    <!-- Authority + authenticity representations -->
+    <div class="list-card tos-body">
+      <h2 class="tos-h2">6. User Representations: Authority, Identity, Authenticity</h2>
+      <p>You represent, warrant, and covenant that:</p>
+      <ul>
+        <li>You will not impersonate a carrier, broker, shipper, insurer, or any third party.</li>
+        <li>You have authority to upload documents, send signature requests, and execute agreements on behalf of the represented entity.</li>
+        <li>Documents you upload (including insurance certificates) are authentic and not forged, altered, or misleading.</li>
+        <li>Any information you provide to others through the Platform is accurate to the best of your knowledge and not deceptive.</li>
+      </ul>
+    </div>
+
+    <!-- E-sign -->
+    <div class="list-card tos-body">
+      <h2 class="tos-h2">7. Electronic Signatures and Records</h2>
+      <p>
+        The Platform may facilitate electronic signatures and electronic records pursuant to applicable law (including E-SIGN and Georgia/UETA principles).
+        Users agree that electronic signatures and records may have the same legal effect as ink signatures and paper records where permitted by law.
+      </p>
+
+      <div class="tos-callout">
+        <strong>No identity proofing:</strong> Carrier Shark does not verify signer identity, authority, or intent.
+        Users are solely responsible for identity and authority verification, and for configuring signature workflows appropriately.
+      </div>
+    </div>
+
+    <!-- No verification/certification -->
+    <div class="list-card tos-body" id="no-verification">
+      <h2 class="tos-h2">8. NO VERIFICATION; NO CERTIFICATION; NO ENDORSEMENT</h2>
+      <p>
+        Carrier Shark does <strong>not</strong> verify, certify, guarantee, endorse, approve, or validate:
+      </p>
+      <ul>
+        <li>the identity, authority, or legitimacy of any User;</li>
+        <li>FMCSA status, licensing, safety ratings, or compliance;</li>
+        <li>insurance coverage, limits, endorsements, exclusions, or policy status;</li>
+        <li>the accuracy, completeness, or timeliness of Third-Party Data.</li>
+      </ul>
+
+      <div class="tos-callout">
+        <strong>User Responsible for Verification:</strong> You are responsible for independently verifying any information you rely upon,
+        including by contacting the carrier, broker, insurer, or relevant government source, and by reviewing the underlying policy and endorsements.
+      </div>
+    </div>
+
+    <!-- OCR & insurance -->
+    <div class="list-card tos-body">
+      <h2 class="tos-h2">9. Insurance Certificates and OCR Data Are Informational Only</h2>
+      <ul>
+        <li><strong>Certificates are not policies:</strong> Insurance certificates are informational summaries and do not amend, extend, or replace the policy.</li>
+        <li><strong>OCR is convenience only:</strong> OCR Data is automated and may be incomplete, incorrect, or outdated.</li>
+        <li><strong>Policy controls:</strong> The underlying insurance policy, endorsements, and confirmations from the insurer control in all cases.</li>
+      </ul>
+    </div>
+
+    <!-- As-is / no reliance -->
+    <div class="list-card tos-body">
+      <h2 class="tos-h2">10. Information and Services Provided “AS IS”; No Reliance</h2>
+      <p>
+        The Platform and all Third-Party Data (including FMCSA displays, insurance document displays, and OCR Data) are provided
+        <strong>AS IS</strong> and <strong>AS AVAILABLE</strong>, without warranties of any kind, to the maximum extent permitted by Georgia law.
+      </p>
+      <p>
+        You acknowledge and agree that you are <strong>not relying</strong> on Carrier Shark for verification, certification, due diligence, or risk underwriting.
+      </p>
+    </div>
+
+    <!-- Assumed duty / negligent undertaking -->
+    <div class="list-card tos-body">
+      <h2 class="tos-h2">11. No Assumed Duty; No Negligent Undertaking</h2>
+      <p>
+        Carrier Shark does not undertake and expressly disclaims any duty to monitor, detect, prevent, or remediate fraud, impersonation, forged signatures,
+        falsified documents, insurance gaps, or regulatory non-compliance. Any tools, flags, alerts, reminders, status indicators, or workflows are provided for
+        convenience only and do not create any duty, obligation, or standard of care.
+      </p>
+    </div>
+
+    <!-- Acceptable use -->
+    <div class="list-card tos-body">
+      <h2 class="tos-h2">12. Acceptable Use</h2>
+      <p>You agree not to:</p>
+      <ul>
+        <li>upload forged, altered, deceptive, or unauthorized documents;</li>
+        <li>misrepresent identity, authority, insurance, or FMCSA status;</li>
+        <li>use the Platform to arrange transportation or hold Carrier Shark out as a broker;</li>
+        <li>reverse engineer, scrape, disrupt, or attempt to gain unauthorized access;</li>
+        <li>use the Platform in violation of applicable law or third-party rights.</li>
+      </ul>
+    </div>
+
+    <!-- Fees -->
+    <div class="list-card tos-body">
+      <h2 class="tos-h2">13. Fees; Subscription Terms</h2>
+      <p>
+        If you purchase a subscription or paid plan, you agree to pay all fees as described at checkout or in an order form.
+        Unless otherwise stated, fees are non-refundable to the maximum extent permitted by law.
+      </p>
+      <p class="tos-micro">
+        <strong>Note:</strong> This Terms template supports a “fees-paid lookback” liability cap (see Section 16).
+        If you also use Order Forms/MSAs for enterprise accounts, keep those consistent with this cap structure.
+      </p>
+    </div>
+
+    <!-- IP -->
+    <div class="list-card tos-body">
+      <h2 class="tos-h2">14. Intellectual Property</h2>
+      <p>
+        Carrier Shark and its licensors retain all right, title, and interest in and to the Platform, including software, interfaces, designs, and documentation.
+        Except for the limited right to use the Platform under these Terms, no rights are granted by implication or otherwise.
+      </p>
+    </div>
+
+    <!-- User content -->
+    <div class="list-card tos-body">
+      <h2 class="tos-h2">15. User Content; Limited License to Operate the Platform</h2>
+      <p>
+        You retain ownership of documents and content you upload (“User Content”).
+        You grant Carrier Shark a limited, non-exclusive license to host, process, transmit, display, and store User Content solely as necessary to operate the Platform,
+        provide support, and comply with law.
+      </p>
+    </div>
+
+    <!-- LIMITATION -->
+    <div class="list-card tos-body" id="limitation">
+      <div class="tos-callout tos-danger">
+        <div class="tos-danger-title">LIMITATION OF LIABILITY – PLEASE READ CAREFULLY</div>
+
+        <p>
+          THIS SECTION IS A MATERIAL INDUCEMENT FOR CARRIER SHARK TO PROVIDE THE PLATFORM AND SETS A FAIR ALLOCATION OF RISK.
+          TO THE MAXIMUM EXTENT PERMITTED BY GEORGIA LAW, CARRIER SHARK WILL NOT BE LIABLE FOR ANY:
+        </p>
+
+        <ul>
+          <li><strong>LOST PROFITS</strong>, LOST REVENUE, OR LOSS OF GOODWILL;</li>
+          <li><strong>BUSINESS INTERRUPTION</strong> OR LOSS OF BUSINESS OPPORTUNITY;</li>
+          <li><strong>CARGO LOSS</strong>, CARGO DAMAGE, OR CARGO CLAIMS (INCLUDING RELATED INVESTIGATION OR CHARGEBACKS);</li>
+          <li><strong>REGULATORY PENALTIES</strong>, FINES, SANCTIONS, OR COMPLIANCE COSTS;</li>
+          <li><strong>INSURANCE DISPUTES</strong>, COVERAGE DENIALS, OR PREMIUM/DEDUCTIBLE CONSEQUENCES;</li>
+          <li>INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES;</li>
+          <li>LOSS OF DATA (EXCEPT TO THE EXTENT CAUSED BY CARRIER SHARK’S FRAUD OR WILLFUL MISCONDUCT).</li>
+        </ul>
+
+        <p>
+          THESE LIMITATIONS APPLY REGARDLESS OF THE THEORY OF LIABILITY (CONTRACT, TORT, NEGLIGENCE, STRICT LIABILITY, OR OTHERWISE),
+          EVEN IF CARRIER SHARK HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+        </p>
+      </div>
+
+      <h3 class="tos-h3">16. Liability Cap (Fees-Paid Lookback)</h3>
+      <p>
+        TO THE MAXIMUM EXTENT PERMITTED BY GEORGIA LAW, CARRIER SHARK’S TOTAL AGGREGATE LIABILITY ARISING OUT OF OR RELATING TO
+        THE PLATFORM OR THESE TERMS WILL NOT EXCEED THE TOTAL FEES PAID BY YOU TO CARRIER SHARK FOR THE PLATFORM IN THE
+        <strong>TWELVE (12) MONTHS</strong> IMMEDIATELY PRECEDING THE EVENT GIVING RISE TO THE CLAIM.
+      </p>
+
+      <h3 class="tos-h3">17. Carve-Outs</h3>
+      <p>
+        The limitations in Sections 15–16 do not apply to liability arising from Carrier Shark’s <strong>fraud</strong> or <strong>willful misconduct</strong>,
+        and do not apply to <strong>gross negligence</strong> to the extent a court determines such limitation is not enforceable under applicable law.
+      </p>
+    </div>
+
+    <!-- Indemnity -->
+    <div class="list-card tos-body">
+      <h2 class="tos-h2">18. User Indemnification (Forgery / Falsification / Misrepresentation)</h2>
+      <p>
+        You will defend, indemnify, and hold harmless Carrier Shark and its officers, directors, employees, contractors, and agents from and against any claims,
+        demands, suits, liabilities, damages, losses, and expenses (including reasonable attorneys’ fees) arising out of or relating to:
+      </p>
+      <ul>
+        <li>forged, unauthorized, or disputed signatures initiated or transmitted through your account;</li>
+        <li>impersonation or misrepresentation of identity or authority;</li>
+        <li>falsified or misleading insurance documents or coverage representations;</li>
+        <li>your breach of these Terms or violation of law;</li>
+        <li>any Broker–Carrier Agreement or transportation dispute between Users.</li>
+      </ul>
+      <p>This obligation survives termination of these Terms.</p>
+    </div>
+
+    <!-- Suspension/termination -->
+    <div class="list-card tos-body">
+      <h2 class="tos-h2">19. Suspension; Termination</h2>
+      <p>
+        Carrier Shark may suspend or terminate access if we reasonably believe you violated these Terms, engaged in fraud or misuse, or created risk to the Platform,
+        other Users, or third parties. Termination does not eliminate obligations that by their nature survive (including indemnity and limitations).
+      </p>
+    </div>
+
+    <!-- Third-party services -->
+    <div class="list-card tos-body">
+      <h2 class="tos-h2">20. Third-Party Services and Data Sources</h2>
+      <p>
+        The Platform may reference or display Third-Party Data and may interoperate with third-party services.
+        Carrier Shark is not responsible for third-party systems, availability, or accuracy of Third-Party Data.
+      </p>
+    </div>
+
+    <!-- Arbitration -->
+    <div class="list-card tos-body" id="arbitration">
+      <h2 class="tos-h2">21. Dispute Resolution; Arbitration; Class Action Waiver</h2>
+
+      <div class="tos-callout">
+        <strong>Commercially reasonable “big-player” approach:</strong>
+        arbitration + class waiver + small-claims carveout + injunctive relief carveout (IP/security misuse),
+        with an opt-out window for perceived fairness.
+      </div>
+
+      <h3 class="tos-h3">21.1 Informal Resolution First</h3>
+      <p>
+        Before filing a claim, you agree to contact us at <strong>[support@carriershark.com]</strong> and provide a brief written description of the dispute and your requested resolution.
+        The parties will attempt in good faith to resolve the dispute within thirty (30) days.
+      </p>
+
+      <h3 class="tos-h3">21.2 Binding Arbitration</h3>
+      <p>
+        Except as provided in Section 21.3, any dispute, claim, or controversy arising out of or relating to these Terms or the Platform
+        will be resolved by <strong>binding arbitration</strong> administered by the American Arbitration Association (“AAA”) under its Commercial Arbitration Rules.
+        The arbitration will be conducted in <strong>Atlanta, Georgia</strong>, unless the parties agree otherwise.
+      </p>
+
+      <h3 class="tos-h3">21.3 Exceptions</h3>
+      <ul>
+        <li><strong>Small Claims:</strong> Either party may bring an individual claim in small claims court if eligible.</li>
+        <li><strong>Injunctive Relief:</strong> Either party may seek temporary or preliminary injunctive relief in court for unauthorized access, misuse,
+          security issues, or infringement of intellectual property, without waiving arbitration for the remainder of the dispute.</li>
+      </ul>
+
+      <h3 class="tos-h3">21.4 Class Action Waiver</h3>
+      <p>
+        YOU AND CARRIER SHARK AGREE THAT EACH MAY BRING CLAIMS AGAINST THE OTHER ONLY IN AN INDIVIDUAL CAPACITY,
+        AND NOT AS A PLAINTIFF OR CLASS MEMBER IN ANY PURPORTED CLASS, COLLECTIVE, OR REPRESENTATIVE PROCEEDING.
+      </p>
+
+      <h3 class="tos-h3">21.5 Opt-Out (Optional)</h3>
+      <p>
+        You may opt out of arbitration and the class action waiver by sending written notice to <strong>[legal@carriershark.com]</strong>
+        within <strong>30 days</strong> of first accepting these Terms, stating your name, account email, and your intent to opt out.
+      </p>
+    </div>
+
+    <!-- Georgia law/venue -->
+    <div class="list-card tos-body" id="ga-law">
+      <h2 class="tos-h2">22. Governing Law; Venue (Georgia)</h2>
+      <p>
+        These Terms are governed by the laws of the State of Georgia, excluding conflict-of-laws rules.
+        If arbitration is found unenforceable for a particular claim, the state and federal courts located in
+        <strong>[Fulton County], Georgia</strong> (and the Northern District of Georgia, as applicable) will have exclusive jurisdiction,
+        and the parties consent to personal jurisdiction and venue there.
+      </p>
+    </div>
+
+    <!-- Misc -->
+    <div class="list-card tos-body">
+      <h2 class="tos-h2">23. Notices</h2>
+      <p>
+        Legal notices to Carrier Shark must be sent to: <strong>[Carrier Shark Legal Name, LLC, Attn: Legal, Address, City, State ZIP]</strong>
+        and by email to <strong>[legal@carriershark.com]</strong>.
+      </p>
+
+      <h2 class="tos-h2">24. Assignment</h2>
+      <p>
+        You may not assign these Terms without Carrier Shark’s prior written consent. Carrier Shark may assign these Terms in connection with a merger,
+        acquisition, corporate reorganization, or sale of assets.
+      </p>
+
+      <h2 class="tos-h2">25. Severability</h2>
+      <p>
+        If any provision is held invalid or unenforceable, the remaining provisions will remain in full force and effect, and the provision will be enforced
+        to the maximum extent permitted to effect the parties’ intent.
+      </p>
+
+      <h2 class="tos-h2">26. Entire Agreement; Order of Precedence</h2>
+      <p>
+        These Terms constitute the entire agreement between you and Carrier Shark regarding the Platform, except for any written Order Form or enterprise agreement
+        signed by both parties. If there is a conflict, the signed Order Form/enterprise agreement will control <em>only to the extent of the conflict</em>.
+      </p>
+
+      <h2 class="tos-h2">27. Changes to These Terms</h2>
+      <p>
+        We may update these Terms from time to time. If changes are material, we will provide reasonable notice.
+        Continued use after the effective date of updated Terms constitutes acceptance.
+      </p>
+
+      <p class="tos-micro">
+        © <span id="year"></span> Carrier Shark. All rights reserved.
+      </p>
+    </div>
+
+  </div>
+
+  <script>
+    // tiny helper
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
