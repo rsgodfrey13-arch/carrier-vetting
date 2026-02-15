@@ -3,8 +3,36 @@
 const express = require("express");
 const { pool } = require("../../db/pool");
 const { spaces } = require("../../clients/spacesS3v2");
-
+const crypto = require("crypto");
 const router = express.Router();
+
+
+const OTP_EXPIRES_MIN = 5;
+const MFA_VALID_MIN = 10;
+const MAX_ATTEMPTS = 6;
+const LOCK_MIN = 15;
+
+function generateOtp6() {
+  const n = crypto.randomInt(0, 1000000);
+  return String(n).padStart(6, "0");
+}
+
+function hashOtp({ otp, contractId }) {
+  const secret = process.env.OTP_SECRET;
+  if (!secret) throw new Error("Missing OTP_SECRET");
+  return crypto.createHmac("sha256", secret).update(`${otp}|${contractId}`).digest("hex");
+}
+
+function maskEmail(email) {
+  const [u, d] = String(email || "").split("@");
+  if (!d) return "****";
+  const um = u.length <= 2 ? `${u[0] || "*"}*` : `${u[0]}***${u[u.length - 1]}`;
+  const d0 = d.split(".")[0] || "";
+  const dm = d0.length <= 2 ? `${d0[0] || "*"}*` : `${d0[0]}***${d0[d0.length - 1]}`;
+  return `${um}@${dm}.*`;
+}
+
+
 
 /** ---------- CONTRACT PDF (token-gated) ---------- **/
 router.get("/contract/:token/pdf", async (req, res) => {
@@ -248,6 +276,279 @@ router.get("/contract/:token", async (req, res) => {
   }
 });
 
+
+router.post("/contract/:token/mfa/start", async (req, res) => {
+  const token = String(req.params.token || "").trim();
+  if (!token) return res.status(400).json({ error: "Missing token" });
+
+  const accepted_ip =
+    (req.headers["x-forwarded-for"]
+      ? String(req.headers["x-forwarded-for"]).split(",")[0].trim()
+      : null) ||
+    req.ip ||
+    null;
+
+  const accepted_user_agent = req.get("user-agent") || null;
+
+  const client = await pool.connect();
+  try {
+    // 1) Load contract + email_to
+    const { rows } = await client.query(
+      `
+      SELECT contract_id, token_expires_at, email_to
+      FROM public.contracts
+      WHERE token = $1
+      LIMIT 1;
+      `,
+      [token]
+    );
+
+    if (!rows.length) return res.status(404).json({ error: "Invalid link" });
+
+    const { contract_id, token_expires_at, email_to } = rows[0];
+
+    if (token_expires_at && new Date(token_expires_at) < new Date()) {
+      return res.status(410).json({ error: "This link has expired" });
+    }
+
+    if (!email_to) {
+      // You can choose to allow OTP to "email (optional)" instead,
+      // but enterprise posture is better if OTP goes to the known recipient.
+      return res.status(400).json({ error: "Missing recipient email for this contract" });
+    }
+
+    // 2) If already verified recently, no need to resend
+    const already = await client.query(
+      `
+      SELECT id, otp_verified_at
+      FROM public.contract_mfa_events
+      WHERE contract_id = $1
+        AND otp_verified_at IS NOT NULL
+        AND otp_verified_at > now() - interval '${MFA_VALID_MIN} minutes'
+      ORDER BY otp_verified_at DESC
+      LIMIT 1;
+      `,
+      [contract_id]
+    );
+
+    if (already.rows.length) {
+      return res.json({
+        status: "MFA_ALREADY_VALID",
+        validForSeconds: MFA_VALID_MIN * 60,
+      });
+    }
+
+    // 3) Basic resend cooldown: if last OTP created < 30s ago, block
+    const recent = await client.query(
+      `
+      SELECT otp_created_at
+      FROM public.contract_mfa_events
+      WHERE contract_id = $1
+        AND otp_verified_at IS NULL
+        AND expires_at > now()
+      ORDER BY otp_created_at DESC
+      LIMIT 1;
+      `,
+      [contract_id]
+    );
+
+    if (recent.rows.length) {
+      const createdAt = new Date(recent.rows[0].otp_created_at).getTime();
+      if (Date.now() - createdAt < 30_000) {
+        return res.status(429).json({ error: "OTP_RECENTLY_SENT" });
+      }
+    }
+
+    // 4) Invalidate old unverified OTP events (optional but clean)
+    await client.query(
+      `
+      UPDATE public.contract_mfa_events
+      SET expires_at = now()
+      WHERE contract_id = $1
+        AND otp_verified_at IS NULL
+        AND expires_at > now();
+      `,
+      [contract_id]
+    );
+
+    const otp = generateOtp6();
+    const otp_hash = hashOtp({ otp, contractId: contract_id });
+    const expires_at = new Date(Date.now() + OTP_EXPIRES_MIN * 60 * 1000);
+    const delivery_target = maskEmail(email_to);
+
+    // 5) Insert MFA event
+    const ins = await client.query(
+      `
+      INSERT INTO public.contract_mfa_events
+        (contract_id, user_id, delivery_channel, delivery_target, otp_hash, expires_at, otp_ip, otp_user_agent, metadata)
+      VALUES
+        ($1, NULL, 'email', $2, $3, $4, $5, $6, jsonb_build_object('token', $7))
+      RETURNING id;
+      `,
+      [contract_id, delivery_target, otp_hash, expires_at, accepted_ip, accepted_user_agent, token]
+    );
+
+    const mfa_event_id = ins.rows[0].id;
+
+    // 6) Send email OTP
+    // TODO: Wire this to your email provider.
+    // IMPORTANT: do NOT say "identity verified". Use neutral language.
+    // await sendContractOtpEmail({ to: email_to, otp, contractId: contract_id });
+
+    return res.json({
+      status: "OTP_SENT",
+      mfa_event_id,
+      deliveryTarget: delivery_target,
+      expiresInSeconds: OTP_EXPIRES_MIN * 60,
+    });
+  } catch (err) {
+    console.error("POST /contract/:token/mfa/start error:", err?.message, err);
+    return res.status(500).json({ error: "Failed to start MFA" });
+  } finally {
+    client.release();
+  }
+});
+
+
+router.post("/contract/:token/mfa/verify", async (req, res) => {
+  const token = String(req.params.token || "").trim();
+  if (!token) return res.status(400).json({ error: "Missing token" });
+
+  const { mfa_event_id, otp } = req.body || {};
+  if (!mfa_event_id || !otp) return res.status(400).json({ error: "mfa_event_id and otp are required" });
+
+  const accepted_ip =
+    (req.headers["x-forwarded-for"]
+      ? String(req.headers["x-forwarded-for"]).split(",")[0].trim()
+      : null) ||
+    req.ip ||
+    null;
+
+  const accepted_user_agent = req.get("user-agent") || null;
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Load contract
+    const contractRes = await client.query(
+      `
+      SELECT contract_id, token_expires_at
+      FROM public.contracts
+      WHERE token = $1
+      LIMIT 1;
+      `,
+      [token]
+    );
+
+    if (!contractRes.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Invalid link" });
+    }
+
+    const { contract_id, token_expires_at } = contractRes.rows[0];
+
+    if (token_expires_at && new Date(token_expires_at) < new Date()) {
+      await client.query("ROLLBACK");
+      return res.status(410).json({ error: "This link has expired" });
+    }
+
+    // Lock MFA event row
+    const evRes = await client.query(
+      `
+      SELECT *
+      FROM public.contract_mfa_events
+      WHERE id = $1 AND contract_id = $2
+      FOR UPDATE;
+      `,
+      [mfa_event_id, contract_id]
+    );
+
+    if (!evRes.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "MFA event not found" });
+    }
+
+    const ev = evRes.rows[0];
+
+    if (ev.otp_verified_at) {
+      await client.query("COMMIT");
+      return res.json({ status: "ALREADY_VERIFIED", validForSeconds: MFA_VALID_MIN * 60 });
+    }
+
+    if (ev.locked_until && new Date(ev.locked_until) > new Date()) {
+      await client.query("ROLLBACK");
+      return res.status(429).json({ error: "LOCKED", lockedUntil: ev.locked_until });
+    }
+
+    if (new Date(ev.expires_at) < new Date()) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "EXPIRED" });
+    }
+
+    const candidate = hashOtp({ otp: String(otp).trim(), contractId: contract_id });
+
+    let ok = false;
+    try {
+      ok = crypto.timingSafeEqual(Buffer.from(candidate, "hex"), Buffer.from(ev.otp_hash, "hex"));
+    } catch {
+      ok = false;
+    }
+
+    if (!ok) {
+      const nextAttempts = (ev.attempt_count || 0) + 1;
+      let lockedUntil = null;
+
+      if (nextAttempts >= MAX_ATTEMPTS) {
+        lockedUntil = new Date(Date.now() + LOCK_MIN * 60 * 1000);
+      }
+
+      await client.query(
+        `
+        UPDATE public.contract_mfa_events
+        SET attempt_count = $2,
+            locked_until = COALESCE($3, locked_until)
+        WHERE id = $1;
+        `,
+        [mfa_event_id, nextAttempts, lockedUntil]
+      );
+
+      await client.query("COMMIT");
+      return res.status(400).json({
+        error: "INVALID_OTP",
+        attemptsRemaining: Math.max(0, MAX_ATTEMPTS - nextAttempts),
+        lockedUntil,
+      });
+    }
+
+    await client.query(
+      `
+      UPDATE public.contract_mfa_events
+      SET otp_verified_at = now(),
+          otp_ip = $2,
+          otp_user_agent = $3
+      WHERE id = $1;
+      `,
+      [mfa_event_id, accepted_ip, accepted_user_agent]
+    );
+
+    await client.query("COMMIT");
+    return res.json({ status: "VERIFIED", validForSeconds: MFA_VALID_MIN * 60 });
+  } catch (err) {
+    try { await client.query("ROLLBACK"); } catch {}
+    console.error("POST /contract/:token/mfa/verify error:", err?.message, err);
+    return res.status(500).json({ error: "Failed to verify OTP" });
+  } finally {
+    client.release();
+  }
+});
+
+
+
+
+
+
+
 /** ---------- CONTRACT ACK (token-gated) ---------- **/
 router.post("/contract/:token/ack", async (req, res) => {
   const token = String(req.params.token || "").trim();
@@ -294,17 +595,42 @@ router.post("/contract/:token/ack", async (req, res) => {
     const contract_id = contractRes.rows[0].contract_id;
     const token_expires_at = contractRes.rows[0].token_expires_at;
 
+    
+
     if (token_expires_at && new Date(token_expires_at) < new Date()) {
       await client.query("ROLLBACK");
       return res.status(410).json({ error: "This link has expired" });
     }
 
+    // Require MFA verified within last 10 minutes
+    const mfaOk = await client.query(
+      `
+      SELECT id
+      FROM public.contract_mfa_events
+      WHERE contract_id = $1
+        AND otp_verified_at IS NOT NULL
+        AND otp_verified_at > now() - interval '${MFA_VALID_MIN} minutes'
+      ORDER BY otp_verified_at DESC
+      LIMIT 1;
+      `,
+      [contract_id]
+    );
+    
+    if (!mfaOk.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(403).json({ error: "MFA_REQUIRED" });
+    }
+    
+    const mfa_event_id = mfaOk.rows[0].id;
+
+
+    
     await client.query(
       `
       INSERT INTO public.contract_acceptances
-        (contract_id, method, accepted_name, accepted_title, accepted_email, accepted_ip, accepted_user_agent)
+        (contract_id, method, accepted_name, accepted_title, accepted_email, accepted_ip, accepted_user_agent, mfa_event_id)
       VALUES
-        ($1, 'ACK', $2, $3, $4, $5, $6)
+        ($1, 'ACK', $2, $3, $4, $5, $6, $7)
       ON CONFLICT (contract_id) DO UPDATE
         SET method = EXCLUDED.method,
             accepted_name = EXCLUDED.accepted_name,
