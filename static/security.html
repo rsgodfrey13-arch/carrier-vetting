@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Carrier Shark — Security Overview</title>
+
+  <link rel="stylesheet" href="/static/css/style1.css">
+  <link rel="stylesheet" href="/static/css/terms.css">
+</head>
+
+<body>
+  <div class="page">
+    <h1 class="page-title">Security Overview</h1>
+
+    <div class="carrier-header">
+      <div class="carrier-header-top">
+        <div class="carrier-name-block">
+          <div class="carrier-name">Carrier Shark</div>
+          <div class="carrier-ids">
+            Infrastructure • Data Protection • Platform Integrity
+          </div>
+        </div>
+        <div class="carrier-pill">Trust & Security</div>
+      </div>
+
+      <div class="carrier-meta-row">
+        <div class="meta-block">
+          <div class="meta-label">Security Contact</div>
+          <div class="meta-value">security@carriershark.com</div>
+        </div>
+        <div class="meta-block">
+          <div class="meta-label">Hosting</div>
+          <div class="meta-value">DigitalOcean</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Philosophy -->
+    <div class="list-card tos-body">
+      <h2 class="tos-h2">1. Security Philosophy</h2>
+      <p>
+        Carrier Shark is a neutral document facilitation platform used to manage
+        broker–carrier contracts, insurance documents, and workflow data.
+        Security is designed around protecting document integrity,
+        account access, and platform reliability.
+      </p>
+
+      <div class="tos-callout">
+        We design systems to minimize risk, limit access, and preserve
+        document authenticity — without over-collecting or over-retaining data.
+      </div>
+    </div>
+
+    <!-- Infrastructure -->
+    <div class="list-card tos-body">
+      <h2 class="tos-h2">2. Infrastructure & Hosting</h2>
+      <ul>
+        <li><strong>Cloud Hosting:</strong> DigitalOcean infrastructure.</li>
+        <li><strong>Document Storage:</strong> DigitalOcean Spaces (S3-compatible object storage).</li>
+        <li><strong>Databases:</strong> PostgreSQL (primary data) and Redis (caching and session support).</li>
+        <li><strong>Processing Layer:</strong> Secure workflow processing components hosted in managed cloud environments.</li>
+      </ul>
+
+      <p>
+        Access to production systems is restricted and controlled through credential-based access controls.
+      </p>
+    </div>
+
+    <!-- Encryption -->
+    <div class="list-card tos-body">
+      <h2 class="tos-h2">3. Encryption</h2>
+      <ul>
+        <li>Encryption in transit using HTTPS/TLS.</li>
+        <li>Cloud provider–managed encryption for stored objects.</li>
+        <li>Controlled access to document storage endpoints.</li>
+      </ul>
+
+      <p>
+        Sensitive documents are not exposed publicly and are accessible only through authorized workflows.
+      </p>
+    </div>
+
+    <!-- Authentication -->
+    <div class="list-card tos-body">
+      <h2 class="tos-h2">4. Authentication & Access Control</h2>
+      <ul>
+        <li>Account-based access control.</li>
+        <li>Email-based verification codes for signature workflows.</li>
+        <li>Role-based access separation where applicable.</li>
+        <li>Administrative access limited to authorized personnel.</li>
+      </ul>
+
+      <p>
+        Users are responsible for safeguarding their account credentials.
+      </p>
+    </div>
+
+    <!-- Monitoring -->
+    <div class="list-card tos-body">
+      <h2 class="tos-h2">5. Monitoring & Platform Integrity</h2>
+      <ul>
+        <li>Application monitoring and error tracking.</li>
+        <li>Logging of key authentication and workflow events.</li>
+        <li>Fraud and misuse detection mechanisms.</li>
+        <li>Rate limiting and abuse mitigation controls.</li>
+      </ul>
+
+      <p>
+        Monitoring is designed to protect document authenticity
+        and prevent unauthorized system access.
+      </p>
+    </div>
+
+    <!-- Data Handling -->
+    <div class="list-card tos-body">
+      <h2 class="tos-h2">6. Data Handling Practices</h2>
+      <ul>
+        <li>Documents stored only for operational and contractual purposes.</li>
+        <li>No sale of personal information.</li>
+        <li>No advertising tracking or behavioral profiling.</li>
+        <li>Public carrier profile pages display public regulatory data only.</li>
+      </ul>
+
+      <p>
+        Uploaded insurance certificates and executed agreements are not publicly displayed.
+      </p>
+    </div>
+
+    <!-- Incident Response -->
+    <div class="list-card tos-body">
+      <h2 class="tos-h2">7. Incident Response</h2>
+      <p>
+        Carrier Shark maintains procedures for investigating and responding
+        to suspected security incidents.
+      </p>
+
+      <ul>
+        <li>Internal escalation and containment procedures.</li>
+        <li>Investigation of scope and impact.</li>
+        <li>Notification to affected customers where legally required.</li>
+      </ul>
+
+      <div class="tos-callout">
+        Security concerns may be reported to:
+        <strong>security@carriershark.com</strong>
+      </div>
+    </div>
+
+    <!-- Responsibility -->
+    <div class="list-card tos-body">
+      <h2 class="tos-h2">8. Shared Responsibility</h2>
+      <p>
+        Security is a shared responsibility. Customers are responsible for:
+      </p>
+
+      <ul>
+        <li>Maintaining secure internal processes.</li>
+        <li>Verifying document authenticity before reliance.</li>
+        <li>Managing authorized access within their organization.</li>
+      </ul>
+
+      <p>
+        Carrier Shark provides infrastructure and controls,
+        but customers determine how documents are used within their operations.
+      </p>
+
+      <p class="tos-micro">
+        © <span id="year"></span> Carrier Shark. All rights reserved.
+      </p>
+    </div>
+
+  </div>
+
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
