@@ -231,41 +231,81 @@ router.get("/contract/:token", async (req, res) => {
 
       btn.addEventListener("click", async () => {
         setMsg("");
-
+      
         const ack = ackEl.checked;
         const name = (nameEl.value || "").trim();
         const title = (titleEl.value || "").trim();
         const email = (emailEl.value || "").trim();
-
+      
         if (!ack) return setMsg("Please check the acknowledgment box.", "err");
         if (!name) return setMsg("Name is required.", "err");
         if (!title) return setMsg("Title is required.", "err");
-
+      
         btn.disabled = true;
-        btn.textContent = "Submitting...";
-
+        btn.textContent = "Verifying...";
+      
         try {
+          // 1️⃣ Start MFA
+          const startResp = await fetch("/contract/" + encodeURIComponent(token) + "/mfa/start", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({})
+          });
+      
+          const startData = await startResp.json().catch(() => ({}));
+          if (!startResp.ok) {
+            throw new Error(startData.error || "Failed to send authentication code.");
+          }
+      
+          // 2️⃣ If not already validated, prompt for OTP
+          if (startData.status !== "MFA_ALREADY_VALID") {
+            const deliveryTarget = startData.deliveryTarget || "your email";
+            const code = window.prompt("Enter the 6-digit code sent to " + deliveryTarget + ":");
+      
+            if (!code) throw new Error("Authentication code required.");
+      
+            const verifyResp = await fetch("/contract/" + encodeURIComponent(token) + "/mfa/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                mfa_event_id: startData.mfa_event_id,
+                otp: code
+              })
+            });
+      
+            const verifyData = await verifyResp.json().catch(() => ({}));
+            if (!verifyResp.ok) {
+              throw new Error(verifyData.error || "Invalid authentication code.");
+            }
+          }
+      
+          // 3️⃣ Now submit ACK
+          btn.textContent = "Submitting...";
+      
           const resp = await fetch("/contract/" + encodeURIComponent(token) + "/ack", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ ack: true, name, title, email: email || null })
           });
-
+      
           const data = await resp.json().catch(() => ({}));
-
+      
           if (!resp.ok) {
             setMsg(data.error || "Failed to submit.", "err");
+            btn.disabled = false;
+            btn.textContent = "Accept Agreement";
           } else {
             setMsg("Accepted. You may close this page.", "ok");
             btn.textContent = "Accepted";
             btn.disabled = true;
           }
         } catch (e) {
-          setMsg("Network error. Please try again.", "err");
+          setMsg(e.message || "Network error. Please try again.", "err");
           btn.disabled = false;
           btn.textContent = "Accept Agreement";
         }
       });
+
     })();
   </script>
 </body>
