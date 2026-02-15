@@ -5,6 +5,7 @@ const { pool } = require("../../db/pool");
 const { spaces } = require("../../clients/spacesS3v2");
 const crypto = require("crypto");
 const router = express.Router();
+const { sendContractOtpEmail } = require("../../clients/mailgun");
 
 
 const OTP_EXPIRES_MIN = 5;
@@ -431,9 +432,7 @@ router.post("/contract/:token/mfa/start", async (req, res) => {
     const mfa_event_id = ins.rows[0].id;
 
     // 6) Send email OTP
-    // TODO: Wire this to your email provider.
-    // IMPORTANT: do NOT say "identity verified". Use neutral language.
-    // await sendContractOtpEmail({ to: email_to, otp, contractId: contract_id });
+    await sendContractOtpEmail({ to: email_to, otp });
 
     return res.json({
       status: "OTP_SENT",
