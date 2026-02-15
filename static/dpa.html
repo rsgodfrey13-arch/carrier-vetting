@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Carrier Shark — Data Processing Addendum</title>
+
+  <link rel="stylesheet" href="/static/css/style1.css">
+  <link rel="stylesheet" href="/static/css/terms.css">
+</head>
+
+<body>
+  <div class="page">
+    <h1 class="page-title">Data Processing Addendum (DPA)</h1>
+
+    <div class="carrier-header">
+      <div class="carrier-header-top">
+        <div class="carrier-name-block">
+          <div class="carrier-name">Carrier Shark</div>
+          <div class="carrier-ids">
+            Enterprise Data Processing Terms • B2B Platform
+          </div>
+        </div>
+        <div class="carrier-pill">Processor Terms</div>
+      </div>
+
+      <div class="carrier-meta-row">
+        <div class="meta-block">
+          <div class="meta-label">Effective Date</div>
+          <div class="meta-value">[Insert Effective Date]</div>
+        </div>
+        <div class="meta-block">
+          <div class="meta-label">Contact</div>
+          <div class="meta-value">[privacy@carriershark.com]</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="list-card tos-body">
+
+      <h2 class="tos-h2">1. Scope and Relationship</h2>
+      <p>
+        This Data Processing Addendum (“DPA”) forms part of the Carrier Shark Terms of Service
+        and any applicable Order Form (collectively, the “Agreement”) between
+        [Carrier Shark Legal Name, LLC] (“Processor”) and the customer entity (“Controller”).
+      </p>
+
+      <p>
+        To the extent Carrier Shark processes Personal Information on behalf of Controller,
+        Carrier Shark acts as a <strong>data processor/service provider</strong> and Controller acts as the
+        <strong>data controller/business</strong>.
+      </p>
+
+      <div class="tos-callout">
+        Carrier Shark does not determine the purposes for which customer documents
+        are created, uploaded, or transmitted.
+      </div>
+
+      <h2 class="tos-h2">2. Nature of Processing</h2>
+      <p>
+        Carrier Shark processes Personal Information solely to provide the Platform,
+        including document transmission, storage, workflow execution,
+        OCR processing, electronic signature facilitation, and security monitoring.
+      </p>
+
+      <p><strong>Categories of Data Subjects may include:</strong></p>
+      <ul>
+        <li>Broker personnel</li>
+        <li>Carrier personnel</li>
+        <li>Shipper personnel</li>
+        <li>Authorized representatives signing agreements</li>
+      </ul>
+
+      <p><strong>Categories of Personal Information may include:</strong></p>
+      <ul>
+        <li>Name</li>
+        <li>Business contact information (email, phone)</li>
+        <li>Signature metadata (timestamp, IP address, audit trail)</li>
+        <li>Information contained in uploaded business documents</li>
+      </ul>
+
+      <h2 class="tos-h2">3. Processor Obligations</h2>
+      <p>Carrier Shark agrees to:</p>
+      <ul>
+        <li>Process Personal Information only on documented instructions from Controller.</li>
+        <li>Not sell or retain Personal Information outside the business purpose of providing the Platform.</li>
+        <li>Ensure personnel are subject to confidentiality obligations.</li>
+        <li>Implement reasonable administrative, technical, and organizational safeguards.</li>
+      </ul>
+
+      <h2 class="tos-h2">4. Subprocessors</h2>
+      <p>
+        Controller authorizes Carrier Shark to use subprocessors to provide the Platform.
+        Subprocessors may include infrastructure, hosting, storage, monitoring,
+        and OCR providers.
+      </p>
+
+      <p>Current subprocessors may include:</p>
+      <ul>
+        <li>DigitalOcean (cloud hosting and infrastructure)</li>
+        <li>DigitalOcean Spaces (document storage)</li>
+        <li>DocuPipe (OCR processing)</li>
+        <li>Sentry (monitoring and error tracking)</li>
+        <li>GitHub (code repository management)</li>
+      </ul>
+
+      <p>
+        Carrier Shark will require subprocessors to implement appropriate safeguards
+        consistent with this DPA.
+      </p>
+
+      <h2 class="tos-h2">5. Security Measures</h2>
+      <p>
+        Carrier Shark maintains reasonable security measures including:
+      </p>
+
+      <ul>
+        <li>Encryption in transit</li>
+        <li>Access controls and least-privilege practices</li>
+        <li>Email-based verification codes for certain signing workflows</li>
+        <li>Monitoring and logging for platform integrity</li>
+      </ul>
+
+      <h2 class="tos-h2">6. Data Subject Requests</h2>
+      <p>
+        To the extent legally required, Carrier Shark will provide reasonable assistance
+        to Controller in responding to verified data subject access, correction,
+        or deletion requests.
+      </p>
+
+      <h2 class="tos-h2">7. Data Breach Notification</h2>
+      <p>
+        In the event of a confirmed security incident affecting Personal Information,
+        Carrier Shark will notify Controller without undue delay
+        after becoming aware of the incident.
+      </p>
+
+      <h2 class="tos-h2">8. Data Retention and Deletion</h2>
+      <p>
+        Upon termination of the Agreement and written request from Controller,
+        Carrier Shark will delete or return Personal Information,
+        except where retention is required by law or necessary for
+        legitimate business purposes such as dispute resolution.
+      </p>
+
+      <h2 class="tos-h2">9. Cross-Border Transfers</h2>
+      <p>
+        Personal Information may be processed in the United States
+        or other jurisdictions where Carrier Shark or its subprocessors operate.
+        Carrier Shark will implement reasonable safeguards consistent with applicable law.
+      </p>
+
+      <h2 class="tos-h2">10. Limitation of Liability</h2>
+      <p>
+        This DPA is subject to the limitations of liability set forth in the
+        Carrier Shark Terms of Service and any applicable Order Form.
+      </p>
+
+      <p class="tos-micro">
+        © <span id="year"></span> Carrier Shark. All rights reserved.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
