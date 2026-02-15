@@ -605,25 +605,16 @@ router.post("/contract/:token/mfa/verify", async (req, res) => {
 });
 
 
-
-
-
-
-
-/** ---------- CONTRACT ACK (token-gated) ---------- **/
 router.post("/contract/:token/ack", async (req, res) => {
   const token = String(req.params.token || "").trim();
   if (!token) return res.status(400).json({ error: "Missing token" });
 
-  const { ack, name, title, email } = req.body || {};
+  const accepted_name = String(req.body?.name || "").trim();
+  const accepted_title = String(req.body?.title || "").trim();
+  const accepted_email = req.body?.email ? String(req.body.email).trim() : null;
 
-  if (ack !== true) return res.status(400).json({ error: "ack must be true" });
-  if (!name || !String(name).trim()) return res.status(400).json({ error: "name is required" });
-  if (!title || !String(title).trim()) return res.status(400).json({ error: "title is required" });
-
-  const accepted_name = String(name).trim();
-  const accepted_title = String(title).trim();
-  const accepted_email = email ? String(email).trim() : null;
+  if (!accepted_name) return res.status(400).json({ error: "Name is required" });
+  if (!accepted_title) return res.status(400).json({ error: "Title is required" });
 
   const accepted_ip =
     (req.headers["x-forwarded-for"]
@@ -635,12 +626,16 @@ router.post("/contract/:token/ack", async (req, res) => {
   const accepted_user_agent = req.get("user-agent") || null;
 
   const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
 
+  try {
+    // ============================================================
+    // 1) Read-only lookups (NO transaction yet)
+    // ============================================================
+
+    // Load contract by token + expiry check
     const contractRes = await client.query(
       `
-      SELECT contract_id, token_expires_at
+      SELECT contract_id, token_expires_at, user_contract_id, status
       FROM public.contracts
       WHERE token = $1
       LIMIT 1;
@@ -648,149 +643,185 @@ router.post("/contract/:token/ack", async (req, res) => {
       [token]
     );
 
-    if (contractRes.rows.length === 0) {
-      await client.query("ROLLBACK");
+    if (!contractRes.rows.length) {
       return res.status(404).json({ error: "Invalid link" });
     }
 
-    const contract_id = contractRes.rows[0].contract_id;
-    const token_expires_at = contractRes.rows[0].token_expires_at;
-
-    
+    const { contract_id, token_expires_at, status } = contractRes.rows[0];
 
     if (token_expires_at && new Date(token_expires_at) < new Date()) {
+      return res.status(410).json({ error: "This link has expired" });
+    }
+
+    // Optional: if you want idempotent “already accepted”
+    if (status === "ACKNOWLEDGED" || status === "SIGNED") {
+      return res.json({ ok: true, status });
+    }
+
+    // Load PDF storage metadata (same relationship you use in /pdf)
+    const pdfMetaRes = await client.query(
+      `
+      SELECT uc.storage_provider, uc.storage_key
+      FROM public.contracts c
+      JOIN public.user_contracts uc
+        ON uc.id = c.user_contract_id
+      WHERE c.contract_id = $1
+      LIMIT 1;
+      `,
+      [contract_id]
+    );
+
+    if (!pdfMetaRes.rows.length) {
+      return res.status(500).json({ error: "Missing contract storage metadata" });
+    }
+
+    const { storage_provider, storage_key } = pdfMetaRes.rows[0];
+
+    if (storage_provider !== "DO_SPACES" || !storage_key) {
+      return res.status(500).json({ error: "Storage provider not configured" });
+    }
+
+    // Fetch PDF bytes from Spaces and compute hash (NO transaction yet)
+    let document_hash_sha256;
+    try {
+      const obj = await spaces
+        .getObject({ Bucket: process.env.SPACES_BUCKET, Key: storage_key })
+        .promise();
+
+      const pdfBuffer = obj.Body; // Buffer
+      document_hash_sha256 = crypto
+        .createHash("sha256")
+        .update(pdfBuffer)
+        .digest("hex");
+    } catch (err) {
+      console.error("Failed to load PDF for hashing:", err?.code, err?.message, err);
+      return res.status(500).json({ error: "Failed to compute document hash" });
+    }
+
+    // ============================================================
+    // 2) Transaction begins ONLY when we need to write
+    // ============================================================
+
+    await client.query("BEGIN");
+
+    // (Optional but clean) Re-check token is still valid inside transaction
+    const contractRes2 = await client.query(
+      `
+      SELECT contract_id, token_expires_at, status
+      FROM public.contracts
+      WHERE contract_id = $1
+      LIMIT 1;
+      `,
+      [contract_id]
+    );
+
+    if (!contractRes2.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Contract not found" });
+    }
+
+    const { token_expires_at: token_expires_at2, status: status2 } = contractRes2.rows[0];
+
+    if (token_expires_at2 && new Date(token_expires_at2) < new Date()) {
       await client.query("ROLLBACK");
       return res.status(410).json({ error: "This link has expired" });
     }
 
+    // If another request acknowledged it between our first check and now:
+    if (status2 === "ACKNOWLEDGED" || status2 === "SIGNED") {
+      await client.query("COMMIT");
+      return res.json({ ok: true, status: status2 });
+    }
 
-const pdfMetaRes = await client.query(
-  `
-  SELECT
-    uc.storage_provider,
-    uc.storage_key
-  FROM public.contracts c
-  JOIN public.user_contracts uc
-    ON uc.id = c.user_contract_id
-  WHERE c.contract_id = $1
-  LIMIT 1;
-  `,
-  [contract_id]
-);
+    // ============================================================
+    // 3) MFA gate (must be inside transaction for correctness)
+    // ============================================================
 
-if (!pdfMetaRes.rows.length) {
-  await client.query("ROLLBACK");
-  return res.status(500).json({ error: "Missing contract storage metadata" });
-}
-
-const { storage_provider, storage_key } = pdfMetaRes.rows[0];
-
-if (storage_provider !== "DO_SPACES" || !storage_key) {
-  await client.query("ROLLBACK");
-  return res.status(500).json({ error: "Storage provider not configured" });
-}
-
-
-    let document_hash_sha256 = null;
-
-try {
-  const Bucket = process.env.SPACES_BUCKET;
-  const Key = storage_key;
-
-  const obj = await spaces.getObject({ Bucket, Key }).promise();
-  const pdfBuffer = obj.Body; // Buffer in AWS SDK v2
-
-  document_hash_sha256 = crypto
-    .createHash("sha256")
-    .update(pdfBuffer)
-    .digest("hex");
-} catch (err) {
-  console.error("Failed to load PDF for hashing:", err?.code, err?.message, err);
-  await client.query("ROLLBACK");
-  return res.status(500).json({ error: "Failed to compute document hash" });
-}
-
-    
-    // Require MFA verified within last 10 minutes
     const mfaOk = await client.query(
       `
       SELECT id
       FROM public.contract_mfa_events
       WHERE contract_id = $1
         AND otp_verified_at IS NOT NULL
-        AND otp_verified_at > now() - interval '${MFA_VALID_MIN} minutes'
+        AND otp_verified_at > now() - interval '10 minutes'
       ORDER BY otp_verified_at DESC
       LIMIT 1;
       `,
       [contract_id]
     );
-    
+
     if (!mfaOk.rows.length) {
       await client.query("ROLLBACK");
       return res.status(403).json({ error: "MFA_REQUIRED" });
     }
-    
+
     const mfa_event_id = mfaOk.rows[0].id;
 
+    // ============================================================
+    // 4) Insert acceptance (store hash + storage_key, never overwrite)
+    // ============================================================
 
-    
     await client.query(
-  `
-  INSERT INTO public.contract_acceptances
-    (contract_id, method, accepted_name, accepted_title, accepted_email,
-     accepted_ip, accepted_user_agent, mfa_event_id,
-     document_hash_sha256, document_storage_key)
-  VALUES
-    ($1, 'ACK', $2, $3, $4, $5, $6, $7, $8, $9)
-  ON CONFLICT (contract_id) DO UPDATE
-    SET method = EXCLUDED.method,
-        accepted_name = EXCLUDED.accepted_name,
-        accepted_title = EXCLUDED.accepted_title,
-        accepted_email = EXCLUDED.accepted_email,
-        accepted_at = NOW(),
-        accepted_ip = EXCLUDED.accepted_ip,
-        accepted_user_agent = EXCLUDED.accepted_user_agent,
-        mfa_event_id = EXCLUDED.mfa_event_id,
+      `
+      INSERT INTO public.contract_acceptances
+        (contract_id, method, accepted_name, accepted_title, accepted_email,
+         accepted_ip, accepted_user_agent, mfa_event_id,
+         document_hash_sha256, document_storage_key)
+      VALUES
+        ($1, 'ACK', $2, $3, $4, $5, $6, $7, $8, $9)
+      ON CONFLICT (contract_id) DO UPDATE
+        SET method = EXCLUDED.method,
+            accepted_name = EXCLUDED.accepted_name,
+            accepted_title = EXCLUDED.accepted_title,
+            accepted_email = EXCLUDED.accepted_email,
+            accepted_at = NOW(),
+            accepted_ip = EXCLUDED.accepted_ip,
+            accepted_user_agent = EXCLUDED.accepted_user_agent,
+            mfa_event_id = EXCLUDED.mfa_event_id,
 
-        -- don't overwrite once set (prevents future accidental changes)
-        document_hash_sha256 = COALESCE(contract_acceptances.document_hash_sha256, EXCLUDED.document_hash_sha256),
-        document_storage_key  = COALESCE(contract_acceptances.document_storage_key,  EXCLUDED.document_storage_key);
-  `,
-  [
-    contract_id,
-    accepted_name,
-    accepted_title,
-    accepted_email,
-    accepted_ip,
-    accepted_user_agent,
-    mfa_event_id,
-    document_hash_sha256,
-    storage_key
-  ]
-);
+            -- prevent accidental future changes
+            document_hash_sha256 = COALESCE(contract_acceptances.document_hash_sha256, EXCLUDED.document_hash_sha256),
+            document_storage_key  = COALESCE(contract_acceptances.document_storage_key,  EXCLUDED.document_storage_key);
+      `,
+      [
+        contract_id,
+        accepted_name,
+        accepted_title,
+        accepted_email,
+        accepted_ip,
+        accepted_user_agent,
+        mfa_event_id,
+        document_hash_sha256,
+        storage_key,
+      ]
+    );
 
-
+    // ============================================================
+    // 5) Update contract status/timestamps
+    // ============================================================
 
     await client.query(
       `
       UPDATE public.contracts
       SET status = 'ACKNOWLEDGED',
-          signed_at = NOW(),
-          updated_at = NOW()
+          signed_at = COALESCE(signed_at, now())
       WHERE contract_id = $1;
       `,
       [contract_id]
     );
 
     await client.query("COMMIT");
-    return res.json({ ok: true, contract_id, status: "ACKNOWLEDGED" });
+    return res.json({ ok: true });
   } catch (err) {
     try { await client.query("ROLLBACK"); } catch {}
     console.error("POST /contract/:token/ack error:", err?.message, err);
-    return res.status(500).json({ error: "Failed to acknowledge contract" });
+    return res.status(500).json({ error: "Failed to accept contract" });
   } finally {
     client.release();
   }
 });
+
+
+
 
 module.exports = router;
