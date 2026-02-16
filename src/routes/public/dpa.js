@@ -5,7 +5,7 @@ const path = require("path");
 
 const router = express.Router();
 
-router.get("/account", (req, res) => {
+router.get("/dpa", (req, res) => {
   res.sendFile(path.join(__dirname, "../../../static", "dpa.html"));
 });
 
