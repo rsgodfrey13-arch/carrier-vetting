@@ -8,6 +8,11 @@ const prettyDotRoutes = require("./prettyDot.routes");
 const accountRoutes = require("./account.routes");
 const healthzRoutes = require("./healthz.routes"); 
 const loginRoutes = require("./login.routes");
+const acceptableRoutes = require("./acceptable-use.routes");
+const dpaRoutes = require("./dpa.routes");
+const privacyRoutes = require("./privacy.routes");
+const securityRoutes = require("./security.routes");
+const termsRoutes = require("./terms.routes");
 const trackRoutes = require("./track"); // adjust name/path if needed
 const resetPasswordRoutes = require("./resetPassword.routes");
 
@@ -19,6 +24,11 @@ function publicRoutes() {
   router.use(accountRoutes);
   router.use(resetPasswordRoutes);
   router.use(loginRoutes);
+  router.use(acceptableRoutes);
+  router.use(dpaRoutes);
+  router.use(privacyRoutes);
+  router.use(securityRoutes);
+  router.use(termsRoutes);
   router.use(prettyDotRoutes);  // 👈 wildcard-ish routes last
   return router;
 }
