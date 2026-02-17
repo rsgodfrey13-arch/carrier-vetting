@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Carrier Shark — Plans</title>
+
+  <!-- Adjust paths to match your project -->
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/style1.css" />
+
+  <!-- Tiny page-only layer (recommended) -->
+  <link rel="stylesheet" href="/css/plans.css" />
+</head>
+
+<body class="carrier-list pricing-page">
+  <!-- Top nav (matches your existing shared header styling) -->
+  <header class="site-header glass-nav">
+    <div class="nav-inner">
+      <a class="nav-logo" href="/">CARRIER SHARK</a>
+
+      <nav class="nav-links" aria-label="Primary">
+        <a class="nav-link" href="/product">Product</a>
+        <a class="nav-link active" href="/plans">Plans</a>
+
+        <div class="nav-dropdown">
+          <button class="nav-link nav-dropbtn" type="button" aria-haspopup="true" aria-expanded="false">
+            Resources <span class="nav-caret">▾</span>
+          </button>
+          <div class="nav-dropdown-menu" role="menu">
+            <a class="nav-dd-link" href="/security" role="menuitem">Security</a>
+            <a class="nav-dd-link" href="/privacy" role="menuitem">Privacy</a>
+            <div class="nav-dd-sep"></div>
+            <a class="nav-dd-link" href="/support" role="menuitem">Support</a>
+          </div>
+        </div>
+
+        <a class="nav-link" href="/login">Login</a>
+        <a class="btn-primary" href="/get-a-demo">Get a Demo</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    <!-- Hero -->
+    <section class="plans-hero">
+      <div class="plans-hero-inner">
+        <h1 class="plans-title">Plans</h1>
+        <p class="plans-subtitle">
+          Pick a plan that matches your operation. Upgrade any time.
+        </p>
+
+        <div class="plans-hero-actions">
+          <a class="btn-primary" href="/signup">Start with Pro</a>
+          <a class="btn-ghost" href="/get-a-demo">Talk to Sales</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Chart Card -->
+    <section class="plans-card glass-card" aria-label="Plan comparison">
+      <div class="plans-card-head">
+        <h2 class="plans-card-title">Compare plans</h2>
+        <p class="plans-card-hint">Everything important, in one view.</p>
+      </div>
+
+      <!-- Put your chart image in /static/img/plans-chart.png (or change the src below) -->
+      <div class="plans-chart-wrap">
+        <img
+          class="plans-chart"
+          src="/img/plans-chart.png"
+          alt="Carrier Shark plan comparison table (Core, Pro, Enterprise)"
+          loading="lazy"
+        />
+      </div>
+
+      <!-- Minimal clarifiers (not “salesy”) -->
+      <div class="plans-notes">
+        <div class="plans-note">
+          <div class="plans-note-label">Enterprise monitoring</div>
+          <div class="plans-note-value">
+            Default includes <strong>50,000+</strong> monitored carriers. Need more? Add capacity in blocks.
+          </div>
+        </div>
+
+        <div class="plans-note">
+          <div class="plans-note-label">Questions</div>
+          <div class="plans-note-value">
+            We’ll recommend the simplest option that fits. No pressure.
+          </div>
+        </div>
+      </div>
+
+      <div class="plans-cta-row">
+        <a class="btn-primary" href="/get-a-demo">Get a Demo</a>
+        <a class="btn-ghost" href="/signup">Create account</a>
+      </div>
+    </section>
+
+    <!-- Footer (optional, keep minimal) -->
+    <footer class="plans-footer">
+      <div class="plans-footer-inner">
+        <span class="plans-foot-muted">© <span id="yy"></span> Carrier Shark</span>
+        <span class="plans-foot-links">
+          <a class="nav-link" href="/terms">Terms</a>
+          <a class="nav-link" href="/privacy">Privacy</a>
+          <a class="nav-link" href="/security">Security</a>
+        </span>
+      </div>
+    </footer>
+  </main>
+
+  <script>
+    // year
+    document.getElementById("yy").textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
