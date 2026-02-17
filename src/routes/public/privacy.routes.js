@@ -6,7 +6,7 @@ const path = require("path");
 const router = express.Router();
 
 router.get("/privacy", (req, res) => {
-  res.sendFile(path.join(__dirname, "../../../privacy", "acceptable-use.html"));
+  res.sendFile(path.join(__dirname, "../../../static", "privacy.html"));
 });
 
 module.exports = router;
