@@ -5,16 +5,16 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Carrier Shark — Plans</title>
 
-  <!-- Adjust paths to match your project -->
+  <!-- Your existing global styles -->
   <link rel="stylesheet" href="/css/base.css" />
   <link rel="stylesheet" href="/css/style1.css" />
 
-  <!-- Tiny page-only layer (recommended) -->
+  <!-- Page-only polish -->
   <link rel="stylesheet" href="/css/plans.css" />
 </head>
 
-<body class="carrier-list pricing-page">
-  <!-- Top nav (matches your existing shared header styling) -->
+<body class="pricing-page">
+  <!-- Header / Nav -->
   <header class="site-header glass-nav">
     <div class="nav-inner">
       <a class="nav-logo" href="/">CARRIER SHARK</a>
@@ -23,11 +23,11 @@
         <a class="nav-link" href="/product">Product</a>
         <a class="nav-link active" href="/plans">Plans</a>
 
-        <div class="nav-dropdown">
+        <div class="nav-dropdown" id="navResources">
           <button class="nav-link nav-dropbtn" type="button" aria-haspopup="true" aria-expanded="false">
             Resources <span class="nav-caret">▾</span>
           </button>
-          <div class="nav-dropdown-menu" role="menu">
+          <div class="nav-dropdown-menu" role="menu" aria-label="Resources">
             <a class="nav-dd-link" href="/security" role="menuitem">Security</a>
             <a class="nav-dd-link" href="/privacy" role="menuitem">Privacy</a>
             <div class="nav-dd-sep"></div>
@@ -41,63 +41,175 @@
     </div>
   </header>
 
-  <main class="page">
+  <main class="plans-page">
     <!-- Hero -->
     <section class="plans-hero">
       <div class="plans-hero-inner">
-        <h1 class="plans-title">Plans</h1>
+        <div class="plans-eyebrow">Plans</div>
+        <h1 class="plans-title">Clear pricing. Built to scale.</h1>
         <p class="plans-subtitle">
-          Pick a plan that matches your operation. Upgrade any time.
+          Monitoring, alerts, contracts, and integrations — without the noise.
         </p>
 
         <div class="plans-hero-actions">
-          <a class="btn-primary" href="/signup">Start with Pro</a>
-          <a class="btn-ghost" href="/get-a-demo">Talk to Sales</a>
+          <a class="btn-primary" href="/signup">Create account</a>
+          <a class="btn-ghost" href="/get-a-demo">Get a demo</a>
         </div>
       </div>
     </section>
 
-    <!-- Chart Card -->
-    <section class="plans-card glass-card" aria-label="Plan comparison">
-      <div class="plans-card-head">
-        <h2 class="plans-card-title">Compare plans</h2>
-        <p class="plans-card-hint">Everything important, in one view.</p>
-      </div>
+    <!-- Comparison Card -->
+    <section class="plans-shell" aria-label="Plan comparison">
+      <div class="plans-shell-inner glass-card">
+        <div class="plans-shell-head">
+          <h2 class="plans-shell-title">Compare plans</h2>
+          <p class="plans-shell-hint">Everything important, in one view.</p>
+        </div>
 
-      <!-- Put your chart image in /static/img/plans-chart.png (or change the src below) -->
-      <div class="plans-chart-wrap">
-        <img
-          class="plans-chart"
-          src="/img/plans-chart.png"
-          alt="Carrier Shark plan comparison table (Core, Pro, Enterprise)"
-          loading="lazy"
-        />
-      </div>
+        <!-- Real table (not an image) -->
+        <div class="plans-table-wrap" role="region" aria-label="Plan comparison table" tabindex="0">
+          <table class="plans-table" aria-describedby="plansTableHint">
+            <thead>
+              <tr>
+                <th scope="col" class="plans-col-feature"></th>
+                <th scope="col" class="plans-col-plan">
+                  <div class="plan-head">
+                    <div class="plan-name">Core</div>
+                    <div class="plan-price">$399 <span>/ month</span></div>
+                  </div>
+                </th>
+                <th scope="col" class="plans-col-plan is-featured">
+                  <div class="plan-head">
+                    <div class="plan-name">Pro</div>
+                    <div class="plan-price">$999 <span>/ month</span></div>
+                    <div class="plan-badge">Best value</div>
+                  </div>
+                </th>
+                <th scope="col" class="plans-col-plan">
+                  <div class="plan-head">
+                    <div class="plan-name">Enterprise</div>
+                    <div class="plan-price">$2,500 <span>/ month</span></div>
+                  </div>
+                </th>
+              </tr>
+            </thead>
 
-      <!-- Minimal clarifiers (not “salesy”) -->
-      <div class="plans-notes">
-        <div class="plans-note">
-          <div class="plans-note-label">Enterprise monitoring</div>
-          <div class="plans-note-value">
-            Default includes <strong>50,000+</strong> monitored carriers. Need more? Add capacity in blocks.
+            <tbody>
+              <tr>
+                <th scope="row">Carrier Search &amp; Aggregation</th>
+                <td><span class="check">✓</span> Unlimited</td>
+                <td class="is-featured"><span class="check">✓</span> Unlimited</td>
+                <td><span class="check">✓</span> Unlimited</td>
+              </tr>
+
+              <tr>
+                <th scope="row">Saved Carriers</th>
+                <td><span class="check">✓</span> Unlimited</td>
+                <td class="is-featured"><span class="check">✓</span> Unlimited</td>
+                <td><span class="check">✓</span> Unlimited</td>
+              </tr>
+
+              <tr>
+                <th scope="row">Carrier Monitoring</th>
+                <td>Up to 500 monitored carriers</td>
+                <td class="is-featured">Up to 2,000 monitored carriers (expandable)</td>
+                <td>50,000+ monitored carriers (expandable)</td>
+              </tr>
+
+              <tr>
+                <th scope="row">Contract Sending</th>
+                <td class="muted">—</td>
+                <td class="is-featured"><span class="check">✓</span> Included</td>
+                <td><span class="check">✓</span> Included</td>
+              </tr>
+
+              <tr>
+                <th scope="row">Email Alerts</th>
+                <td><span class="check">✓</span> Standard alerts</td>
+                <td class="is-featured"><span class="check">✓</span> Advanced configurable alerts</td>
+                <td><span class="check">✓</span> Advanced configurable alerts</td>
+              </tr>
+
+              <tr>
+                <th scope="row">API Access</th>
+                <td class="muted">—</td>
+                <td class="is-featured"><span class="check">✓</span> Full API access</td>
+                <td><span class="check">✓</span> Full API access</td>
+              </tr>
+
+              <tr>
+                <th scope="row">Webhooks</th>
+                <td class="muted">—</td>
+                <td class="is-featured"><span class="check">✓</span> Included</td>
+                <td><span class="check">✓</span> Included</td>
+              </tr>
+
+              <tr>
+                <th scope="row">Team Seats</th>
+                <td>Up to 3 users</td>
+                <td class="is-featured">Up to 10 users (expandable)</td>
+                <td>Custom user scaling</td>
+              </tr>
+
+              <tr>
+                <th scope="row">Document Storage</th>
+                <td class="muted">—</td>
+                <td class="is-featured"><span class="check">✓</span> Included</td>
+                <td><span class="check">✓</span> Included</td>
+              </tr>
+
+              <tr>
+                <th scope="row">Priority Support</th>
+                <td>Standard email support</td>
+                <td class="is-featured">Standard email support</td>
+                <td>Priority support</td>
+              </tr>
+
+              <tr>
+                <th scope="row">Onboarding</th>
+                <td class="muted">—</td>
+                <td class="is-featured">Available + onboarding support</td>
+                <td>Available + onboarding support</td>
+              </tr>
+
+              <tr class="bestfor-row">
+                <th scope="row">Best For</th>
+                <td>Small to growing broker teams</td>
+                <td class="is-featured">Operationally mature broker teams</td>
+                <td>National &amp; multi-branch brokerages</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p id="plansTableHint" class="sr-only">
+            This table compares Core, Pro, and Enterprise plans by features and capacity.
+          </p>
+        </div>
+
+        <!-- Minimal clarifiers (keep your tone: direct) -->
+        <div class="plans-micro">
+          <div class="plans-micro-item">
+            <div class="plans-micro-label">Enterprise monitoring</div>
+            <div class="plans-micro-value">
+              Includes <strong>50,000+</strong> monitored carriers by default. Additional capacity available.
+            </div>
+          </div>
+
+          <div class="plans-micro-item">
+            <div class="plans-micro-label">Upgrade path</div>
+            <div class="plans-micro-value">
+              Start Core. Move to Pro when you need API/webhooks. Go Enterprise for national scale.
+            </div>
           </div>
         </div>
 
-        <div class="plans-note">
-          <div class="plans-note-label">Questions</div>
-          <div class="plans-note-value">
-            We’ll recommend the simplest option that fits. No pressure.
-          </div>
+        <div class="plans-cta-row">
+          <a class="btn-primary" href="/signup">Create account</a>
+          <a class="btn-ghost" href="/get-a-demo">Get a demo</a>
         </div>
-      </div>
-
-      <div class="plans-cta-row">
-        <a class="btn-primary" href="/get-a-demo">Get a Demo</a>
-        <a class="btn-ghost" href="/signup">Create account</a>
       </div>
     </section>
 
-    <!-- Footer (optional, keep minimal) -->
     <footer class="plans-footer">
       <div class="plans-footer-inner">
         <span class="plans-foot-muted">© <span id="yy"></span> Carrier Shark</span>
@@ -111,8 +223,37 @@
   </main>
 
   <script>
-    // year
     document.getElementById("yy").textContent = new Date().getFullYear();
+
+    // Click-to-open dropdown (prevents hover flicker + disappearing)
+    (function () {
+      const dd = document.getElementById("navResources");
+      if (!dd) return;
+      const btn = dd.querySelector("button");
+      const menu = dd.querySelector(".nav-dropdown-menu");
+
+      function close() {
+        dd.classList.remove("open");
+        btn.setAttribute("aria-expanded", "false");
+      }
+      function open() {
+        dd.classList.add("open");
+        btn.setAttribute("aria-expanded", "true");
+      }
+
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        dd.classList.contains("open") ? close() : open();
+      });
+
+      document.addEventListener("click", (e) => {
+        if (!dd.contains(e.target)) close();
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") close();
+      });
+    })();
   </script>
 </body>
 </html>
