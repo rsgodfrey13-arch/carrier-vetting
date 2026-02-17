@@ -6,7 +6,7 @@ const path = require("path");
 const router = express.Router();
 
 router.get("/security", (req, res) => {
-  res.sendFile(path.join(__dirname, "../../../security", "acceptable-use.html"));
+  res.sendFile(path.join(__dirname, "../../../static", "security.html"));
 });
 
 module.exports = router;
