@@ -514,3 +514,15 @@ thead .is-featured{
   white-space:nowrap;
   border:0;
 }
+
+/* Force header to span and center like the rest of the site */
+#site-header,
+.site-header {
+  width: 100%;
+}
+
+.site-header .nav-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 14px;
+}
