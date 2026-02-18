@@ -337,7 +337,7 @@ if (existing.rows.length) {
     req.session.userId = created.rows[0].id;
 
     // TODO: create email verification token + send verification email
-    return res.redirect(303, "/check-email");
+    return res.redirect(303, "/verify-email");
   } catch (err) {
 console.error("SIGNUP FAILED:", err?.message, err);
 return res.status(500).json({
