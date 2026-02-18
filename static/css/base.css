@@ -245,3 +245,9 @@ html, body { margin: 0; padding: 0; }
 .nav-dropdown-menu{
   backdrop-filter: none;
 }
+
+.nav-auth {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
