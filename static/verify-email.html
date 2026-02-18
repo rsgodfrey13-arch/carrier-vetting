@@ -23,6 +23,31 @@
     margin-top: 22px !important;
   }
 </style>
+<style>
+  /* Verified success state polish */
+  .auth-hero.is-verified {
+    padding-top: 42px;
+  }
+
+  #verify-success-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 12px;
+  }
+
+  .auth-hero.is-verified #verify-subtitle.auth-title {
+    margin-top: 10px;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+  }
+
+  .auth-hero.is-verified #continue-btn {
+    margin-top: 26px;
+    min-width: 260px;
+    justify-content: center;
+  }
+</style>
 
 </head>
 
@@ -36,16 +61,20 @@
       <div class="auth-hero">
         <span class="auth-eyebrow">Email verification</span>
         <h1 id="verify-title" class="auth-title">Verify your email to continue.</h1>
+        <div id="verify-success-block">
         <p id="verify-subtitle" class="auth-subtitle">
           We sent a verification link to your inbox. Open it to unlock plan activation.
         </p>
+      
         <a id="continue-btn"
            class="cs-btn cs-btn-primary"
            href="/activate-plan"
            style="display:none;">
           Continue to choose your plan
         </a>
-
+          <p class="cs-help" style="margin-top:8px;">
+            You’re all set. Plan activation takes less than a minute.
+          </p>
       </div>
 
       <div id="verify-card" class="auth-card">
@@ -115,10 +144,14 @@
   // Status copy + button behavior
   if (status === "verified") {
     subtitle.textContent = "Email verified successfully.";
+    // enable verified hero mode
+    const hero = document.querySelector(".auth-hero");
+    if (hero) hero.classList.add("is-verified");
+    
+    // show button
     if (continueBtn) {
-      continueBtn.style.display = "inline-block";
+      continueBtn.style.display = "inline-flex";
     }
-    return;
   }
 
   // Not verified statuses: hide continue button
