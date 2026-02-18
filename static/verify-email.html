@@ -20,9 +20,16 @@
       <div class="auth-hero">
         <span class="auth-eyebrow">Email verification</span>
         <h1 class="auth-title">Verify your email to continue.</h1>
-        <p class="auth-subtitle">
+        <p id="verify-subtitle" class="auth-subtitle">
           We sent a verification link to your inbox. Open it to unlock plan activation.
         </p>
+        <a id="continue-btn"
+           class="cs-btn cs-btn-primary"
+           href="/plans"
+           style="display:none;">
+          Continue to choose your plan
+        </a>
+
       </div>
 
       <div class="auth-card">
@@ -39,6 +46,15 @@
               <input type="hidden" name="email" value="" />
               <button class="cs-btn cs-btn-primary" type="submit">Resend email</button>
             </form>
+
+              <!-- NEW: hidden continue button -->
+              <a id="continue-btn"
+                 class="cs-btn cs-btn-primary"
+                 href="/plans"
+                 style="display:none;">
+                Continue to choose your plan
+              </a>
+            
             <a class="cs-btn cs-btn-ghost" href="/create-account">Change email</a>
           </div>
 
@@ -51,5 +67,45 @@
     </section>
   </main>
   <script src="/js/shared/shared.js"></script>
+
+<script>
+(function () {
+  const params = new URLSearchParams(window.location.search);
+  const status = params.get("status");
+
+  const subtitle = document.getElementById("verify-subtitle");
+  const continueBtn = document.getElementById("continue-btn");
+
+  if (!subtitle) return;
+
+  if (status === "verified") {
+    subtitle.textContent =
+      "Email verified successfully. You can activate your plan now.";
+    if (continueBtn) continueBtn.style.display = "inline-flex";
+  }
+
+  if (status === "invalid") {
+    subtitle.textContent =
+      "That verification link is invalid or expired. Please resend a new one.";
+  }
+
+  if (status === "sent") {
+    subtitle.textContent =
+      "Verification email resent. Check your inbox (and spam).";
+  }
+
+  if (status === "wait") {
+    subtitle.textContent =
+      "Please wait a moment before requesting another email.";
+  }
+
+  if (status === "error") {
+    subtitle.textContent =
+      "Something went wrong verifying your email. Please try again.";
+  }
+})();
+</script>
+
+  
   </body>
 </html>
