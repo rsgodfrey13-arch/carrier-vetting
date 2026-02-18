@@ -306,52 +306,33 @@ router.post("/auth/signup", async (req, res) => {
   try {
     // ✅ IMPORTANT: treat email as case-insensitive
     const existing = await pool.query(
-      `SELECT id, email_verified_at FROM users WHERE lower(email) = $1 LIMIT 1`,
+      `SELECT id FROM users WHERE lower(email) = $1 LIMIT 1`,
       [emailRaw]
     );
 
-    if (existing.rows.length) {
-      const row = existing.rows[0];
 
-      // If already verified, do NOT allow overwrite
-      if (row.email_verified_at) {
-        return res.status(409).send("Account already exists. Please log in.");
-      }
+if (existing.rows.length) {
+  return res.status(409).send("Account already exists. Please log in.");
+}
 
-      // If NOT verified: allow “upsert-ish” update (lets them re-submit and fix typos)
-      const nextHash = await bcrypt.hash(password, 12);
-
-      await pool.query(
-        `
-        UPDATE users
-        SET
-          first_name = $1,
-          last_name  = $2,
-          company    = $3,
-          password_hash = $4,
-          updated_at = now()
-        WHERE id = $5
-        `,
-        [firstName, lastName, company, nextHash, row.id]
-      );
-
-      // Optionally log them in immediately (or keep them logged out until verify)
-      req.session.userId = row.id;
-
-      return res.redirect(303, "/check-email");
-    }
 
     // Create new user
     const nextHash = await bcrypt.hash(password, 12);
+      
+      const created = await pool.query(
+        `
+        INSERT INTO users (email, password_hash, company, name)
+        VALUES ($1, $2, $3, $4)
+        RETURNING id
+        `,
+        [
+          emailRaw,
+          nextHash,
+          company,
+          `${firstName} ${lastName}`
+        ]
+      );
 
-    const created = await pool.query(
-      `
-      INSERT INTO users (first_name, last_name, email, company, password_hash, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, now(), now())
-      RETURNING id
-      `,
-      [firstName, lastName, emailRaw, company, nextHash]
-    );
 
     req.session.userId = created.rows[0].id;
 
