@@ -119,10 +119,45 @@ async function sendContractOtpEmail({ to, otp }) {
   });
 }
 
+async function sendVerificationEmail({ to, first_name, verify_url, expires_minutes }) {
+  const domain = process.env.MAILGUN_DOMAIN;
+
+  return mg.messages.create(domain, {
+    from: process.env.MAILGUN_FROM,
+    to,
+
+    //  this must match your Mailgun template name exactly
+    template: "email verification",
+
+    // Variables for the HTML template + subject (Mailgun Variables)
+    "h:X-Mailgun-Variables": JSON.stringify({
+      first_name,
+      verify_url,
+      expires_minutes: String(expires_minutes ?? "60"),
+    }),
+
+    // Plain-text fallback
+    text: [
+      `Hi ${first_name || ""}`.trim(),
+      ``,
+      `Verify your Carrier Shark email to continue:`,
+      verify_url,
+      ``,
+      `This link expires in ${expires_minutes ?? "60"} minutes.`,
+      ``,
+      `If you didn’t create this account, you can ignore this email.`,
+      ``,
+      `— Carrier Shark`
+    ].join("\n")
+  });
+}
+
 
 module.exports = {
   sendContractEmail,
   sendContractOtpEmail,
   sendPasswordResetEmail,
+  sendVerificationEmail,
   sendSupportTicketEmail
 };
+
