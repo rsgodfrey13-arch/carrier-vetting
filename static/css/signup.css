@@ -336,3 +336,6 @@
   width: min(560px, 100%);
   margin: 0 auto;
 }
+
+html, body{ margin:0; }
+body.auth-page{ padding:0; margin:0; }
