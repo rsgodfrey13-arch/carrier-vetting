@@ -9,19 +9,17 @@ const accountRoutes = require("./account.routes");
 const healthzRoutes = require("./healthz.routes"); 
 const loginRoutes = require("./login.routes");
 const acceptableRoutes = require("./acceptable-use.routes");
-const dpaRoutes = require("./dpa.routes");
-
 const activateRoutes = require("./activate-plan.routes");
 const billingRoutes = require("./billing.routes");
 const createRoutes = require("./create-account.routes");
 const plansRoutes = require("./plans.routes");
 const verifyRoutes = require("./verify-email.routes");
-
-const activateRoutes = require("./privacy.routes");
-const billingRoutes = require("./security.routes");
-const createRoutes = require("./terms.routes");
-const plansRoutes = require("./track"); // adjust name/path if needed
-const verifyRoutes = require("./resetPassword.routes");
+const dpaRoutes = require("./dpa.routes");
+const privacyRoutes = require("./privacy.routes");
+const securityRoutes = require("./security.routes");
+const termsRoutes = require("./terms.routes");
+const trackRoutes = require("./track"); // adjust name/path if needed
+const resetPasswordRoutes = require("./resetPassword.routes");
 
 function publicRoutes() {
   const router = express.Router();
