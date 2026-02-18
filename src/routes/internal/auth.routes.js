@@ -358,8 +358,12 @@ router.post("/auth/signup", async (req, res) => {
     // TODO: create email verification token + send verification email
     return res.redirect(303, "/check-email");
   } catch (err) {
-    console.error("Error in POST /api/auth/signup:", err);
-    return res.status(500).send("Internal Server Error");
+console.error("SIGNUP FAILED:", err?.message, err);
+return res.status(500).json({
+  error: "signup_failed",
+  message: err?.message || "unknown",
+  code: err?.code || null
+});
   }
 });
 
