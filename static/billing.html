@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Carrier Shark — Billing</title>
+
+  <link rel="stylesheet" href="/static/css/base.css" />
+  <link rel="stylesheet" href="/static/css/style1.css" />
+  <link rel="stylesheet" href="/static/css/signup.css" />
+</head>
+
+<body class="auth-page">
+  <header class="site-header glass-nav" id="site-header">
+    <div class="nav-inner">
+      <a class="nav-logo" href="/">Carrier Shark</a>
+      <nav class="nav-links">
+        <a class="nav-link" href="/activate-plan">Plan</a>
+        <a class="nav-link" href="/logout">Log out</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="auth-shell">
+      <div class="auth-hero">
+        <span class="auth-eyebrow">Billing</span>
+        <h1 class="auth-title">Activate monitoring.</h1>
+        <p class="auth-subtitle">
+          Monitoring begins immediately upon activation.
+        </p>
+      </div>
+
+      <div class="auth-card">
+        <div class="auth-card-inner">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+            <div class="summary-pill">
+              Plan: <strong id="plan-label">Core</strong>
+            </div>
+            <a class="cs-btn cs-btn-ghost" href="/activate-plan">Change</a>
+          </div>
+
+          <form class="auth-form" method="post" action="/api/billing/activate">
+            <input type="hidden" name="plan" id="plan-input" value="core" />
+
+            <div>
+              <div class="cs-label">Name on card</div>
+              <input class="cs-input" name="card_name" autocomplete="cc-name" placeholder="Robert Godfrey" required />
+            </div>
+
+            <div>
+              <div class="cs-label">Card number</div>
+              <input class="cs-input" name="card_number" autocomplete="cc-number" inputmode="numeric" placeholder="1234 1234 1234 1234" required />
+            </div>
+
+            <div class="auth-grid-2">
+              <div>
+                <div class="cs-label">Expiry</div>
+                <input class="cs-input" name="card_exp" autocomplete="cc-exp" placeholder="MM / YY" required />
+              </div>
+              <div>
+                <div class="cs-label">CVC</div>
+                <input class="cs-input" name="card_cvc" autocomplete="cc-csc" inputmode="numeric" placeholder="123" required />
+              </div>
+            </div>
+
+            <div>
+              <div class="cs-label">Billing ZIP</div>
+              <input class="cs-input" name="billing_zip" autocomplete="postal-code" inputmode="numeric" placeholder="30303" required />
+            </div>
+
+            <div class="cs-row cs-row-right" style="margin-top:4px;">
+              <button class="cs-btn cs-btn-primary" type="submit">
+                Activate monitoring
+              </button>
+            </div>
+
+            <div class="cs-fineprint" style="margin-top:12px;">
+              <span>Charges are tied to the plan you selected.</span>
+              <span><a href="/terms">Terms</a></span>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Minimal: read plan from query string and reflect it in UI.
+    (function(){
+      const params = new URLSearchParams(location.search);
+      const plan = (params.get("plan") || "core").toLowerCase();
+
+      const pretty = { core: "Core", pro: "Pro", enterprise: "Enterprise" };
+      document.getElementById("plan-label").textContent = pretty[plan] || "Core";
+      document.getElementById("plan-input").value = (pretty[plan] ? plan : "core");
+    })();
+  </script>
+</body>
+</html>
