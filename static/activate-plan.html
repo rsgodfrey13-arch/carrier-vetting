@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Carrier Shark — Activate Plan</title>
+
+  <link rel="stylesheet" href="/static/css/base.css" />
+  <link rel="stylesheet" href="/static/css/style1.css" />
+  <link rel="stylesheet" href="/static/css/signup.css" />
+  <!-- Optional: you can also include plans.css if you want exact typography parity -->
+  <link rel="stylesheet" href="/static/css/plans.css" />
+</head>
+
+<body class="auth-page">
+  <header class="site-header glass-nav" id="site-header">
+    <div class="nav-inner">
+      <a class="nav-logo" href="/">Carrier Shark</a>
+      <nav class="nav-links">
+        <a class="nav-link" href="/account">Account</a>
+        <a class="nav-link" href="/logout">Log out</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="auth-shell wide">
+      <div class="auth-hero">
+        <span class="auth-eyebrow">Plan activation</span>
+        <h1 class="auth-title">Choose your plan.</h1>
+        <p class="auth-subtitle">
+          Monitoring starts only after billing is complete. No surprises.
+        </p>
+      </div>
+
+      <div class="auth-card">
+        <div class="auth-card-inner">
+          <form method="get" action="/billing">
+            <input type="hidden" id="selected-plan" name="plan" value="" />
+
+            <div class="plan-grid" role="list">
+              <div class="plan-tile" role="button" tabindex="0" data-plan-tile data-plan="core" aria-label="Select Core plan">
+                <div class="plan-top">
+                  <div>
+                    <div class="plan-name">Core</div>
+                    <div class="plan-price">$___ <span>/ month</span></div>
+                  </div>
+                </div>
+                <div class="plan-lines">
+                  <div>Carrier monitoring</div>
+                  <div class="muted">Email alerts + audit trail</div>
+                  <div class="muted">Contracts + signatures</div>
+                </div>
+              </div>
+
+              <div class="plan-tile" role="button" tabindex="0" data-plan-tile data-plan="pro" aria-label="Select Pro plan">
+                <div class="plan-top">
+                  <div>
+                    <div class="plan-name">Pro</div>
+                    <div class="plan-price">$___ <span>/ month</span></div>
+                  </div>
+                  <div class="plan-badge">Most common</div>
+                </div>
+                <div class="plan-lines">
+                  <div>Everything in Core</div>
+                  <div class="muted">More monitors + deeper fields</div>
+                  <div class="muted">Team features</div>
+                </div>
+              </div>
+
+              <div class="plan-tile" role="button" tabindex="0" data-plan-tile data-plan="enterprise" aria-label="Select Enterprise plan">
+                <div class="plan-top">
+                  <div>
+                    <div class="plan-name">Enterprise</div>
+                    <div class="plan-price">Talk to us <span></span></div>
+                  </div>
+                </div>
+                <div class="plan-lines">
+                  <div>Custom limits</div>
+                  <div class="muted">Security + controls</div>
+                  <div class="muted">SLA + onboarding</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="cs-row cs-row-right" style="margin-top:14px;">
+              <a class="cs-btn cs-btn-ghost" href="/plans">Back</a>
+              <button id="continue-btn" class="cs-btn cs-btn-primary" type="submit" disabled>
+                Continue to billing
+              </button>
+            </div>
+
+            <div class="cs-fineprint" style="margin-top:12px;">
+              <span>Billing comes next.</span>
+              <span><a href="/security">Security</a></span>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/js/activate.js"></script>
+</body>
+</html>
