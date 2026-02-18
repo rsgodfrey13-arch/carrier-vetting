@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Carrier Shark — Create Account</title>
+
+  <link rel="stylesheet" href="/static/css/base.css" />
+  <link rel="stylesheet" href="/static/css/style1.css" />
+  <link rel="stylesheet" href="/static/css/signup.css" />
+</head>
+
+<body class="auth-page">
+  <!-- Header: uses your existing nav styles from base.css -->
+  <header class="site-header glass-nav" id="site-header">
+    <div class="nav-inner">
+      <a class="nav-logo" href="/">Carrier Shark</a>
+      <nav class="nav-links">
+        <a class="nav-link" href="/plans">Plans</a>
+        <a class="nav-link" href="/login">Log in</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="auth-shell">
+      <div class="auth-hero">
+        <span class="auth-eyebrow">Create account</span>
+        <h1 class="auth-title">Start clean. Activate when you’re ready.</h1>
+        <p class="auth-subtitle">
+          Create your account first. Billing happens after email verification and plan selection.
+        </p>
+      </div>
+
+      <div class="auth-card">
+        <div class="auth-card-inner">
+          <form class="auth-form" method="post" action="/api/auth/signup" autocomplete="on">
+            <div class="auth-grid-2">
+              <div>
+                <div class="cs-label">First name</div>
+                <input class="cs-input" name="first_name" placeholder="Robert" required />
+              </div>
+              <div>
+                <div class="cs-label">Last name</div>
+                <input class="cs-input" name="last_name" placeholder="Godfrey" required />
+              </div>
+            </div>
+
+            <div>
+              <div class="cs-label">Work email</div>
+              <input class="cs-input" type="email" name="email" placeholder="name@company.com" required />
+            </div>
+
+            <div>
+              <div class="cs-label">Company name</div>
+              <input class="cs-input" name="company" placeholder="Carrier Shark LLC" required />
+            </div>
+
+            <div class="auth-grid-2">
+              <div>
+                <div class="cs-label">Password</div>
+                <input class="cs-input" type="password" name="password" placeholder="••••••••••••" minlength="10" required />
+              </div>
+              <div>
+                <div class="cs-label">Confirm</div>
+                <input class="cs-input" type="password" name="password_confirm" placeholder="••••••••••••" minlength="10" required />
+              </div>
+            </div>
+
+            <div class="cs-row cs-row-right" style="margin-top:4px;">
+              <button class="cs-btn cs-btn-primary" type="submit">
+                Create account
+              </button>
+            </div>
+
+            <div class="cs-fineprint">
+              <span>
+                By continuing, you agree to the
+                <a href="/terms">Terms</a> and <a href="/privacy">Privacy</a>.
+              </span>
+              <span>
+                Already have an account? <a href="/login">Log in</a>
+              </span>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="verify-box" style="margin-top:12px;">
+        <p class="cs-help">
+          No credit card here. You’ll activate a plan after verifying your email.
+        </p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
