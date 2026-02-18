@@ -314,3 +314,25 @@
   font-family: "Space Grotesk", system-ui, sans-serif;
   font-weight: 700;
 }
+
+/* signup.css patch: DO NOT override global layout containers */
+.auth-page {
+  display: block !important;
+  place-items: unset !important;
+}
+
+.auth-page .page,
+.auth-page .page-main {
+  max-width: none !important;
+  width: 100% !important;
+}
+
+/* Give breathing room below the fixed/glass header (adjust if your header height differs) */
+.auth-page .page-main {
+  padding-top: 92px !important;
+}
+
+.auth-shell {
+  width: min(560px, 100%);
+  margin: 0 auto;
+}
