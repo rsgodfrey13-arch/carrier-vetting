@@ -7,7 +7,7 @@ const { pool } = require("../../db/pool");
 const router = express.Router();
 
 const crypto = require("crypto");
-const { sendPasswordResetEmail } = require("../../clients/mailgun");
+const { sendPasswordResetEmail, sendVerificationEmail } = require("../../clients/mailgun");
 
 
 // who am I? (used by UI + Postman to check login)
@@ -335,6 +335,45 @@ if (existing.rows.length) {
 
 
     req.session.userId = created.rows[0].id;
+
+    // Create + store verification token
+    const userId = created.rows[0].id;
+    
+    const token = makeResetToken();        // random string
+    const tokenHash = hashToken(token);    // SHA256(token)
+    const expiresMinutes = 60;
+    const expiresAt = new Date(Date.now() + expiresMinutes * 60 * 1000);
+    
+    await pool.query(
+      `
+      INSERT INTO public.email_verification_tokens
+        (user_id, token_hash, expires_at, request_ip, user_agent)
+      VALUES
+        ($1, $2, $3, $4, $5)
+      `,
+      [
+        userId,
+        tokenHash,
+        expiresAt.toISOString(),
+        req.ip || null,
+        req.get("user-agent") || null
+      ]
+    );
+    
+    const verifyUrl = `https://carriershark.com/verify-email/${token}`;
+    
+    // Send verification email (Mailgun)
+    try {
+      await sendVerificationEmail({
+        to: emailRaw,
+        first_name: firstName,
+        verify_url: verifyUrl,
+        expires_minutes: String(expiresMinutes),
+      });
+    } catch (e) {
+      console.error("sendVerificationEmail failed:", e?.message || e);
+      // You can still redirect to verify-email page, and let them hit "Resend"
+    }
 
     // TODO: create email verification token + send verification email
     return res.redirect(303, "/verify-email");
