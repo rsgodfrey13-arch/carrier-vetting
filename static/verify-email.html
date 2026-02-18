@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Carrier Shark — Verify Email</title>
+
+  <link rel="stylesheet" href="/static/css/base.css" />
+  <link rel="stylesheet" href="/static/css/style1.css" />
+  <link rel="stylesheet" href="/static/css/signup.css" />
+</head>
+
+<body class="auth-page">
+  <header class="site-header glass-nav" id="site-header">
+    <div class="nav-inner">
+      <a class="nav-logo" href="/">Carrier Shark</a>
+      <nav class="nav-links">
+        <a class="nav-link" href="/plans">Plans</a>
+        <a class="nav-link" href="/login">Log in</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="auth-shell">
+      <div class="auth-hero">
+        <span class="auth-eyebrow">Email verification</span>
+        <h1 class="auth-title">Verify your email to continue.</h1>
+        <p class="auth-subtitle">
+          We sent a verification link to your inbox. Open it to unlock plan activation.
+        </p>
+      </div>
+
+      <div class="auth-card">
+        <div class="auth-card-inner">
+          <div class="verify-box">
+            <div class="verify-icon" aria-hidden="true">✉️</div>
+            <p class="cs-help" style="margin:0;">
+              If you don’t see it, check spam or resend.
+            </p>
+          </div>
+
+          <div class="cs-row cs-row-right" style="margin-top:14px;">
+            <form method="post" action="/api/auth/resend-verification" style="margin:0;">
+              <input type="hidden" name="email" value="" />
+              <button class="cs-btn cs-btn-primary" type="submit">Resend email</button>
+            </form>
+            <a class="cs-btn cs-btn-ghost" href="/create-account">Change email</a>
+          </div>
+
+          <div class="cs-fineprint" style="margin-top:12px;">
+            <span><a href="/support">Need help?</a></span>
+            <span><a href="/privacy">Privacy</a></span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
