@@ -19,7 +19,7 @@
     <section class="auth-shell">
       <div class="auth-hero">
         <span class="auth-eyebrow">Email verification</span>
-        <h1 class="auth-title">Verify your email to continue.</h1>
+        <h1 id="verify-title" class="auth-title">Verify your email to continue.</h1>
         <p id="verify-subtitle" class="auth-subtitle">
           We sent a verification link to your inbox. Open it to unlock plan activation.
         </p>
@@ -72,14 +72,28 @@
   if (!subtitle) return;
 
 if (status === "verified") {
-  subtitle.textContent =
-    "Email verified successfully. You can activate your plan now.";
+  // hide the old title
+  const title = document.getElementById("verify-title");
+  if (title) title.style.display = "none";
 
-  if (continueBtn) continueBtn.style.display = "inline-flex";
+  // make subtitle act like the title
+  subtitle.textContent = "Email verified successfully.";
+  subtitle.classList.add("auth-title");     // reuse your title styling
+  subtitle.classList.remove("auth-subtitle");
 
+  // show button and push it down a bit (only in verified state)
+  if (continueBtn) {
+    continueBtn.style.display = "inline-block";
+    continueBtn.style.marginTop = "18px";
+  }
+
+  // hide the card
   const card = document.getElementById("verify-card");
   if (card) card.style.display = "none";
+
+  return; // stop other statuses from overwriting text
 }
+
 
 
   if (status === "invalid") {
