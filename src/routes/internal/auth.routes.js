@@ -283,4 +283,85 @@ router.post("/logout", (req, res) => {
   });
 });
 
+// signup: expects form POST from create-account.html
+// fields: first_name, last_name, email, company, password, password_confirm
+router.post("/auth/signup", async (req, res) => {
+  const firstName = String(req.body?.first_name || "").trim();
+  const lastName  = String(req.body?.last_name || "").trim();
+  const company   = String(req.body?.company || "").trim();
+  const emailRaw  = String(req.body?.email || "").trim().toLowerCase();
+  const password  = String(req.body?.password || "");
+  const password2 = String(req.body?.password_confirm || "");
+
+  if (!firstName || !lastName || !company || !emailRaw || !password || !password2) {
+    return res.status(400).send("Missing required fields.");
+  }
+  if (password !== password2) {
+    return res.status(400).send("Passwords do not match.");
+  }
+  if (password.length < 8) {
+    return res.status(400).send("Password must be at least 8 characters.");
+  }
+
+  try {
+    // ✅ IMPORTANT: treat email as case-insensitive
+    const existing = await pool.query(
+      `SELECT id, email_verified_at FROM users WHERE lower(email) = $1 LIMIT 1`,
+      [emailRaw]
+    );
+
+    if (existing.rows.length) {
+      const row = existing.rows[0];
+
+      // If already verified, do NOT allow overwrite
+      if (row.email_verified_at) {
+        return res.status(409).send("Account already exists. Please log in.");
+      }
+
+      // If NOT verified: allow “upsert-ish” update (lets them re-submit and fix typos)
+      const nextHash = await bcrypt.hash(password, 12);
+
+      await pool.query(
+        `
+        UPDATE users
+        SET
+          first_name = $1,
+          last_name  = $2,
+          company    = $3,
+          password_hash = $4,
+          updated_at = now()
+        WHERE id = $5
+        `,
+        [firstName, lastName, company, nextHash, row.id]
+      );
+
+      // Optionally log them in immediately (or keep them logged out until verify)
+      req.session.userId = row.id;
+
+      return res.redirect(303, "/check-email");
+    }
+
+    // Create new user
+    const nextHash = await bcrypt.hash(password, 12);
+
+    const created = await pool.query(
+      `
+      INSERT INTO users (first_name, last_name, email, company, password_hash, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, now(), now())
+      RETURNING id
+      `,
+      [firstName, lastName, emailRaw, company, nextHash]
+    );
+
+    req.session.userId = created.rows[0].id;
+
+    // TODO: create email verification token + send verification email
+    return res.redirect(303, "/check-email");
+  } catch (err) {
+    console.error("Error in POST /api/auth/signup:", err);
+    return res.status(500).send("Internal Server Error");
+  }
+});
+
+
 module.exports = router;
