@@ -63,7 +63,7 @@ router.get("/verify-email/:token", async (req, res) => {
     req.session.userId = user_id;
 
     // send them to your plan page (adjust if yours is different)
-    return res.redirect(302, "/plans");
+    return res.redirect(302, "/verify-email?status=verified");
   } catch (err) {
     try { await client.query("ROLLBACK"); } catch {}
     console.error("GET /verify-email/:token failed:", err?.message || err);
