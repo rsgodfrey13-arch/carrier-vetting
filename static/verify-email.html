@@ -25,14 +25,14 @@
         </p>
         <a id="continue-btn"
            class="cs-btn cs-btn-primary"
-           href="/plans"
+           href="/activate-plan"
            style="display:none;">
           Continue to choose your plan
         </a>
 
       </div>
 
-      <div class="auth-card">
+      <div id="verify-card" class="auth-card">
         <div class="auth-card-inner">
           <div class="verify-box">
             <div class="verify-icon" aria-hidden="true">✉️</div>
@@ -47,14 +47,7 @@
               <button class="cs-btn cs-btn-primary" type="submit">Resend email</button>
             </form>
 
-              <!-- NEW: hidden continue button -->
-              <a id="continue-btn"
-                 class="cs-btn cs-btn-primary"
-                 href="/plans"
-                 style="display:none;">
-                Continue to choose your plan
-              </a>
-            
+
             <a class="cs-btn cs-btn-ghost" href="/create-account">Change email</a>
           </div>
 
@@ -78,11 +71,16 @@
 
   if (!subtitle) return;
 
-  if (status === "verified") {
-    subtitle.textContent =
-      "Email verified successfully. You can activate your plan now.";
-    if (continueBtn) continueBtn.style.display = "inline-flex";
-  }
+if (status === "verified") {
+  subtitle.textContent =
+    "Email verified successfully. You can activate your plan now.";
+
+  if (continueBtn) continueBtn.style.display = "inline-flex";
+
+  const card = document.getElementById("verify-card");
+  if (card) card.style.display = "none";
+}
+
 
   if (status === "invalid") {
     subtitle.textContent =
