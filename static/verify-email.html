@@ -79,7 +79,7 @@
 
       <div id="verify-card" class="auth-card">
         <div class="auth-card-inner">
-          <div class="verify-box">
+          <div id="verify-box" class="verify-box">
             <div class="verify-icon" aria-hidden="true">✉️</div>
             <p class="cs-help" style="margin:0;">
               If you don’t see it, check spam or resend.
@@ -108,6 +108,7 @@
 (function () {
   const params = new URLSearchParams(window.location.search);
   const status = params.get("status");
+const verifyBox = document.getElementById("verify-box");
 
   const hero = document.querySelector(".auth-hero");
   const title = document.getElementById("verify-title");
@@ -125,7 +126,7 @@
     if (card) card.style.display = "";
     if (continueBtn) continueBtn.style.display = "none";
     if (helpLine) helpLine.style.display = "none";
-
+    if (verifyBox) verifyBox.style.display = "";
     subtitle.classList.remove("auth-title");
     subtitle.classList.add("auth-subtitle");
     subtitle.textContent =
@@ -137,7 +138,7 @@
     if (title) title.style.display = "none";
     if (continueBtn) continueBtn.style.display = "none";
     if (helpLine) helpLine.style.display = "none";
-
+    if (verifyBox) verifyBox.style.display = showCard ? "none" : "none";
     subtitle.classList.add("auth-title");
     subtitle.classList.remove("auth-subtitle");
 
@@ -160,19 +161,20 @@
     return;
   }
 
-  // INVALID (show resend box)
-  if (status === "invalid") {
-    setStatusMode({ showCard: true });
-    subtitle.textContent = "That verification link is invalid or expired. Resend a new one below.";
-    return;
-  }
+if (status === "invalid") {
+  setStatusMode({ showCard: true });
+  subtitle.textContent = "That verification link is invalid or expired. Resend a new one below.";
+  if (verifyBox) verifyBox.style.display = "none";
+  return;
+}
 
-  // SENT (show resend box)
-  if (status === "sent") {
-    setStatusMode({ showCard: true });
-    subtitle.textContent = "Verification email resent. If you don’t see it, resend again below.";
-    return;
-  }
+if (status === "sent") {
+  setStatusMode({ showCard: true });
+  subtitle.textContent = "Verification email resent. If you don’t see it, resend again below.";
+  if (verifyBox) verifyBox.style.display = "none";
+  return;
+}
+
 
   // WAIT (clean, no card)
   if (status === "wait") {
