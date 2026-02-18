@@ -4632,3 +4632,12 @@ tr.is-mine td{
   background: rgba(2,6,23,0.92) !important;
   box-shadow: 0 14px 30px rgba(0,0,0,0.35) !important;
 }
+
+html {
+  scroll-behavior: smooth;
+}
+
+#search,
+#my-carriers {
+  scroll-margin-top: 96px; /* adjust to header height */
+}
