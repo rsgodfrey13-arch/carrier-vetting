@@ -203,3 +203,7 @@ html, body { margin: 0; padding: 0; }
   justify-content:center;
   margin-top: 12px;
 }
+
+
+html, body{ margin:0; }
+body.auth-page{ padding:0; margin:0; }
