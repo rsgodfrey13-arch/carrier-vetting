@@ -16,6 +16,26 @@ async function loadHeader() {
   }
 }
 
+
+async function loadHeaderSlim() {
+  const container = document.getElementById("site-header");
+  if (!container) return;
+
+  try {
+    const res = await fetch("/partials/header-slim.html", { cache: "no-store" });
+    if (!res.ok) throw new Error("Failed to load header-slim.html");
+
+    container.innerHTML = await res.text();
+
+    // Same wiring as full header
+    await initAuthUI();
+    await initAccountLink();
+  } catch (err) {
+    console.error("Header slim load failed:", err);
+  }
+}
+
+
 async function trackHomepageView() {
   // only track homepage
   if (window.location.pathname !== "/") return;
@@ -98,6 +118,14 @@ async function initAccountLink() {
 
 // Run both on page load
 document.addEventListener("DOMContentLoaded", () => {
-  trackHomepageView(); // ✅ logs whether logged in or not
-  loadHeader();        // ✅ keeps your header/auth behavior
+  trackHomepageView();
+
+  const headerEl = document.getElementById("site-header");
+  const mode = headerEl ? headerEl.getAttribute("data-header") : null;
+
+  if (mode === "slim") {
+    loadHeaderSlim();
+  } else {
+    loadHeader();
+  }
 });
