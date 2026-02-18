@@ -8,6 +8,22 @@
   <link rel="stylesheet" href="/static/css/base.css" />
   <link rel="stylesheet" href="/static/css/style1.css" />
   <link rel="stylesheet" href="/static/css/signup.css" />
+  <style>
+  /* Clean state for status pages */
+  .auth-hero.is-clean {
+    padding-top: 34px;
+    padding-bottom: 0;
+  }
+  .auth-hero.is-clean #verify-subtitle.auth-title {
+    margin-top: 12px;
+    line-height: 1.12;
+    letter-spacing: -0.02em;
+  }
+  .auth-hero.is-clean #continue-btn {
+    margin-top: 22px !important;
+  }
+</style>
+
 </head>
 
 <body class="auth-page">
@@ -66,58 +82,67 @@
   const params = new URLSearchParams(window.location.search);
   const status = params.get("status");
 
+  const hero = document.querySelector(".auth-hero");
+  const title = document.getElementById("verify-title");
   const subtitle = document.getElementById("verify-subtitle");
   const continueBtn = document.getElementById("continue-btn");
+  const card = document.getElementById("verify-card");
 
   if (!subtitle) return;
 
-if (status === "verified") {
-  // hide the old title
-  const title = document.getElementById("verify-title");
-  if (title) title.style.display = "none";
+  // Default (no status): normal waiting page
+  const isStatusPage = ["verified", "invalid", "sent", "wait", "error"].includes(status);
 
-  // make subtitle act like the title
-  subtitle.textContent = "Email verified successfully.";
-  subtitle.classList.add("auth-title");     // reuse your title styling
-  subtitle.classList.remove("auth-subtitle");
-
-  // show button and push it down a bit (only in verified state)
-  if (continueBtn) {
-    continueBtn.style.display = "inline-block";
-    continueBtn.style.marginTop = "18px";
+  if (!isStatusPage) {
+    // normal /verify-email
+    if (continueBtn) continueBtn.style.display = "none";
+    if (card) card.style.display = "";
+    if (title) title.style.display = "";
+    subtitle.classList.remove("auth-title");
+    subtitle.classList.add("auth-subtitle");
+    return;
   }
 
-  // hide the card
-  const card = document.getElementById("verify-card");
+  // Clean mode for ANY status page
+  if (hero) hero.classList.add("is-clean");
+  if (title) title.style.display = "none";
   if (card) card.style.display = "none";
 
-  return; // stop other statuses from overwriting text
-}
+  // Make subtitle act like the title (big + clean)
+  subtitle.classList.add("auth-title");
+  subtitle.classList.remove("auth-subtitle");
 
+  // Status copy + button behavior
+  if (status === "verified") {
+    subtitle.textContent = "Email verified successfully.";
+    if (continueBtn) {
+      continueBtn.style.display = "inline-block";
+    }
+    return;
+  }
 
+  // Not verified statuses: hide continue button
+  if (continueBtn) continueBtn.style.display = "none";
 
   if (status === "invalid") {
-    subtitle.textContent =
-      "That verification link is invalid or expired. Please resend a new one.";
+    subtitle.textContent = "That verification link is invalid or expired.";
+    return;
   }
 
   if (status === "sent") {
-    subtitle.textContent =
-      "Verification email resent. Check your inbox (and spam).";
+    subtitle.textContent = "Verification email resent. Check your inbox.";
+    return;
   }
 
   if (status === "wait") {
-    subtitle.textContent =
-      "Please wait a moment before requesting another email.";
+    subtitle.textContent = "Please wait a moment before resending another email.";
+    return;
   }
 
-  if (status === "error") {
-    subtitle.textContent =
-      "Something went wrong verifying your email. Please try again.";
-  }
+  // error
+  subtitle.textContent = "Something went wrong. Please try resending the email.";
 })();
 </script>
 
-  
   </body>
 </html>
