@@ -91,7 +91,7 @@
   if (!subtitle) return;
 
   // Default (no status): normal waiting page
-  const isStatusPage = ["verified", "invalid", "sent", "wait", "error"].includes(status);
+  const isStatusPage = ["verified", "wait", "error"].includes(status);
 
   if (!isStatusPage) {
     // normal /verify-email
