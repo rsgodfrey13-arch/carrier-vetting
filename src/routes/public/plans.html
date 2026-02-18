@@ -5,8 +5,8 @@ const path = require("path");
 
 const router = express.Router();
 
-router.get("/dpa", (req, res) => {
-  res.sendFile(path.join(__dirname, "../../../static", "dpa.html"));
+router.get("/plans", (req, res) => {
+  res.sendFile(path.join(__dirname, "../../../static", "plans.html"));
 });
 
 module.exports = router;
