@@ -72,7 +72,7 @@
            style="display:none;">
           Continue to choose your plan
         </a>
-          <p class="cs-help" style="margin-top:8px;">
+          <p class="cs-help" style="margin-top:8px; display:none;">
             You’re all set. Plan activation takes less than a minute.
           </p>
       </div>
@@ -116,66 +116,85 @@
   const subtitle = document.getElementById("verify-subtitle");
   const continueBtn = document.getElementById("continue-btn");
   const card = document.getElementById("verify-card");
+  const helpLine = document.querySelector("#verify-success-block .cs-help");
 
   if (!subtitle) return;
 
-  // Default (no status): normal waiting page
-  const isStatusPage = ["verified", "wait", "error"].includes(status);
-
-  if (!isStatusPage) {
-    // normal /verify-email
-    if (continueBtn) continueBtn.style.display = "none";
-    if (card) card.style.display = "";
+  // Helper functions
+  function setNormalMode() {
+    if (hero) hero.classList.remove("is-clean", "is-verified");
     if (title) title.style.display = "";
+    if (card) card.style.display = "";
+    if (continueBtn) continueBtn.style.display = "none";
+    if (helpLine) helpLine.style.display = "none";
+
     subtitle.classList.remove("auth-title");
     subtitle.classList.add("auth-subtitle");
+    subtitle.textContent =
+      "We sent a verification link to your inbox. Open it to unlock plan activation.";
+  }
+
+  function setStatusMode({ showCard }) {
+    if (hero) hero.classList.add("is-clean");
+    if (title) title.style.display = "none";
+    if (continueBtn) continueBtn.style.display = "none";
+    if (helpLine) helpLine.style.display = "none";
+
+    subtitle.classList.add("auth-title");
+    subtitle.classList.remove("auth-subtitle");
+
+    if (card) card.style.display = showCard ? "" : "none";
+  }
+
+  // No status -> normal page
+  if (!status) {
+    setNormalMode();
     return;
   }
 
-  // Clean mode for ANY status page
-  if (hero) hero.classList.add("is-clean");
-  if (title) title.style.display = "none";
-  if (card) card.style.display = "none";
-
-  // Make subtitle act like the title (big + clean)
-  subtitle.classList.add("auth-title");
-  subtitle.classList.remove("auth-subtitle");
-
-  // Status copy + button behavior
+  // VERIFIED (clean, no card, show continue)
   if (status === "verified") {
+    setStatusMode({ showCard: false });
     subtitle.textContent = "Email verified successfully.";
-    // enable verified hero mode
-    const hero = document.querySelector(".auth-hero");
     if (hero) hero.classList.add("is-verified");
-    
-    // show button
-    if (continueBtn) {
-      continueBtn.style.display = "inline-flex";
-    }
+    if (continueBtn) continueBtn.style.display = "inline-flex";
+    if (helpLine) helpLine.style.display = "";
+    return;
   }
 
-  // Not verified statuses: hide continue button
-  if (continueBtn) continueBtn.style.display = "none";
-
+  // INVALID (show resend box)
   if (status === "invalid") {
-    subtitle.textContent = "That verification link is invalid or expired.";
+    setStatusMode({ showCard: true });
+    subtitle.textContent = "That verification link is invalid or expired. Resend a new one below.";
     return;
   }
 
+  // SENT (show resend box)
   if (status === "sent") {
-    subtitle.textContent = "Verification email resent. Check your inbox.";
+    setStatusMode({ showCard: true });
+    subtitle.textContent = "Verification email resent. If you don’t see it, resend again below.";
     return;
   }
 
+  // WAIT (clean, no card)
   if (status === "wait") {
+    setStatusMode({ showCard: false });
     subtitle.textContent = "Please wait a moment before resending another email.";
     return;
   }
 
-  // error
-  subtitle.textContent = "Something went wrong. Please try resending the email.";
+  // ERROR (clean, no card)
+  if (status === "error") {
+    setStatusMode({ showCard: false });
+    subtitle.textContent = "Something went wrong. Please try again in a moment.";
+    return;
+  }
+
+  // Unknown status -> fallback
+  setNormalMode();
 })();
 </script>
+
 
   </body>
 </html>
