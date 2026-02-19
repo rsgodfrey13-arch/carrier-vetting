@@ -32,20 +32,68 @@
           <form method="get" action="/billing">
             <input type="hidden" id="selected-plan" name="plan" value="" />
 
-            <div class="plan-grid" role="list">
-              <div class="plan-tile" role="button" tabindex="0" data-plan-tile data-plan="core" aria-label="Select Core plan">
-                <div class="plan-top">
-                  <div>
-                    <div class="plan-name">Core</div>
-                    <div class="plan-price">$___ <span>/ month</span></div>
-                  </div>
+      <div class="plans-table-wrap" role="region" aria-label="Plan comparison table" tabindex="0">
+        <table class="plans-table">
+          <thead>
+            <tr>
+              <th scope="col" class="plans-col-feature"></th>
+      
+              <th scope="col" class="plans-col-plan selectable" data-plan-col="core">
+                <div class="plan-head">
+                  <div class="plan-name">Core</div>
+                  <div class="plan-price">$399 <span>/ month</span></div>
                 </div>
-                <div class="plan-lines">
-                  <div>Carrier monitoring</div>
-                  <div class="muted">Email alerts + audit trail</div>
-                  <div class="muted">Contracts + signatures</div>
+              </th>
+      
+              <th scope="col" class="plans-col-plan is-featured selectable" data-plan-col="pro">
+                <div class="plan-head">
+                  <div class="plan-badge">Best value</div>
+                  <div class="plan-name">Pro</div>
+                  <div class="plan-price">$999 <span>/ month</span></div>
                 </div>
-              </div>
+              </th>
+      
+              <th scope="col" class="plans-col-plan selectable" data-plan-col="enterprise">
+                <div class="plan-head">
+                  <div class="plan-name">Enterprise</div>
+                  <div class="plan-price">$2,500 <span>/ month</span></div>
+                </div>
+              </th>
+            </tr>
+          </thead>
+      
+          <tbody>
+            <tr>
+              <th scope="row">Carrier Monitoring</th>
+              <td data-plan-col="core">Up to 500 monitored carriers</td>
+              <td class="is-featured" data-plan-col="pro">Up to 2,000 monitored carriers</td>
+              <td data-plan-col="enterprise">50,000+ monitored carriers</td>
+            </tr>
+      
+            <tr>
+              <th scope="row">Contract Sending</th>
+              <td class="muted" data-plan-col="core">—</td>
+              <td class="is-featured" data-plan-col="pro">Included</td>
+              <td data-plan-col="enterprise">Included</td>
+            </tr>
+      
+            <tr>
+              <th scope="row">API Access</th>
+              <td class="muted" data-plan-col="core">—</td>
+              <td class="is-featured" data-plan-col="pro">Full API</td>
+              <td data-plan-col="enterprise">Full API</td>
+            </tr>
+      
+            <tr>
+              <th scope="row">Team Seats</th>
+              <td data-plan-col="core">Up to 3 users</td>
+              <td class="is-featured" data-plan-col="pro">Up to 10 users</td>
+              <td data-plan-col="enterprise">Custom scaling</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
 
               <div class="plan-tile" role="button" tabindex="0" data-plan-tile data-plan="pro" aria-label="Select Pro plan">
                 <div class="plan-top">
