@@ -39,3 +39,15 @@
 .activate-plan-page .plans-table-wrap{
   border-radius: 18px;
 }
+
+/* Default auth pages */
+.auth-shell:not(.wide){
+  width: min(560px, 100%);
+  margin: 0 auto;
+}
+
+/* Pages that need the wider layout (activate-plan, etc.) */
+.auth-shell.wide{
+  width: min(980px, 100%);
+  margin: 0 auto;
+}
