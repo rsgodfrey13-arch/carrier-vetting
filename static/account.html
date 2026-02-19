@@ -6,7 +6,9 @@
     <title>My Account</title>
 <link rel="stylesheet" href="/static/css/base.css">
 <link rel="stylesheet" href="/static/css/account.css">
-<!--  <link rel="stylesheet" href="/static/css/pages/index.css"> -->
+<link rel="stylesheet" href="/static/css/style1.css" />
+<link rel="stylesheet" href="/static/css/plans.css" />
+<link rel="stylesheet" href="/static/css/activate-plan.css" />
 </head>
 
 
@@ -311,9 +313,33 @@
               <p class="muted">Upgrade when you’re ready. No nonsense.</p>
             </div>
 
-            <div class="plan-grid" id="plan-grid">
-              <!-- populated by JS -->
-            </div>
+<form method="get" action="/billing" class="account-plan-form">
+  <input type="hidden" id="selected-plan" name="plan" value="" />
+  <input type="hidden" id="billing-context" name="context" value="upgrade" />
+
+  <div class="account-plan-topline">
+    <div class="muted" style="margin:0;">
+      Select a plan. You’ll confirm billing on the next step.
+    </div>
+    <span class="badge" id="current-plan-badge">Current: —</span>
+  </div>
+
+  <div class="plans-table-wrap" role="region" aria-label="Plan comparison table" tabindex="0">
+    <!-- Paste the SAME <table class="plans-table"> ... </table> from activate-plan -->
+    <!-- Keep the data-plan-col and data-plan-btn attributes -->
+  </div>
+
+  <div class="cs-row cs-row-right" style="margin-top:14px;">
+    <button id="account-upgrade-btn" class="cs-btn cs-btn-primary" type="submit" disabled>
+      Continue to billing
+    </button>
+  </div>
+
+  <div class="cs-fineprint" style="margin-top:12px;">
+    <span>Changes take effect immediately after billing.</span>
+  </div>
+</form>
+
           </div>
         </section>
 
