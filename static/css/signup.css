@@ -337,5 +337,21 @@
   margin: 0 auto;
 }
 
+/* Activation selectable columns */
+
+.selectable {
+  cursor: pointer;
+}
+
+.selected-col {
+  background: linear-gradient(
+    180deg,
+    rgba(56,189,248,.18),
+    rgba(2,6,23,.18)
+  ) !important;
+  box-shadow: inset 0 0 0 1px rgba(56,189,248,.35);
+}
+
+
 html, body{ margin:0; }
 body.auth-page{ padding:0; margin:0; }
