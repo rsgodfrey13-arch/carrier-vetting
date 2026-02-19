@@ -352,6 +352,20 @@
   box-shadow: inset 0 0 0 1px rgba(56,189,248,.35);
 }
 
+/* Activate-plan: make the embedded plans table behave inside the auth card */
+.auth-page .plans-table-wrap{
+  overflow:auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.auth-page .plans-table{
+  min-width: 860px; /* keep the crisp table; scroll on smaller screens */
+}
+
+/* Make the scroll area feel “intentional” */
+.auth-page .plans-table-wrap{
+  scrollbar-width: thin;
+}
 
 html, body{ margin:0; }
 body.auth-page{ padding:0; margin:0; }
