@@ -51,3 +51,43 @@
   width: min(980px, 100%);
   margin: 0 auto;
 }
+
+
+/* make it feel interactive */
+.activate-plan-page [data-plan-col]{
+  cursor: pointer;
+}
+
+/* subtle hover: highlight a column BEFORE click */
+.activate-plan-page [data-plan-col="core"]:hover,
+.activate-plan-page [data-plan-col="pro"]:hover,
+.activate-plan-page [data-plan-col="enterprise"]:hover{
+  background: rgba(56,189,248,.08);
+}
+
+/* better: when any cell in a plan column is hovered, glow the whole column */
+.activate-plan-page .plans-table:hover [data-plan-col="core"],
+.activate-plan-page .plans-table:hover [data-plan-col="pro"],
+.activate-plan-page .plans-table:hover [data-plan-col="enterprise"]{
+  transition: background .18s ease;
+}
+
+/* keep your selected state stronger */
+.activate-plan-page .selected-col{
+  background: linear-gradient(180deg, rgba(56,189,248,.18), rgba(2,6,23,.18)) !important;
+  box-shadow: inset 0 0 0 1px rgba(56,189,248,.35);
+}
+
+.activate-plan-page .plan-select-hint{
+  margin-top: 6px;
+  font-size: .72rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity .15s ease;
+  color: rgba(226,232,240,.75);
+}
+
+.activate-plan-page [data-plan-col]:hover .plan-select-hint{
+  opacity: 1;
+}
