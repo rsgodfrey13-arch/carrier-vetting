@@ -91,3 +91,27 @@
 .activate-plan-page [data-plan-col]:hover .plan-select-hint{
   opacity: 1;
 }
+
+.activate-plan-page .plan-select-btn{
+  margin-top: 14px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid rgba(148,163,184,.35);
+  color: #e2e8f0;
+  font-size: .75rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+
+.activate-plan-page .plan-select-btn:hover{
+  border-color: rgba(56,189,248,.6);
+  background: rgba(56,189,248,.08);
+}
+
+.activate-plan-page .plan-select-btn.is-selected{
+  background: linear-gradient(180deg, rgba(56,189,248,.35), rgba(2,6,23,.35));
+  border-color: rgba(56,189,248,.7);
+}
