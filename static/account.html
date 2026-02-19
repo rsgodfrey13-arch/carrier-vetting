@@ -14,7 +14,7 @@
 
 
   
-<body class="account-page">
+<body class="account-page" data-current-plan="">
   <div class="bg-gradient"></div>
   <div class="bg-grid"></div>
   <div id="site-header"></div>  
@@ -325,10 +325,123 @@
     <span class="badge" id="current-plan-badge">Current: —</span>
   </div>
 
-  <div class="plans-table-wrap" role="region" aria-label="Plan comparison table" tabindex="0">
-    <!-- Paste the SAME <table class="plans-table"> ... </table> from activate-plan -->
-    <!-- Keep the data-plan-col and data-plan-btn attributes -->
-  </div>
+<div class="plans-table-wrap" role="region" aria-label="Plan comparison table" tabindex="0">
+  <table class="plans-table">
+    <thead>
+      <tr>
+        <th scope="col" class="plans-col-feature"></th>
+
+        <!-- CORE -->
+        <th scope="col" class="plans-col-plan selectable" data-plan-col="core">
+          <div class="plan-head">
+            <span class="plan-radio" aria-hidden="true"></span>
+            <div class="plan-name">Core</div>
+            <div class="plan-price">$399 <span>/ month</span></div>
+
+            <div class="plan-state" data-plan-state="core"></div>
+
+            <button type="button" class="plan-select-btn" data-plan-btn="core">
+              Select
+            </button>
+          </div>
+        </th>
+
+        <!-- PRO -->
+        <th scope="col" class="plans-col-plan is-featured selectable" data-plan-col="pro">
+          <div class="plan-head">
+            <div class="plan-badge">Best value</div>
+            <span class="plan-radio" aria-hidden="true"></span>
+            <div class="plan-name">Pro</div>
+            <div class="plan-price">$999 <span>/ month</span></div>
+
+            <div class="plan-state" data-plan-state="pro"></div>
+
+            <button type="button" class="plan-select-btn" data-plan-btn="pro">
+              Select
+            </button>
+          </div>
+        </th>
+
+        <!-- ENTERPRISE -->
+        <th scope="col" class="plans-col-plan selectable" data-plan-col="enterprise">
+          <div class="plan-head">
+            <span class="plan-radio" aria-hidden="true"></span>
+            <div class="plan-name">Enterprise</div>
+            <div class="plan-price">$2,500 <span>/ month</span></div>
+
+            <div class="plan-state" data-plan-state="enterprise"></div>
+
+            <button type="button" class="plan-select-btn" data-plan-btn="enterprise">
+              Select
+            </button>
+          </div>
+        </th>
+      </tr>
+    </thead>
+
+    <tbody>
+      <!-- Copy these rows 1:1 from your Plans page if you want the full list.
+           For now I'm using the same “big” set you showed in screenshots. -->
+
+      <tr>
+        <th scope="row">Carrier Search &amp; Aggregation</th>
+        <td data-plan-col="core">✓ Unlimited</td>
+        <td class="is-featured" data-plan-col="pro">✓ Unlimited</td>
+        <td data-plan-col="enterprise">✓ Unlimited</td>
+      </tr>
+
+      <tr>
+        <th scope="row">Saved Carriers</th>
+        <td data-plan-col="core">✓ Unlimited</td>
+        <td class="is-featured" data-plan-col="pro">✓ Unlimited</td>
+        <td data-plan-col="enterprise">✓ Unlimited</td>
+      </tr>
+
+      <tr>
+        <th scope="row">Carrier Monitoring</th>
+        <td data-plan-col="core">Up to 500 monitored carriers</td>
+        <td class="is-featured" data-plan-col="pro">Up to 2,000 monitored carriers (expandable)</td>
+        <td data-plan-col="enterprise">50,000+ monitored carriers (expandable)</td>
+      </tr>
+
+      <tr>
+        <th scope="row">Contract Sending</th>
+        <td data-plan-col="core">—</td>
+        <td class="is-featured" data-plan-col="pro">✓ Included</td>
+        <td data-plan-col="enterprise">✓ Included</td>
+      </tr>
+
+      <tr>
+        <th scope="row">Email Alerts</th>
+        <td data-plan-col="core">✓ Standard alerts</td>
+        <td class="is-featured" data-plan-col="pro">✓ Advanced configurable alerts</td>
+        <td data-plan-col="enterprise">✓ Advanced configurable alerts</td>
+      </tr>
+
+      <tr>
+        <th scope="row">API Access</th>
+        <td data-plan-col="core">—</td>
+        <td class="is-featured" data-plan-col="pro">✓ Full API access</td>
+        <td data-plan-col="enterprise">✓ Full API access</td>
+      </tr>
+
+      <tr>
+        <th scope="row">Webhooks</th>
+        <td data-plan-col="core">—</td>
+        <td class="is-featured" data-plan-col="pro">✓ Included</td>
+        <td data-plan-col="enterprise">✓ Included</td>
+      </tr>
+
+      <tr>
+        <th scope="row">Team Seats</th>
+        <td data-plan-col="core">Up to 3 users</td>
+        <td class="is-featured" data-plan-col="pro">Up to 10 users (expandable)</td>
+        <td data-plan-col="enterprise">Custom user scaling</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
 
   <div class="cs-row cs-row-right" style="margin-top:14px;">
     <button id="account-upgrade-btn" class="cs-btn cs-btn-primary" type="submit" disabled>
