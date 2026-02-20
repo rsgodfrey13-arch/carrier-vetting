@@ -712,7 +712,7 @@ if (currentBadge) currentBadge.textContent = current ? `Current: ${current.toUpp
     // Continue button state
     if (!plan) {
       continueBtn.disabled = true;
-      continueBtn.textContent = "Continue to billing";
+      continueBtn.textContent = "Current Plan";
       return;
     }
 
