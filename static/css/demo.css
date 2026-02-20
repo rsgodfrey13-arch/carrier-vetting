@@ -138,3 +138,7 @@
 
 html, body{ margin:0; }
 body.auth-page{ padding:0; margin:0; }
+
+html, body { margin: 0; padding: 0; }
+.demo-page #site-header { margin: 0; padding: 0; }
+.demo-page .page { margin-top: 0; }
