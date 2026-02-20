@@ -14,6 +14,7 @@ const billingRoutes = require("./billing.routes");
 const createRoutes = require("./create-account.routes");
 const plansRoutes = require("./plans.routes");
 const verifyRoutes = require("./verify-email.routes");
+const demoRoutes = require("./demo.routes");
 const dpaRoutes = require("./dpa.routes");
 const privacyRoutes = require("./privacy.routes");
 const securityRoutes = require("./security.routes");
@@ -30,6 +31,7 @@ function publicRoutes() {
   router.use(resetPasswordRoutes);
   router.use(loginRoutes);
   router.use(acceptableRoutes);
+  router.use(demoRoutes);
   router.use(dpaRoutes);
   router.use(activateRoutes);
   router.use(billingRoutes);
