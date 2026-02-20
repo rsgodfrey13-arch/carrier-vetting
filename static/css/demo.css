@@ -142,3 +142,13 @@ body.auth-page{ padding:0; margin:0; }
 html, body { margin: 0; padding: 0; }
 .demo-page #site-header { margin: 0; padding: 0; }
 .demo-page .page { margin-top: 0; }
+
+/* Center header content while keeping header full-width */
+.demo-page #site-header > header,
+.demo-page #site-header .site-header,
+.demo-page #site-header .header,
+.demo-page #site-header .nav {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
