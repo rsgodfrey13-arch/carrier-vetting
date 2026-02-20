@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FAQ • Carrier Shark</title>
+
+  <!-- Your existing CSS -->
+  <link rel="stylesheet" href="/static/css/base.css" />
+  <link rel="stylesheet" href="/static/css/style1.css" />
+
+  <!-- Optional page-specific polish -->
+  <link rel="stylesheet" href="/static/css/faq.css" />
+</head>
+
+<body class="app-page faq-page">
+  <!-- If you already inject the header with a partial, keep your existing method.
+       Option A: server-side include / template partial
+       Option B: <div id="site-header"></div> + your shared header loader JS
+  -->
+  <div id="site-header">
+    <!-- Replace this with your real header include -->
+    <header class="site-header glass-nav" role="banner">
+      <div class="nav-inner">
+        <a class="nav-logo" href="/">
+          <img class="nav-logo-img" src="/static/img/carrier-shark-logo.svg" alt="Carrier Shark" />
+        </a>
+        <nav class="nav-links" aria-label="Primary">
+          <a class="nav-link" href="/pricing.html">Pricing</a>
+          <a class="nav-link active" href="/faq.html">FAQ</a>
+          <a class="nav-link" href="/demo.html">Schedule Demo</a>
+          <div class="nav-auth">
+            <a class="nav-link" href="/login.html">Log in</a>
+            <a class="btn-primary" href="/create-account.html">Create account</a>
+          </div>
+        </nav>
+      </div>
+    </header>
+  </div>
+
+  <main class="page" role="main">
+    <section class="faq-hero glass-card">
+      <div class="faq-hero-top">
+        <div>
+          <div class="faq-eyebrow">Support</div>
+          <h1 class="faq-title">Frequently Asked Questions</h1>
+          <p class="faq-subtitle">
+            Straight answers about carrier data, agreements, insurance collection, monitoring, and integrations.
+          </p>
+        </div>
+      </div>
+
+      <div class="faq-controls">
+        <div class="faq-search-wrap">
+          <label class="faq-search-label" for="faq-search">Search FAQs</label>
+          <input
+            id="faq-search"
+            class="faq-search"
+            type="search"
+            placeholder="Try: insurance, API, cancel, FMCSA, webhooks…"
+            autocomplete="off"
+          />
+          <div class="faq-search-hint" id="faq-search-hint">Showing all questions</div>
+        </div>
+
+        <div class="faq-tags" role="tablist" aria-label="FAQ Categories">
+          <button class="faq-tag is-active" type="button" data-filter="all">All</button>
+          <button class="faq-tag" type="button" data-filter="core">Core Product</button>
+          <button class="faq-tag" type="button" data-filter="insurance">Insurance & Monitoring</button>
+          <button class="faq-tag" type="button" data-filter="billing">Account & Billing</button>
+          <button class="faq-tag" type="button" data-filter="api">API & Integrations</button>
+          <button class="faq-tag" type="button" data-filter="carriers">Carrier Management</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="faq-grid" aria-label="FAQ List">
+      <!-- CORE PRODUCT -->
+      <article class="faq-card glass-card" data-cat="core">
+        <h2 class="faq-card-title">Core Product</h2>
+
+        <details class="faq-item" open>
+          <summary class="faq-q">What is Carrier Shark?</summary>
+          <div class="faq-a">
+            <p>
+              Carrier Shark is a carrier management platform built for brokers and 3PLs who want visibility and control
+              over their carrier network.
+            </p>
+            <p>
+              Access real-time FMCSA data, manage agreements, collect insurance, and monitor status changes — all from
+              one centralized system.
+            </p>
+            <ul>
+              <li>Search carriers by DOT, MC, Legal Name, or DBA</li>
+              <li>Build and manage your private <strong>My Carriers</strong> database</li>
+              <li>Send your broker-carrier agreement for electronic signature</li>
+              <li>Collect insurance and store details inside the carrier profile</li>
+              <li>Monitor authority and safety changes via Email, API, or Webhook</li>
+              <li>Maintain a complete carrier history in one place</li>
+            </ul>
+          </div>
+        </details>
+
+        <details class="faq-item" data-important="true">
+          <summary class="faq-q">Is Carrier Shark a broker or carrier?</summary>
+          <div class="faq-a">
+            <p>
+              No. Carrier Shark is <strong>not</strong> a broker, carrier, or factoring company.
+              We’re a software platform that facilitates carrier data management and document workflows.
+            </p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-q">Where does your carrier data come from?</summary>
+          <div class="faq-a">
+            <p>
+              Carrier data is sourced from <strong>FMCSA public records</strong> and updated regularly to reflect current
+              authority, safety, and registration status.
+            </p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-q">How often is FMCSA data updated?</summary>
+          <div class="faq-a">
+            <p>
+              Carrier authority and status information is refreshed continuously as updates become available from FMCSA records.
+            </p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-q">Can I upload my own broker-carrier agreement?</summary>
+          <div class="faq-a">
+            <p>
+              Yes. You can upload your own agreement and send it directly to carriers for electronic signature.
+              Signed documents are stored securely in the carrier’s profile.
+            </p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-q">Do you provide a broker-carrier agreement template?</summary>
+          <div class="faq-a">
+            <p>
+              Carrier Shark may provide sample templates for convenience, but we do not provide legal advice.
+              You’re responsible for ensuring your agreement meets your business and legal requirements.
+            </p>
+          </div>
+        </details>
+      </article>
+
+      <!-- INSURANCE & MONITORING -->
+      <article class="faq-card glass-card" data-cat="insurance">
+        <h2 class="faq-card-title">Insurance & Monitoring</h2>
+
+        <details class="faq-item">
+          <summary class="faq-q">How does insurance collection work?</summary>
+          <div class="faq-a">
+            <p>
+              When you send your agreement, carriers can upload their certificate of insurance.
+              Carrier Shark extracts and stores insurance details inside the carrier’s profile.
+            </p>
+          </div>
+        </details>
+
+        <details class="faq-item" data-important="true">
+          <summary class="faq-q">Do you verify insurance?</summary>
+          <div class="faq-a">
+            <p>
+              Carrier Shark collects and organizes insurance documentation.
+              Final verification and approval decisions remain the responsibility of the broker.
+            </p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-q">What alerts can I receive?</summary>
+          <div class="faq-a">
+            <p>You can receive alerts for:</p>
+            <ul>
+              <li>Authority status changes</li>
+              <li>Out-of-service updates</li>
+              <li>Insurance expirations</li>
+              <li>Safety rating changes</li>
+              <li>Contract updates</li>
+            </ul>
+            <p>Alerts can be delivered via:</p>
+            <ul>
+              <li>Email</li>
+              <li>REST API</li>
+              <li>Webhook</li>
+            </ul>
+          </div>
+        </details>
+      </article>
+
+      <!-- ACCOUNT & BILLING -->
+      <article class="faq-card glass-card" data-cat="billing">
+        <h2 class="faq-card-title">Account & Billing</h2>
+
+        <details class="faq-item">
+          <summary class="faq-q">Is there a contract?</summary>
+          <div class="faq-a">
+            <p>
+              Yes. Carrier Shark operates on subscription plans. Terms are outlined during signup.
+            </p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-q">Can I cancel anytime?</summary>
+          <div class="faq-a">
+            <p>
+              You can cancel according to the terms outlined in your subscription agreement.
+            </p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-q">Is my data secure?</summary>
+          <div class="faq-a">
+            <p>
+              Yes. Carrier Shark uses secure infrastructure and encrypted connections to protect your data.
+            </p>
+          </div>
+        </details>
+      </article>
+
+      <!-- API & INTEGRATIONS -->
+      <article class="faq-card glass-card" data-cat="api">
+        <h2 class="faq-card-title">API & Integrations</h2>
+
+        <details class="faq-item">
+          <summary class="faq-q">Do you offer an API?</summary>
+          <div class="faq-a">
+            <p>
+              Yes. Pro and Enterprise plans include API access for direct system integration.
+            </p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-q">Can I connect Carrier Shark to my TMS?</summary>
+          <div class="faq-a">
+            <p>
+              Yes. Carrier Shark can integrate via API or webhook into most modern TMS platforms.
+            </p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-q">Do you offer webhooks?</summary>
+          <div class="faq-a">
+            <p>
+              Yes. Real-time webhook notifications are available on supported plans.
+            </p>
+          </div>
+        </details>
+      </article>
+
+      <!-- CARRIER MANAGEMENT -->
+      <article class="faq-card glass-card" data-cat="carriers">
+        <h2 class="faq-card-title">Carrier Management</h2>
+
+        <details class="faq-item">
+          <summary class="faq-q">What is “My Carriers”?</summary>
+          <div class="faq-a">
+            <p>
+              “My Carriers” is your private database of carriers you track, contract with, or monitor.
+            </p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-q">Can I bulk upload carriers?</summary>
+          <div class="faq-a">
+            <p>
+              Yes. You can bulk add carriers via upload or API.
+            </p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-q">What happens when a carrier’s authority changes?</summary>
+          <div class="faq-a">
+            <p>
+              You’ll receive alerts based on your configured notification settings.
+            </p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-q">Do carriers need to create an account?</summary>
+          <div class="faq-a">
+            <p>
+              No. Carriers do not need to create an account to sign agreements or upload documents.
+            </p>
+          </div>
+        </details>
+      </article>
+    </section>
+
+    <section class="faq-footer glass-card" aria-label="Still need help">
+      <div class="faq-footer-left">
+        <h2 class="faq-footer-title">Still have a question?</h2>
+        <p class="faq-footer-sub">
+          If you want a quick walkthrough, schedule a demo and we’ll show you exactly how it works.
+        </p>
+      </div>
+      <div class="faq-footer-actions">
+        <a class="btn-ghost" href="/demo.html">Schedule a demo</a>
+        <a class="btn-primary" href="/create-account.html">Create account</a>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Tiny filter/search (no dependencies)
+    (function () {
+      const searchEl = document.getElementById('faq-search');
+      const hintEl = document.getElementById('faq-search-hint');
+      const tagButtons = Array.from(document.querySelectorAll('.faq-tag'));
+      const cards = Array.from(document.querySelectorAll('.faq-card'));
+      const items = Array.from(document.querySelectorAll('.faq-item'));
+
+      let activeCat = 'all';
+
+      function normalize(s){ return (s || '').toLowerCase().trim(); }
+
+      function apply() {
+        const q = normalize(searchEl.value);
+        let shownQuestions = 0;
+
+        // Category filter (cards)
+        cards.forEach(card => {
+          const ok = (activeCat === 'all') || (card.dataset.cat === activeCat);
+          card.style.display = ok ? '' : 'none';
+        });
+
+        // Search filter (questions)
+        items.forEach(d => {
+          const card = d.closest('.faq-card');
+          const cardVisible = card && card.style.display !== 'none';
+
+          const text = normalize(d.innerText);
+          const matches = !q || text.includes(q);
+
+          const show = cardVisible && matches;
+          d.style.display = show ? '' : 'none';
+          if (show) shownQuestions++;
+        });
+
+        // If a section has zero visible questions, hide the whole section card
+        cards.forEach(card => {
+          if (card.style.display === 'none') return;
+          const visibleQs = Array.from(card.querySelectorAll('.faq-item'))
+            .some(x => x.style.display !== 'none');
+          card.style.display = visibleQs ? '' : 'none';
+        });
+
+        // Hint text
+        if (!q && activeCat === 'all') {
+          hintEl.textContent = 'Showing all questions';
+        } else {
+          const catLabel = activeCat === 'all' ? 'All' : tagButtons.find(b => b.dataset.filter === activeCat)?.textContent?.trim();
+          hintEl.textContent = `Showing ${shownQuestions} result${shownQuestions === 1 ? '' : 's'} • ${catLabel || 'All'}${q ? ` • "${searchEl.value.trim()}"` : ''}`;
+        }
+      }
+
+      tagButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          tagButtons.forEach(b => b.classList.remove('is-active'));
+          btn.classList.add('is-active');
+          activeCat = btn.dataset.filter || 'all';
+          apply();
+        });
+      });
+
+      searchEl.addEventListener('input', apply);
+      apply();
+    })();
+  </script>
+</body>
+</html>
