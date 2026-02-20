@@ -18,25 +18,7 @@
        Option A: server-side include / template partial
        Option B: <div id="site-header"></div> + your shared header loader JS
   -->
-  <div id="site-header">
-    <!-- Replace this with your real header include -->
-    <header class="site-header glass-nav" role="banner">
-      <div class="nav-inner">
-        <a class="nav-logo" href="/">
-          <img class="nav-logo-img" src="/static/img/carrier-shark-logo.svg" alt="Carrier Shark" />
-        </a>
-        <nav class="nav-links" aria-label="Primary">
-          <a class="nav-link" href="/pricing.html">Pricing</a>
-          <a class="nav-link active" href="/faq.html">FAQ</a>
-          <a class="nav-link" href="/demo.html">Schedule Demo</a>
-          <div class="nav-auth">
-            <a class="nav-link" href="/login.html">Log in</a>
-            <a class="btn-primary" href="/create-account.html">Create account</a>
-          </div>
-        </nav>
-      </div>
-    </header>
-  </div>
+<div id="site-header"></div>
 
   <main class="page" role="main">
     <section class="faq-hero glass-card">
@@ -382,5 +364,7 @@
       apply();
     })();
   </script>
+
+    <script src="/js/shared/shared.js"></script>
 </body>
 </html>
