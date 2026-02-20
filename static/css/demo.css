@@ -1,0 +1,137 @@
+
+    /* Small page-specific tweaks (safe even if tokens differ) */
+    .demo-page .page{
+      max-width: 980px;
+    }
+    .demo-shell{
+      max-width: 980px;
+      margin: 26px auto 0;
+      padding: 0 16px 40px;
+    }
+    .demo-hero{
+      text-align: center;
+      padding: 18px 8px 14px;
+    }
+    .demo-title{
+      margin: 10px 0 6px;
+      font-size: clamp(1.6rem, 2.6vw, 2.25rem);
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+    }
+    .demo-subtitle{
+      margin: 0 auto;
+      max-width: 52ch;
+      color: rgba(241,245,249,.78);
+      font-size: 1.02rem;
+      line-height: 1.55;
+    }
+    .demo-bullets{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin: 14px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+    .demo-pill{
+      border: 1px solid rgba(148,163,184,.18);
+      background: rgba(2,6,23,.22);
+      color: rgba(241,245,249,.86);
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: .92rem;
+      white-space: nowrap;
+    }
+    .demo-card{
+      margin-top: 18px;
+      border-radius: 18px;
+      border: 1px solid rgba(148,163,184,.16);
+      background: rgba(2,6,23,.35);
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      overflow: hidden;
+    }
+    .demo-card-head{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(148,163,184,.12);
+      background: linear-gradient(180deg, rgba(56,189,248,.08), rgba(2,6,23,0));
+    }
+    .demo-card-head strong{
+      font-weight: 600;
+      color: rgba(241,245,249,.92);
+    }
+    .demo-card-head span{
+      color: rgba(241,245,249,.64);
+      font-size: .92rem;
+    }
+
+    /* Calendly sizing + responsive height */
+    .calendly-wrap{
+      padding: 0;
+    }
+    .calendly-inline-widget{
+      width: 100%;
+      min-width: 320px;
+      height: 760px; /* desktop */
+    }
+    @media (max-width: 720px){
+      .calendly-inline-widget{ height: 860px; }
+      .demo-card-head{ flex-direction: column; align-items:flex-start; }
+    }
+
+    .demo-foot{
+      margin-top: 14px;
+      text-align: center;
+      color: rgba(241,245,249,.60);
+      font-size: .92rem;
+    }
+    .demo-foot a{
+      color: rgba(56,189,248,.95);
+      text-decoration: none;
+    }
+    .demo-foot a:hover{
+      text-decoration: underline;
+    }
+
+/* make the outer container NOT look like a card */
+.demo-card{
+  margin-top: 18px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
+}
+
+/* optional: keep a thin divider instead of a box */
+.demo-card-head{
+  padding: 0 0 10px 0;
+  border-bottom: 1px solid rgba(148,163,184,.12);
+  background: transparent;
+}
+
+
+.calendly-inline-widget{
+  width: 100%;
+  min-width: 320px;
+  height: 1020px;   /* desktop */
+}
+
+@media (max-width: 720px){
+  .calendly-inline-widget{
+    height: 1220px; /* mobile needs more */
+  }
+}
+    
+
+  /* ===== Center demo page like login ===== */
+  .demo-page .page {
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 28px 16px;
+  }
