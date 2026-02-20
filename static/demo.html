@@ -109,6 +109,37 @@
     .demo-foot a:hover{
       text-decoration: underline;
     }
+
+/* make the outer container NOT look like a card */
+.demo-card{
+  margin-top: 18px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
+}
+
+/* optional: keep a thin divider instead of a box */
+.demo-card-head{
+  padding: 0 0 10px 0;
+  border-bottom: 1px solid rgba(148,163,184,.12);
+  background: transparent;
+}
+
+
+.calendly-inline-widget{
+  width: 100%;
+  min-width: 320px;
+  height: 1020px;   /* desktop */
+}
+
+@media (max-width: 720px){
+  .calendly-inline-widget{
+    height: 1220px; /* mobile needs more */
+  }
+}
+    
   </style>
 </head>
 
@@ -141,13 +172,7 @@
       </div>
 
       <div class="demo-card">
-        <div class="demo-card-head">
-          <div>
-            <strong>Pick a time</strong>
-            <span> — we’ll send a calendar invite instantly</span>
-          </div>
-          <span>Buffer rules handled automatically</span>
-        </div>
+
 
         <div class="calendly-wrap">
           <!-- Calendly inline widget begin -->
