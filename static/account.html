@@ -14,7 +14,7 @@
 
 
   
-<body class="account-page" data-current-plan="pro">
+<body class="account-page">
   <div class="bg-gradient"></div>
   <div class="bg-grid"></div>
   <div id="site-header"></div>  
@@ -642,21 +642,7 @@
 
   <script src="/static/js/pages/activate.js"></script> 
 
-<script>
-(function(){
-  const current = (document.body.dataset.currentPlan || "").toLowerCase();
-  if(!current) return;
 
-  const badge = document.getElementById("current-plan-badge");
-  if (badge) badge.textContent = "Current: " + current.toUpperCase();
-
-  const state = document.querySelector('[data-plan-state="'+current+'"]');
-  if (state) state.classList.add("current");
-
-  const btn = document.querySelector('[data-plan-btn="'+current+'"]');
-  if (btn) { btn.disabled = true; btn.textContent = "Current"; }
-})();
-</script>
 
   
   <script src="/static/js/pages/account.js"></script>
