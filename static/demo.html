@@ -175,13 +175,42 @@
 
 
         <div class="calendly-wrap">
-          <!-- Calendly inline widget begin -->
-          <div
-            class="calendly-inline-widget"
-            data-url="https://calendly.com/robert-carriershark/30min?hide_event_type_details=1&hide_gdpr_banner=1&background_color=0b1120&text_color=f1f5f9&primary_color=00b7ff">
-          </div>
-          <script src="https://assets.calendly.com/assets/external/widget.js" async></script>
-          <!-- Calendly inline widget end -->
+<!-- Calendly inline widget begin -->
+<div
+  id="calendlyWidget"
+  class="calendly-inline-widget"
+  data-url="https://calendly.com/robert-carriershark/30min?hide_event_type_details=1&hide_gdpr_banner=1&background_color=0b1120&text_color=f1f5f9&primary_color=00b7ff"
+  style="min-width:320px;height:1020px;">
+</div>
+
+<script src="https://assets.calendly.com/assets/external/widget.js" async></script>
+
+<script>
+  // Auto-grow the Calendly embed so the *page* scrolls (no inner scrollbar).
+  (function () {
+    const el = document.getElementById("calendlyWidget");
+    if (!el) return;
+
+    const MIN = 1020;  // safe minimum
+    const MAX = 2200;  // prevents ridiculous heights
+
+    function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+
+    window.addEventListener("message", function (e) {
+      // Calendly runs on calendly.com
+      if (!e.origin || !e.origin.includes("calendly.com")) return;
+
+      const data = e.data || {};
+
+      // Calendly height messages commonly come through like this
+      if (data.event === "calendly.page_height" && data.payload && data.payload.height) {
+        const h = clamp(parseInt(data.payload.height, 10) + 40, MIN, MAX);
+        el.style.height = h + "px";
+      }
+    });
+  })();
+</script>
+<!-- Calendly inline widget end -->
         </div>
       </div>
 
