@@ -189,3 +189,33 @@ body.demo-page{
 body.demo-page main.page{
   padding-top: 86px; /* tweak if your slim header is taller/shorter */
 }
+
+/* ================================
+   DEMO: force header to match index
+   ================================ */
+
+/* if demo page is accidentally using auth flex-centering, kill it */
+body.demo-page{
+  display: block !important;
+}
+
+/* never allow the wrapper to be width-capped */
+body.demo-page #site-header{
+  width: 100% !important;
+  max-width: none !important;
+}
+
+/* make the bar span the full viewport width */
+body.demo-page #site-header .site-header.glass-nav{
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  border-radius: 0 !important; /* optional: removes “pill” look if it’s happening */
+}
+
+/* keep content nicely centered inside the full-width bar */
+body.demo-page #site-header .site-header.glass-nav .nav-inner{
+  max-width: 1280px;  /* adjust to match your index feel */
+  margin: 0 auto;
+  padding: 0 18px;
+}
