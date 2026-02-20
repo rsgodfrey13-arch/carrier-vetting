@@ -665,6 +665,10 @@ function initAccountPlanPicker({ currentPlanId }) {
 
   const current = normalizePlanId(currentPlanId);
 
+  const currentBadge = document.getElementById("current-plan-badge");
+if (currentBadge) currentBadge.textContent = current ? `Current: ${current.toUpperCase()}` : "Current: —";
+
+
   function setSelected(planId) {
     const plan = normalizePlanId(planId);
     if (!plan) return;
