@@ -4641,3 +4641,47 @@ html {
 #my-carriers {
   scroll-margin-top: 96px; /* adjust to header height */
 }
+
+/* =========================
+   APP LAYOUT (index-style)
+   Use on any full app page:
+   <body class="app-page ...">
+   ========================= */
+
+body.app-page{
+  margin: 0;
+  padding: 0;
+}
+
+/* Center the main page content like index */
+body.app-page .page{
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 18px;
+}
+
+/* Make the header full-width, but center its inner content */
+body.app-page #site-header{
+  width: 100%;
+}
+
+/* These selectors are intentionally broad so we catch your header partial */
+body.app-page #site-header header,
+body.app-page #site-header .site-header,
+body.app-page #site-header .header,
+body.app-page #site-header .nav{
+  width: 100%;
+}
+
+body.app-page #site-header header > .inner,
+body.app-page #site-header .site-header > .inner,
+body.app-page #site-header .header > .inner,
+body.app-page #site-header .nav > .inner,
+body.app-page #site-header .header-inner,
+body.app-page #site-header .header-wrap,
+body.app-page #site-header .header-container{
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 18px;
+}
