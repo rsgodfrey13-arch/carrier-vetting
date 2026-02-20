@@ -259,3 +259,32 @@ details[open] > .faq-q::after{
   .faq-tags{ justify-content:flex-start; }
   .faq-tag{ height: 36px; }
 }
+
+/* =================================
+   FAQ PAGE — force normal header
+   ================================= */
+
+body.faq-page{
+  display: block !important;   /* kill flex centering */
+}
+
+/* wrapper should never constrain width */
+body.faq-page #site-header{
+  width: 100% !important;
+  max-width: none !important;
+}
+
+/* actual header bar must span full width */
+body.faq-page #site-header .site-header.glass-nav{
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  border-radius: 0 !important; /* optional if you see rounding */
+}
+
+/* center inner nav content */
+body.faq-page #site-header .site-header.glass-nav .nav-inner{
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
