@@ -253,7 +253,7 @@ html, body { margin: 0; padding: 0; }
 }
 
 .nav-logo-img {
-  height: 44px;   /* try 26–32px range */
-  width: auto;
+  width: 220px;   /* try 160–220px */
+  height: auto;
   display: block;
 }
