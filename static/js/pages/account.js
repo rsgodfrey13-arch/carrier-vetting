@@ -642,6 +642,123 @@ function setAlertsFooter(checked) {
   footer.classList.toggle("is-off", !checked);
 }
 
+
+// -----------------------------
+// Plan picker (table version)
+// -----------------------------
+function normalizePlanId(v) {
+  const s = String(v || "").trim().toLowerCase();
+  // if your backend uses different names, map them here.
+  if (s === "core") return "core";
+  if (s === "pro") return "pro";
+  if (s === "enterprise") return "enterprise";
+  return ""; // unknown
+}
+
+function initAccountPlanPicker({ currentPlanId }) {
+  const selectedInput = document.getElementById("selected-plan");   // hidden input
+  const continueBtn   = document.getElementById("continue-btn");    // your nice button
+  const planForm      = document.getElementById("plan-form");       // form wrapper (recommended)
+
+  // If this tab/page doesn't have the table, bail.
+  if (!selectedInput || !continueBtn) return;
+
+  const current = normalizePlanId(currentPlanId);
+
+  function setSelected(planId) {
+    const plan = normalizePlanId(planId);
+    if (!plan) return;
+
+    // Don't allow selecting the current plan
+    if (current && plan === current) {
+      selectedInput.value = "";
+      updateUI("");
+      return;
+    }
+
+    selectedInput.value = plan;
+    updateUI(plan);
+  }
+
+  function updateUI(selected) {
+    const plan = normalizePlanId(selected);
+
+    // Highlight selected column (whole body)
+    document.querySelectorAll("[data-plan-col]").forEach((cell) => {
+      cell.classList.toggle("is-selected", plan && cell.dataset.planCol === plan);
+    });
+
+    // Radio dot fill (if your markup uses .plan-radio inside the header)
+    document.querySelectorAll("[data-plan-col] .plan-radio").forEach((dot) => {
+      const col = dot.closest("[data-plan-col]")?.dataset?.planCol;
+      dot.classList.toggle("is-on", plan && col === plan);
+    });
+
+    // Disable current-plan select buttons + show CURRENT label (optional)
+    document.querySelectorAll("[data-plan-btn]").forEach((btn) => {
+      const btnPlan = normalizePlanId(btn.dataset.planBtn);
+      const isCurrent = current && btnPlan === current;
+      btn.disabled = !!isCurrent;
+      btn.classList.toggle("is-current", !!isCurrent);
+
+      if (isCurrent) btn.textContent = "CURRENT";
+      else btn.textContent = "SELECT";
+    });
+
+    // Continue button state
+    if (!plan) {
+      continueBtn.disabled = true;
+      continueBtn.textContent = "Continue to billing";
+      return;
+    }
+
+    continueBtn.disabled = false;
+    continueBtn.textContent = `Continue with ${plan.toUpperCase()}`;
+  }
+
+  // Click column OR select button
+  document.querySelectorAll("[data-plan-col]").forEach((el) => {
+    el.style.cursor = "pointer";
+    el.addEventListener("click", () => setSelected(el.dataset.planCol));
+  });
+
+  document.querySelectorAll("[data-plan-btn]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setSelected(btn.dataset.planBtn);
+    });
+  });
+
+  // Submit -> route to billing
+  const submitHandler = (e) => {
+    const plan = normalizePlanId(selectedInput.value);
+    if (!plan) {
+      e.preventDefault();
+      return;
+    }
+    // same billing route used everywhere
+    window.location.href = `/billing?plan=${encodeURIComponent(plan)}&context=upgrade`;
+  };
+
+  if (planForm) {
+    planForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      submitHandler(e);
+    });
+  } else {
+    // fallback: if your Continue button isn't inside a <form>
+    continueBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      submitHandler(e);
+    });
+  }
+
+  // Initial state
+  updateUI("");
+}
+
+
   
   
   // -----------------------------
@@ -660,6 +777,12 @@ function setAlertsFooter(checked) {
   applyEmailAlertsLock(me);
     
     setPlanBadge(me?.plan || me?.user?.plan);
+
+initAccountPlanPicker({
+  currentPlanId: me?.plan || me?.user?.plan
+});
+
+    
     setPill("me-email_alerts", me?.email_alerts);
     setPill("me-rest_alerts", me?.rest_alerts);
     setPill("me-webhook_alerts", me?.webhook_alerts);
