@@ -152,3 +152,40 @@ html, body { margin: 0; padding: 0; }
   margin: 0 auto;
   padding: 0 16px;
 }
+
+/* === DEMO PAGE: force header-slim to be full-width + centered === */
+body.demo-page{
+  /* kill any base flex-centering that makes header behave weird */
+  display: block !important;
+  justify-content: initial !important;
+  padding: 0 !important;
+}
+
+/* the injected wrapper */
+#site-header{
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100% !important;
+  z-index: 9999 !important;
+}
+
+/* ensure the actual header stretches */
+#site-header .header-slim{
+  width: 100% !important;
+}
+
+/* center the header contents (the inner wrapper class may differ) */
+#site-header .header-slim .header-inner,
+#site-header .header-slim .header-wrap,
+#site-header .header-slim .header-container{
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 18px;
+}
+
+/* push page content down so it doesn't sit under the fixed header */
+body.demo-page main.page{
+  padding-top: 86px; /* tweak if your slim header is taller/shorter */
+}
