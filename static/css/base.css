@@ -251,3 +251,9 @@ html, body { margin: 0; padding: 0; }
   align-items: center;
   gap: 12px;
 }
+
+.nav-logo-img {
+  height: 28px;   /* try 26–32px range */
+  width: auto;
+  display: block;
+}
