@@ -219,3 +219,13 @@ body.demo-page #site-header .site-header.glass-nav .nav-inner{
   margin: 0 auto;
   padding: 0 18px;
 }
+
+/* === DEMO: match normal header height exactly === */
+
+body.demo-page #site-header .site-header{
+  padding: 14px 0 !important;   /* match base.css */
+}
+
+body.demo-page #site-header .nav-inner{
+  padding: 0 24px !important;   /* match base.css */
+}
