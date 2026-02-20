@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Schedule a Live Walkthrough | Carrier Shark</title>
+
+  <!-- Use your existing CSS stack -->
+  <link rel="stylesheet" href="/static/css/base.css" />
+  <link rel="stylesheet" href="/static/css/style1.css" />
+  <!-- Optional: if you have a page-level stylesheet -->
+  <!-- <link rel="stylesheet" href="/static/css/demo.css" /> -->
+
+  <style>
+    /* Small page-specific tweaks (safe even if tokens differ) */
+    .demo-page .page{
+      max-width: 980px;
+    }
+    .demo-shell{
+      max-width: 980px;
+      margin: 26px auto 0;
+      padding: 0 16px 40px;
+    }
+    .demo-hero{
+      text-align: center;
+      padding: 18px 8px 14px;
+    }
+    .demo-title{
+      margin: 10px 0 6px;
+      font-size: clamp(1.6rem, 2.6vw, 2.25rem);
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+    }
+    .demo-subtitle{
+      margin: 0 auto;
+      max-width: 52ch;
+      color: rgba(241,245,249,.78);
+      font-size: 1.02rem;
+      line-height: 1.55;
+    }
+    .demo-bullets{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin: 14px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+    .demo-pill{
+      border: 1px solid rgba(148,163,184,.18);
+      background: rgba(2,6,23,.22);
+      color: rgba(241,245,249,.86);
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: .92rem;
+      white-space: nowrap;
+    }
+    .demo-card{
+      margin-top: 18px;
+      border-radius: 18px;
+      border: 1px solid rgba(148,163,184,.16);
+      background: rgba(2,6,23,.35);
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      overflow: hidden;
+    }
+    .demo-card-head{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(148,163,184,.12);
+      background: linear-gradient(180deg, rgba(56,189,248,.08), rgba(2,6,23,0));
+    }
+    .demo-card-head strong{
+      font-weight: 600;
+      color: rgba(241,245,249,.92);
+    }
+    .demo-card-head span{
+      color: rgba(241,245,249,.64);
+      font-size: .92rem;
+    }
+
+    /* Calendly sizing + responsive height */
+    .calendly-wrap{
+      padding: 0;
+    }
+    .calendly-inline-widget{
+      width: 100%;
+      min-width: 320px;
+      height: 760px; /* desktop */
+    }
+    @media (max-width: 720px){
+      .calendly-inline-widget{ height: 860px; }
+      .demo-card-head{ flex-direction: column; align-items:flex-start; }
+    }
+
+    .demo-foot{
+      margin-top: 14px;
+      text-align: center;
+      color: rgba(241,245,249,.60);
+      font-size: .92rem;
+    }
+    .demo-foot a{
+      color: rgba(56,189,248,.95);
+      text-decoration: none;
+    }
+    .demo-foot a:hover{
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body class="demo-page">
+  <!-- If you have a shared slim header include, render it here.
+       Examples:
+       - EJS: <%- include('partials/header-slim') %>
+       - HTML: <div id="header-slim"></div>
+  -->
+  <!-- HEADER PLACEHOLDER -->
+  <!-- <header class="header-slim">...</header> -->
+
+  <main class="page">
+    <section class="demo-shell">
+      <div class="demo-hero">
+        <div class="auth-eyebrow">Live walkthrough</div>
+
+        <h1 class="demo-title">Schedule a Live Platform Walkthrough</h1>
+        <p class="demo-subtitle">
+          30 minutes. We’ll show how Carrier Shark handles carrier verification + agreements,
+          and answer questions specific to your workflow.
+        </p>
+
+        <ul class="demo-bullets">
+          <li class="demo-pill">30 minutes</li>
+          <li class="demo-pill">No pressure</li>
+          <li class="demo-pill">Built for brokers & carriers</li>
+          <li class="demo-pill">Secure + audit-friendly</li>
+        </ul>
+      </div>
+
+      <div class="demo-card">
+        <div class="demo-card-head">
+          <div>
+            <strong>Pick a time</strong>
+            <span> — we’ll send a calendar invite instantly</span>
+          </div>
+          <span>Buffer rules handled automatically</span>
+        </div>
+
+        <div class="calendly-wrap">
+          <!-- Calendly inline widget begin -->
+          <div
+            class="calendly-inline-widget"
+            data-url="https://calendly.com/robert-carriershark/30min?hide_event_type_details=1&hide_gdpr_banner=1&background_color=0b1120&text_color=f1f5f9&primary_color=00b7ff">
+          </div>
+          <script src="https://assets.calendly.com/assets/external/widget.js" async></script>
+          <!-- Calendly inline widget end -->
+        </div>
+      </div>
+
+      <div class="demo-foot">
+        Prefer email? <a href="mailto:support@carriershark.com">support@carriershark.com</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
