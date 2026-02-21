@@ -49,3 +49,62 @@ html.cs-modal-open{ overflow:hidden; }
   .cs-tour{ grid-template-columns: 1fr; }
   .cs-tour-media img{ height: 260px; }
 }
+
+/* ============ Slide 0 Intro Mode ============ */
+
+.cs-modal.cs-tour-intro .cs-tour-media img#tourImg{
+  display: none; /* no screenshot on slide 0 */
+}
+
+.cs-tour-brand{
+  display: none;
+}
+
+.cs-modal.cs-tour-intro .cs-tour-brand{
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 18px;
+}
+
+.cs-modal.cs-tour-intro .cs-tour-brand img{
+  height: 26px;   /* adjust */
+  width: auto;
+  opacity: .95;
+}
+
+/* Give slide 0 more “thesis” spacing */
+.cs-modal.cs-tour-intro .cs-tour-title{
+  font-size: 28px;        /* adjust to taste */
+  line-height: 1.15;
+  margin-top: 10px;
+}
+
+.cs-modal.cs-tour-intro .cs-tour-body{
+  margin-top: 10px;
+  max-width: 52ch;
+}
+
+/* Make the primary button big */
+.cs-btn-hero{
+  padding: 12px 18px;
+  font-size: 15px;
+  border-radius: 12px;
+  min-width: 180px;
+}
+
+/* Optional: hide dots + “don’t show again” on Slide 0 to keep it clean */
+.cs-modal.cs-tour-intro .cs-tour-dots{
+  display: none;
+}
+
+/* Optional: move skip to the far left on intro */
+.cs-modal.cs-tour-intro .cs-tour-footer{
+  justify-content: flex-end;
+}
+
+/* Optional: replace QUICK TOUR label with something more serious */
+.cs-modal.cs-tour-intro .cs-tour-kicker{
+  letter-spacing: .18em;
+  opacity: .85;
+}
