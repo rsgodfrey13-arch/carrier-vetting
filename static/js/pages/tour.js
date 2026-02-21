@@ -8,7 +8,7 @@ const btnGo = document.getElementById("tourGo");
   const slides = [
     {
       title: "One place to verify, document, and monitor carriers.",
-      body: "Structured for onboarding, agreements, insurance, and change alerts."
+      body: "Carrier Shark is a carrier management platform Structured for onboarding, agreements, insurance, and change alerts. Take the quick tour to learn more."
     },
     {
       title: "Search any DOT, MC, or carrier name.",
