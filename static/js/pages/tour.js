@@ -87,6 +87,7 @@
 
   function render() {
     const s = slides[idx];
+    overlay.querySelector(".cs-modal")?.classList.toggle("cs-tour-intro", idx === 0);
     titleEl.textContent = s.title;
     bodyEl.innerHTML = "";
 
@@ -102,10 +103,26 @@
       bodyEl.appendChild(a);
     }
 
-    imgEl.src = s.img;
+    if (s.img) {
+      imgEl.style.display = "";
+      imgEl.src = s.img;
+    } else {
+      // Slide 0: no screenshot
+      imgEl.removeAttribute("src");
+      imgEl.style.display = "none";
+    }
 
     btnPrev.disabled = idx === 0;
-    btnNext.textContent = (idx === slides.length - 1) ? "Done" : "Next";
+    if (idx === 0) {
+      btnNext.textContent = "Take the Tour";
+      btnNext.classList.add("cs-btn-hero");
+    } else if (idx === slides.length - 1) {
+      btnNext.textContent = "Done";
+      btnNext.classList.remove("cs-btn-hero");
+    } else {
+      btnNext.textContent = "Next";
+      btnNext.classList.remove("cs-btn-hero");
+    }
 
     renderDots();
   }
