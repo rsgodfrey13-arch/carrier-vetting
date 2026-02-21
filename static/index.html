@@ -515,17 +515,18 @@
     <button class="cs-modal-x" id="tourClose" aria-label="Close">✕</button>
 
     <div class="cs-tour">
-      <div class="cs-tour-media">
-        <!-- Slide 0 brand slot (hidden on other slides via CSS) -->
-        <div class="cs-tour-brand" aria-hidden="true">
-          <img src="/static/img/logo-mark.svg" alt="" />
-        </div>
-      
-        <!-- Existing screenshot image for slides 1+ -->
-        <img id="tourImg" src="/static/help-art/image.png" alt="" />
-      </div>
+    <div class="cs-tour-media">
+      <img id="tourImg" src="/static/help-art/image.png" alt="" />
+    </div>
 
       <div class="cs-tour-content">
+
+        <div class="cs-tour-brand">
+          <img src="/images/white-c-teal-shark-white-text-on-right.svg"
+               alt="Carrier Shark"
+               class="cs-tour-logo">
+        </div>
+        
         <div class="cs-tour-kicker">PLATFORM OVERVIEW</div>
         <h2 class="cs-tour-title" id="tourTitle"></h2>
         <div class="cs-tour-body" id="tourBody"></div>
