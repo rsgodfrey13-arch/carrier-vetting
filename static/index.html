@@ -534,29 +534,29 @@
         <h2 class="cs-tour-title" id="tourTitle"></h2>
         <div class="cs-tour-body" id="tourBody"></div>
 
-        <label class="cs-tour-dontshow">
-          <input type="checkbox" id="tourDontShow" />
-          Don’t show again
-        </label>
+<div class="cs-tour-controls">
+  <label class="cs-tour-dontshow">
+    <input type="checkbox" id="tourDontShow" />
+    Don’t show again
+  </label>
 
-        <div class="cs-tour-footer">
-          <div class="cs-tour-dots" id="tourDots"></div>
+  <div class="cs-tour-footer">
+    <div class="cs-tour-dots" id="tourDots"></div>
 
-          <div class="cs-tour-actions">
-            <button class="cs-btn cs-btn-ghost" id="tourPrev" type="button">Back</button>
-         
-        
-            <button class="cs-btn cs-btn-primary" id="tourNext" type="button">Next</button>
+    <div class="cs-tour-actions">
+      <button class="cs-btn cs-btn-ghost" id="tourPrev" type="button">Back</button>
 
-                        <!-- Slide 0 secondary button (hidden on other slides) -->
-            <button class="cs-btn cs-btn-ghost cs-btn-hero" id="tourGo" type="button" style="display:none;">
-              Continue to Carrier Shark
-            </button>
-            
-          </div>
-        </div>
+      <!-- keep your tourGo button here if you’re using it -->
+      <button class="cs-btn cs-btn-ghost cs-btn-hero" id="tourGo" type="button" style="display:none;">
+        Continue to Carrier Shark
+      </button>
 
-        <a href="#" class="cs-tour-link" id="tourSkip">Skip</a>
+      <button class="cs-btn cs-btn-primary" id="tourNext" type="button">Next</button>
+    </div>
+  </div>
+
+  <a href="#" class="cs-tour-link" id="tourSkip">Skip</a>
+</div>
       </div>
     </div>
   </div>
