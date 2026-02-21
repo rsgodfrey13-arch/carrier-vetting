@@ -123,7 +123,11 @@ html.cs-modal-open{ overflow:hidden; }
 }
 
 .cs-modal.cs-tour-intro .cs-tour-media {
-  display: none; /* remove left panel entirely */
+  display: none;
+}
+
+.cs-modal.cs-tour-intro .cs-tour-brand {
+  display: block;
 }
 
 .cs-modal.cs-tour-intro .cs-tour-content {
@@ -154,4 +158,16 @@ html.cs-modal-open{ overflow:hidden; }
   display:flex;
   gap: 10px;
   align-items:center;
+}
+
+
+.cs-tour-brand {
+  display: none;
+  margin-bottom: 24px;
+}
+
+.cs-tour-logo {
+  height: 32px;
+  width: auto;
+  opacity: .95;
 }
