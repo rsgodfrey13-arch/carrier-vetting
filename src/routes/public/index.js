@@ -16,6 +16,12 @@ const plansRoutes = require("./plans.routes");
 const verifyRoutes = require("./verify-email.routes");
 const demoRoutes = require("./demo.routes");
 const dpaRoutes = require("./dpa.routes");
+
+// Add New Ones Here
+const faqRoutes = require("./faq.routes");
+const helpRoutes = require("./help.routes");
+
+
 const privacyRoutes = require("./privacy.routes");
 const securityRoutes = require("./security.routes");
 const termsRoutes = require("./terms.routes");
@@ -33,6 +39,11 @@ function publicRoutes() {
   router.use(acceptableRoutes);
   router.use(demoRoutes);
   router.use(dpaRoutes);
+  
+  // Add New Ones Here
+  const faqRoutes = require("./faq.routes");
+  const helpRoutes = require("./help.routes");
+  
   router.use(activateRoutes);
   router.use(billingRoutes);
   router.use(createRoutes);
