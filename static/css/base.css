@@ -622,3 +622,21 @@ border: 1px solid rgba(147, 197, 253, .45);
     font-size: .95rem;
   }
 }
+
+
+.site-footer .footer-inner{
+  padding: 38px 22px 14px;
+}
+
+.footer-tagline{
+  margin: 6px 0 3px;
+}
+
+.footer-micro{
+  font-size: .82rem;
+  line-height: 1.35;
+}
+
+.footer-divider{
+  margin: 18px 0 8px;
+}
