@@ -415,3 +415,11 @@ border: 1px solid rgba(147, 197, 253, .45);
   opacity: .75;
   transform: translateY(-1px); /* optical alignment */
 }
+
+.nav-links .nav-link{
+  font-size: .85rem;
+}
+
+.nav-center .nav-link{
+  font-size: .85rem;
+}
