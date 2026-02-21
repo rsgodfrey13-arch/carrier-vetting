@@ -1,5 +1,6 @@
 <header class="site-header glass-nav">
   <div class="nav-inner">
+
     <div class="nav-left">
       <a href="/" class="nav-logo" aria-label="Carrier Shark Home">
         <img src="/images/white-c-teal-shark-white-text-on-right-condensed.svg"
@@ -8,19 +9,13 @@
       </a>
     </div>
 
-    <nav class="nav-links" aria-label="Primary">
-      <!-- Utility-first: these are sections on your home page -->
+    <nav class="nav-center" aria-label="Primary">
       <a href="/#search" class="nav-link">Search</a>
       <a href="/#my-carriers" class="nav-link">My Carriers</a>
-
-      <!-- Plans -->
       <a href="/plans" class="nav-link">Plans</a>
-
       <a href="/help" class="nav-link">Help Center</a>
       <a href="/faq" class="nav-link">FAQs</a>
 
-      
-      <!-- Replace "Privacy Policy" with a trust dropdown -->
       <div class="nav-dropdown">
         <a href="#" class="nav-link nav-dropbtn">
           Security <span class="nav-caret">▾</span>
@@ -35,16 +30,16 @@
           <a href="/dpa" class="nav-dd-link" role="menuitem">Data Processing Addendum</a>
         </div>
       </div>
+    </nav>
 
-      <!-- Account -->
+    <div class="nav-right">
       <a href="/login" id="account-link" class="nav-link">My Account</a>
 
-      <!-- Auth actions (your JS can toggle these like you already do) -->
-      <button id="login-btn" class="nav-btn">Sign In</button>
-      <button id="logout-btn" class="nav-btn" style="display:none;">Sign Out</button>
+      <button id="login-btn" class="nav-btn nav-auth-btn">Sign In</button>
+      <button id="logout-btn" class="nav-btn nav-auth-btn" style="display:none;">Sign Out</button>
 
       <a href="/demo" class="nav-link nav-cta">Get a Demo</a>
-      
-    </nav>
+    </div>
+
   </div>
 </header>
