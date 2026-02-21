@@ -140,12 +140,12 @@ btnPrev.style.visibility = (idx === 0) ? "hidden" : "visible";
 // Next button + secondary button logic
 if (idx === 0) {
   btnNext.textContent = "Take the Tour";
-  btnNext.classList.add("cs-btn cs-btn-primary cs-btn-tour-hero");
+  btnNext.classList.add("cs-btn-tour-hero");
 
   if (btnGo) btnGo.style.display = "";
   if (skipLink) skipLink.style.display = "none";
 } else {
-  btnNext.classList.remove("cs-btn-hero");
+  btnNext.classList.remove("cs-btn-tour-hero");
 
   // ✅ reset the label properly for tour slides
   btnNext.textContent = (idx === slides.length - 1) ? "Done" : "Next";
