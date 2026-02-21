@@ -260,3 +260,36 @@ html, body { margin: 0; padding: 0; }
   top:-1px;
   opacity:.6;
 }
+
+/* Normalize ALL top-nav links so nothing renders "different" */
+.nav-link{
+  display:inline-flex;
+  align-items:center;
+  line-height:1;
+}
+
+/* Kill any subtle visited/focus differences */
+.nav-link:visited{
+  color:rgba(226,232,240,0.9);
+}
+.nav-link:focus{
+  outline:none;
+}
+.nav-link:focus-visible{
+  outline:2px solid rgba(56,189,248,0.35);
+  outline-offset:2px;
+}
+
+/* Make the dropdown wrapper behave exactly like a normal link slot */
+.nav-dropdown{
+  display:flex;          /* instead of inline-flex */
+  align-items:center;
+}
+
+/* Keep the caret from changing baseline/weight perception */
+.nav-caret{
+  margin-left:4px;
+  line-height:1;
+  transform:translateY(-1px);
+  opacity:.6;
+}
