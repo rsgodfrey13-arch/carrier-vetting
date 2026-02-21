@@ -1,0 +1,51 @@
+.cs-modal-overlay{
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.55);
+  display: none;
+  align-items: center; justify-content: center;
+  z-index: 9999;
+}
+.cs-modal-overlay.is-open{ display:flex; }
+.cs-modal{
+  width: min(980px, calc(100vw - 28px));
+  border-radius: 18px;
+  background: rgba(10,18,32,.92);
+  border: 1px solid rgba(148,163,184,.18);
+  box-shadow: 0 30px 120px rgba(0,0,0,.55);
+  position: relative;
+}
+.cs-modal-x{
+  position:absolute; top: 14px; right: 14px;
+  background: transparent; border: 0; color: #cbd5e1;
+  font-size: 18px; cursor:pointer;
+}
+
+.cs-tour{ display:grid; grid-template-columns: 1.2fr 1fr; gap: 0; }
+.cs-tour-media{ padding: 18px; }
+.cs-tour-media img{
+  width:100%; height: 420px; object-fit: cover;
+  border-radius: 14px;
+  border: 1px solid rgba(148,163,184,.14);
+  background: rgba(2,6,23,.35);
+}
+.cs-tour-content{ padding: 22px 22px 18px; }
+.cs-tour-kicker{ font-size:.72rem; letter-spacing:.18em; opacity:.8; }
+.cs-tour-title{ margin: 10px 0 10px; font-size: 1.5rem; }
+.cs-tour-body p{ margin: 0 0 12px; opacity:.9; line-height:1.45; }
+.cs-tour-footer{ display:flex; align-items:center; justify-content:space-between; gap: 14px; margin-top: 14px; }
+.cs-tour-dots{ display:flex; gap: 8px; }
+.cs-dot{
+  width: 9px; height: 9px; border-radius: 999px;
+  border: 1px solid rgba(148,163,184,.28);
+  background: transparent; cursor:pointer;
+}
+.cs-dot.is-active{ background: rgba(56,189,248,.9); border-color: rgba(56,189,248,.9); }
+
+.cs-tour-dontshow{ display:flex; gap: 10px; align-items:center; margin-top: 10px; opacity:.9; }
+.cs-tour-link{ display:inline-block; margin-top: 10px; opacity:.75; }
+html.cs-modal-open{ overflow:hidden; }
+
+@media (max-width: 860px){
+  .cs-tour{ grid-template-columns: 1fr; }
+  .cs-tour-media img{ height: 260px; }
+}
