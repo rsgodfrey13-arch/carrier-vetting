@@ -108,3 +108,5 @@
     /* small “definition table” style using your existing table system */
     .defs table{ table-layout:auto; }
     .defs td{ white-space:normal; }
+html, body{ margin:0; }
+body.auth-page{ padding:0; margin:0; }
