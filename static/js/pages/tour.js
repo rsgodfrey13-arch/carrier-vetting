@@ -86,7 +86,9 @@
   }
 
   function render() {
-    const s = slides[idx];
+    const modal = overlay.querySelector(".cs-modal");
+    modal.classList.toggle("cs-tour-intro", idx === 0);
+    
     overlay.querySelector(".cs-modal")?.classList.toggle("cs-tour-intro", idx === 0);
     titleEl.textContent = s.title;
     bodyEl.innerHTML = "";
