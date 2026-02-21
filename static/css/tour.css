@@ -149,3 +149,9 @@ html.cs-modal-open{ overflow:hidden; }
 .cs-modal.cs-tour-intro .cs-tour-dots {
   display: none;
 }
+
+.cs-tour-actions{
+  display:flex;
+  gap: 10px;
+  align-items:center;
+}
