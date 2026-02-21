@@ -153,12 +153,6 @@ a,
 
 html, body { margin: 0; padding: 0; }
 
-/* --- Dropdown container --- */
-.nav-dropdown{
-  position:relative;
-  display:inline-flex;
-  align-items:center;
-}
 
 /* Make the dropdown button look like your nav links */
 .nav-dropbtn{
@@ -282,8 +276,8 @@ html, body { margin: 0; padding: 0; }
 
 /* Make the dropdown wrapper behave exactly like a normal link slot */
 .nav-dropdown{
-  display:flex;          /* instead of inline-flex */
-  align-items:center;
+  display:inline-block;
+  position:relative;
 }
 
 /* Keep the caret from changing baseline/weight perception */
