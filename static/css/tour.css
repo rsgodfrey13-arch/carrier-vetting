@@ -255,3 +255,9 @@ html.cs-modal-open{ overflow:hidden; }
 .cs-modal.cs-tour-intro .cs-tour-actions{
   gap: 16px;
 }
+
+.cs-btn-secondary-muted{
+  font-size:13.5px;
+  padding:10px 16px;
+  opacity:.85;
+}
