@@ -41,8 +41,8 @@ function publicRoutes() {
   router.use(dpaRoutes);
   
   // Add New Ones Here
-  const faqRoutes = require("./faq.routes");
-  const helpRoutes = require("./help.routes");
+  router.use(faqRoutes);
+  router.use(helpRoutes);
   
   router.use(activateRoutes);
   router.use(billingRoutes);
