@@ -140,7 +140,7 @@ btnPrev.style.visibility = (idx === 0) ? "hidden" : "visible";
 // Next button + secondary button logic
 if (idx === 0) {
   btnNext.textContent = "Take the Tour";
-  btnNext.classList.add("cs-btn-hero");
+  btnNext.classList.add("cs-btn cs-btn-primary cs-btn-tour-hero");
 
   if (btnGo) btnGo.style.display = "";
   if (skipLink) skipLink.style.display = "none";
