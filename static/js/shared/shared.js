@@ -115,44 +115,37 @@ async function initAccountLink() {
   }
 }
 
+async function loadFooter() {
+  const container = document.getElementById("site-footer");
+  if (!container) return;
 
-// Run both on page load
-document.addEventListener("DOMContentLoaded", () => {
+  try {
+    const res = await fetch("/partials/footer.html", { cache: "no-store" });
+    if (!res.ok) throw new Error("Failed to load footer.html");
+
+    container.innerHTML = await res.text();
+
+    // Auto year (safe to run after injection)
+    const y = new Date().getFullYear();
+    const yearEl = document.getElementById("footer-year");
+    if (yearEl) yearEl.textContent = y;
+
+  } catch (err) {
+    console.error("Footer load failed:", err);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
   trackHomepageView();
 
   const headerEl = document.getElementById("site-header");
   const mode = headerEl ? headerEl.getAttribute("data-header") : null;
 
   if (mode === "slim") {
-    loadHeaderSlim();
+    await loadHeaderSlim();
   } else {
-    loadHeader();
-  }
-});
-
-document.addEventListener("DOMContentLoaded", async () => {
-
-  async function inject(id, path) {
-    const el = document.getElementById(id);
-    if (!el) return;
-
-    try {
-      const res = await fetch(path);
-      const html = await res.text();
-      el.innerHTML = html;
-    } catch (err) {
-      console.error("Include failed:", path, err);
-    }
+    await loadHeader();
   }
 
-  // Header (existing)
-  await inject("header-slot", "/partials/header.html");
-
-  // Footer (new)
-  await inject("footer-slot", "/partials/footer.html");
-
-  // Auto year
-  const y = new Date().getFullYear();
-  const yearEl = document.getElementById("footer-year");
-  if (yearEl) yearEl.textContent = y;
+  await loadFooter();
 });
