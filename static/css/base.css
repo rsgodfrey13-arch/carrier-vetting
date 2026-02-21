@@ -418,8 +418,12 @@ border: 1px solid rgba(147, 197, 253, .45);
 
 .nav-links .nav-link{
   font-size: .85rem;
+  font-weight: 600;          /* normalize everything */
+  letter-spacing: .08em;     /* slightly reduce tracking */
 }
 
 .nav-center .nav-link{
   font-size: .85rem;
+  font-weight: 600;          /* normalize everything */
+  letter-spacing: .08em;     /* slightly reduce tracking */
 }
