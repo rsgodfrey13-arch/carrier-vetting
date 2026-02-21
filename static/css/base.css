@@ -287,3 +287,61 @@ html, body { margin: 0; padding: 0; }
   transform:translateY(-1px);
   opacity:.6;
 }
+
+
+/* ===== Top-nav CTA ===== */
+.nav-cta{
+  padding: 7px 14px;               /* slightly more than nav-link */
+  border-radius: 999px;
+  font-weight: 700;
+  letter-spacing: .03em;
+
+  color: #062238;                  /* deep ink */
+  background: linear-gradient(
+    180deg,
+    rgba(125,211,252,.96),
+    rgba(56,189,248,.92)
+  );
+  border: 1px solid rgba(125,211,252,.55);
+
+  box-shadow:
+    0 10px 26px rgba(56,189,248,.16),
+    inset 0 1px 0 rgba(255,255,255,.28);
+
+  transition:
+    transform .12s ease,
+    box-shadow .12s ease,
+    filter .12s ease,
+    background .12s ease;
+}
+
+.nav-cta:hover{
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+  background: linear-gradient(
+    180deg,
+    rgba(125,211,252,.98),
+    rgba(56,189,248,.95)
+  );
+  box-shadow:
+    0 14px 34px rgba(56,189,248,.22),
+    inset 0 1px 0 rgba(255,255,255,.34);
+}
+
+.nav-cta:active{
+  transform: translateY(0px);
+}
+
+/* CTA should NOT inherit the nav-link hover glow */
+.nav-link.nav-cta:hover{
+  background: linear-gradient(
+    180deg,
+    rgba(125,211,252,.98),
+    rgba(56,189,248,.95)
+  );
+  box-shadow:
+    0 14px 34px rgba(56,189,248,.22),
+    inset 0 1px 0 rgba(255,255,255,.34);
+}
+
+.nav-links{ gap:20px; }
