@@ -79,15 +79,22 @@ const btnGo = document.getElementById("tourGo");
     document.documentElement.classList.remove("cs-modal-open");
   }
 
-  function renderDots() {
-    dotsEl.innerHTML = slides.map((_, i) =>
-      `<button type="button" class="cs-dot ${i === idx ? "is-active" : ""}" aria-label="Slide ${i+1}"></button>`
-    ).join("");
+function renderDots() {
+  const stepCount = slides.length - 1;           // exclude slide 0
+  const stepIndex = Math.max(0, idx - 1);        // slide 1 => 0
 
-    [...dotsEl.querySelectorAll(".cs-dot")].forEach((b, i) => {
-      b.addEventListener("click", () => { idx = i; render(); });
+  dotsEl.innerHTML = Array.from({ length: stepCount }, (_, i) =>
+    `<button type="button" class="cs-dot ${i === stepIndex ? "is-active" : ""}"
+      aria-label="Step ${i + 1}"></button>`
+  ).join("");
+
+  [...dotsEl.querySelectorAll(".cs-dot")].forEach((b, i) => {
+    b.addEventListener("click", () => {
+      idx = i + 1;   // jump to real slide (offset by 1)
+      render();
     });
-  }
+  });
+}
 
 function render() {
   const s = slides[idx];
@@ -125,10 +132,12 @@ function render() {
     imgEl.style.display = "none";
   }
 
-  // Back button
-  btnPrev.disabled = idx === 0;
-  btnPrev.style.visibility = (idx === 0) ? "hidden" : "visible";
 
+// Back button
+btnPrev.disabled = idx === 0;
+btnPrev.style.visibility = (idx === 0) ? "hidden" : "visible";
+
+// Next button + secondary button logic
 if (idx === 0) {
   btnNext.textContent = "Take the Tour";
   btnNext.classList.add("cs-btn-hero");
@@ -137,9 +146,14 @@ if (idx === 0) {
   if (skipLink) skipLink.style.display = "none";
 } else {
   btnNext.classList.remove("cs-btn-hero");
+
+  // ✅ reset the label properly for tour slides
+  btnNext.textContent = (idx === slides.length - 1) ? "Done" : "Next";
+
   if (btnGo) btnGo.style.display = "none";
   if (skipLink) skipLink.style.display = "";
 }
+  
   renderDots();
 }
 
