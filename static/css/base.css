@@ -170,11 +170,6 @@ html, body { margin: 0; padding: 0; }
   padding:0;
 }
 
-/* If your .nav-link adds padding/hover, keep using it on buttons too */
-.nav-link.nav-dropbtn{
-  padding:10px 12px; /* adjust to match your existing nav-link padding */
-  border-radius:10px;
-}
 
 /* --- Dropdown menu --- */
 .nav-dropdown-menu{
@@ -256,4 +251,12 @@ html, body { margin: 0; padding: 0; }
   width: 200px;   /* try 160–220px */
   height: auto;
   display: block;
+}
+
+.nav-caret{
+  margin-left:4px;
+  font-size:.75em;
+  position:relative;
+  top:-1px;
+  opacity:.6;
 }
