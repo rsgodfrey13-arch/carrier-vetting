@@ -2,7 +2,9 @@
   const STORAGE_KEY = "cs_tour_seen_v1";
 
   const kickerEl = document.querySelector(".cs-tour-kicker");
+const btnGo = document.getElementById("tourGo");
 
+  
   const slides = [
     {
       title: "One place to verify, document, and monitor carriers.",
@@ -94,6 +96,8 @@ function render() {
   kickerEl.textContent = (idx === 0) ? "CARRIER SHARK" : "QUICK TOUR";
 }
 
+  
+
   const modal = overlay.querySelector(".cs-modal");
   modal.classList.toggle("cs-tour-intro", idx === 0);
 
@@ -125,18 +129,17 @@ function render() {
   btnPrev.disabled = idx === 0;
   btnPrev.style.visibility = (idx === 0) ? "hidden" : "visible";
 
-  // Next button
-  if (idx === 0) {
-    btnNext.textContent = "Take the Tour";
-    btnNext.classList.add("cs-btn-hero");
-  } else if (idx === slides.length - 1) {
-    btnNext.textContent = "Done";
-    btnNext.classList.remove("cs-btn-hero");
-  } else {
-    btnNext.textContent = "Next";
-    btnNext.classList.remove("cs-btn-hero");
-  }
+if (idx === 0) {
+  btnNext.textContent = "Take the Tour";
+  btnNext.classList.add("cs-btn-hero");
 
+  if (btnGo) btnGo.style.display = "";
+  if (skipLink) skipLink.style.display = "none";
+} else {
+  btnNext.classList.remove("cs-btn-hero");
+  if (btnGo) btnGo.style.display = "none";
+  if (skipLink) skipLink.style.display = "";
+}
   renderDots();
 }
 
@@ -152,7 +155,9 @@ function render() {
   btnNext?.addEventListener("click", next);
   btnPrev?.addEventListener("click", prev);
   btnClose?.addEventListener("click", closeTour);
+  btnGo?.addEventListener("click", closeTour);
 
+  
   // Click outside modal closes
   overlay?.addEventListener("click", (e) => {
     if (e.target === overlay) closeTour();
