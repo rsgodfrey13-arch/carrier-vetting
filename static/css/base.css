@@ -494,7 +494,7 @@ border: 1px solid rgba(147, 197, 253, .45);
 .footer-cols{
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 18px;
+  gap: 14px;
 }
 
 .footer-col{
