@@ -129,3 +129,30 @@ document.addEventListener("DOMContentLoaded", () => {
     loadHeader();
   }
 });
+
+document.addEventListener("DOMContentLoaded", async () => {
+
+  async function inject(id, path) {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    try {
+      const res = await fetch(path);
+      const html = await res.text();
+      el.innerHTML = html;
+    } catch (err) {
+      console.error("Include failed:", path, err);
+    }
+  }
+
+  // Header (existing)
+  await inject("header-slot", "/partials/header.html");
+
+  // Footer (new)
+  await inject("footer-slot", "/partials/footer.html");
+
+  // Auto year
+  const y = new Date().getFullYear();
+  const yearEl = document.getElementById("footer-year");
+  if (yearEl) yearEl.textContent = y;
+});
