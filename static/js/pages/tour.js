@@ -1,6 +1,8 @@
 (() => {
   const STORAGE_KEY = "cs_tour_seen_v1";
 
+  const kickerEl = document.querySelector(".cs-tour-kicker");
+
   const slides = [
     {
       title: "One place to verify, document, and monitor carriers.",
