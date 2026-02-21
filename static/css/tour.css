@@ -171,3 +171,23 @@ html.cs-modal-open{ overflow:hidden; }
   width: auto;
   opacity: .95;
 }
+
+.cs-tour-intro-badge{
+  display:none;
+  position:absolute;
+  top: 22px;
+  left: 24px;
+  z-index: 2;
+  opacity: .95;
+}
+
+.cs-tour-logo{
+  height: 30px; /* tune 26–34 */
+  width:auto;
+}
+
+.cs-modal.cs-tour-intro .cs-tour-intro-badge{
+  display:block;
+}
+
+.cs-tour-brand{ display:none !important; }
