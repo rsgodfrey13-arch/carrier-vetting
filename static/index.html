@@ -508,7 +508,43 @@
 </div>
 
   
+<!-- TOUR MODAL (put near end of body) -->
+<div class="cs-modal-overlay" id="tourOverlay" aria-hidden="true">
+  <div class="cs-modal" role="dialog" aria-modal="true" aria-labelledby="tourTitle">
+    <button class="cs-modal-x" id="tourClose" aria-label="Close">✕</button>
 
+    <div class="cs-tour">
+      <div class="cs-tour-media">
+        <img id="tourImg" src="/static/help-art/image.png" alt="" />
+      </div>
+
+      <div class="cs-tour-content">
+        <div class="cs-tour-kicker">QUICK TOUR</div>
+        <h2 class="cs-tour-title" id="tourTitle"></h2>
+        <div class="cs-tour-body" id="tourBody"></div>
+
+        <label class="cs-tour-dontshow">
+          <input type="checkbox" id="tourDontShow" />
+          Don’t show again
+        </label>
+
+        <div class="cs-tour-footer">
+          <div class="cs-tour-dots" id="tourDots"></div>
+
+          <div class="cs-tour-actions">
+            <button class="cs-btn cs-btn-ghost" id="tourPrev" type="button">Back</button>
+            <button class="cs-btn cs-btn-primary" id="tourNext" type="button">Next</button>
+          </div>
+        </div>
+
+        <a href="#" class="cs-tour-link" id="tourSkip">Skip</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Header link (non-logged-in or always) -->
+<a href="#" id="openTourLink" class="cs-nav-link">▶ 1-minute tour</a>
 
 
   <!-- 1. Load Sentry library -->
@@ -522,6 +558,7 @@
   
   <!-- 3. Your existing shared code -->
   <script src="/js/shared/shared.js"></script>
+    <script src="/js/pages/tour.js"></script>
 
   
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
