@@ -195,9 +195,18 @@ html.cs-modal-open{ overflow:hidden; }
 
 /* Make the right panel behave like a column layout */
 .cs-tour-content{
-  display: flex;
-  flex-direction: column;
-  min-height: 460px; /* adjust to match your image height */
+  display:flex;
+  flex-direction:column;
+}
+
+/* Only enforce tall layout on real tour slides */
+.cs-modal:not(.cs-tour-intro) .cs-tour-content{
+  min-height:460px; /* adjust to image height */
+}
+
+/* Let Slide 0 collapse naturally */
+.cs-modal.cs-tour-intro .cs-tour-content{
+  min-height:auto;
 }
 
 /* Let the copy area take up open space */
@@ -208,4 +217,12 @@ html.cs-modal-open{ overflow:hidden; }
 /* Push controls to the bottom */
 .cs-tour-controls{
   margin-top: auto;
+}
+
+.cs-modal.cs-tour-intro .cs-tour-body{
+  margin-top:12px;
+}
+
+.cs-modal.cs-tour-intro .cs-tour-controls{
+  margin-top:20px;
 }
