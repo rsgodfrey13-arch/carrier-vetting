@@ -85,53 +85,54 @@
     });
   }
 
-  function render() {
-    const modal = overlay.querySelector(".cs-modal");
-    modal.classList.toggle("cs-tour-intro", idx === 0);
-    
-    overlay.querySelector(".cs-modal")?.classList.toggle("cs-tour-intro", idx === 0);
-    titleEl.textContent = s.title;
-    bodyEl.innerHTML = "";
+function render() {
+  const s = slides[idx];
 
-    const p = document.createElement("p");
-    p.textContent = s.body;
-    bodyEl.appendChild(p);
+  const modal = overlay.querySelector(".cs-modal");
+  modal.classList.toggle("cs-tour-intro", idx === 0);
 
-    if (s.cta) {
-      const a = document.createElement("a");
-      a.className = "cs-btn cs-btn-primary cs-tour-cta";
-      a.href = s.cta.href;
-      a.textContent = s.cta.text;
-      bodyEl.appendChild(a);
-    }
+  titleEl.textContent = s.title;
+  bodyEl.innerHTML = "";
 
-// Image handling (prevents broken icon on Slide 0)
-if (s.img) {
-  imgEl.style.display = "";
-  imgEl.src = s.img;
-} else {
-  imgEl.removeAttribute("src");
-  imgEl.style.display = "none";
-}
+  const p = document.createElement("p");
+  p.textContent = s.body;
+  bodyEl.appendChild(p);
 
-// Back button logic
-btnPrev.disabled = idx === 0;
-btnPrev.style.visibility = (idx === 0) ? "hidden" : "visible";
-
-// Next button logic
-if (idx === 0) {
-  btnNext.textContent = "Take the Tour";
-  btnNext.classList.add("cs-btn-hero");
-} else if (idx === slides.length - 1) {
-  btnNext.textContent = "Done";
-  btnNext.classList.remove("cs-btn-hero");
-} else {
-  btnNext.textContent = "Next";
-  btnNext.classList.remove("cs-btn-hero");
-}
-
-renderDots();
+  if (s.cta) {
+    const a = document.createElement("a");
+    a.className = "cs-btn cs-btn-primary cs-tour-cta";
+    a.href = s.cta.href;
+    a.textContent = s.cta.text;
+    bodyEl.appendChild(a);
   }
+
+  // Image handling
+  if (s.img) {
+    imgEl.style.display = "";
+    imgEl.src = s.img;
+  } else {
+    imgEl.removeAttribute("src");
+    imgEl.style.display = "none";
+  }
+
+  // Back button
+  btnPrev.disabled = idx === 0;
+  btnPrev.style.visibility = (idx === 0) ? "hidden" : "visible";
+
+  // Next button
+  if (idx === 0) {
+    btnNext.textContent = "Take the Tour";
+    btnNext.classList.add("cs-btn-hero");
+  } else if (idx === slides.length - 1) {
+    btnNext.textContent = "Done";
+    btnNext.classList.remove("cs-btn-hero");
+  } else {
+    btnNext.textContent = "Next";
+    btnNext.classList.remove("cs-btn-hero");
+  }
+
+  renderDots();
+}
 
   function next() {
     if (idx < slides.length - 1) { idx++; render(); }
