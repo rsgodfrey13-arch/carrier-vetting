@@ -3,6 +3,10 @@
 
   const slides = [
     {
+      title: "One place to verify, document, and monitor carriers.",
+      body: "Structured for onboarding, agreements, insurance, and change alerts."
+    },
+    {
       title: "Search any DOT, MC, or carrier name.",
       body: "Instant authority + safety signals. No digging.",
       img: "/static/help-art/image.png"
