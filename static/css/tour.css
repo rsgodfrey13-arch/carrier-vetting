@@ -191,3 +191,21 @@ html.cs-modal-open{ overflow:hidden; }
 }
 
 .cs-tour-brand{ display:none !important; }
+
+
+/* Make the right panel behave like a column layout */
+.cs-tour-content{
+  display: flex;
+  flex-direction: column;
+  min-height: 460px; /* adjust to match your image height */
+}
+
+/* Let the copy area take up open space */
+.cs-tour-body{
+  flex: 1;
+}
+
+/* Push controls to the bottom */
+.cs-tour-controls{
+  margin-top: auto;
+}
