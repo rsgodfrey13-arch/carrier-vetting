@@ -399,3 +399,19 @@ border: 1px solid rgba(147, 197, 253, .45);
   justify-content: flex-end;
 }
 
+/* Make dropdown triggers feel same size as other links */
+.nav-link.nav-dropbtn{
+  padding-left: 10px;          /* slightly tighter */
+  padding-right: 10px;
+  letter-spacing: .08em;       /* a hair less than nav-link */
+  font-weight: 600;            /* slightly lighter */
+}
+
+/* Caret should be subtle and not add “big” feeling */
+.nav-caret{
+  display: inline-block;
+  margin-left: 6px;
+  font-size: .75em;            /* smaller arrow */
+  opacity: .75;
+  transform: translateY(-1px); /* optical alignment */
+}
