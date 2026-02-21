@@ -90,6 +90,10 @@
 function render() {
   const s = slides[idx];
 
+  if (kickerEl) {
+  kickerEl.textContent = (idx === 0) ? "CARRIER SHARK" : "QUICK TOUR";
+}
+
   const modal = overlay.querySelector(".cs-modal");
   modal.classList.toggle("cs-tour-intro", idx === 0);
 
