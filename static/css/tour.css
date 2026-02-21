@@ -108,3 +108,44 @@ html.cs-modal-open{ overflow:hidden; }
   letter-spacing: .18em;
   opacity: .85;
 }
+
+
+/* ================================
+   Slide 0 Full-Width Intro Mode
+================================ */
+
+.cs-modal.cs-tour-intro {
+  width: min(1100px, calc(100vw - 40px));
+}
+
+.cs-modal.cs-tour-intro .cs-tour {
+  grid-template-columns: 1fr;   /* kill 2-column layout */
+}
+
+.cs-modal.cs-tour-intro .cs-tour-media {
+  display: none; /* remove left panel entirely */
+}
+
+.cs-modal.cs-tour-intro .cs-tour-content {
+  padding: 60px 80px;
+}
+
+.cs-modal.cs-tour-intro .cs-tour-title {
+  font-size: 2.4rem;
+  line-height: 1.1;
+  max-width: 900px;
+}
+
+.cs-modal.cs-tour-intro .cs-tour-body {
+  max-width: 700px;
+  margin-top: 18px;
+}
+
+.cs-modal.cs-tour-intro .cs-tour-footer {
+  justify-content: flex-start;
+  margin-top: 28px;
+}
+
+.cs-modal.cs-tour-intro .cs-tour-dots {
+  display: none;
+}
