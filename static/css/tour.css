@@ -226,3 +226,32 @@ html.cs-modal-open{ overflow:hidden; }
 .cs-modal.cs-tour-intro .cs-tour-controls{
   margin-top:20px;
 }
+
+/* Primary hero button (Slide 0) */
+.cs-btn-tour-hero{
+  padding: 14px 22px;
+  font-size: 15px;
+  border-radius: 14px;
+  min-width: 190px;
+  box-shadow: 0 6px 24px rgba(56,189,248,.15);
+}
+
+/* Subtle grey secondary */
+.cs-btn-secondary-muted{
+  padding: 11px 18px;
+  font-size: 14px;
+  border-radius: 12px;
+  background: rgba(148,163,184,.12);
+  border: 1px solid rgba(148,163,184,.25);
+  color: #cbd5e1;
+  transition: all .15s ease;
+}
+
+.cs-btn-secondary-muted:hover{
+  background: rgba(148,163,184,.18);
+  border-color: rgba(148,163,184,.35);
+}
+
+.cs-modal.cs-tour-intro .cs-tour-actions{
+  gap: 16px;
+}
