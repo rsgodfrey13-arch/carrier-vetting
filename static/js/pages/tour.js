@@ -103,28 +103,32 @@
       bodyEl.appendChild(a);
     }
 
-    if (s.img) {
-      imgEl.style.display = "";
-      imgEl.src = s.img;
-    } else {
-      // Slide 0: no screenshot
-      imgEl.removeAttribute("src");
-      imgEl.style.display = "none";
-    }
+// Image handling (prevents broken icon on Slide 0)
+if (s.img) {
+  imgEl.style.display = "";
+  imgEl.src = s.img;
+} else {
+  imgEl.removeAttribute("src");
+  imgEl.style.display = "none";
+}
 
-    btnPrev.disabled = idx === 0;
-    if (idx === 0) {
-      btnNext.textContent = "Take the Tour";
-      btnNext.classList.add("cs-btn-hero");
-    } else if (idx === slides.length - 1) {
-      btnNext.textContent = "Done";
-      btnNext.classList.remove("cs-btn-hero");
-    } else {
-      btnNext.textContent = "Next";
-      btnNext.classList.remove("cs-btn-hero");
-    }
+// Back button logic
+btnPrev.disabled = idx === 0;
+btnPrev.style.visibility = (idx === 0) ? "hidden" : "visible";
 
-    renderDots();
+// Next button logic
+if (idx === 0) {
+  btnNext.textContent = "Take the Tour";
+  btnNext.classList.add("cs-btn-hero");
+} else if (idx === slides.length - 1) {
+  btnNext.textContent = "Done";
+  btnNext.classList.remove("cs-btn-hero");
+} else {
+  btnNext.textContent = "Next";
+  btnNext.classList.remove("cs-btn-hero");
+}
+
+renderDots();
   }
 
   function next() {
