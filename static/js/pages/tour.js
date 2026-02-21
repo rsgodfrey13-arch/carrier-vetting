@@ -93,7 +93,7 @@ function render() {
   const s = slides[idx];
 
   if (kickerEl) {
-  kickerEl.textContent = (idx === 0) ? "CARRIER SHARK" : "QUICK TOUR";
+  kickerEl.textContent = (idx === 0) ? "" : "QUICK TOUR";
 }
 
   
