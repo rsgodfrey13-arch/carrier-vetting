@@ -204,6 +204,28 @@ html, body { margin: 0; padding: 0; }
   margin-top: 12px;
 }
 
+.login-meta {
+  margin-top: 14px;
+  font-size: 0.9rem;
+  color: #94a3b8; /* muted slate */
+  text-align: center;
+}
 
+.login-meta .create-link {
+  margin-left: 6px;
+  color: #38bdf8; /* your Carrier Shark blue */
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.login-meta .create-link:hover {
+  text-decoration: underline;
+}
+.login-sub {
+  margin-top: -8px;
+  margin-bottom: 18px;
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
 html, body{ margin:0; }
 body.auth-page{ padding:0; margin:0; }
