@@ -119,59 +119,27 @@ async function initAuthUI() {
   try {
     const res = await fetch("/api/me", { cache: "no-store" });
     const data = await res.json();
+if (data.user) {
+  // Logged in
+  loginBtn.style.display = "none";
+  logoutBtn.style.display = "inline-block";
 
-    if (data.user) {
-      // =============================
-      // LOGGED IN STATE
-      // =============================
+  logoutBtn.onclick = async () => {
+    await fetch("/api/logout", { method: "POST" });
+    window.location.href = "/";
+  };
 
-      loginBtn.style.display = "none";
-      logoutBtn.style.display = "inline-block";
+  setHelpMenu(true);  // <-- ONLY call this
+} else {
+  // Not logged in
+  loginBtn.style.display = "inline-block";
+  logoutBtn.style.display = "none";
 
-      logoutBtn.onclick = async () => {
-        await fetch("/api/logout", { method: "POST" });
-        window.location.href = "/";
-      };
-      // Set Help Menu True
-      setHelpMenu(true);
-      
-      // Hide marketing CTA
-      if (demoLink) demoLink.style.display = "none";
+  setHelpMenu(false); // <-- ONLY call this
+}
 
-      // Rename Help → Support
-      if (helpLabel) {
-        helpLabel.innerHTML = `Support <span class="nav-caret">▾</span>`;
-        helpLabel.setAttribute("href", "/account#help");
-      }
-
-    } else {
-      // =============================
-      // NOT LOGGED IN
-      // =============================
-
-      // Set Help Menu False
-      setHelpMenu(false);
-
-      loginBtn.style.display = "inline-block";
-      logoutBtn.style.display = "none";
-
-      if (demoLink) demoLink.style.display = "inline-flex";
-
-      if (helpLabel) {
-        helpLabel.innerHTML = `Help <span class="nav-caret">▾</span>`;
-        helpLabel.setAttribute("href", "/help");
-      }
-    }
   } catch (err) {
-    console.error("auth ui error", err);
-
-    loginBtn.style.display = "inline-block";
-    logoutBtn.style.display = "none";
-
-    // Set Help Menu False
-    setHelpMenu(false);
-
-    if (demoLink) demoLink.style.display = "inline-flex";
+setHelpMenu(false);
   }
 }
 
