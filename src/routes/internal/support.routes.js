@@ -108,5 +108,49 @@ router.post("/support/tickets", async (req, res) => {
   }
 });
 
+// POST public contact (no auth required)
+router.post("/public/contact", async (req, res) => {
+  try {
+    const name = String(req.body?.name || "").trim();
+    const email = String(req.body?.email || "").trim();
+    const company = String(req.body?.company || "").trim();
+    const topic = String(req.body?.topic || "").trim();
+    const subject = String(req.body?.subject || "").trim();
+    const message = String(req.body?.message || "").trim();
+    const phone = String(req.body?.phone || "").trim();
+
+    // basic validation (keep it similar vibe to account)
+    if (!email || !email.includes("@") || email.length < 6) {
+      return res.status(400).json({ error: "Valid email required." });
+    }
+    if (!subject || subject.length < 3) {
+      return res.status(400).json({ error: "Subject is required." });
+    }
+    if (!message || message.length < 10) {
+      return res.status(400).json({ error: "Message is too short." });
+    }
+
+    const { sendPublicContactEmail } = require("../../clients/mailgun"); // same pattern as tickets :contentReference[oaicite:5]{index=5}
+
+    const refId = genPublicId();
+
+    await sendPublicContactEmail({
+      to: process.env.SUPPORT_INBOX,
+      refId,
+      name,
+      email,
+      company: company || null,
+      topic: topic || null,
+      subject,
+      message,
+      phone: phone || null
+    });
+
+    return res.json({ ok: true, ref_id: refId });
+  } catch (e) {
+    console.error("POST /public/contact error:", e);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
 
 module.exports = router;
