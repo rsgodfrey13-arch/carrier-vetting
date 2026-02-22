@@ -131,6 +131,23 @@ async function initAuthUI() {
       }
 
       setHelpMenu(true);
+
+const tourLink = document.getElementById("tour-link");
+if (tourLink) {
+  tourLink.onclick = (e) => {
+    e.preventDefault();
+
+    // Force show tour even if "Don't show again" was checked
+    localStorage.removeItem("hideTour");
+
+    // Call your existing function that opens the modal
+    if (typeof window.openTour === "function") {
+      window.openTour();
+    }
+  };
+}
+
+      
     } else {
       // LOGGED OUT
       if (loginBtn) loginBtn.style.display = "inline-block";
