@@ -7,6 +7,36 @@ const mg = mailgun.client({
   key: process.env.MAILGUN_API_KEY
 });
 
+async function sendPublicContactEmail({ to, name, email, company, topic, subject, message }) {
+  const domain = process.env.MAILGUN_DOMAIN;
+
+  const prefix = "Carrier Shark Contact";
+  const topicTag = topic ? ` — ${topic}` : "";
+  const companyTag = company ? ` (${company})` : "";
+
+  return mg.messages.create(domain, {
+    from: process.env.MAILGUN_FROM,
+    to,
+    subject: `${prefix}${topicTag}: ${subject}`,
+
+    text: [
+      `Source: Public Contact Page (/contact)`,
+      ``,
+      `Name: ${name || "—"}`,
+      `Email: ${email || "—"}`,
+      company ? `Company: ${company}` : null,
+      topic ? `Topic: ${topic}` : null,
+      ``,
+      `Subject: ${subject || "—"}`,
+      ``,
+      `Message:`,
+      message || "",
+      ``,
+      `— Carrier Shark`,
+    ].filter(Boolean).join("\n"),
+  });
+}
+
 async function sendContractEmail({
   to,
   broker_name,
@@ -158,6 +188,7 @@ module.exports = {
   sendContractOtpEmail,
   sendPasswordResetEmail,
   sendVerificationEmail,
-  sendSupportTicketEmail
+  sendSupportTicketEmail,
+  sendPublicContactEmail
 };
 
