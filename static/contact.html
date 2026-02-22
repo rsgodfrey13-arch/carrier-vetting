@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Carrier Shark — Contact</title>
+
+  <!-- Your existing styles -->
+  <link rel="stylesheet" href="/static/css/style1.css" />
+  <link rel="stylesheet" href="/static/css/base.css" />
+
+  <!-- Page-specific add-on -->
+  <link rel="stylesheet" href="/static/css/contact.css" />
+</head>
+
+<body class="carrier-list app-page">
+  <!-- Header partial (whatever you already use) -->
+  <div id="site-header"></div>
+
+  <main class="page contact-page">
+    <header class="contact-hero">
+      <div class="contact-hero-left">
+        <h1 class="contact-title">Contact</h1>
+        <p class="contact-subtitle">
+          Sales questions, partnerships, or general support — send a note and we’ll get back to you.
+        </p>
+      </div>
+
+      <div class="contact-hero-right">
+        <a class="nav-link nav-cta contact-cta" href="/demo.html">Get a Demo</a>
+      </div>
+    </header>
+
+    <section class="contact-shell glass-card">
+      <div class="contact-grid">
+        <!-- LEFT: Form -->
+        <div class="contact-card">
+          <div class="contact-card-head">
+            <div>
+              <div class="contact-kicker">Message</div>
+              <div class="contact-headline">Send us a note</div>
+              <div class="contact-micro">We typically reply within 1 business day.</div>
+            </div>
+          </div>
+
+          <form id="contact-form" class="contact-form" method="post" action="/api/public/contact">
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label" for="name">Full name</label>
+                <input class="field-input" id="name" name="name" autocomplete="name" placeholder="Your name" required />
+              </div>
+              <div class="field">
+                <label class="field-label" for="email">Work email</label>
+                <input class="field-input" id="email" name="email" type="email" autocomplete="email" placeholder="you@company.com" required />
+              </div>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label" for="company">Company</label>
+                <input class="field-input" id="company" name="company" autocomplete="organization" placeholder="Company name" />
+              </div>
+              <div class="field">
+                <label class="field-label" for="topic">Topic</label>
+                <select class="field-input field-select" id="topic" name="topic">
+                  <option value="sales">Sales / Pricing</option>
+                  <option value="product">Product question</option>
+                  <option value="partnership">Partnership</option>
+                  <option value="support">General support</option>
+                  <option value="security">Security / Compliance</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Phone: present but optional + easy to hide -->
+            <div class="field phone-field hidden" id="phone-field">
+              <label class="field-label" for="phone">Phone (optional)</label>
+              <input class="field-input" id="phone" name="phone" autocomplete="tel" placeholder="(555) 555-5555" />
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="subject">Subject</label>
+              <input class="field-input" id="subject" name="subject" placeholder="What can we help with?" required />
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="message">Message</label>
+              <textarea class="field-input field-textarea" id="message" name="message" rows="8"
+                placeholder="Include any details that help us respond quickly." required></textarea>
+            </div>
+
+            <div class="contact-actions">
+              <div class="contact-note">
+                Already a customer? Use <a class="inline-link" href="/account.html#help">My Account → Help &amp; Support</a>.
+              </div>
+              <button class="contact-send" type="submit">Send</button>
+            </div>
+
+            <div id="contact-status" class="contact-status hidden" role="status" aria-live="polite"></div>
+          </form>
+        </div>
+
+        <!-- RIGHT: Quick links / routing -->
+        <aside class="contact-aside">
+          <div class="aside-card">
+            <div class="aside-title">Quick routes</div>
+
+            <a class="aside-link" href="/demo.html">
+              <span class="aside-link-title">Schedule a demo</span>
+              <span class="aside-link-sub">See Carrier Shark in 15 minutes.</span>
+            </a>
+
+            <a class="aside-link" href="/pricing.html">
+              <span class="aside-link-title">Plans &amp; pricing</span>
+              <span class="aside-link-sub">Compare tiers and features.</span>
+            </a>
+
+            <a class="aside-link" href="/help.html">
+              <span class="aside-link-title">Help Center</span>
+              <span class="aside-link-sub">Guides, FAQ, and setup steps.</span>
+            </a>
+
+            <div class="aside-sep"></div>
+
+            <a class="aside-link" href="/account.html#help">
+              <span class="aside-link-title">Support for existing accounts</span>
+              <span class="aside-link-sub">Open tickets and account-specific help.</span>
+            </a>
+
+            <div class="aside-micro">
+              Prefer email? <span class="muted">You can always reach us at</span>
+              <a class="inline-link" href="mailto:support@carriershark.com">support@carriershark.com</a>.
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <div id="site-footer"></div>
+
+  <script>
+    // If you already have a shared loader for header/footer, keep using it.
+    // Example:
+    // loadHeader(); loadFooter();
+
+    // Optional: make the form feel “real” even before backend exists
+    const form = document.getElementById("contact-form");
+    const statusEl = document.getElementById("contact-status");
+
+    form.addEventListener("submit", async (e) => {
+      // If you don’t have the endpoint wired yet, comment the next line and let it post normally.
+      e.preventDefault();
+
+      statusEl.classList.remove("hidden");
+      statusEl.classList.remove("ok", "err");
+      statusEl.textContent = "Sending…";
+
+      try {
+        const res = await fetch(form.action, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(Object.fromEntries(new FormData(form)))
+        });
+
+        if (!res.ok) throw new Error("Request failed");
+
+        statusEl.classList.add("ok");
+        statusEl.textContent = "Message sent. We’ll reply within 1 business day.";
+        form.reset();
+      } catch (err) {
+        statusEl.classList.add("err");
+        statusEl.textContent = "Something didn’t send. Email us at support@carriershark.com.";
+      }
+    });
+  </script>
+
+<footer id="site-footer"></footer>
+
+
+  <!-- 1. Load Sentry library -->
+  <script
+    src="https://js.sentry-cdn.com/1df77c56ba17c2098baf02e362c93be2.min.js"
+    crossorigin="anonymous"
+  ></script>
+  
+  <!-- 2. Initialize Sentry with YOUR DSN -->
+  <script src="/js/shared/sentry.js"></script>
+  
+  
+  
+<script src="/js/pages/index.js" defer></script>
+  
+</body>
+</html>
