@@ -107,6 +107,7 @@ async function initAuthUI() {
   const loginBtn = document.getElementById("login-btn");
   const logoutBtn = document.getElementById("logout-btn");
   const accountLink = document.getElementById("account-link");
+  const header = document.querySelector(".site-header");
 
   try {
     const res = await fetch("/api/me", { cache: "no-store" });
@@ -116,6 +117,10 @@ async function initAuthUI() {
       // LOGGED IN
       if (loginBtn) loginBtn.style.display = "none";
       if (logoutBtn) logoutBtn.style.display = "inline-block";
+      if (header) {
+        header.classList.remove("is-logged-out");
+        header.classList.add("is-logged-in");
+      }
 
       if (accountLink) {
         accountLink.style.display = "inline-block";
@@ -152,6 +157,10 @@ if (tourLink) {
       // LOGGED OUT
       if (loginBtn) loginBtn.style.display = "inline-block";
       if (logoutBtn) logoutBtn.style.display = "none";
+      if (header) {
+          header.classList.remove("is-logged-in");
+          header.classList.add("is-logged-out");
+        }
 
       // Hide account link entirely when logged out (NO "Log In" link)
       if (accountLink) {
