@@ -67,35 +67,39 @@ function setHelpMenu(isLoggedIn) {
   if (!helpLabel || !helpMenu) return;
 
   if (isLoggedIn) {
-    // LOGGED IN: Support menu
-    helpLabel.innerHTML = `Support <span class="nav-caret">▾</span>`;
-    helpLabel.setAttribute("href", "/account#help");
-
-    // hide marketing CTA
-    if (demoLink) demoLink.style.display = "none";
-
-    helpMenu.innerHTML = `
-      <a href="/help" class="nav-dd-link" role="menuitem">Help Center</a>
+// LOGGED IN: Support menu (2 columns)
+helpMenu.innerHTML = `
+  <div class="nav-dd-cols">
+    <div class="nav-dd-col">
+      <div class="nav-dd-head">Support</div>
       <a href="/account#help" class="nav-dd-link" role="menuitem">Open a Support Ticket</a>
+      <a href="/help" class="nav-dd-link" role="menuitem">Help Center</a>
       <a href="/faq" class="nav-dd-link" role="menuitem">FAQs</a>
-      <div class="nav-dd-sep"></div>
+    </div>
+
+    <div class="nav-dd-col">
+      <div class="nav-dd-head">Sales</div>
       <a href="/contact" class="nav-dd-link" role="menuitem">Contact Sales</a>
-    `;
+    </div>
+  </div>
+`;
   } else {
-    // LOGGED OUT: Help menu
-    helpLabel.innerHTML = `Help <span class="nav-caret">▾</span>`;
-    helpLabel.setAttribute("href", "/help");
-
-    // show marketing CTA
-    if (demoLink) demoLink.style.display = "inline-flex";
-
-    helpMenu.innerHTML = `
+// LOGGED OUT: Help menu (2 columns)
+helpMenu.innerHTML = `
+  <div class="nav-dd-cols">
+    <div class="nav-dd-col">
+      <div class="nav-dd-head">Next steps</div>
       <a href="/demo" class="nav-dd-link" role="menuitem">Get a Demo</a>
       <a href="/contact" class="nav-dd-link" role="menuitem">Contact Us</a>
-      <div class="nav-dd-sep"></div>
+    </div>
+
+    <div class="nav-dd-col">
+      <div class="nav-dd-head">Resources</div>
       <a href="/help" class="nav-dd-link" role="menuitem">Help Center</a>
       <a href="/faq" class="nav-dd-link" role="menuitem">FAQs</a>
-    `;
+    </div>
+  </div>
+`;
   }
 }
 
