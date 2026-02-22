@@ -76,9 +76,15 @@ function setActiveTab(name) {
 })();
 
 
-  railItems.forEach((btn) => {
-    btn.addEventListener("click", () => setActiveTab(btn.dataset.tab));
+railItems.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const tab = btn.dataset.tab;
+    if (tab) {
+      window.location.hash = tab;   // ← add THIS line
+      setActiveTab(tab);
+    }
   });
+});
 
 document.getElementById("btn-signout")?.addEventListener("click", (e) => {
   e.currentTarget.disabled = true;
@@ -989,11 +995,6 @@ $("btn-api-docs")?.addEventListener("click", () => {
   window.open("/docs", "_blank", "noopener");
 });
 
-// Jump To section Routing
-
-  function openAccountTab(tab) {
-  // Normalize / protect
-  tab = (tab || "").toLowerCase();
 
   // Only allow known tabs (prevents weird hashes)
   const allowed = new Set(["overview","alerts","agreements","api","plan","security","help"]);
@@ -1011,10 +1012,6 @@ $("btn-api-docs")?.addEventListener("click", () => {
   if (panel) panel.classList.add("is-active");
 }
 
-function initHashTabs() {
-  // Open tab from hash on first load
-  const hashTab = (window.location.hash || "").replace("#", "").trim();
-  if (hashTab) openAccountTab(hashTab);
 
   // Also handle hash changes (if user clicks links that change #tab)
   window.addEventListener("hashchange", () => {
