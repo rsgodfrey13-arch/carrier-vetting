@@ -41,14 +41,20 @@
 
 let activeTab = "overview";
 
-if (name === activeTab) {
-  if (name === "help") loadTickets().catch(console.error);
-  return;
-}
+function setActiveTab(name) {
+  if (!panels[name]) return;
+
+  if (name === activeTab) {
+    if (name === "help") loadTickets().catch(console.error);
+    return;
+  }
+
+  activeTab = name;
 
   railItems.forEach((b) =>
     b.classList.toggle("is-active", b.dataset.tab === name)
   );
+
   Object.entries(panels).forEach(([k, el]) => {
     if (!el) return;
     el.classList.toggle("is-active", k === name);
@@ -1078,13 +1084,6 @@ pwSave?.addEventListener("click", async () => {
 });
 
 
-  document.querySelectorAll(".rail-item").forEach(btn => {
-  btn.addEventListener("click", () => {
-    const tab = btn.getAttribute("data-tab");
-    if (tab) window.location.hash = tab; // keeps URL in sync
-    openAccountTab(tab);
-  });
-});
   
   loadEverything().catch((err) => console.error(err));
 })();
