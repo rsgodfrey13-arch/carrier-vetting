@@ -4,8 +4,8 @@ const express = require("express");
 const path = require("path");
 const router = express.Router();
 
-const { requirePageAuth } = require("../../middleware/requirePageAuth");
-router.use(requirePageAuth);
+// const { requirePageAuth } = require("../../middleware/requirePageAuth");
+// router.use(requirePageAuth);
 
 router.get("/account", (req, res) => {
   res.sendFile(path.join(__dirname, "../../../static", "account.html"));
