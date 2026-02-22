@@ -686,3 +686,21 @@ border: 1px solid rgba(147, 197, 253, .45);
   margin-right: 4px;
   opacity: 0.95;
 }
+
+/* Tour highlight ONLY for logged-out users */
+.site-header.is-logged-out .nav-link-tour{
+  color: #00B7FF; /* your cyan */
+}
+
+/* Optional: subtle hover without looking like a button */
+.site-header.is-logged-out .nav-link-tour:hover{
+  opacity: 0.9;
+  text-decoration: none;
+}
+
+/* keep icon aligned + calm */
+.nav-link-tour .tour-icon{
+  font-size: 0.9em;
+  margin-right: 4px;
+  opacity: 0.95;
+}
