@@ -194,7 +194,7 @@ async function initAuthUI() {
       if (tourLink) {
         tourLink.onclick = (e) => {
           e.preventDefault();
-          localStorage.removeItem("hideTour");
+          localStorage.removeItem("cs_tour_seen_v1");
           if (typeof window.openTour === "function") window.openTour();
         };
       }
@@ -223,7 +223,7 @@ async function initAuthUI() {
     if (tourLink) {
       tourLink.onclick = (e) => {
         e.preventDefault();
-        localStorage.removeItem("hideTour");
+        localStorage.removeItem("cs_tour_seen_v1");
         if (typeof window.openTour === "function") window.openTour();
       };
     }
@@ -265,7 +265,7 @@ const ft = document.querySelector(".footer-tour-link");
 if (ft) {
   ft.addEventListener("click", (e) => {
     e.preventDefault();
-    localStorage.removeItem("hideTour");
+    localStorage.removeItem("cs_tour_seen_v1");
     if (typeof window.openTour === "function") window.openTour();
   });
 }
