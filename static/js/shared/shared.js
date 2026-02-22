@@ -102,7 +102,27 @@ helpMenu.innerHTML = `
   }
 }
 
+// Global tour opener so header/footer links can open the modal
+window.openTour = function () {
+  // CHANGE THIS ID to match your actual modal container ID
+  const modal = document.getElementById("tour-modal");
 
+  if (!modal) {
+    console.warn("Tour modal not found on this page (expected #tour-modal).");
+    return;
+  }
+
+  // CHANGE these to match your modal's show logic
+  modal.classList.add("open");
+  modal.style.display = "block";
+};
+
+window.closeTour = function () {
+  const modal = document.getElementById("tour-modal");
+  if (!modal) return;
+  modal.classList.remove("open");
+  modal.style.display = "none";
+};
   
 async function initAuthUI() {
   const loginBtn = document.getElementById("login-btn");
