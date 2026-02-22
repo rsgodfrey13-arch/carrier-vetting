@@ -28,7 +28,7 @@ async function loadHeaderSlim() {
     container.innerHTML = await res.text();
 
     // Same wiring as full header
-await initAuthUI();
+await ();
   } catch (err) {
     console.error("Header slim load failed:", err);
   }
@@ -181,6 +181,22 @@ if (tourLink) {
 
     setHelpMenu(false);
   }
+// Always wire Tour link after header loads
+const tourLink = document.getElementById("tour-link");
+if (tourLink) {
+  tourLink.onclick = (e) => {
+    e.preventDefault();
+
+    // Remove the "Don't show again" flag
+    localStorage.removeItem("hideTour");
+
+    // Open the tour modal manually
+    if (typeof window.openTour === "function") {
+      window.openTour();
+    }
+  };
+}
+  
 }
 
 
