@@ -38,7 +38,10 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       // success → cookie set by server → redirect to home
-      window.location.href = "/";
+      const params = new URLSearchParams(window.location.search);
+      const next = params.get("next");
+      window.location.href = next || "/";
+      
     } catch (err) {
       if (errorEl) {
         errorEl.textContent = "Network error, please try again.";
