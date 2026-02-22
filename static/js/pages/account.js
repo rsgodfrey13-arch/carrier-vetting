@@ -41,9 +41,10 @@
 
 let activeTab = "overview";
 
-function setActiveTab(name) {
-  if (name === activeTab) return;
-  activeTab = name;
+if (name === activeTab) {
+  if (name === "help") loadTickets().catch(console.error);
+  return;
+}
 
   railItems.forEach((b) =>
     b.classList.toggle("is-active", b.dataset.tab === name)
@@ -995,34 +996,6 @@ $("btn-api-docs")?.addEventListener("click", () => {
   window.open("/docs", "_blank", "noopener");
 });
 
-
-  // Only allow known tabs (prevents weird hashes)
-  const allowed = new Set(["overview","alerts","agreements","api","plan","security","help"]);
-  if (!allowed.has(tab)) tab = "overview";
-
-  // Deactivate rail items + panels
-  document.querySelectorAll(".rail-item").forEach(b => b.classList.remove("is-active"));
-  document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("is-active"));
-
-  // Activate requested tab
-  const btn = document.querySelector(`.rail-item[data-tab="${tab}"]`);
-  const panel = document.getElementById(`tab-${tab}`);
-
-  if (btn) btn.classList.add("is-active");
-  if (panel) panel.classList.add("is-active");
-}
-
-
-  // Also handle hash changes (if user clicks links that change #tab)
-  window.addEventListener("hashchange", () => {
-    const t = (window.location.hash || "").replace("#", "").trim();
-    if (t) openAccountTab(t);
-  });
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  initHashTabs();
-});
   
 // -----------------------------
 // Change Password Modal
