@@ -140,42 +140,6 @@
 
   <div id="site-footer"></div>
 
-  <script>
-    // If you already have a shared loader for header/footer, keep using it.
-    // Example:
-    // loadHeader(); loadFooter();
-
-    // Optional: make the form feel “real” even before backend exists
-    const form = document.getElementById("contact-form");
-    const statusEl = document.getElementById("contact-status");
-
-    form.addEventListener("submit", async (e) => {
-      // If you don’t have the endpoint wired yet, comment the next line and let it post normally.
-      e.preventDefault();
-
-      statusEl.classList.remove("hidden");
-      statusEl.classList.remove("ok", "err");
-      statusEl.textContent = "Sending…";
-
-      try {
-        const res = await fetch(form.action, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(Object.fromEntries(new FormData(form)))
-        });
-
-        if (!res.ok) throw new Error("Request failed");
-
-        statusEl.classList.add("ok");
-        statusEl.textContent = "Message sent. We’ll reply within 1 business day.";
-        form.reset();
-      } catch (err) {
-        statusEl.classList.add("err");
-        statusEl.textContent = "Something didn’t send. Email us at support@carriershark.com.";
-      }
-    });
-  </script>
-
 <footer id="site-footer"></footer>
 
 
@@ -191,6 +155,8 @@
   
   
 <script src="/js/pages/index.js" defer></script>
+<script src="/js/pages/contact.js" defer></script>
+<script src="/js/shared/shared.js" defer></script>
   
 </body>
 </html>
