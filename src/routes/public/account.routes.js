@@ -4,7 +4,7 @@ const express = require("express");
 const path = require("path");
 const router = express.Router();
 
-const { requirePageAuth } = require("../middleware/requirePageAuth");
+const { requirePageAuth } = require("../../middleware/requirePageAuth");
 router.use(requirePageAuth);
 
 router.get("/account", (req, res) => {
