@@ -640,3 +640,31 @@ border: 1px solid rgba(147, 197, 253, .45);
 .footer-divider{
   margin: 18px 0 8px;
 }
+/* 2-column dropdown layout */
+.nav-dropdown-menu .nav-dd-cols{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  min-width: 360px; /* tweak to taste */
+}
+
+.nav-dropdown-menu .nav-dd-col{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nav-dropdown-menu .nav-dd-head{
+  font-size: .72rem;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: rgba(148,163,184,.9);
+  margin-bottom: 2px;
+}
+
+@media (max-width: 720px){
+  .nav-dropdown-menu .nav-dd-cols{
+    grid-template-columns: 1fr;
+    min-width: 260px;
+  }
+}
