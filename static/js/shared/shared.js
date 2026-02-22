@@ -57,6 +57,49 @@ async function trackHomepageView() {
   }
 }
 
+
+function setHelpMenu(isLoggedIn) {
+  const helpLabel = document.getElementById("help-label");
+  const helpMenu = document.getElementById("help-menu");
+  const demoLink = document.getElementById("demo-link");
+
+  // If header isn't present on this page, skip
+  if (!helpLabel || !helpMenu) return;
+
+  if (isLoggedIn) {
+    // LOGGED IN: Support menu
+    helpLabel.innerHTML = `Support <span class="nav-caret">▾</span>`;
+    helpLabel.setAttribute("href", "/account#help");
+
+    // hide marketing CTA
+    if (demoLink) demoLink.style.display = "none";
+
+    helpMenu.innerHTML = `
+      <a href="/help" class="nav-dd-link" role="menuitem">Help Center</a>
+      <a href="/account#help" class="nav-dd-link" role="menuitem">Open a Support Ticket</a>
+      <a href="/faq" class="nav-dd-link" role="menuitem">FAQs</a>
+      <div class="nav-dd-sep"></div>
+      <a href="/contact" class="nav-dd-link" role="menuitem">Contact Sales</a>
+    `;
+  } else {
+    // LOGGED OUT: Help menu
+    helpLabel.innerHTML = `Help <span class="nav-caret">▾</span>`;
+    helpLabel.setAttribute("href", "/help");
+
+    // show marketing CTA
+    if (demoLink) demoLink.style.display = "inline-flex";
+
+    helpMenu.innerHTML = `
+      <a href="/demo" class="nav-dd-link" role="menuitem">Get a Demo</a>
+      <a href="/contact" class="nav-dd-link" role="menuitem">Contact Us</a>
+      <div class="nav-dd-sep"></div>
+      <a href="/help" class="nav-dd-link" role="menuitem">Help Center</a>
+      <a href="/faq" class="nav-dd-link" role="menuitem">FAQs</a>
+    `;
+  }
+}
+
+
 async function initAuthUI() {
   const loginBtn = document.getElementById("login-btn");
   const logoutBtn = document.getElementById("logout-btn");
@@ -85,7 +128,9 @@ async function initAuthUI() {
         await fetch("/api/logout", { method: "POST" });
         window.location.href = "/";
       };
-
+      // Set Help Menu True
+      setHelpMenu(true);
+      
       // Hide marketing CTA
       if (demoLink) demoLink.style.display = "none";
 
@@ -99,6 +144,9 @@ async function initAuthUI() {
       // =============================
       // NOT LOGGED IN
       // =============================
+
+      // Set Help Menu False
+      setHelpMenu(false);
 
       loginBtn.style.display = "inline-block";
       logoutBtn.style.display = "none";
@@ -115,6 +163,9 @@ async function initAuthUI() {
 
     loginBtn.style.display = "inline-block";
     logoutBtn.style.display = "none";
+
+    // Set Help Menu False
+    setHelpMenu(false);
 
     if (demoLink) demoLink.style.display = "inline-flex";
   }
