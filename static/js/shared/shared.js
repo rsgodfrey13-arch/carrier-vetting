@@ -103,25 +103,28 @@ helpMenu.innerHTML = `
 }
 
 // Global tour opener so header/footer links can open the modal
-window.openTour = function () {
-  // CHANGE THIS ID to match your actual modal container ID
-  const modal = document.getElementById("tour-modal");
-
-  if (!modal) {
-    console.warn("Tour modal not found on this page (expected #tour-modal).");
+// Open/close the Tour modal (matches tour.js + index.html)
+window.openTour = function (startIndex = 0) {
+  const overlay = document.getElementById("tourOverlay");
+  if (!overlay) {
+    console.warn("Tour overlay not found (#tourOverlay).");
     return;
   }
 
-  // CHANGE these to match your modal's show logic
-  modal.classList.add("open");
-  modal.style.display = "block";
+  overlay.setAttribute("aria-hidden", "false");
+  overlay.classList.add("is-open");
+  document.documentElement.classList.add("cs-modal-open");
+
+  // Optional: if you ever expose slide control later, you can store startIndex here.
 };
 
 window.closeTour = function () {
-  const modal = document.getElementById("tour-modal");
-  if (!modal) return;
-  modal.classList.remove("open");
-  modal.style.display = "none";
+  const overlay = document.getElementById("tourOverlay");
+  if (!overlay) return;
+
+  overlay.classList.remove("is-open");
+  overlay.setAttribute("aria-hidden", "true");
+  document.documentElement.classList.remove("cs-modal-open");
 };
   
 async function initAuthUI() {
