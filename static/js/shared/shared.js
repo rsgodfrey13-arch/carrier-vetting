@@ -108,7 +108,7 @@ async function initAuthUI() {
   const logoutBtn = document.getElementById("logout-btn");
   const accountLink = document.getElementById("account-link");
   const header = document.querySelector(".site-header");
-
+  const tourLink = document.getElementById("tour-link");
   try {
     const res = await fetch("/api/me", { cache: "no-store" });
     const data = await res.json();
@@ -116,6 +116,7 @@ async function initAuthUI() {
     if (data.user) {
       // LOGGED IN
       if (loginBtn) loginBtn.style.display = "none";
+      if (tourLink) tourLink.style.display = "none";
       if (logoutBtn) logoutBtn.style.display = "inline-block";
       if (header) {
         header.classList.remove("is-logged-out");
@@ -144,9 +145,11 @@ async function initAuthUI() {
       if (logoutBtn) logoutBtn.style.display = "none";
       if (header) {
           header.classList.remove("is-logged-in");
-          header.classList.add("is-logged-out");
+          if (header) header.classList.add("is-logged-out");
         }
-
+      
+    if (tourLink) tourLink.style.display = "inline-block";
+      
       // Hide account link entirely when logged out (NO "Log In" link)
       if (accountLink) {
         accountLink.style.display = "none";
@@ -163,7 +166,7 @@ async function initAuthUI() {
     }
   } catch (err) {
     console.error("auth ui error", err);
-    header.classList.add("is-logged-out")
+    if (header) header.classList.add("is-logged-out");
     // Fail closed to logged-out UI
     if (loginBtn) loginBtn.style.display = "inline-block";
     if (logoutBtn) logoutBtn.style.display = "none";
@@ -176,19 +179,18 @@ async function initAuthUI() {
     setHelpMenu(false);
   }
 // Always wire Tour link after header loads
-const tourLink = document.getElementById("tour-link");
-if (tourLink) {
+
+// Wire Tour only for logged-out users
+if (tourLink && header && header.classList.contains("is-logged-out")) {
   tourLink.onclick = (e) => {
     e.preventDefault();
-
-    // Remove the "Don't show again" flag
     localStorage.removeItem("hideTour");
-
-    // Open the tour modal manually
-    if (typeof window.openTour === "function") {
-      window.openTour();
-    }
+    if (typeof window.openTour === "function") window.openTour();
   };
+} else if (tourLink) {
+  // Logged in: no click, no visibility
+  tourLink.onclick = null;
+};
 }
   
 }
