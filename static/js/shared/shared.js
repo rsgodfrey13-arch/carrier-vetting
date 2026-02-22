@@ -237,6 +237,16 @@ async function loadFooter() {
 
     container.innerHTML = await res.text();
 
+// Wire footer Tour link (opens modal)
+const ft = document.querySelector(".footer-tour-link");
+if (ft) {
+  ft.addEventListener("click", (e) => {
+    e.preventDefault();
+    localStorage.removeItem("hideTour");
+    if (typeof window.openTour === "function") window.openTour();
+  });
+}
+
     // Auto year (safe to run after injection)
     const y = new Date().getFullYear();
     const yearEl = document.getElementById("footer-year");
