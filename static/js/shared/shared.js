@@ -103,12 +103,14 @@ helpMenu.innerHTML = `
 }
 
 
+  
 async function initAuthUI() {
   const loginBtn = document.getElementById("login-btn");
   const logoutBtn = document.getElementById("logout-btn");
   const accountLink = document.getElementById("account-link");
   const header = document.querySelector(".site-header");
   const tourLink = document.getElementById("tour-link");
+
   try {
     const res = await fetch("/api/me", { cache: "no-store" });
     const data = await res.json();
@@ -116,8 +118,9 @@ async function initAuthUI() {
     if (data.user) {
       // LOGGED IN
       if (loginBtn) loginBtn.style.display = "none";
-      if (tourLink) tourLink.style.display = "none";
       if (logoutBtn) logoutBtn.style.display = "inline-block";
+      if (tourLink) tourLink.style.display = "none";
+
       if (header) {
         header.classList.remove("is-logged-out");
         header.classList.add("is-logged-in");
@@ -138,38 +141,54 @@ async function initAuthUI() {
 
       setHelpMenu(true);
 
-      
+      // logged in → no tour click handler needed
+      if (tourLink) tourLink.onclick = null;
+
     } else {
       // LOGGED OUT
       if (loginBtn) loginBtn.style.display = "inline-block";
       if (logoutBtn) logoutBtn.style.display = "none";
+      if (tourLink) tourLink.style.display = "inline-block";
+
       if (header) {
-          header.classList.remove("is-logged-in");
-          if (header) header.classList.add("is-logged-out");
-        }
-      
-    if (tourLink) tourLink.style.display = "inline-block";
-      
-      // Hide account link entirely when logged out (NO "Log In" link)
+        header.classList.remove("is-logged-in");
+        header.classList.add("is-logged-out");
+      }
+
       if (accountLink) {
         accountLink.style.display = "none";
         accountLink.textContent = "My Account";
-        accountLink.href = "/login"; // optional; won’t be visible anyway
+        accountLink.href = "/login";
       }
 
       setHelpMenu(false);
 
-      // Sign In button click
       if (loginBtn) {
         loginBtn.onclick = () => (window.location.href = "/login");
       }
+
+      // Wire Tour ONLY when logged out
+      if (tourLink) {
+        tourLink.onclick = (e) => {
+          e.preventDefault();
+          localStorage.removeItem("hideTour");
+          if (typeof window.openTour === "function") window.openTour();
+        };
+      }
     }
+
   } catch (err) {
     console.error("auth ui error", err);
-    if (header) header.classList.add("is-logged-out");
+
     // Fail closed to logged-out UI
+    if (header) {
+      header.classList.remove("is-logged-in");
+      header.classList.add("is-logged-out");
+    }
+
     if (loginBtn) loginBtn.style.display = "inline-block";
     if (logoutBtn) logoutBtn.style.display = "none";
+    if (tourLink) tourLink.style.display = "inline-block";
     if (accountLink) accountLink.style.display = "none";
 
     if (loginBtn) {
@@ -177,22 +196,15 @@ async function initAuthUI() {
     }
 
     setHelpMenu(false);
-  }
-// Always wire Tour link after header loads
 
-// Wire Tour only for logged-out users
-if (tourLink && header && header.classList.contains("is-logged-out")) {
-  tourLink.onclick = (e) => {
-    e.preventDefault();
-    localStorage.removeItem("hideTour");
-    if (typeof window.openTour === "function") window.openTour();
-  };
-} else if (tourLink) {
-  // Logged in: no click, no visibility
-  tourLink.onclick = null;
-};
-}
-  
+    if (tourLink) {
+      tourLink.onclick = (e) => {
+        e.preventDefault();
+        localStorage.removeItem("hideTour");
+        if (typeof window.openTour === "function") window.openTour();
+      };
+    }
+  }
 }
 
 
