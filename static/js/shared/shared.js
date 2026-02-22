@@ -105,44 +105,64 @@ helpMenu.innerHTML = `
 
 
 async function initAuthUI() {
-  const loginBtn = document.getElementById("login-btn");
+  const loginBtn = document.getElementById("login-btn"); // full header only
   const logoutBtn = document.getElementById("logout-btn");
-  const demoLink = document.getElementById("demo-link");
-  const helpLabel = document.getElementById("help-label");
-
-  if (!loginBtn || !logoutBtn) return;
-
-  loginBtn.onclick = () => {
-    window.location.href = "/login";
-  };
+  const accountLink = document.getElementById("account-link");
 
   try {
     const res = await fetch("/api/me", { cache: "no-store" });
     const data = await res.json();
-if (data.user) {
-  // Logged in
-  loginBtn.style.display = "none";
-  logoutBtn.style.display = "inline-block";
 
-  logoutBtn.onclick = async () => {
-    await fetch("/api/logout", { method: "POST" });
-    window.location.href = "/";
-  };
+    if (data.user) {
+      // =============================
+      // LOGGED IN
+      // =============================
 
-  setHelpMenu(true);  // <-- ONLY call this
-} else {
-  // Not logged in
-  loginBtn.style.display = "inline-block";
-  logoutBtn.style.display = "none";
+      if (loginBtn) loginBtn.style.display = "none";
+      if (logoutBtn) logoutBtn.style.display = "inline-block";
 
-  setHelpMenu(false); // <-- ONLY call this
-}
+      if (accountLink) {
+        accountLink.textContent = "My Account";
+        accountLink.href = "/account";
+      }
+
+      if (logoutBtn) {
+        logoutBtn.onclick = async () => {
+          await fetch("/api/logout", { method: "POST" });
+          window.location.href = "/";
+        };
+      }
+
+      setHelpMenu(true);
+
+    } else {
+      // =============================
+      // NOT LOGGED IN
+      // =============================
+
+      if (loginBtn) loginBtn.style.display = "inline-block";
+      if (logoutBtn) logoutBtn.style.display = "none";
+
+      if (accountLink) {
+        accountLink.textContent = "Log In";
+        accountLink.href = "/login";
+      }
+
+      setHelpMenu(false);
+    }
 
   } catch (err) {
-setHelpMenu(false);
+    console.error("auth ui error", err);
+
+    if (logoutBtn) logoutBtn.style.display = "none";
+    if (accountLink) {
+      accountLink.textContent = "Log In";
+      accountLink.href = "/login";
+    }
+
+    setHelpMenu(false);
   }
 }
-
 
 
 async function initAccountLink() {
