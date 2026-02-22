@@ -28,7 +28,7 @@ async function loadHeaderSlim() {
     container.innerHTML = await res.text();
 
     // Same wiring as full header
-await ();
+await initAuthUI();
   } catch (err) {
     console.error("Header slim load failed:", err);
   }
@@ -137,21 +137,6 @@ async function initAuthUI() {
 
       setHelpMenu(true);
 
-const tourLink = document.getElementById("tour-link");
-if (tourLink) {
-  tourLink.onclick = (e) => {
-    e.preventDefault();
-
-    // Force show tour even if "Don't show again" was checked
-    localStorage.removeItem("hideTour");
-
-    // Call your existing function that opens the modal
-    if (typeof window.openTour === "function") {
-      window.openTour();
-    }
-  };
-}
-
       
     } else {
       // LOGGED OUT
@@ -178,7 +163,7 @@ if (tourLink) {
     }
   } catch (err) {
     console.error("auth ui error", err);
-
+    header.classList.add("is-logged-out")
     // Fail closed to logged-out UI
     if (loginBtn) loginBtn.style.display = "inline-block";
     if (logoutBtn) logoutBtn.style.display = "none";
