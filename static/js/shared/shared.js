@@ -10,7 +10,7 @@ async function loadHeader() {
 
     // Header is now in the DOM → wire buttons
     await initAuthUI();
-    await initAccountLink();
+
   } catch (err) {
     console.error("Header load failed:", err);
   }
@@ -28,8 +28,7 @@ async function loadHeaderSlim() {
     container.innerHTML = await res.text();
 
     // Same wiring as full header
-    await initAuthUI();
-    await initAccountLink();
+await initAuthUI();
   } catch (err) {
     console.error("Header slim load failed:", err);
   }
@@ -105,7 +104,7 @@ helpMenu.innerHTML = `
 
 
 async function initAuthUI() {
-  const loginBtn = document.getElementById("login-btn"); // full header only
+  const loginBtn = document.getElementById("login-btn");
   const logoutBtn = document.getElementById("logout-btn");
   const accountLink = document.getElementById("account-link");
 
@@ -114,14 +113,12 @@ async function initAuthUI() {
     const data = await res.json();
 
     if (data.user) {
-      // =============================
       // LOGGED IN
-      // =============================
-
       if (loginBtn) loginBtn.style.display = "none";
       if (logoutBtn) logoutBtn.style.display = "inline-block";
 
       if (accountLink) {
+        accountLink.style.display = "inline-block";
         accountLink.textContent = "My Account";
         accountLink.href = "/account";
       }
@@ -134,30 +131,35 @@ async function initAuthUI() {
       }
 
       setHelpMenu(true);
-
     } else {
-      // =============================
-      // NOT LOGGED IN
-      // =============================
-
+      // LOGGED OUT
       if (loginBtn) loginBtn.style.display = "inline-block";
       if (logoutBtn) logoutBtn.style.display = "none";
 
+      // Hide account link entirely when logged out (NO "Log In" link)
       if (accountLink) {
-        accountLink.textContent = "Log In";
-        accountLink.href = "/login";
+        accountLink.style.display = "none";
+        accountLink.textContent = "My Account";
+        accountLink.href = "/login"; // optional; won’t be visible anyway
       }
 
       setHelpMenu(false);
-    }
 
+      // Sign In button click
+      if (loginBtn) {
+        loginBtn.onclick = () => (window.location.href = "/login");
+      }
+    }
   } catch (err) {
     console.error("auth ui error", err);
 
+    // Fail closed to logged-out UI
+    if (loginBtn) loginBtn.style.display = "inline-block";
     if (logoutBtn) logoutBtn.style.display = "none";
-    if (accountLink) {
-      accountLink.textContent = "Log In";
-      accountLink.href = "/login";
+    if (accountLink) accountLink.style.display = "none";
+
+    if (loginBtn) {
+      loginBtn.onclick = () => (window.location.href = "/login");
     }
 
     setHelpMenu(false);
