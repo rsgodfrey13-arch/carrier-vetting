@@ -57,12 +57,12 @@ async function trackHomepageView() {
   }
 }
 
-
 async function initAuthUI() {
   const loginBtn = document.getElementById("login-btn");
   const logoutBtn = document.getElementById("logout-btn");
+  const demoLink = document.getElementById("demo-link");
+  const helpLabel = document.getElementById("help-label");
 
-  // If this page doesn't have the header, just skip.
   if (!loginBtn || !logoutBtn) return;
 
   loginBtn.onclick = () => {
@@ -74,7 +74,10 @@ async function initAuthUI() {
     const data = await res.json();
 
     if (data.user) {
-      // Logged in
+      // =============================
+      // LOGGED IN STATE
+      // =============================
+
       loginBtn.style.display = "none";
       logoutBtn.style.display = "inline-block";
 
@@ -82,18 +85,41 @@ async function initAuthUI() {
         await fetch("/api/logout", { method: "POST" });
         window.location.href = "/";
       };
+
+      // Hide marketing CTA
+      if (demoLink) demoLink.style.display = "none";
+
+      // Rename Help → Support
+      if (helpLabel) {
+        helpLabel.innerHTML = `Support <span class="nav-caret">▾</span>`;
+        helpLabel.setAttribute("href", "/account#help");
+      }
+
     } else {
-      // Not logged in
+      // =============================
+      // NOT LOGGED IN
+      // =============================
+
       loginBtn.style.display = "inline-block";
       logoutBtn.style.display = "none";
+
+      if (demoLink) demoLink.style.display = "inline-flex";
+
+      if (helpLabel) {
+        helpLabel.innerHTML = `Help <span class="nav-caret">▾</span>`;
+        helpLabel.setAttribute("href", "/help");
+      }
     }
   } catch (err) {
     console.error("auth ui error", err);
-    // If /api/me fails, default to showing Login
+
     loginBtn.style.display = "inline-block";
     logoutBtn.style.display = "none";
+
+    if (demoLink) demoLink.style.display = "inline-flex";
   }
 }
+
 
 
 async function initAccountLink() {
