@@ -20,7 +20,7 @@ async function fetchFromFmcsa(dot) {
   const apiKey = process.env.fmcsa_web_key;
   if (!apiKey) throw new Error("fmcsa_web_key missing");
 
-  const url = `${fmcsa_base_url}/${encodeURIComponent(dot)}?webKey=${apiKey}`;
+  const url = `${FMCSA_BASE}/${encodeURIComponent(dot)}?webKey=${apiKey}`;
 
   try {
     const response = await axios.get(url, { timeout: 10000 });
