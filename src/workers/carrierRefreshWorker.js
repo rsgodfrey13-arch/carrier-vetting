@@ -1,5 +1,13 @@
 const THROTTLE_MS = 700;
-const { refreshCarrier } = require("../services/carrierRefreshService");
+let refreshCarrier;
+
+async function getRefreshCarrier() {
+  if (!refreshCarrier) {
+    const mod = await import("../services/carrierRefreshService.js");
+    refreshCarrier = mod.refreshCarrier || mod.default?.refreshCarrier || mod.default;
+  }
+  return refreshCarrier;
+}
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -26,7 +34,9 @@ async function getNextPendingRow(db) {
 
 async function processRow(db, row) {
   try {
-    await refreshCarrier(row.dotnumber); // existing service
+    
+    const refreshCarrierFn = await getRefreshCarrier();
+    await refreshCarrierFn(row.dotnumber);
 
     await db.query(`
       UPDATE carrier_refresh_queue
