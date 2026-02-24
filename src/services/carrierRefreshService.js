@@ -1,28 +1,46 @@
 const axios = require("axios");
-const db = require("../db"); // your pg pool
-// const { mapFmcsaToCarrier } = require("./carrierMapper"); // if you have one
+const db = require("../db");
+
+const FMCSA_BASE = "https://mobile.fmcsa.dot.gov/qc/services/carriers";
+const FRESHNESS_MINUTES = 5; // skip refresh if already fresh
+
+function mapFmcsaToCarrier(raw) {
+  return {
+    legalname: raw?.legalName || null,
+    dbaname: raw?.dbaName || null,
+    statuscode: raw?.statusCode || null,
+    allowedtooperate: raw?.allowedToOperate || null,
+    safetyrating: raw?.safetyRating || null
+  };
+}
 
 async function fetchFromFmcsa(dot) {
   const apiKey = process.env.FMCSA_API_KEY;
+  if (!apiKey) throw new Error("FMCSA_API_KEY missing");
 
-  const url = `https://mobile.fmcsa.dot.gov/qc/services/carriers/${encodeURIComponent(dot)}?webKey=${apiKey}`;
+  const url = `${FMCSA_BASE}/${encodeURIComponent(dot)}?webKey=${apiKey}`;
 
-  const response = await axios.get(url, { timeout: 10000 });
+  try {
+    const response = await axios.get(url, { timeout: 10000 });
 
-  if (response.status !== 200 || !response.data) {
-    throw new Error("FMCSA response invalid");
+    const carrier = response?.data?.content?.carrier;
+
+    if (!carrier) {
+      throw new Error("Carrier not found in FMCSA response");
+    }
+
+    return carrier;
+
+  } catch (err) {
+    if (err.response?.status === 429) {
+      const e = new Error("Rate limited");
+      e.status = 429;
+      throw e;
+    }
+
+    throw err;
   }
-
-  // Adjust based on actual FMCSA response shape
-  const carrier = response.data?.content?.carrier;
-
-  if (!carrier) {
-    throw new Error("Carrier not found in FMCSA");
-  }
-
-  return carrier;
 }
-
 
 async function refreshCarrier(dot) {
   if (!dot) throw new Error("Missing DOT");
@@ -32,25 +50,57 @@ async function refreshCarrier(dot) {
   try {
     await client.query("BEGIN");
 
-    // 1️⃣ Fetch fresh FMCSA data
+    // 🔎 1️⃣ Check freshness first
+    const existing = await client.query(
+      `SELECT retrieval_date
+       FROM carriers
+       WHERE dotnumber = $1`,
+      [dot]
+    );
+
+    if (existing.rows.length) {
+      const last = existing.rows[0].retrieval_date;
+
+      if (last) {
+        const diffMinutes =
+          (Date.now() - new Date(last).getTime()) / 60000;
+
+        if (diffMinutes < FRESHNESS_MINUTES) {
+          await client.query("COMMIT");
+          return { skipped: true };
+        }
+      }
+    }
+
+    // 🌐 2️⃣ Fetch FMCSA
     const fmcsaData = await fetchFromFmcsa(dot);
 
-    // 2️⃣ Map FMCSA → your schema
+    // 🔁 3️⃣ Map to schema
     const mapped = mapFmcsaToCarrier(fmcsaData);
 
-    // 3️⃣ Update carrier table
+    // 💾 4️⃣ Upsert (safer than UPDATE only)
     await client.query(
       `
-      UPDATE carriers
-      SET
-        legalname = $2,
-        dbaname = $3,
-        statuscode = $4,
-        allowedtooperate = $5,
-        safetyrating = $6,
+      INSERT INTO carriers (
+        dotnumber,
+        legalname,
+        dbaname,
+        statuscode,
+        allowedtooperate,
+        safetyrating,
+        retrieval_date,
+        updated_at
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,NOW(),NOW())
+      ON CONFLICT (dotnumber)
+      DO UPDATE SET
+        legalname = EXCLUDED.legalname,
+        dbaname = EXCLUDED.dbaname,
+        statuscode = EXCLUDED.statuscode,
+        allowedtooperate = EXCLUDED.allowedtooperate,
+        safetyrating = EXCLUDED.safetyrating,
         retrieval_date = NOW(),
         updated_at = NOW()
-      WHERE dotnumber = $1
       `,
       [
         dot,
@@ -69,12 +119,11 @@ async function refreshCarrier(dot) {
   } catch (err) {
     await client.query("ROLLBACK");
 
-    if (err.response?.status === 429) {
-      const e = new Error("Rate limited");
-      e.status = 429;
-      throw e;
+    if (err.status === 429) {
+      throw err; // let worker handle backoff
     }
 
+    console.error("refreshCarrier error:", err);
     throw err;
 
   } finally {
@@ -82,12 +131,4 @@ async function refreshCarrier(dot) {
   }
 }
 
-function mapFmcsaToCarrier(raw) {
-  return {
-    legalname: raw.legalName || null,
-    dbaname: raw.dbaName || null,
-    statuscode: raw.statusCode || null,
-    allowedtooperate: raw.allowedToOperate || null,
-    safetyrating: raw.safetyRating || null
-  };
-}
+module.exports = { refreshCarrier };
