@@ -473,7 +473,7 @@ router.put("/my-carriers/:dot/alerts/email", requireAuth, async (req, res) => {
 
 
 router.get("/refresh-queue/status", requireAuth, async (req, res) => {
-  const userId = req.user.id;
+  const userId = req.session.userId;
 
   const { rows } = await pool.query(
     `
