@@ -25,25 +25,7 @@
   // HELPERS
   // ---------------------------------------------
 
-function parseMaybeDate(v) {
-  if (!v) return null;
-  const d = new Date(v);
-  return isNaN(d.getTime()) ? null : d;
-}
 
-function isFreshCarrier(c) {
-  // Prefer a real timestamp if you have it
-  const d =
-    parseMaybeDate(c.retrieval_date) ||
-    parseMaybeDate(c.retrievalDate) ||
-    parseMaybeDate(c.updated_at) ||
-    null;
-
-  if (!d) return false;
-
-  const ageHours = (Date.now() - d.getTime()) / (1000 * 60 * 60);
-  return ageHours <= FRESH_WINDOW_HOURS;
-}
 
 
   
@@ -622,14 +604,10 @@ function normDot(val) {
       }
 
       data.forEach((c) => {
-        const row = document.createElement("tr");
         const dotVal = c.dot || c.dotnumber || c.id || "";
         const dotKey = normDot(dotVal);
-      
         row.dataset.dot = dotKey;
         if (updatingDots.has(dotKey)) row.classList.add("is-muted");
-        
-        row.dataset.dot = normDot(dotVal);
 
         // Checkbox cell (SEARCH mode: ✓ if already saved, otherwise checkbox)
         const selectCell = document.createElement("td");
@@ -730,94 +708,9 @@ function normDot(val) {
     }
   }
 
-function startBackgroundRefreshLoop() {
-  if (refreshLoopRunning) return;
-  refreshLoopRunning = true;
-
-  // Start polling while we have work
-  if (!refreshPollTimer) {
-    refreshPollTimer = setInterval(async () => {
-      if (refreshInFlight.size === 0 && refreshQueue.length === 0) {
-        clearInterval(refreshPollTimer);
-        refreshPollTimer = null;
-        setRefreshPill(0);
-        refreshLoopRunning = false;
-        return;
-      }
-
-      // Refresh UI list so muted rows can flip to normal
-      await loadCarriersPreserveSelection();
-      setRefreshPill(refreshInFlight.size);
-    }, 4500);
-  }
-
-  // Kick off enqueue loop (throttled)
-  (async () => {
-    while (refreshQueue.length) {
-      const dot = refreshQueue.shift();
-      if (!dot) continue;
-      if (refreshInFlight.has(dot)) continue;
-
-      refreshInFlight.add(dot);
-      setRefreshPill(refreshInFlight.size);
-
-      const res = await enqueueRefresh(dot);
-
-      // Either way, we treat it as “in flight” briefly, then let polling detect flip.
-      // If enqueue failed hard, drop it quickly so we don’t hang forever.
-      if (res.ok === false) {
-        refreshInFlight.delete(dot);
-        setRefreshPill(refreshInFlight.size);
-      }
-
-      // throttle enqueue rate
-      await new Promise((r) => setTimeout(r, 650));
-    }
-  })();
-}
 
 
-async function loadCarriersPreserveSelection() {
-  // preserve checked boxes during refresh repaints
-  const selected = Array.from(document.querySelectorAll(".row-select:checked"))
-    .map((cb) => normDot(cb.dataset.dot))
-    .filter(Boolean);
 
-  // snapshot muted state BEFORE reload
-  const beforeMuted = new Map();
-  document.querySelectorAll("tr[data-dot]").forEach((tr) => {
-    beforeMuted.set(tr.dataset.dot, tr.classList.contains("is-muted"));
-  });
-
-  await loadCarriers();
-
-  // re-check
-  selected.forEach((dot) => {
-    const cb = document.querySelector(`.row-select[data-dot="${dot}"]`);
-    if (cb) cb.checked = true;
-  });
-
-  // After reload: remove dots from in-flight if they’re no longer muted
-  document.querySelectorAll("tr[data-dot]").forEach((tr) => {
-    const dot = tr.dataset.dot;
-    const nowMuted = tr.classList.contains("is-muted");
-    const wasMuted = beforeMuted.get(dot);
-
-    // Transition: muted -> normal
-    if (wasMuted === true && nowMuted === false) {
-      tr.classList.add("just-updated");
-      setTimeout(() => tr.classList.remove("just-updated"), 650);
-
-      // mark done
-      refreshInFlight.delete(dot);
-    }
-
-    // If still muted, keep it in-flight (don’t delete)
-    // If it was never in-flight, ignore
-  });
-
-  setRefreshPill(refreshInFlight.size);
-}
   
   function renderPagination() {
     const container = $("pagination-controls");
