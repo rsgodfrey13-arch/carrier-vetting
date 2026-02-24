@@ -4685,3 +4685,63 @@ body.app-page #site-header .header-container{
   margin: 0 auto;
   padding: 0 18px;
 }
+
+/* ---------- Refresh pill (quiet, non-interactive) ---------- */
+.refresh-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 10px;
+  border-radius:999px;
+  border:1px solid rgba(56,189,248,.22);
+  background:rgba(15,23,42,.55);
+  color:rgba(226,232,240,.92);
+  font-size:.78rem;
+  letter-spacing:.02em;
+  white-space:nowrap;
+}
+
+.refresh-pill-dot{
+  width:8px;
+  height:8px;
+  border-radius:999px;
+  background:rgba(56,189,248,.85);
+  box-shadow:0 0 0 4px rgba(56,189,248,.12);
+  animation: csPulse 1.1s ease-in-out infinite;
+}
+
+@keyframes csPulse{
+  0%   { transform: scale(1);   opacity: .85; }
+  50%  { transform: scale(1.4); opacity: 1; }
+  100% { transform: scale(1);   opacity: .85; }
+}
+
+/* ---------- Binary row freshness ---------- */
+/* Muted should be noticeable but NOT disabled */
+.carriers-table tbody tr{
+  transition:
+    background .14s ease,
+    transform .08s ease,
+    box-shadow .18s ease,
+    filter .28s ease,
+    opacity .28s ease;
+}
+
+/* Muted rows: slightly lower contrast */
+.carriers-table tbody tr.is-muted{
+  filter: brightness(.90) saturate(.95);
+}
+
+.carriers-table tbody tr.is-muted td{
+  color: rgba(226,232,240,.78);
+}
+
+/* Keep links readable */
+.carriers-table tbody tr.is-muted a.dot-link{
+  color: rgba(56,189,248,.85);
+}
+
+/* When a row becomes fresh, make it feel intentional */
+.carriers-table tbody tr.just-updated{
+  box-shadow: 0 0 0 1px rgba(56,189,248,.18), 0 10px 26px rgba(15,23,42,0.85);
+}
