@@ -214,12 +214,9 @@ async function refresh_carrier_in_db(dot, timeout_ms) {
 /* ---------------- reffresh queue route ---------------- */
 
 // src/routes/api/refreshQueue.routes.js (example)
-const express = require("express");
-const router = express.Router();
-const { pool } = require("../db/pool"); // adjust path
-const requireAuth = require("../middleware/requireAuth"); // adjust to your auth middleware
 
-router.get("/api/refresh-queue/status", requireAuth, async (req, res) => {
+
+router.get("/api/refresh-queue/status", async (req, res) => {
   const userId = req.user.id;
 
   const { rows } = await pool.query(
