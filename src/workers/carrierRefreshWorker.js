@@ -28,7 +28,7 @@ async function processRow(db, row) {
   try {
     await refreshCarrier(row.dotnumber); // existing service
 
-    
+    await db.query(`
       UPDATE carrier_refresh_queue
       SET status = 'COMPLETE',
           updated_at = NOW()
@@ -36,7 +36,7 @@ async function processRow(db, row) {
     `, [row.id]);
 
     if (row.job_id) {
-      
+      await db.query(`
         UPDATE carrier_verification_jobs
         SET completed = completed + 1
         WHERE id = $1
@@ -52,19 +52,18 @@ async function processRow(db, row) {
     }
 
   } catch (err) {
-
-      await db.query(`
-        UPDATE carrier_refresh_queue
-        SET
-          attempts = attempts + 1,
-          last_error = $2,
-          status = CASE
-            WHEN attempts + 1 >= 5 THEN 'FAILED'
-            ELSE 'PENDING'
-          END,
-          updated_at = NOW()
-        WHERE id = $1
-      `, [row.id, err.message]);
+    await db.query(`
+      UPDATE carrier_refresh_queue
+      SET
+        attempts = attempts + 1,
+        last_error = $2,
+        status = CASE
+          WHEN attempts + 1 >= 5 THEN 'FAILED'
+          ELSE 'PENDING'
+        END,
+        updated_at = NOW()
+      WHERE id = $1
+    `, [row.id, err.message]);
 
     if (err.status === 429) {
       await sleep(10000);
