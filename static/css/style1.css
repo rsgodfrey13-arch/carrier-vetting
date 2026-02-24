@@ -4780,20 +4780,32 @@ body.app-page #site-header .header-container{
   user-select: none;
   pointer-events: none;
 }
-
+/* Make the actions area allow a 2nd row */
 .carriers-header-actions{
-  display:flex;
-  flex-wrap:wrap;
-  justify-content:flex-end;
-  align-items:center;
-  gap:10px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
 }
 
+/* The status becomes a full-width "second row" under buttons */
 .carriers-header-actions .refresh-status{
-  flex-basis:100%;
-  text-align:right;
-  margin-top:6px;
-  font-size:.85rem;
-  color:#9CA3AF;
-  display:none; /* JS toggles on/off */
+  flex-basis: 100%;
+  order: 99;
+  margin-top: 6px;
+
+  text-align: right;
+  font-size: 12px;
+  line-height: 1.2;
+
+  /* subtle grey */
+  color: rgba(229, 231, 235, 0.55);
+
+  /* make sure it never gets hidden behind anything */
+  position: relative;
+  z-index: 2;
+
+  /* optional: prevent weird spacing when empty */
+  min-height: 14px;
 }
