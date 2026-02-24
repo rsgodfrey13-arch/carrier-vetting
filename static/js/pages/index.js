@@ -39,20 +39,28 @@ let queuePollTimer = null;
 let queuePolling = false;
 let lastQueueNonEmptyAt = 0;
 
-function setRefreshPill(activeCount) {
-  const pill = document.getElementById("refresh-pill");
-  const text = document.getElementById("refresh-pill-text");
-  if (!pill || !text) return;
+const refreshStatusEl = document.getElementById("refreshStatus");
 
-  if (!activeCount) {
-    pill.hidden = true;
+function setRefreshStatus({ pending = [], running = [] } = {}) {
+  const p = Array.isArray(pending) ? pending.length : 0;
+  const r = Array.isArray(running) ? running.length : 0;
+  const total = p + r;
+
+  // ✅ Default: show nothing
+  if (!refreshStatusEl) return;
+  if (total === 0) {
+    refreshStatusEl.style.display = "none";
+    refreshStatusEl.textContent = "";
     return;
   }
 
-  pill.hidden = false;
-  text.textContent = activeCount === 1 ? "Updating…" : `Updating • ${activeCount}`;
-}
+  // ✅ Only show when there's actually work happening
+  // (keep it simple + low key)
+  refreshStatusEl.textContent =
+    r > 0 ? `Updating ${total}…` : `Queued ${total}…`;
 
+  refreshStatusEl.style.display = "block";
+}
 async function fetchQueueStatus() {
   const res = await fetch("/api/refresh-queue/status");
   if (res.status === 401) return { authed: false, pending: [], running: [] };
