@@ -93,17 +93,17 @@ function applyMutingFromQueue() {
     }
   });
 
-  setRefreshPill(updatingDots.size);
+
 }
 
 async function syncQueueOnce() {
   const q = await fetchQueueStatus();
-
+  setRefreshStatus(q);
   if (!q.authed) {
     // Public/incognito: never show updating UI, never poll
     stopQueuePolling();
     updatingDots = new Set();
-    setRefreshPill(0);
+    setRefreshStatus({ pending: [], running: [] });
     applyMutingFromQueue();
     return;
   }
@@ -1098,38 +1098,7 @@ async function buildMyCarrierDots() {
   // BULK SELECT + REMOVE
   // ---------------------------------------------
 
-function wireRefreshAll() {
-  const btn = $("refresh-all-btn");
-  if (!btn) return;
 
-  btn.addEventListener("click", async () => {
-    if (gridMode === "SEARCH") return;
-
-    // only visible rows, hard cap (prevents 60k disasters)
-    const visibleDots = Array.from(document.querySelectorAll("tr[data-dot]"))
-      .map((tr) => tr.dataset.dot)
-      .filter(Boolean)
-      .slice(0, 100);
-
-    if (!visibleDots.length) return;
-
-    btn.disabled = true;
-
-    try {
-      for (const dot of visibleDots) {
-        await enqueueRefresh(dot, "refresh_all_visible");
-        await new Promise((r) => setTimeout(r, 40));
-      }
-
-      // show miracle worker effect
-      startQueuePolling();
-      await syncQueueOnce();
-    } finally {
-      btn.disabled = false;
-    }
-  });
-}
-  
   function wireBulkRemove() {
     const tbody = $("carrier-table-body");
     const selectAll = $("select-all");
@@ -1735,7 +1704,7 @@ bulkRemoveBtn.addEventListener("click", async () => {
       wireGridModeBar();
       wireRowsPerPage();
       wireAutocomplete();
-      wireRefreshAll();
+
       wireSortHeaders();
       wireCsvDownload();
       wireAuthUi();
