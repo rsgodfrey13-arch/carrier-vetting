@@ -211,41 +211,6 @@ async function refresh_carrier_in_db(dot, timeout_ms) {
 }
 
 
-/* ---------------- reffresh queue route ---------------- */
-
-// src/routes/api/refreshQueue.routes.js (example)
-
-
-router.get("/api/refresh-queue/status", async (req, res) => {
-  const userId = req.user.id;
-
-  const { rows } = await pool.query(
-    `
-    SELECT dotnumber, status
-    FROM carrier_refresh_queue
-    WHERE requested_by = $1
-      AND status IN ('PENDING','RUNNING')
-    `,
-    [userId]
-  );
-
-  const pending = [];
-  const running = [];
-  for (const r of rows) {
-    const dot = String(r.dotnumber || "").replace(/\D/g, "");
-    if (!dot) continue;
-    if (r.status === "PENDING") pending.push(dot);
-    else if (r.status === "RUNNING") running.push(dot);
-  }
-
-  res.json({
-    pending,
-    running,
-    counts: { pending: pending.length, running: running.length }
-  });
-});
-
-module.exports = router;
 
 
 
