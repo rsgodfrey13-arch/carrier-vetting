@@ -81,6 +81,13 @@
             Filters <span id="filters-count" class="filters-count" hidden>0</span>
           </button>
         
+          <!-- Quiet system-status pill (hidden unless active) -->
+          <div id="refresh-pill" class="refresh-pill" hidden aria-live="polite">
+            <span class="refresh-pill-dot" aria-hidden="true"></span>
+            <span id="refresh-pill-text">Refreshing…</span>
+          </div>
+        
+          <button id="refresh-all-btn" class="bulk-import-btn" type="button">Refresh All</button>
           <button id="bulk-import-btn" class="bulk-import-btn">Bulk Import</button>
           <button id="download-btn" class="download-btn">Download CSV</button>
         </div>
