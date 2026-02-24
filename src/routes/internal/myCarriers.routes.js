@@ -116,11 +116,11 @@ router.get("/my-carriers/dots", requireAuth, async (req, res) => {
 });
 
 
-
-// Bulk add carriers for this user
 router.post("/my-carriers/bulk", requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const client = await pool.connect();
+
   try {
-    const userId = req.session.userId;
     let { dots } = req.body || {};
 
     if (!Array.isArray(dots) || dots.length === 0) {
@@ -137,6 +137,9 @@ router.post("/my-carriers/bulk", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "No valid DOT numbers found" });
     }
 
+    await client.query("BEGIN");
+
+    // 1️⃣ Insert into user_carriers
     const sql = `
       WITH input(dot) AS (
         SELECT UNNEST($2::text[])
@@ -154,15 +157,39 @@ router.post("/my-carriers/bulk", requireAuth, async (req, res) => {
         RETURNING carrier_dot
       )
       SELECT
-        (SELECT COUNT(*) FROM input)                    AS submitted,
-        (SELECT COUNT(*) FROM valid)                    AS valid,
-        (SELECT COUNT(*) FROM ins)                      AS inserted,
+        (SELECT COUNT(*) FROM input) AS submitted,
+        (SELECT COUNT(*) FROM valid) AS valid,
+        (SELECT COUNT(*) FROM ins) AS inserted,
         (SELECT COUNT(*) FROM valid) - (SELECT COUNT(*) FROM ins) AS duplicates,
-        (SELECT COUNT(*) FROM input) - (SELECT COUNT(*) FROM valid) AS invalid;
+        (SELECT COUNT(*) FROM input) - (SELECT COUNT(*) FROM valid) AS invalid,
+        (SELECT ARRAY_AGG(dot) FROM valid) AS valid_dots;
     `;
 
-    const result = await pool.query(sql, [userId, uniqueDots]);
+    const result = await client.query(sql, [userId, uniqueDots]);
     const s = result.rows[0];
+
+    const validDots = s.valid_dots || [];
+
+    // 2️⃣ Insert into refresh queue
+    if (validDots.length > 0) {
+      await client.query(
+        `
+        INSERT INTO carrier_refresh_queue (
+          dotnumber,
+          requested_by,
+          source,
+          priority,
+          status,
+          created_at
+        )
+        SELECT UNNEST($1::text[]), $2, 'IMPORT', 80, 'PENDING', NOW()
+        ON CONFLICT DO NOTHING;
+        `,
+        [validDots, userId]
+      );
+    }
+
+    await client.query("COMMIT");
 
     return res.json({
       summary: {
@@ -172,11 +199,16 @@ router.post("/my-carriers/bulk", requireAuth, async (req, res) => {
         invalid: Number(s.invalid)
       }
     });
+
   } catch (err) {
+    await client.query("ROLLBACK");
     console.error("Error in POST /api/my-carriers/bulk:", err);
     return res.status(500).json({ error: "Failed to bulk add carriers" });
+  } finally {
+    client.release();
   }
 });
+
 
 // Preview bulk import (no DB writes)
 router.post("/my-carriers/bulk/preview", requireAuth, async (req, res) => {
