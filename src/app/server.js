@@ -3,6 +3,10 @@
 require("./instrument");
 require("../config/bootstrap");
 
+const { startRefreshWorker } = require("../workers/carrierRefreshWorker");
+const { pool } = require("../db/pool");
+
+
 const { createClient } = require("redis");
 const { createApp } = require("./app");
 
@@ -51,11 +55,17 @@ async function main() {
     console.warn("REDIS_URL not set — running without Redis session store");
   }
 
-  const app = createApp({ redisClient });
+const app = createApp({ redisClient });
 
-  app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
-  });
+// ✅ Start carrier refresh worker (single instance only)
+startRefreshWorker(pool).catch(err => {
+  console.error("Carrier refresh worker failed:", err);
+  process.exit(1);
+});
+
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
 }
 
 main().catch((err) => {
