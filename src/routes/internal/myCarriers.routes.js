@@ -467,6 +467,43 @@ router.put("/my-carriers/:dot/alerts/email", requireAuth, async (req, res) => {
 });
 
 
+/* ---------------- reffresh queue route ---------------- */
+
+// src/routes/api/refreshQueue.routes.js (example)
+
+
+router.get("/api/refresh-queue/status", requireAuth, async (req, res) => {
+  const userId = req.user.id;
+
+  const { rows } = await pool.query(
+    `
+    SELECT dotnumber, status
+    FROM carrier_refresh_queue
+    WHERE requested_by = $1
+      AND status IN ('PENDING','RUNNING')
+    `,
+    [userId]
+  );
+
+  const pending = [];
+  const running = [];
+  for (const r of rows) {
+    const dot = String(r.dotnumber || "").replace(/\D/g, "");
+    if (!dot) continue;
+    if (r.status === "PENDING") pending.push(dot);
+    else if (r.status === "RUNNING") running.push(dot);
+  }
+
+  res.json({
+    pending,
+    running,
+    counts: { pending: pending.length, running: running.length }
+  });
+});
+
+module.exports = router;
+
+
 
 
 // Remove a carrier from this user's list
