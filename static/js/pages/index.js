@@ -19,11 +19,71 @@
   let gridMode = "MY"; // "MY" | "SEARCH"
   let searchQuery = "";
 
+  const FRESH_WINDOW_HOURS = 24; // “refreshed today” behavior without midnight flip
+  let refreshQueue = [];         // dots we want to enqueue
+  let refreshInFlight = new Set(); // dots currently enqueued/running client-side
+  let refreshLoopRunning = false;
+  let refreshPollTimer = null;
+  
 
   // ---------------------------------------------
   // HELPERS
   // ---------------------------------------------
 
+function parseMaybeDate(v) {
+  if (!v) return null;
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function isFreshCarrier(c) {
+  // Prefer a real timestamp if you have it
+  const d =
+    parseMaybeDate(c.retrieval_date) ||
+    parseMaybeDate(c.retrievalDate) ||
+    parseMaybeDate(c.updated_at) ||
+    null;
+
+  if (!d) return false;
+
+  const ageHours = (Date.now() - d.getTime()) / (1000 * 60 * 60);
+  return ageHours <= FRESH_WINDOW_HOURS;
+}
+
+function setRefreshPill(activeCount) {
+  const pill = document.getElementById("refresh-pill");
+  const text = document.getElementById("refresh-pill-text");
+  if (!pill || !text) return;
+
+  if (!activeCount) {
+    pill.hidden = true;
+    return;
+  }
+
+  pill.hidden = false;
+  text.textContent = activeCount === 1 ? "Refreshing…" : `Refreshing • ${activeCount}`;
+}
+
+async function enqueueRefresh(dot) {
+  // fire-and-forget enqueue call (no cancel exposed)
+  const url = `/api/carriers/${encodeURIComponent(dot)}/refresh`;
+  const res = await fetch(url, { method: "POST" });
+
+  // 401 -> let your existing session UX handle it elsewhere
+  if (res.status === 429) {
+    // queued/rate-limited; still counts as “in progress” from UI standpoint
+    return { queued: true };
+  }
+
+  if (!res.ok) {
+    return { ok: false };
+  }
+
+  return { ok: true };
+}
+
+
+  
 function normDot(val) {
   const digits = String(val ?? "").replace(/\D/g, "");
   // strip leading zeros safely
@@ -475,6 +535,9 @@ function normDot(val) {
       data.forEach((c) => {
         const row = document.createElement("tr");
         const dotVal = c.dot || c.dotnumber || c.id || "";
+        const fresh = isFreshCarrier(c);
+        if (!fresh) row.classList.add("is-muted");
+        row.dataset.dot = normDot(dotVal);
 
         // Checkbox cell (SEARCH mode: ✓ if already saved, otherwise checkbox)
         const selectCell = document.createElement("td");
@@ -569,13 +632,107 @@ function normDot(val) {
 
         tbody.appendChild(row);
       });
-
+      // Auto refresh only when viewing MY carriers (not public/search)
+      if (gridMode !== "SEARCH") {
+        // Collect muted dots currently visible
+        const mutedDots = data
+          .map((c) => normDot(c.dot || c.dotnumber || c.id || ""))
+          .filter(Boolean)
+          .filter((dot, i) => {
+            const c = data[i];
+            return !isFreshCarrier(c);
+          });
+      
+        // Add to refresh queue (dedupe)
+        mutedDots.forEach((d) => {
+          if (!refreshInFlight.has(d) && !refreshQueue.includes(d)) {
+            refreshQueue.push(d);
+          }
+        });
+      
+        // Start background refresh loop if needed
+        startBackgroundRefreshLoop();
+      }
       renderPagination();
     } catch (err) {
       console.error("Error fetching carriers:", err);
     }
   }
 
+function startBackgroundRefreshLoop() {
+  if (refreshLoopRunning) return;
+  refreshLoopRunning = true;
+
+  // Start polling while we have work
+  if (!refreshPollTimer) {
+    refreshPollTimer = setInterval(async () => {
+      if (refreshInFlight.size === 0 && refreshQueue.length === 0) {
+        clearInterval(refreshPollTimer);
+        refreshPollTimer = null;
+        setRefreshPill(0);
+        refreshLoopRunning = false;
+        return;
+      }
+
+      // Refresh UI list so muted rows can flip to normal
+      await loadCarriersPreserveSelection();
+      setRefreshPill(refreshInFlight.size);
+    }, 4500);
+  }
+
+  // Kick off enqueue loop (throttled)
+  (async () => {
+    while (refreshQueue.length) {
+      const dot = refreshQueue.shift();
+      if (!dot) continue;
+      if (refreshInFlight.has(dot)) continue;
+
+      refreshInFlight.add(dot);
+      setRefreshPill(refreshInFlight.size);
+
+      const res = await enqueueRefresh(dot);
+
+      // Either way, we treat it as “in flight” briefly, then let polling detect flip.
+      // If enqueue failed hard, drop it quickly so we don’t hang forever.
+      if (res.ok === false) {
+        refreshInFlight.delete(dot);
+        setRefreshPill(refreshInFlight.size);
+      }
+
+      // throttle enqueue rate
+      await new Promise((r) => setTimeout(r, 650));
+    }
+  })();
+}
+
+async function loadCarriersPreserveSelection() {
+  // preserve checked boxes during refresh repaints
+  const selected = Array.from(document.querySelectorAll(".row-select:checked"))
+    .map((cb) => normDot(cb.dataset.dot))
+    .filter(Boolean);
+
+  await loadCarriers();
+
+  // re-check
+  selected.forEach((dot) => {
+    const cb = document.querySelector(`.row-select[data-dot="${dot}"]`);
+    if (cb) cb.checked = true;
+  });
+
+  // if any muted rows became fresh, add a tiny “just updated” flash
+  document.querySelectorAll("tr").forEach((tr) => {
+    if (!tr.dataset.dot) return;
+
+    // If it was muted previously, we can detect flip by CSS class absence now
+    // We’ll do a lightweight flash only when it’s fresh (not muted).
+    if (!tr.classList.contains("is-muted")) {
+      tr.classList.add("just-updated");
+      setTimeout(() => tr.classList.remove("just-updated"), 650);
+    }
+  });
+}
+
+  
   function renderPagination() {
     const container = $("pagination-controls");
     if (!container) return;
@@ -951,6 +1108,30 @@ async function buildMyCarrierDots() {
   // ---------------------------------------------
   // BULK SELECT + REMOVE
   // ---------------------------------------------
+
+  function wireRefreshAll() {
+    const btn = document.getElementById("refresh-all-btn");
+    if (!btn) return;
+  
+    btn.addEventListener("click", async () => {
+      // Only makes sense in MY mode
+      if (gridMode === "SEARCH") return;
+  
+      // enqueue all visible muted rows (or you can enqueue all rows if you want)
+      const mutedRows = Array.from(document.querySelectorAll("tr.is-muted"))
+        .map((tr) => tr.dataset.dot)
+        .filter(Boolean);
+  
+      mutedRows.forEach((d) => {
+        if (!refreshInFlight.has(d) && !refreshQueue.includes(d)) {
+          refreshQueue.push(d);
+        }
+      });
+  
+      startBackgroundRefreshLoop();
+    });
+  }
+  
   function wireBulkRemove() {
     const tbody = $("carrier-table-body");
     const selectAll = $("select-all");
