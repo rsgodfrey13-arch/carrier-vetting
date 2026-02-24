@@ -603,11 +603,13 @@ function normDot(val) {
         return;
       }
 
-      data.forEach((c) => {
-        const dotVal = c.dot || c.dotnumber || c.id || "";
-        const dotKey = normDot(dotVal);
-        row.dataset.dot = dotKey;
-        if (updatingDots.has(dotKey)) row.classList.add("is-muted");
+data.forEach((c) => {
+  const row = document.createElement("tr");   // ✅ missing
+  const dotVal = c.dot || c.dotnumber || c.id || "";
+  const dotKey = normDot(dotVal);
+
+  row.dataset.dot = dotKey;
+  if (updatingDots.has(dotKey)) row.classList.add("is-muted");
 
         // Checkbox cell (SEARCH mode: ✓ if already saved, otherwise checkbox)
         const selectCell = document.createElement("td");
