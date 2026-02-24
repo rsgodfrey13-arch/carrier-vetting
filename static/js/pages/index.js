@@ -20,7 +20,7 @@
   let searchQuery = "";
 
 
-  let prevMutedByDot = new Map(); // dot -> boolean
+
   const FRESH_WINDOW_HOURS = 24; // “refreshed today” behavior without midnight flip
   let refreshQueue = [];         // dots we want to enqueue
   let refreshInFlight = new Set(); // dots currently enqueued/running client-side
@@ -540,7 +540,6 @@ function normDot(val) {
         const fresh = isFreshCarrier(c);
         if (!fresh) row.classList.add("is-muted");
         row.dataset.dot = normDot(dotVal);
-        prevMutedByDot.set(row.dataset.dot, !fresh);
 
         // Checkbox cell (SEARCH mode: ✓ if already saved, otherwise checkbox)
         const selectCell = document.createElement("td");
@@ -556,7 +555,7 @@ function normDot(val) {
           const checkbox = document.createElement("input");
           checkbox.type = "checkbox";
           checkbox.className = "row-select";
-          checkbox.dataset.dot = dotVal;
+          checkbox.dataset.dot = normDot(dotVal);
           selectCell.appendChild(checkbox);
         }
         
