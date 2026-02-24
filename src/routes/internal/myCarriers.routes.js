@@ -501,8 +501,6 @@ router.get("/api/refresh-queue/status", requireAuth, async (req, res) => {
   });
 });
 
-module.exports = router;
-
 
 
 
