@@ -26,7 +26,10 @@
   let refreshInFlight = new Set(); // dots currently enqueued/running client-side
   let refreshLoopRunning = false;
   let refreshPollTimer = null;
-  
+  let updatingDots = new Set();    // dots in PENDING or RUNNING for this user
+let queuePollTimer = null;
+let queuePolling = false;
+let lastQueueNonEmptyAt = 0;
 
   // ---------------------------------------------
   // HELPERS
@@ -63,9 +66,96 @@ function setRefreshPill(activeCount) {
   }
 
   pill.hidden = false;
-  text.textContent = activeCount === 1 ? "Refreshing…" : `Refreshing • ${activeCount}`;
+  text.textContent = activeCount === 1 ? "Updating…" : `Updating • ${activeCount}`;
 }
 
+
+async function fetchQueueStatus() {
+  const res = await fetch("/api/refresh-queue/status");
+  if (res.status === 401) return { authed: false, pending: [], running: [] };
+  if (!res.ok) throw new Error("queue status failed");
+  const data = await res.json().catch(() => ({}));
+  return {
+    authed: true,
+    pending: Array.isArray(data.pending) ? data.pending : [],
+    running: Array.isArray(data.running) ? data.running : [],
+  };
+}
+
+function applyMutingFromQueue() {
+  // toggle muted class based on updatingDots
+  document.querySelectorAll("tr[data-dot]").forEach((tr) => {
+    const dot = tr.dataset.dot;
+    const wasMuted = tr.classList.contains("is-muted");
+    const nowMuted = updatingDots.has(dot);
+
+    if (nowMuted) {
+      tr.classList.add("is-muted");
+    } else {
+      tr.classList.remove("is-muted");
+      // miracle worker: only flash when it transitions muted -> normal
+      if (wasMuted) {
+        tr.classList.add("just-updated");
+        setTimeout(() => tr.classList.remove("just-updated"), 650);
+      }
+    }
+  });
+
+  setRefreshPill(updatingDots.size);
+}
+
+async function syncQueueOnce() {
+  const q = await fetchQueueStatus();
+
+  if (!q.authed) {
+    // public/incognito: never show updating UI
+    stopQueuePolling();
+    updatingDots = new Set();
+    setRefreshPill(0);
+    applyMutingFromQueue();
+    return;
+  }
+
+  const next = new Set([...q.pending, ...q.running].map(normDot).filter(Boolean));
+  updatingDots = next;
+
+  if (updatingDots.size > 0) lastQueueNonEmptyAt = Date.now();
+
+  applyMutingFromQueue();
+}
+
+function startQueuePolling() {
+  if (queuePolling) return;
+  queuePolling = true;
+
+  // immediate sync
+  syncQueueOnce().catch(console.error);
+
+  queuePollTimer = setInterval(async () => {
+    try {
+      await syncQueueOnce();
+
+      // stop condition: queue empty and has been empty for a beat
+      if (updatingDots.size === 0) {
+        // little grace window so it doesn't flicker stop/start
+        const emptyForMs = Date.now() - lastQueueNonEmptyAt;
+        if (emptyForMs > 2500) stopQueuePolling();
+      }
+    } catch (e) {
+      // on errors, stop to avoid hammering
+      stopQueuePolling();
+    }
+  }, 2000); // feels “live” without being spammy
+}
+
+function stopQueuePolling() {
+  if (queuePollTimer) {
+    clearInterval(queuePollTimer);
+    queuePollTimer = null;
+  }
+  queuePolling = false;
+}
+  
 async function enqueueRefresh(dot) {
   // fire-and-forget enqueue call (no cancel exposed)
   const url = `/api/carriers/${encodeURIComponent(dot)}/refresh`;
@@ -537,8 +627,12 @@ function normDot(val) {
       data.forEach((c) => {
         const row = document.createElement("tr");
         const dotVal = c.dot || c.dotnumber || c.id || "";
-        const fresh = isFreshCarrier(c);
-        if (!fresh) row.classList.add("is-muted");
+
+const dotKey = normDot(dotVal);
+row.dataset.dot = dotKey;
+
+if (updatingDots.has(dotKey)) row.classList.add("is-muted");
+        
         row.dataset.dot = normDot(dotVal);
 
         // Checkbox cell (SEARCH mode: ✓ if already saved, otherwise checkbox)
@@ -634,24 +728,7 @@ function normDot(val) {
 
         tbody.appendChild(row);
       });
-      // Auto refresh only when viewing MY carriers (not public/search)
-      if (gridMode !== "SEARCH") {
-        // Collect muted dots currently visible
-        const mutedDots = data
-          .filter((c) => !isFreshCarrier(c))
-          .map((c) => normDot(c.dot || c.dotnumber || c.id || ""))
-          .filter(Boolean);
-      
-        // Add to refresh queue (dedupe)
-        mutedDots.forEach((d) => {
-          if (!refreshInFlight.has(d) && !refreshQueue.includes(d)) {
-            refreshQueue.push(d);
-          }
-        });
-      
-        // Start background refresh loop if needed
-        startBackgroundRefreshLoop();
-      }
+
       renderPagination();
     } catch (err) {
       console.error("Error fetching carriers:", err);
@@ -1124,26 +1201,21 @@ async function buildMyCarrierDots() {
   // ---------------------------------------------
 
   function wireRefreshAll() {
-    const btn = document.getElementById("refresh-all-btn");
-    if (!btn) return;
-  
-    btn.addEventListener("click", async () => {
-      // Only makes sense in MY mode
-      if (gridMode === "SEARCH") return;
-  
-      // enqueue all visible muted rows (or you can enqueue all rows if you want)
-      const mutedRows = Array.from(document.querySelectorAll("tr.is-muted"))
-        .map((tr) => tr.dataset.dot)
-        .filter(Boolean);
-  
-      mutedRows.forEach((d) => {
-        if (!refreshInFlight.has(d) && !refreshQueue.includes(d)) {
-          refreshQueue.push(d);
-        }
-      });
-  
-      startBackgroundRefreshLoop();
-    });
+btn.addEventListener("click", async () => {
+  if (gridMode === "SEARCH") return;
+
+  const visibleDots = Array.from(document.querySelectorAll("tr[data-dot]"))
+    .map((tr) => tr.dataset.dot)
+    .filter(Boolean)
+    .slice(0, 100); // hard cap
+
+  for (const dot of visibleDots) {
+    await enqueueRefresh(dot);      // your existing per-dot enqueue
+    await new Promise(r => setTimeout(r, 40)); // tiny spacing so you don't spike
+  }
+
+  startQueuePolling();
+});
   }
   
   function wireBulkRemove() {
@@ -1719,10 +1791,13 @@ bulkRemoveBtn.addEventListener("click", async () => {
         runPreview(dots);
       } else if (currentStep === 2) {
         runImportFromPreview();
-      } else if (currentStep === 3) {
-        closeImportModal();
-        window.location.reload();
-      }
+} else if (currentStep === 3) {
+  closeImportModal();
+  currentPage = 1;
+  setGridMode("MY");
+  await loadCarriers();
+  startQueuePolling(); // <-- show miracle worker
+}
     });
 
     // Accordion toggles
@@ -1758,6 +1833,8 @@ bulkRemoveBtn.addEventListener("click", async () => {
     //await buildMyCarrierDots();   // <-- build first
     setGridMode("MY");
     loadCarriers();
+    await syncQueueOnce();
+if (updatingDots.size > 0) startQueuePolling();
   });
 
 })();
