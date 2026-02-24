@@ -147,7 +147,7 @@ router.post("/my-carriers/bulk", requireAuth, async (req, res) => {
       valid AS (
         SELECT i.dot
         FROM input i
-        JOIN carriers c ON c.dotnumber = i.dot
+        JOIN carriers c ON c.dotnumber::text = i.dot
       ),
       ins AS (
         INSERT INTO user_carriers (user_id, carrier_dot, added_at)
@@ -170,7 +170,7 @@ router.post("/my-carriers/bulk", requireAuth, async (req, res) => {
 
     const validDots = s.valid_dots || [];
 
-    // 2️⃣ Insert into refresh queue
+    // 2️⃣ Insert into refresh queue (ONLY if carriers.updated_at is older than 72 hours)
     if (validDots.length > 0) {
       await client.query(
         `
@@ -182,7 +182,18 @@ router.post("/my-carriers/bulk", requireAuth, async (req, res) => {
           status,
           created_at
         )
-        SELECT UNNEST($1::text[]), $2, 'IMPORT', 80, 'PENDING', NOW()
+        SELECT
+          c.dotnumber::text,
+          $2,
+          'IMPORT',
+          80,
+          'PENDING',
+          NOW()
+        FROM carriers c
+        JOIN UNNEST($1::text[]) d(dot)
+          ON c.dotnumber::text = d.dot
+        WHERE c.updated_at IS NULL
+           OR c.updated_at < NOW() - INTERVAL '72 hours'
         ON CONFLICT DO NOTHING;
         `,
         [validDots, userId]
