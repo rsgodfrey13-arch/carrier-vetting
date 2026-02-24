@@ -4745,3 +4745,23 @@ body.app-page #site-header .header-container{
 .carriers-table tbody tr.just-updated{
   box-shadow: 0 0 0 1px rgba(56,189,248,.18), 0 10px 26px rgba(15,23,42,0.85);
 }
+
+
+.refresh-status{
+  position: fixed;
+  right: 18px;
+  bottom: 14px;
+  z-index: 9999;
+
+  font-size: 0.85rem;
+  color: #9CA3AF;          /* nice grey */
+  letter-spacing: .2px;
+
+  background: transparent;
+  padding: 0;
+  margin: 0;
+
+  display: none;           /* hidden by default */
+  user-select: none;
+  pointer-events: none;    /* never blocks clicks */
+}
