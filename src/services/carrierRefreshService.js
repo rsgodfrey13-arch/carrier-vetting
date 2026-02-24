@@ -1,6 +1,6 @@
 const axios = require("axios");
-const db = require("../db");
-
+const { pool } = require("../db/pool");
+const client = await pool.connect();
 const FMCSA_BASE = "https://mobile.fmcsa.dot.gov/qc/services/carriers";
 const FRESHNESS_MINUTES = 5; // skip refresh if already fresh
 
