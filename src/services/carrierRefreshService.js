@@ -1,6 +1,8 @@
+// src/services/carrierRefreshService.js
+
 const axios = require("axios");
 const { pool } = require("../db/pool");
-const client = await pool.connect();
+
 const FMCSA_BASE = "https://mobile.fmcsa.dot.gov/qc/services/carriers";
 const FRESHNESS_MINUTES = 5; // skip refresh if already fresh
 
@@ -10,7 +12,7 @@ function mapFmcsaToCarrier(raw) {
     dbaname: raw?.dbaName || null,
     statuscode: raw?.statusCode || null,
     allowedtooperate: raw?.allowedToOperate || null,
-    safetyrating: raw?.safetyRating || null
+    safetyrating: raw?.safetyRating || null,
   };
 }
 
@@ -22,7 +24,6 @@ async function fetchFromFmcsa(dot) {
 
   try {
     const response = await axios.get(url, { timeout: 10000 });
-
     const carrier = response?.data?.content?.carrier;
 
     if (!carrier) {
@@ -30,14 +31,12 @@ async function fetchFromFmcsa(dot) {
     }
 
     return carrier;
-
   } catch (err) {
-    if (err.response?.status === 429) {
+    if (err?.response?.status === 429) {
       const e = new Error("Rate limited");
       e.status = 429;
       throw e;
     }
-
     throw err;
   }
 }
@@ -45,16 +44,18 @@ async function fetchFromFmcsa(dot) {
 async function refreshCarrier(dot) {
   if (!dot) throw new Error("Missing DOT");
 
-  const client = await db.connect();
+  const client = await pool.connect();
 
   try {
     await client.query("BEGIN");
 
-    // 🔎 1️⃣ Check freshness first
+    // 1) Check freshness first
     const existing = await client.query(
-      `SELECT retrieval_date
-       FROM carriers
-       WHERE dotnumber = $1`,
+      `
+      SELECT retrieval_date
+      FROM carriers
+      WHERE dotnumber = $1
+      `,
       [dot]
     );
 
@@ -62,9 +63,7 @@ async function refreshCarrier(dot) {
       const last = existing.rows[0].retrieval_date;
 
       if (last) {
-        const diffMinutes =
-          (Date.now() - new Date(last).getTime()) / 60000;
-
+        const diffMinutes = (Date.now() - new Date(last).getTime()) / 60000;
         if (diffMinutes < FRESHNESS_MINUTES) {
           await client.query("COMMIT");
           return { skipped: true };
@@ -72,13 +71,13 @@ async function refreshCarrier(dot) {
       }
     }
 
-    // 🌐 2️⃣ Fetch FMCSA
+    // 2) Fetch FMCSA
     const fmcsaData = await fetchFromFmcsa(dot);
 
-    // 🔁 3️⃣ Map to schema
+    // 3) Map to schema
     const mapped = mapFmcsaToCarrier(fmcsaData);
 
-    // 💾 4️⃣ Upsert (safer than UPDATE only)
+    // 4) Upsert
     await client.query(
       `
       INSERT INTO carriers (
@@ -108,24 +107,22 @@ async function refreshCarrier(dot) {
         mapped.dbaname,
         mapped.statuscode,
         mapped.allowedtooperate,
-        mapped.safetyrating
+        mapped.safetyrating,
       ]
     );
 
     await client.query("COMMIT");
-
     return { ok: true };
-
   } catch (err) {
-    await client.query("ROLLBACK");
+    try {
+      await client.query("ROLLBACK");
+    } catch (_) {}
 
-    if (err.status === 429) {
-      throw err; // let worker handle backoff
-    }
+    // let worker handle backoff
+    if (err && err.status === 429) throw err;
 
     console.error("refreshCarrier error:", err);
     throw err;
-
   } finally {
     client.release();
   }
