@@ -15,21 +15,11 @@
   // Server-side sort
   let sortBy = "carrier";
   let sortDir = "asc";
-    // Grid mode
+  // Grid mode
   let gridMode = "MY"; // "MY" | "SEARCH"
   let searchQuery = "";
+  
 
-
-
-  const FRESH_WINDOW_HOURS = 24; // “refreshed today” behavior without midnight flip
-  let refreshQueue = [];         // dots we want to enqueue
-  let refreshInFlight = new Set(); // dots currently enqueued/running client-side
-  let refreshLoopRunning = false;
-  let refreshPollTimer = null;
-  let updatingDots = new Set();    // dots in PENDING or RUNNING for this user
-let queuePollTimer = null;
-let queuePolling = false;
-let lastQueueNonEmptyAt = 0;
 
   // ---------------------------------------------
   // HELPERS
@@ -55,6 +45,18 @@ function isFreshCarrier(c) {
   return ageHours <= FRESH_WINDOW_HOURS;
 }
 
+
+  
+// ---------------------------------------------
+// QUEUE-DRIVEN “MIRACLE WORKER” UI
+// Muted only when the carrier is in carrier_refresh_queue
+// for THIS user with status PENDING or RUNNING.
+// ---------------------------------------------
+let updatingDots = new Set();     // DOTs in PENDING/RUNNING for this user
+let queuePollTimer = null;
+let queuePolling = false;
+let lastQueueNonEmptyAt = 0;
+
 function setRefreshPill(activeCount) {
   const pill = document.getElementById("refresh-pill");
   const text = document.getElementById("refresh-pill-text");
@@ -69,11 +71,11 @@ function setRefreshPill(activeCount) {
   text.textContent = activeCount === 1 ? "Updating…" : `Updating • ${activeCount}`;
 }
 
-
 async function fetchQueueStatus() {
   const res = await fetch("/api/refresh-queue/status");
   if (res.status === 401) return { authed: false, pending: [], running: [] };
   if (!res.ok) throw new Error("queue status failed");
+
   const data = await res.json().catch(() => ({}));
   return {
     authed: true,
@@ -83,7 +85,6 @@ async function fetchQueueStatus() {
 }
 
 function applyMutingFromQueue() {
-  // toggle muted class based on updatingDots
   document.querySelectorAll("tr[data-dot]").forEach((tr) => {
     const dot = tr.dataset.dot;
     const wasMuted = tr.classList.contains("is-muted");
@@ -91,9 +92,10 @@ function applyMutingFromQueue() {
 
     if (nowMuted) {
       tr.classList.add("is-muted");
+      tr.title = "Updating carrier data…";
     } else {
       tr.classList.remove("is-muted");
-      // miracle worker: only flash when it transitions muted -> normal
+      tr.title = "";
       if (wasMuted) {
         tr.classList.add("just-updated");
         setTimeout(() => tr.classList.remove("just-updated"), 650);
@@ -108,7 +110,7 @@ async function syncQueueOnce() {
   const q = await fetchQueueStatus();
 
   if (!q.authed) {
-    // public/incognito: never show updating UI
+    // Public/incognito: never show updating UI, never poll
     stopQueuePolling();
     updatingDots = new Set();
     setRefreshPill(0);
@@ -135,17 +137,15 @@ function startQueuePolling() {
     try {
       await syncQueueOnce();
 
-      // stop condition: queue empty and has been empty for a beat
+      // Stop when empty and stayed empty briefly (prevents flicker)
       if (updatingDots.size === 0) {
-        // little grace window so it doesn't flicker stop/start
         const emptyForMs = Date.now() - lastQueueNonEmptyAt;
         if (emptyForMs > 2500) stopQueuePolling();
       }
     } catch (e) {
-      // on errors, stop to avoid hammering
       stopQueuePolling();
     }
-  }, 2000); // feels “live” without being spammy
+  }, 2000);
 }
 
 function stopQueuePolling() {
@@ -155,25 +155,22 @@ function stopQueuePolling() {
   }
   queuePolling = false;
 }
-  
-async function enqueueRefresh(dot) {
-  // fire-and-forget enqueue call (no cancel exposed)
+
+// Enqueue refresh for one DOT (server decides dedupe)
+async function enqueueRefresh(dot, source = "ui") {
   const url = `/api/carriers/${encodeURIComponent(dot)}/refresh`;
-  const res = await fetch(url, { method: "POST" });
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ source }),
+  });
 
-  // 401 -> let your existing session UX handle it elsewhere
-  if (res.status === 429) {
-    // queued/rate-limited; still counts as “in progress” from UI standpoint
-    return { queued: true };
-  }
-
-  if (!res.ok) {
-    return { ok: false };
-  }
+  if (res.status === 401) return { authed: false };
+  if (res.status === 429) return { queued: true }; // still ok UX-wise
+  if (!res.ok) return { ok: false };
 
   return { ok: true };
 }
-
 
   
 function normDot(val) {
@@ -627,11 +624,10 @@ function normDot(val) {
       data.forEach((c) => {
         const row = document.createElement("tr");
         const dotVal = c.dot || c.dotnumber || c.id || "";
-
-const dotKey = normDot(dotVal);
-row.dataset.dot = dotKey;
-
-if (updatingDots.has(dotKey)) row.classList.add("is-muted");
+        const dotKey = normDot(dotVal);
+      
+        row.dataset.dot = dotKey;
+        if (updatingDots.has(dotKey)) row.classList.add("is-muted");
         
         row.dataset.dot = normDot(dotVal);
 
@@ -639,7 +635,6 @@ if (updatingDots.has(dotKey)) row.classList.add("is-muted");
         const selectCell = document.createElement("td");
         selectCell.className = "col-select select-cell";
         
-        const dotKey = normDot(dotVal);
         const isMine = myCarrierDots.has(dotKey);
         
         if (gridMode === "SEARCH" && isMine) {
@@ -1200,23 +1195,37 @@ async function buildMyCarrierDots() {
   // BULK SELECT + REMOVE
   // ---------------------------------------------
 
-  function wireRefreshAll() {
-btn.addEventListener("click", async () => {
-  if (gridMode === "SEARCH") return;
+function wireRefreshAll() {
+  const btn = $("refresh-all-btn");
+  if (!btn) return;
 
-  const visibleDots = Array.from(document.querySelectorAll("tr[data-dot]"))
-    .map((tr) => tr.dataset.dot)
-    .filter(Boolean)
-    .slice(0, 100); // hard cap
+  btn.addEventListener("click", async () => {
+    if (gridMode === "SEARCH") return;
 
-  for (const dot of visibleDots) {
-    await enqueueRefresh(dot);      // your existing per-dot enqueue
-    await new Promise(r => setTimeout(r, 40)); // tiny spacing so you don't spike
-  }
+    // only visible rows, hard cap (prevents 60k disasters)
+    const visibleDots = Array.from(document.querySelectorAll("tr[data-dot]"))
+      .map((tr) => tr.dataset.dot)
+      .filter(Boolean)
+      .slice(0, 100);
 
-  startQueuePolling();
-});
-  }
+    if (!visibleDots.length) return;
+
+    btn.disabled = true;
+
+    try {
+      for (const dot of visibleDots) {
+        await enqueueRefresh(dot, "refresh_all_visible");
+        await new Promise((r) => setTimeout(r, 40));
+      }
+
+      // show miracle worker effect
+      startQueuePolling();
+      await syncQueueOnce();
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
   
   function wireBulkRemove() {
     const tbody = $("carrier-table-body");
@@ -1780,7 +1789,7 @@ bulkRemoveBtn.addEventListener("click", async () => {
       }
     }
 
-    importNextBtn.addEventListener("click", () => {
+    importNextBtn.addEventListener("click", async () => {
       if (currentStep === 1) {
         const dots = importMethod === "csv" ? parsedDotsFromCsv || [] : getDotsFromPaste();
         if (!dots.length) {
@@ -1818,23 +1827,24 @@ bulkRemoveBtn.addEventListener("click", async () => {
   // ---------------------------------------------
   // BOOT
   // ---------------------------------------------
-  document.addEventListener("DOMContentLoaded", async () => {
-    wireFiltersPanel();
-    wireGridModeBar();
-    wireRowsPerPage();
-    wireAutocomplete();
-    wireRefreshAll();
-    wireSortHeaders();
-    wireCsvDownload();
-    wireAuthUi();
-    wireBulkRemove();
-    wireBulkImportWizard();
-  
-    //await buildMyCarrierDots();   // <-- build first
-    setGridMode("MY");
-    loadCarriers();
-    await syncQueueOnce();
-if (updatingDots.size > 0) startQueuePolling();
-  });
+    document.addEventListener("DOMContentLoaded", async () => {
+      wireFiltersPanel();
+      wireGridModeBar();
+      wireRowsPerPage();
+      wireAutocomplete();
+      wireRefreshAll();
+      wireSortHeaders();
+      wireCsvDownload();
+      wireAuthUi();
+      wireBulkRemove();
+      wireBulkImportWizard();
+    
+      setGridMode("MY");
+    
+      await syncQueueOnce();
+      await loadCarriers();
+    
+      if (updatingDots.size > 0) startQueuePolling();
+    });
 
 })();
