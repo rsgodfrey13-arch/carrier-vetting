@@ -4782,12 +4782,18 @@ body.app-page #site-header .header-container{
 }
 
 .carriers-header-actions{
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 10px;
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  align-items:center;
+  gap:10px;
 }
+
 .carriers-header-actions .refresh-status{
-  flex-basis: 100%;       /* forces it onto its own line under the buttons */
+  flex-basis:100%;
+  text-align:right;
+  margin-top:6px;
+  font-size:.85rem;
+  color:#9CA3AF;
+  display:none; /* JS toggles on/off */
 }
