@@ -1,4 +1,5 @@
 const THROTTLE_MS = 700;
+const { refreshCarrier } = require("../services/carrierRefreshService");
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
