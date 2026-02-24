@@ -19,6 +19,8 @@
   let gridMode = "MY"; // "MY" | "SEARCH"
   let searchQuery = "";
 
+
+  let prevMutedByDot = new Map(); // dot -> boolean
   const FRESH_WINDOW_HOURS = 24; // “refreshed today” behavior without midnight flip
   let refreshQueue = [];         // dots we want to enqueue
   let refreshInFlight = new Set(); // dots currently enqueued/running client-side
@@ -538,6 +540,7 @@ function normDot(val) {
         const fresh = isFreshCarrier(c);
         if (!fresh) row.classList.add("is-muted");
         row.dataset.dot = normDot(dotVal);
+        prevMutedByDot.set(row.dataset.dot, !fresh);
 
         // Checkbox cell (SEARCH mode: ✓ if already saved, otherwise checkbox)
         const selectCell = document.createElement("td");
@@ -636,12 +639,9 @@ function normDot(val) {
       if (gridMode !== "SEARCH") {
         // Collect muted dots currently visible
         const mutedDots = data
+          .filter((c) => !isFreshCarrier(c))
           .map((c) => normDot(c.dot || c.dotnumber || c.id || ""))
-          .filter(Boolean)
-          .filter((dot, i) => {
-            const c = data[i];
-            return !isFreshCarrier(c);
-          });
+          .filter(Boolean);
       
         // Add to refresh queue (dedupe)
         mutedDots.forEach((d) => {
@@ -705,11 +705,18 @@ function startBackgroundRefreshLoop() {
   })();
 }
 
+
 async function loadCarriersPreserveSelection() {
   // preserve checked boxes during refresh repaints
   const selected = Array.from(document.querySelectorAll(".row-select:checked"))
     .map((cb) => normDot(cb.dataset.dot))
     .filter(Boolean);
+
+  // snapshot muted state BEFORE reload
+  const beforeMuted = new Map();
+  document.querySelectorAll("tr[data-dot]").forEach((tr) => {
+    beforeMuted.set(tr.dataset.dot, tr.classList.contains("is-muted"));
+  });
 
   await loadCarriers();
 
@@ -719,19 +726,27 @@ async function loadCarriersPreserveSelection() {
     if (cb) cb.checked = true;
   });
 
-  // if any muted rows became fresh, add a tiny “just updated” flash
-  document.querySelectorAll("tr").forEach((tr) => {
-    if (!tr.dataset.dot) return;
+  // After reload: remove dots from in-flight if they’re no longer muted
+  document.querySelectorAll("tr[data-dot]").forEach((tr) => {
+    const dot = tr.dataset.dot;
+    const nowMuted = tr.classList.contains("is-muted");
+    const wasMuted = beforeMuted.get(dot);
 
-    // If it was muted previously, we can detect flip by CSS class absence now
-    // We’ll do a lightweight flash only when it’s fresh (not muted).
-    if (!tr.classList.contains("is-muted")) {
+    // Transition: muted -> normal
+    if (wasMuted === true && nowMuted === false) {
       tr.classList.add("just-updated");
       setTimeout(() => tr.classList.remove("just-updated"), 650);
-    }
-  });
-}
 
+      // mark done
+      refreshInFlight.delete(dot);
+    }
+
+    // If still muted, keep it in-flight (don’t delete)
+    // If it was never in-flight, ignore
+  });
+
+  setRefreshPill(refreshInFlight.size);
+}
   
   function renderPagination() {
     const container = $("pagination-controls");
@@ -1734,6 +1749,7 @@ bulkRemoveBtn.addEventListener("click", async () => {
     wireGridModeBar();
     wireRowsPerPage();
     wireAutocomplete();
+    wireRefreshAll();
     wireSortHeaders();
     wireCsvDownload();
     wireAuthUi();
