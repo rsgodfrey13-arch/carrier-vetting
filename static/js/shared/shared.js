@@ -126,7 +126,235 @@ window.closeTour = function () {
   overlay.setAttribute("aria-hidden", "true");
   document.documentElement.classList.remove("cs-modal-open");
 };
-  
+
+
+
+// ===============================
+// Access Gate (reusable modal)
+// ===============================
+(function () {
+  const OVERLAY_ID = "csAccessGateOverlay";
+
+  function ensureAccessGateStyles() {
+    if (document.getElementById("csAccessGateStyles")) return;
+
+    const style = document.createElement("style");
+    style.id = "csAccessGateStyles";
+    style.textContent = `
+      /* Access Gate overlay */
+      #${OVERLAY_ID}{
+        position: fixed; inset: 0;
+        display: none;
+        align-items: center; justify-content: center;
+        padding: 24px;
+        background: rgba(2, 6, 23, 0.62);
+        z-index: 9999;
+      }
+      #${OVERLAY_ID}.is-open{ display:flex; }
+
+      .cs-gate-card{
+        width: min(720px, 100%);
+        border-radius: 18px;
+        border: 1px solid rgba(255,255,255,0.08);
+        background: rgba(9, 20, 40, 0.92);
+        box-shadow: 0 18px 60px rgba(0,0,0,0.55);
+        padding: 22px 22px 18px;
+        position: relative;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+      .cs-gate-x{
+        position:absolute; top:14px; right:14px;
+        width: 36px; height: 36px;
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.10);
+        background: rgba(255,255,255,0.04);
+        color: rgba(255,255,255,0.85);
+        cursor:pointer;
+      }
+      .cs-gate-x:hover{ background: rgba(255,255,255,0.07); }
+
+      .cs-gate-title{
+        font-size: 1.15rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        margin: 0 44px 6px 0;
+        color: rgba(255,255,255,0.92);
+      }
+      .cs-gate-sub{
+        margin: 0 0 14px 0;
+        color: rgba(255,255,255,0.70);
+        line-height: 1.4;
+      }
+
+      .cs-gate-actions{
+        display:flex;
+        gap: 10px;
+        align-items:center;
+        justify-content:flex-end;
+        margin-top: 14px;
+        flex-wrap: wrap;
+      }
+      .cs-gate-note{
+        margin-top: 10px;
+        color: rgba(255,255,255,0.55);
+        font-size: .85rem;
+      }
+
+      /* Small helper button styles that match your vibe */
+      .cs-btn-primary{
+        appearance:none;
+        border: 0;
+        border-radius: 999px;
+        padding: 10px 14px;
+        font-weight: 700;
+        cursor:pointer;
+        color: #071018;
+        background: #35d0ff;
+      }
+      .cs-btn-primary:hover{ filter: brightness(1.06); }
+
+      .cs-btn-ghost{
+        appearance:none;
+        border-radius: 999px;
+        padding: 10px 14px;
+        font-weight: 700;
+        cursor:pointer;
+        color: rgba(255,255,255,0.88);
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.10);
+      }
+      .cs-btn-ghost:hover{ background: rgba(255,255,255,0.09); }
+
+      .cs-btn-link{
+        appearance:none;
+        border: 0;
+        background: transparent;
+        color: rgba(255,255,255,0.65);
+        cursor:pointer;
+        padding: 8px 10px;
+      }
+      .cs-btn-link:hover{ color: rgba(255,255,255,0.82); }
+
+      @media (max-width: 520px){
+        .cs-gate-actions{ justify-content: stretch; }
+        .cs-btn-primary, .cs-btn-ghost{ width: 100%; text-align:center; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function ensureAccessGateMarkup() {
+    if (document.getElementById(OVERLAY_ID)) return;
+
+    const overlay = document.createElement("div");
+    overlay.id = OVERLAY_ID;
+    overlay.setAttribute("aria-hidden", "true");
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.innerHTML = `
+      <div class="cs-gate-card" role="document">
+        <button class="cs-gate-x" type="button" aria-label="Close">✕</button>
+        <div class="cs-gate-title" id="csGateTitle">Create an account to continue</div>
+        <p class="cs-gate-sub" id="csGateBody">
+          Save carriers, bulk import, and monitor updates in one place.
+        </p>
+
+        <div class="cs-gate-actions">
+          <button type="button" class="cs-btn-link" id="csGateNotNow">Not now</button>
+          <button type="button" class="cs-btn-ghost" id="csGateSignIn">Sign in</button>
+          <button type="button" class="cs-btn-primary" id="csGateCreate">Create account</button>
+        </div>
+
+        <div class="cs-gate-note" id="csGateNote">
+          Starter is free (25 carriers).
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // Click outside to close
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) window.hideAccessGate();
+    });
+
+    // Close button
+    overlay.querySelector(".cs-gate-x").addEventListener("click", () => {
+      window.hideAccessGate();
+    });
+
+    // Esc to close
+    document.addEventListener("keydown", (e) => {
+      const el = document.getElementById(OVERLAY_ID);
+      if (!el || !el.classList.contains("is-open")) return;
+      if (e.key === "Escape") window.hideAccessGate();
+    });
+
+    // Buttons
+    document.getElementById("csGateNotNow").addEventListener("click", () => window.hideAccessGate());
+    document.getElementById("csGateSignIn").addEventListener("click", () => (window.location.href = "/login"));
+    document.getElementById("csGateCreate").addEventListener("click", () => (window.location.href = "/create-account"));
+  }
+
+  window.showAccessGate = function showAccessGate(opts = {}) {
+    ensureAccessGateStyles();
+    ensureAccessGateMarkup();
+
+    const {
+      title = "Create an account to continue",
+      body = "Save carriers, bulk import, and monitor updates in one place.",
+      note = "Starter is free (25 carriers).",
+      // Optional: change button labels without changing wiring
+      createLabel,
+      signInLabel
+    } = opts;
+
+    const overlay = document.getElementById(OVERLAY_ID);
+    if (!overlay) return;
+
+    const titleEl = document.getElementById("csGateTitle");
+    const bodyEl = document.getElementById("csGateBody");
+    const noteEl = document.getElementById("csGateNote");
+    const createBtn = document.getElementById("csGateCreate");
+    const signInBtn = document.getElementById("csGateSignIn");
+
+    if (titleEl) titleEl.textContent = title;
+    if (bodyEl) bodyEl.textContent = body;
+    if (noteEl) {
+      noteEl.textContent = note || "";
+      noteEl.style.display = note ? "block" : "none";
+    }
+    if (createLabel) createBtn.textContent = createLabel;
+    if (signInLabel) signInBtn.textContent = signInLabel;
+
+    overlay.classList.add("is-open");
+    overlay.setAttribute("aria-hidden", "false");
+    document.documentElement.classList.add("cs-modal-open");
+
+    // Focus primary action
+    setTimeout(() => createBtn?.focus(), 0);
+  };
+
+  window.hideAccessGate = function hideAccessGate() {
+    const overlay = document.getElementById(OVERLAY_ID);
+    if (!overlay) return;
+    overlay.classList.remove("is-open");
+    overlay.setAttribute("aria-hidden", "true");
+    document.documentElement.classList.remove("cs-modal-open");
+  };
+
+  // Small helper you can call in click handlers:
+  // If not logged in -> show gate and return false, else true.
+  window.requireAccountOrGate = function requireAccountOrGate(customOpts) {
+    if (window.csIsLoggedIn) return true;
+    window.showAccessGate(customOpts);
+    return false;
+  };
+})();
+
+
+
+
 async function initAuthUI() {
   const loginBtn = document.getElementById("login-btn");
   const logoutBtn = document.getElementById("logout-btn");
@@ -143,7 +371,8 @@ async function initAuthUI() {
       if (loginBtn) loginBtn.style.display = "none";
       if (logoutBtn) logoutBtn.style.display = "inline-block";
       if (tourLink) tourLink.style.display = "none";
-
+      window.csIsLoggedIn = true;
+      
       if (header) {
         header.classList.remove("is-logged-out");
         header.classList.add("is-logged-in");
@@ -172,6 +401,7 @@ async function initAuthUI() {
       if (loginBtn) loginBtn.style.display = "inline-block";
       if (logoutBtn) logoutBtn.style.display = "none";
       if (tourLink) tourLink.style.display = "inline-block";
+      window.csIsLoggedIn = false;
 
       if (header) {
         header.classList.remove("is-logged-in");
