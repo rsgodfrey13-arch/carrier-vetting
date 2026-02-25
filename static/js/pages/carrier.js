@@ -46,6 +46,11 @@ async function getMe() {
   }
 }
 
+function showLoggedInGate({ title, body, primaryText, onPrimary }) {
+  const ok = confirm(`${title}\n\n${body}\n\nContinue?`);
+  if (ok) onPrimary?.();
+}
+  
 function applyInsuranceLock(me) {
   const overlay = document.getElementById("insurance-locked");
   const upgradeBtn = document.getElementById("btn-upgrade-insurance");
@@ -82,10 +87,7 @@ function applyInsuranceLock(me) {
     return;
   }
 
-function showLoggedInGate({ title, body, primaryText, onPrimary }) {
-  const ok = confirm(`${title}\n\n${body}\n\nContinue?`);
-  if (ok) onPrimary?.();
-}
+
   
   // ------------------------
   // LOGGED IN BUT NOT ALLOWED
@@ -1202,15 +1204,9 @@ if (data && data.source === "cache_stale") {
   
       if (!addBtn || !removeBtn) return;
 
-  function wireEmailClick(dot) {
-  if (!emailBtn) return;
-  emailBtn.onclick = () => openEmailAlertsModal(dot);
-}
 
-function wireContractClick(dot) {
-  if (!contractBtn) return;
-  contractBtn.onclick = () => openSendContractModal(dot, window.__carrierProfile || null);
-}
+
+
 
     function setState({ isSaved, isLoggedIn }) {
       // NOT LOGGED IN
@@ -1474,10 +1470,11 @@ if (contractBtn) {
           if (res.ok && body.ok) {
             // update UI immediately
             setState({ isSaved: true, isLoggedIn: true });
+            isSaved = true; // ✅ add this
           
             if (emailBtn) {
               emailBtn.classList.remove("pill-disabled");
-              wireEmailClick(dot);
+
           
               // fetch alert state after add
               try {
@@ -1495,7 +1492,7 @@ if (contractBtn) {
 
             if (contractBtn) {
               contractBtn.classList.remove("pill-disabled");
-              wireContractClick(dot);
+
             }         
             return;
           }
@@ -1527,6 +1524,7 @@ if (contractBtn) {
         if (res.ok && body.ok) {
           // update UI immediately (trust the delete)
           setState({ isSaved: false, isLoggedIn: true });
+          isSaved = false;
         
           // reset email pill
           if (emailBtn) {
