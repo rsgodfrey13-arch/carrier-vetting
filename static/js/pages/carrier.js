@@ -1255,7 +1255,7 @@ if (data && data.source === "cache_stale") {
 
 
 
-    function setState({ isSaved, isLoggedIn }) {
+    function setState({ isSaved, isLoggedIn, canEmailAlerts, canSendContracts }) {
       // NOT LOGGED IN
       if (!isLoggedIn) {
         addBtn.textContent = "Login to Add";
@@ -1288,11 +1288,13 @@ if (data && data.source === "cache_stale") {
         removeBtn.classList.add("active");
     
         if (emailBtn) {
-          emailBtn.classList.remove("pill-disabled");
+          if (canEmailAlerts) emailBtn.classList.remove("pill-disabled");
+          else emailBtn.classList.add("pill-disabled");
         }
-
+        
         if (contractBtn) {
-          contractBtn.classList.remove("pill-disabled");
+          if (canSendContracts) contractBtn.classList.remove("pill-disabled");
+          else contractBtn.classList.add("pill-disabled");
         }
     
       // LOGGED IN BUT NOT SAVED
@@ -1332,7 +1334,7 @@ try {
 
       
 if (!loggedIn) {
-  setState({ isSaved: false, isLoggedIn: false });
+  setState({ isSaved: false, isLoggedIn: false, canEmailAlerts: false, canSendContracts: false });
 
   // Make the "disabled-looking" pills clickable as a gate
   addBtn.classList.add("pill-disabled", "gate-click");
@@ -1412,7 +1414,7 @@ const canSendContracts = me?.send_contracts === true;
     }
 
 
-    setState({ isSaved, isLoggedIn: true });
+    setState({ isSaved, isLoggedIn: true, canEmailAlerts, canSendContracts });
 
 
       
@@ -1541,7 +1543,7 @@ if (contractBtn) {
       
           if (res.ok && body.ok) {
             // update UI immediately
-            setState({ isSaved: true, isLoggedIn: true });
+            setState({ isSaved: true, isLoggedIn: true, canEmailAlerts, canSendContracts });
             isSaved = true; // ✅ add this
           
             if (emailBtn) {
@@ -1595,7 +1597,7 @@ if (contractBtn) {
 
         if (res.ok && body.ok) {
           // update UI immediately (trust the delete)
-          setState({ isSaved: false, isLoggedIn: true });
+          setState({ isSaved: false, isLoggedIn: true, canEmailAlerts, canSendContracts });
           isSaved = false;
         
           // reset email pill
