@@ -1009,84 +1009,76 @@ async function buildMyCarrierDots() {
   // ---------------------------------------------
   // CSV DOWNLOAD (exports current table view)
   // ---------------------------------------------
-  function wireCsvDownload() {
-    const btn = $("download-btn");
-    if (!btn) return;
+function wireCsvDownload() {
+  const btn = $("download-btn");
+  if (!btn) return;
 
-    btn.addEventListener("click", () => {
-      // Gate for logged-out users
-      if (typeof window.requireAccountOrGate === "function") {
-        const ok = window.requireAccountOrGate({
-          title: "Create an account to download CSV exports",
-          body: "Export your carrier list to CSV for quick sharing and record-keeping.",
-          note: "Starter is free (25 carriers)."
-        });
-        if (!ok) return;
+  btn.addEventListener("click", () => {
+    // Gate for logged-out users
+    if (typeof window.requireAccountOrGate === "function") {
+      const ok = window.requireAccountOrGate({
+        title: "Create an account to download CSV exports",
+        body: "Export your carrier list to CSV for quick sharing and record-keeping.",
+        note: "Starter is free (25 carriers)."
+      });
+      if (!ok) return;
+    }
+
+    try {
+      const tbody = $("carrier-table-body");
+      if (!tbody) return;
+
+      const rows = Array.from(tbody.querySelectorAll("tr"));
+      const realRows = rows.filter((tr) => tr.querySelectorAll("td").length >= 2);
+
+      if (!realRows.length) {
+        alert("No carriers to export.");
+        return;
       }
-    
-      try {
-        const tbody = $("carrier-table-body");
-        if (!tbody) return;
-    
-        const rows = Array.from(tbody.querySelectorAll("tr"));
-    
-        const realRows = rows.filter((tr) => tr.querySelectorAll("td").length >= 2);
-        if (!realRows.length) {
-          alert("No carriers to export.");
-          return;
-        }
-        const tbody = $("carrier-table-body");
-        if (!tbody) return;
 
-        const rows = Array.from(tbody.querySelectorAll("tr"));
+      const lines = [];
+      lines.push(
+        ["DOT", "MC", "Carrier", "Location", "Operating", "Common", "Contract", "Broker", "Safety Rating"].join(",")
+      );
 
-        const realRows = rows.filter((tr) => tr.querySelectorAll("td").length >= 2);
-        if (!realRows.length) {
-          alert("No carriers to export.");
-          return;
-        }
-
-        const lines = [];
-        lines.push(["DOT", "MC", "Carrier", "Location", "Operating", "Common", "Contract", "Broker", "Safety Rating"].join(","));
-
-        function csvCell(val) {
-          let t = String(val ?? "").replace(/\s+/g, " ").trim();
-          if (/[",\n]/.test(t)) t = '"' + t.replace(/"/g, '""') + '"';
-          return t;
-        }
-
-        realRows.forEach((tr) => {
-          const tds = Array.from(tr.querySelectorAll("td"));
-          const dot = tds[1]?.innerText ?? "";
-          const mc = tds[2]?.innerText ?? "";
-          const carrier = tds[3]?.innerText ?? "";
-          const location = tds[4]?.innerText ?? "";
-          const operating = tds[5]?.innerText ?? "";
-          const common = tds[6]?.innerText ?? "";
-          const contract = tds[7]?.innerText ?? "";
-          const broker = tds[8]?.innerText ?? "";
-          const safety = tds[9]?.innerText ?? "";
-
-          const cols = [dot, mc, carrier, location, operating, common, contract, broker, safety].map(csvCell);
-          lines.push(cols.join(","));
-        });
-
-        const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
-        const blobUrl = URL.createObjectURL(blob);
-
-        const a = document.createElement("a");
-        a.href = blobUrl;
-        a.download = "carriers.csv";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(blobUrl);
-      } catch (err) {
-        console.error("CSV download failed", err);
-        alert("Sorry, something went wrong generating the CSV.");
+      function csvCell(val) {
+        let t = String(val ?? "").replace(/\s+/g, " ").trim();
+        if (/[",\n]/.test(t)) t = '"' + t.replace(/"/g, '""') + '"';
+        return t;
       }
-    });
-  }
+
+      realRows.forEach((tr) => {
+        const tds = Array.from(tr.querySelectorAll("td"));
+        const dot = tds[1]?.innerText ?? "";
+        const mc = tds[2]?.innerText ?? "";
+        const carrier = tds[3]?.innerText ?? "";
+        const location = tds[4]?.innerText ?? "";
+        const operating = tds[5]?.innerText ?? "";
+        const common = tds[6]?.innerText ?? "";
+        const contract = tds[7]?.innerText ?? "";
+        const broker = tds[8]?.innerText ?? "";
+        const safety = tds[9]?.innerText ?? "";
+
+        const cols = [dot, mc, carrier, location, operating, common, contract, broker, safety].map(csvCell);
+        lines.push(cols.join(","));
+      });
+
+      const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const blobUrl = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = "carriers.csv";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("CSV download failed", err);
+      alert("Sorry, something went wrong generating the CSV.");
+    }
+  });
+}
 
   // ---------------------------------------------
   // AUTH UI (Login/Logout buttons)
