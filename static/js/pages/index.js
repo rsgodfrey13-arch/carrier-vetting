@@ -57,7 +57,7 @@ function setRefreshStatus({ pending = [], running = [] } = {}) {
   // ✅ Only show when there's actually work happening
   // (keep it simple + low key)
   refreshStatusEl.textContent =
-    r > 0 ? `Updating ${total}…` : `Queued ${total}…`;
+    r > 0 ? `Updating ${total}…` : `Updating ${total}…`;
 
   refreshStatusEl.style.display = "block";
 }
