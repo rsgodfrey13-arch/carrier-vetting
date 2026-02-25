@@ -82,6 +82,11 @@ function applyInsuranceLock(me) {
     return;
   }
 
+function showLoggedInGate({ title, body, primaryText, onPrimary }) {
+  const ok = confirm(`${title}\n\n${body}\n\nContinue?`);
+  if (ok) onPrimary?.();
+}
+  
   // ------------------------
   // LOGGED IN BUT NOT ALLOWED
   // ------------------------
@@ -1270,14 +1275,17 @@ function wireContractClick(dot) {
 
 
     // logged in?
-    let loggedIn = false;
-    try {
-      const meRes = await fetch("/api/me");
-      const meData = await meRes.json();
-      loggedIn = !!meData.user;
-    } catch (err) {
-      console.error("auth check failed", err);
-    }
+let me = null;
+let loggedIn = false;
+
+try {
+  const meRes = await fetch("/api/me", { credentials: "include" });
+  const meData = await meRes.json().catch(() => ({}));
+  me = meData?.user || null;
+  loggedIn = !!me;
+} catch (err) {
+  console.error("auth check failed", err);
+}
 
 if (!loggedIn) {
   setState({ isSaved: false, isLoggedIn: false });
@@ -1305,17 +1313,36 @@ if (!loggedIn) {
     };
   }
 
-  if (contractBtn) {
-    contractBtn.classList.add("pill-disabled", "gate-click");
-    contractBtn.onclick = (e) => {
-      e.preventDefault();
-      window.requireAccountOrGate({
-        title: "Create an account to send contracts",
-        body: "Send broker-carrier agreements, track signatures, and store documents.",
-        note: "Starter is free (25 carriers)."
+if (contractBtn) {
+  contractBtn.classList.add("gate-click");
+
+  contractBtn.onclick = (e) => {
+    e.preventDefault();
+
+    // 1️⃣ Feature locked by plan
+    if (!canSendContracts) {
+      return showLoggedInGate({
+        title: "Contracts require Pro",
+        body: "Upgrade your plan to send broker-carrier contracts and track signatures.",
+        primaryText: "Upgrade Plan",
+        onPrimary: () => window.location.href = "/account?tab=plan"
       });
-    };
-  }
+    }
+
+    // 2️⃣ Allowed but carrier not saved
+    if (!isSaved) {
+      return showLoggedInGate({
+        title: "Add this carrier to send a contract",
+        body: "Contracts are sent from carriers saved in your list.",
+        primaryText: "Add Carrier",
+        onPrimary: () => addBtn.click()
+      });
+    }
+
+    // 3️⃣ Allowed + saved
+    openSendContractModal(dot, window.__carrierProfile || null);
+  };
+}
 
   // Optional: if you have a remove button on this page, gate it too.
   if (removeBtn) {
@@ -1332,6 +1359,9 @@ if (!loggedIn) {
 
   return;
 }
+
+
+      
 
 
     // saved?
@@ -1356,6 +1386,11 @@ if (!loggedIn) {
 
 
     setState({ isSaved, isLoggedIn: true });
+
+const canEmailAlerts = me?.email_alerts === true;
+const canSendContracts = me?.send_contracts === true;
+      
+      
     // If saved, load current email alerts state and display it in the pill
     if (emailBtn && isSaved) {
       try {
@@ -1376,10 +1411,37 @@ if (!loggedIn) {
       }
     }
 
-      // STEP 4.7 — wire email pill click
-      if (isSaved) wireEmailClick(dot);
-      if (isSaved) wireContractClick(dot);
-             
+if (emailBtn) {
+  emailBtn.classList.add("gate-click");
+
+  emailBtn.onclick = (e) => {
+    e.preventDefault();
+
+    // 1️⃣ Feature locked by plan
+    if (!canEmailAlerts) {
+      return showLoggedInGate({
+        title: "Email Alerts require Core",
+        body: "Upgrade your plan to enable Email Alerts for carriers.",
+        primaryText: "Upgrade Plan",
+        onPrimary: () => window.location.href = "/account?tab=plan"
+      });
+    }
+
+    // 2️⃣ Allowed by plan but carrier not added
+    if (!isSaved) {
+      return showLoggedInGate({
+        title: "Add this carrier to enable alerts",
+        body: "Email Alerts are available after you add this carrier to My Carriers.",
+        primaryText: "Add Carrier",
+        onPrimary: () => addBtn.click()
+      });
+    }
+
+    // 3️⃣ Allowed + saved
+    openEmailAlertsModal(dot);
+  };
+}
+      
       addBtn.onclick = async () => {
         if (addBtn.classList.contains("pill-disabled")) return;
       
