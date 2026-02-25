@@ -4860,3 +4860,24 @@ body.app-page #site-header .header-container{
   position: relative;
   z-index: 3;
 }
+
+/* Force refresh status to live in the left header (not fixed to viewport) */
+.carriers-header-left #refreshStatus.refresh-status{
+  position: static !important;    /* kills the fixed-bottom behavior */
+  right: auto !important;
+  bottom: auto !important;
+
+  display: none;                  /* JS toggles this */
+  margin-top: 6px;
+  width: auto;
+
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.2;
+  letter-spacing: .2px;
+  color: rgba(229, 231, 235, 0.55);
+
+  z-index: auto;
+  pointer-events: none;
+  user-select: none;
+}
