@@ -408,11 +408,9 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
 /* disabled state */
 .pill-disabled {
   opacity: 0.4;
-  cursor: default;
-  pointer-events: none;
+  cursor: pointer;       /* still clickable for the gate */
   box-shadow: none;
 }
-
 /* layout: keep this, plus your later carrier-actions override */
 .carrier-actions {
   display: flex;
