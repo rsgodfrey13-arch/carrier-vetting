@@ -1323,7 +1323,21 @@ bulkRemoveBtn.addEventListener("click", async () => {
       resetWizardState();
     }
 
-    bulkImportBtn.addEventListener("click", openImportModal);
+    bulkImportBtn.addEventListener("click", () => {
+      // If logged out, show the reusable “create account” gate instead of opening the modal
+      if (typeof window.requireAccountOrGate === "function") {
+        const ok = window.requireAccountOrGate({
+          title: "Create an account to use Bulk Import",
+          body: "Upload a CSV or paste DOTs, then add carriers in seconds.",
+          note: "Starter is free (25 carriers)."
+        });
+        if (!ok) return;
+      }
+    
+      // Logged in → open bulk import modal
+      openImportModal();
+    });
+    
     [importCloseBtn, importCancelBtn].forEach((btn) => btn && btn.addEventListener("click", closeImportModal));
 
     importModal.addEventListener("click", (e) => {
