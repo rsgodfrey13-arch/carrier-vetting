@@ -1547,7 +1547,8 @@ if (contractBtn) {
             isSaved = true; // ✅ add this
           
             if (emailBtn) {
-              emailBtn.classList.remove("pill-disabled");
+              if (canEmailAlerts) emailBtn.classList.remove("pill-disabled");
+              else emailBtn.classList.add("pill-disabled");
 
           
               // fetch alert state after add
@@ -1565,8 +1566,8 @@ if (contractBtn) {
             }
 
             if (contractBtn) {
-              contractBtn.classList.remove("pill-disabled");
-
+              if (canSendContracts) contractBtn.classList.remove("pill-disabled");
+              else contractBtn.classList.add("pill-disabled");
             }         
             return;
           }
