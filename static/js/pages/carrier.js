@@ -1287,6 +1287,7 @@ try {
   console.error("auth check failed", err);
 }
 
+      
 if (!loggedIn) {
   setState({ isSaved: false, isLoggedIn: false });
 
@@ -1313,34 +1314,16 @@ if (!loggedIn) {
     };
   }
 
-if (contractBtn) {
-  contractBtn.classList.add("gate-click");
 
+if (contractBtn) {
+  contractBtn.classList.add("pill-disabled", "gate-click");
   contractBtn.onclick = (e) => {
     e.preventDefault();
-
-    // 1️⃣ Feature locked by plan
-    if (!canSendContracts) {
-      return showLoggedInGate({
-        title: "Contracts require Pro",
-        body: "Upgrade your plan to send broker-carrier contracts and track signatures.",
-        primaryText: "Upgrade Plan",
-        onPrimary: () => window.location.href = "/account?tab=plan"
-      });
-    }
-
-    // 2️⃣ Allowed but carrier not saved
-    if (!isSaved) {
-      return showLoggedInGate({
-        title: "Add this carrier to send a contract",
-        body: "Contracts are sent from carriers saved in your list.",
-        primaryText: "Add Carrier",
-        onPrimary: () => addBtn.click()
-      });
-    }
-
-    // 3️⃣ Allowed + saved
-    openSendContractModal(dot, window.__carrierProfile || null);
+    window.requireAccountOrGate({
+      title: "Create an account to send contracts",
+      body: "Add carriers, send contracts, and track signatures in one place.",
+      note: "Starter is free (25 carriers)."
+    });
   };
 }
 
@@ -1360,7 +1343,8 @@ if (contractBtn) {
   return;
 }
 
-
+const canEmailAlerts = me?.email_alerts === true;
+const canSendContracts = me?.send_contracts === true;
       
 
 
@@ -1387,8 +1371,7 @@ if (contractBtn) {
 
     setState({ isSaved, isLoggedIn: true });
 
-const canEmailAlerts = me?.email_alerts === true;
-const canSendContracts = me?.send_contracts === true;
+
       
       
     // If saved, load current email alerts state and display it in the pill
@@ -1441,6 +1424,35 @@ if (emailBtn) {
     openEmailAlertsModal(dot);
   };
 }
+      
+if (contractBtn) {
+  contractBtn.classList.add("gate-click");
+
+  contractBtn.onclick = (e) => {
+    e.preventDefault();
+
+    if (!canSendContracts) {
+      return showLoggedInGate({
+        title: "Contracts require Pro",
+        body: "Upgrade to Pro to send broker-carrier contracts and track signatures.",
+        primaryText: "Upgrade Plan",
+        onPrimary: () => window.location.href = "/account?tab=plan"
+      });
+    }
+
+    if (!isSaved) {
+      return showLoggedInGate({
+        title: "Add this carrier to send a contract",
+        body: "Contracts are sent from carriers saved in your list.",
+        primaryText: "Add Carrier",
+        onPrimary: () => addBtn.click()
+      });
+    }
+
+    openSendContractModal(dot, window.__carrierProfile || null);
+  };
+}
+      
       
       addBtn.onclick = async () => {
         if (addBtn.classList.contains("pill-disabled")) return;
