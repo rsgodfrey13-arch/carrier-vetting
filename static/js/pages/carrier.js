@@ -49,18 +49,63 @@ async function getMe() {
 function applyInsuranceLock(me) {
   const overlay = document.getElementById("insurance-locked");
   const upgradeBtn = document.getElementById("btn-upgrade-insurance");
+  const titleEl = document.getElementById("insurance-lock-title");
+  const bodyEl = document.getElementById("insurance-lock-body");
+
   if (!overlay) return;
 
-  // not logged in -> locked (same “blocked off” feel)
-  const allowed = me?.view_insurance  === true;
+  const loggedIn = !!me;
+  const allowed = me?.view_insurance === true;
 
-  setInsuranceLocked(!allowed);
+  // ------------------------
+  // NOT LOGGED IN
+  // ------------------------
+  if (!loggedIn) {
+    setInsuranceLocked(true);
 
-  if (upgradeBtn) {
-    upgradeBtn.onclick = () => {
-      window.location.href = "/account?tab=plan";
-    };
+    if (titleEl) titleEl.textContent = "Insurance coverages require an account";
+    if (bodyEl) bodyEl.textContent =
+      "Create an account to view carrier insurance coverages and document status.";
+
+    if (upgradeBtn) {
+      upgradeBtn.textContent = "Create account";
+      upgradeBtn.onclick = (e) => {
+        e.preventDefault();
+        window.requireAccountOrGate({
+          title: "Create an account to view insurance",
+          body: "Insurance coverages are available on Core and higher plans.",
+          note: "Starter is free (25 carriers)."
+        });
+      };
+    }
+
+    return;
   }
+
+  // ------------------------
+  // LOGGED IN BUT NOT ALLOWED
+  // ------------------------
+  if (!allowed) {
+    setInsuranceLocked(true);
+
+    if (titleEl) titleEl.textContent = "Insurance access isn’t enabled";
+    if (bodyEl) bodyEl.textContent =
+      "Upgrade to Core to view carrier insurance coverages.";
+
+    if (upgradeBtn) {
+      upgradeBtn.textContent = "Upgrade your plan";
+      upgradeBtn.onclick = () => {
+        window.location.href = "/account?tab=plan";
+      };
+    }
+
+    return;
+  }
+
+  // ------------------------
+  // ALLOWED
+  // ------------------------
+  setInsuranceLocked(false);
 }
 
 function setInsuranceLocked(locked) {
