@@ -1235,6 +1235,58 @@ function wireContractClick(dot) {
     }
 
 if (!loggedIn) {
+  setState({ isSaved: false, isLoggedIn: false });
+
+  // Make the "disabled-looking" pills clickable as a gate
+  addBtn.classList.add("pill-disabled", "gate-click");
+  addBtn.onclick = (e) => {
+    e.preventDefault();
+    window.requireAccountOrGate({
+      title: "Create an account to add carriers",
+      body: "Save this carrier to your list and track updates in one place.",
+      note: "Starter is free (25 carriers)."
+    });
+  };
+
+  if (emailBtn) {
+    emailBtn.classList.add("pill-disabled", "gate-click");
+    emailBtn.onclick = (e) => {
+      e.preventDefault();
+      window.requireAccountOrGate({
+        title: "Create an account to use Email Alerts",
+        body: "Get notified when a carrier changes status, authority, or insurance signals.",
+        note: "Starter is free (25 carriers)."
+      });
+    };
+  }
+
+  if (contractBtn) {
+    contractBtn.classList.add("pill-disabled", "gate-click");
+    contractBtn.onclick = (e) => {
+      e.preventDefault();
+      window.requireAccountOrGate({
+        title: "Create an account to send contracts",
+        body: "Send broker-carrier agreements, track signatures, and store documents.",
+        note: "Starter is free (25 carriers)."
+      });
+    };
+  }
+
+  // Optional: if you have a remove button on this page, gate it too.
+  if (removeBtn) {
+    removeBtn.classList.add("pill-disabled", "gate-click");
+    removeBtn.onclick = (e) => {
+      e.preventDefault();
+      window.requireAccountOrGate({
+        title: "Create an account to manage carriers",
+        body: "Add and remove carriers from your list anytime.",
+        note: "Starter is free (25 carriers)."
+      });
+    };
+  }
+
+  return;
+}
 
 
     // saved?
