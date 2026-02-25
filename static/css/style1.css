@@ -4809,3 +4809,54 @@ body.app-page #site-header .header-container{
   /* optional: prevent weird spacing when empty */
   min-height: 14px;
 }
+
+
+/* Header becomes a 2-row grid:
+   - left column = title/subtitle
+   - right column = buttons (row 1) + status (row 2)
+*/
+.carriers-card-header{
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  column-gap: 12px;
+  row-gap: 6px;
+  align-items: start;
+}
+
+/* Keep left content spanning both rows */
+.carriers-header-left{
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
+
+/* Buttons stay top-right */
+.carriers-header-actions{
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Status goes bottom-right, subtle grey text */
+.refresh-status{
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: end;
+
+  font-size: 12px;
+  line-height: 1.2;
+  letter-spacing: .2px;
+  color: rgba(229, 231, 235, 0.55);
+
+  display: none;          /* JS turns on when active */
+  pointer-events: none;   /* never blocks clicks */
+  user-select: none;
+  min-height: 14px;       /* prevents jitter */
+  position: relative;
+  z-index: 3;
+}
