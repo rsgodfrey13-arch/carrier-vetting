@@ -489,6 +489,17 @@ function normDot(val) {
 
     btn.addEventListener("click", (e) => {
       e.preventDefault();
+    
+      // Gate for logged-out users
+      if (typeof window.requireAccountOrGate === "function") {
+        const ok = window.requireAccountOrGate({
+          title: "Create an account to use Filters",
+          body: "Filter your carrier list by authority, safety rating, and location.",
+          note: "Starter is free (25 carriers)."
+        });
+        if (!ok) return;
+      }
+    
       if (pop.classList.contains("hidden")) openPopover();
       else closePopover();
     });
@@ -1003,7 +1014,27 @@ async function buildMyCarrierDots() {
     if (!btn) return;
 
     btn.addEventListener("click", () => {
+      // Gate for logged-out users
+      if (typeof window.requireAccountOrGate === "function") {
+        const ok = window.requireAccountOrGate({
+          title: "Create an account to download CSV exports",
+          body: "Export your carrier list to CSV for quick sharing and record-keeping.",
+          note: "Starter is free (25 carriers)."
+        });
+        if (!ok) return;
+      }
+    
       try {
+        const tbody = $("carrier-table-body");
+        if (!tbody) return;
+    
+        const rows = Array.from(tbody.querySelectorAll("tr"));
+    
+        const realRows = rows.filter((tr) => tr.querySelectorAll("td").length >= 2);
+        if (!realRows.length) {
+          alert("No carriers to export.");
+          return;
+        }
         const tbody = $("carrier-table-body");
         if (!tbody) return;
 
