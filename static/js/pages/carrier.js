@@ -1234,13 +1234,7 @@ function wireContractClick(dot) {
       console.error("auth check failed", err);
     }
 
-    if (!loggedIn) {
-      setState({ isSaved: false, isLoggedIn: false });
-      addBtn.onclick = () => (window.location.href = "/login.html");
-      if (emailBtn) emailBtn.onclick = () => (window.location.href = "/login.html");
-      if (contractBtn) contractBtn.onclick = () => (window.location.href = "/login.html");
-      return;
-    }
+if (!loggedIn) {
 
 
     // saved?
