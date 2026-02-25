@@ -449,6 +449,33 @@
     </section>
   </div>
 
+
+<!-- Feature Gate Modal (logged-in upsell / requirements) -->
+<div id="feature-gate-modal" class="cs-modal-backdrop" hidden>
+  <div class="cs-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="feature-gate-title">
+
+    <div class="cs-modal-header">
+      <div class="cs-modal-headings">
+        <div id="feature-gate-title" class="cs-modal-title">Title</div>
+        <div id="feature-gate-body" class="cs-modal-subtitle">Body</div>
+      </div>
+      <button id="feature-gate-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
+    </div>
+
+    <div class="cs-modal-body">
+      <div id="feature-gate-note" class="cs-hint" style="margin-top:-6px;"></div>
+    </div>
+
+    <div class="cs-modal-footer">
+      <div class="cs-footer-right">
+        <button id="feature-gate-cancel" class="cs-btn cs-btn-ghost" type="button">Not now</button>
+        <button id="feature-gate-primary" class="cs-btn cs-btn-primary" type="button">Continue</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+  
 <!-- Email Alerts Modal -->
 <div id="email-alerts-modal" class="cs-modal-backdrop" hidden>
   <div class="cs-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="email-alerts-title">
