@@ -22,7 +22,7 @@ router.get("/me", async (req, res) => {
       SELECT
         id,
         email,
-        view_insurance
+        view_insurance, email_alerts, send_contracts
       FROM users
       WHERE id = $1
       LIMIT 1
