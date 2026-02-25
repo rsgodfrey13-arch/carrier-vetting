@@ -1,6 +1,53 @@
 // static/js/pages/carrier.js
 (() => {
 
+function showFeatureGate({ title, body, note = "", primaryText = "Continue", onPrimary }) {
+  const backdrop = document.getElementById("feature-gate-modal");
+  const elTitle = document.getElementById("feature-gate-title");
+  const elBody = document.getElementById("feature-gate-body");
+  const elNote = document.getElementById("feature-gate-note");
+  const btnPrimary = document.getElementById("feature-gate-primary");
+  const btnCancel = document.getElementById("feature-gate-cancel");
+  const btnClose = document.getElementById("feature-gate-close");
+
+  if (!backdrop || !elTitle || !elBody || !elNote || !btnPrimary || !btnCancel || !btnClose) {
+    // fallback (shouldn't happen)
+    alert(`${title}\n\n${body}`);
+    return;
+  }
+
+  elTitle.textContent = title || "";
+  elBody.textContent = body || "";
+  elNote.textContent = note || "";
+  elNote.style.display = note ? "" : "none";
+  btnPrimary.textContent = primaryText || "Continue";
+
+  function close() {
+    backdrop.hidden = true;
+    btnPrimary.onclick = null;
+    backdrop.onclick = null;
+    document.removeEventListener("keydown", onEsc);
+  }
+
+  function onEsc(e) {
+    if (e.key === "Escape") close();
+  }
+
+  btnPrimary.onclick = () => {
+    try { onPrimary && onPrimary(); } finally { close(); }
+  };
+  btnCancel.onclick = close;
+  btnClose.onclick = close;
+
+  // click outside closes
+  backdrop.onclick = (e) => {
+    if (e.target === backdrop) close();
+  };
+
+  document.addEventListener("keydown", onEsc);
+  backdrop.hidden = false;
+}
+  
   function getDotFromPath() {
     // take first path segment only, ignore trailing slash / extra segments
     const seg = window.location.pathname.split("/").filter(Boolean).pop() || "";
@@ -1390,64 +1437,89 @@ const canSendContracts = me?.send_contracts === true;
       }
     }
 
+// EMAIL ALERTS pill
 if (emailBtn) {
   emailBtn.classList.add("gate-click");
+
+  // default: muted until proven usable
+  emailBtn.classList.add("pill-disabled");
 
   emailBtn.onclick = (e) => {
     e.preventDefault();
 
-    // 1️⃣ Feature locked by plan
+    // 1) Plan lock
     if (!canEmailAlerts) {
-      return showLoggedInGate({
+      return showFeatureGate({
         title: "Email Alerts require Core",
         body: "Upgrade your plan to enable Email Alerts for carriers.",
         primaryText: "Upgrade Plan",
-        onPrimary: () => window.location.href = "/account?tab=plan"
+        onPrimary: () => (window.location.href = "/account?tab=plan"),
       });
     }
 
-    // 2️⃣ Allowed by plan but carrier not added
+    // 2) Allowed by plan but carrier not added
     if (!isSaved) {
-      return showLoggedInGate({
+      return showFeatureGate({
         title: "Add this carrier to enable alerts",
-        body: "Email Alerts are available after you add this carrier to My Carriers.",
+        body: "Email Alerts work after you add this carrier to My Carriers.",
         primaryText: "Add Carrier",
-        onPrimary: () => addBtn.click()
+        onPrimary: () => addBtn.click(),
       });
     }
 
-    // 3️⃣ Allowed + saved
+    // 3) Allowed + saved → actually open
+    emailBtn.classList.remove("pill-disabled");
     openEmailAlertsModal(dot);
   };
+
+  // if it IS usable right now, un-mute it
+  if (canEmailAlerts && isSaved) {
+    emailBtn.classList.remove("pill-disabled");
+  }
 }
-      
+
+
+// SEND CONTRACT pill
 if (contractBtn) {
   contractBtn.classList.add("gate-click");
+
+  // default: muted until proven usable
+  contractBtn.classList.add("pill-disabled");
 
   contractBtn.onclick = (e) => {
     e.preventDefault();
 
+    // 1) Plan lock
     if (!canSendContracts) {
-      return showLoggedInGate({
+      return showFeatureGate({
         title: "Contracts require Pro",
         body: "Upgrade to Pro to send broker-carrier contracts and track signatures.",
         primaryText: "Upgrade Plan",
-        onPrimary: () => window.location.href = "/account?tab=plan"
+        onPrimary: () => (window.location.href = "/account?tab=plan"),
       });
     }
 
+    // 2) Allowed but carrier not added
     if (!isSaved) {
-      return showLoggedInGate({
+      return showFeatureGate({
         title: "Add this carrier to send a contract",
-        body: "Contracts are sent from carriers saved in your list.",
+        body: "Contracts can only be sent for carriers in your saved list.",
         primaryText: "Add Carrier",
-        onPrimary: () => addBtn.click()
+        onPrimary: () => addBtn.click(),
       });
     }
 
+    // 3) Allowed + saved → open modal
+    contractBtn.classList.remove("pill-disabled");
     openSendContractModal(dot, window.__carrierProfile || null);
   };
+
+  // if it IS usable right now, un-mute it
+  if (canSendContracts && isSaved) {
+    contractBtn.classList.remove("pill-disabled");
+  }
 }
+      
       
       
       addBtn.onclick = async () => {
