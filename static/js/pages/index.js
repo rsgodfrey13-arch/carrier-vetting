@@ -1204,7 +1204,16 @@ bulkRemoveBtn.addEventListener("click", async () => {
   const isSearchMode = gridMode === "SEARCH";
 
   if (isSearchMode) {
-    if (!confirm(`Add ${selected.length} carriers to My Carriers?`)) return;
+    const ok = (typeof window.showConfirm === "function")
+      ? await window.showConfirm({
+          title: `Add ${selected.length} carriers?`,
+          body: `Add ${selected.length} carriers to My Carriers?`,
+          okLabel: "Add",
+          cancelLabel: "Cancel"
+        })
+      : confirm(`Add ${selected.length} carriers to My Carriers?`);
+    
+    if (!ok) return;
 
     // bulk add using your existing endpoint (same as import)
     const dots = selected.map((cb) => cb.dataset.dot).filter(Boolean);
@@ -1338,7 +1347,17 @@ selected.forEach((cb) => {
   }
 
   // ---- MY mode: remove (your existing logic) ----
-  if (!confirm(`Remove ${selected.length} carriers from My Carriers?`)) return;
+  const ok = (typeof window.showConfirm === "function")
+    ? await window.showConfirm({
+        title: `Remove ${selected.length} carriers?`,
+        body: `Remove ${selected.length} carriers from My Carriers?`,
+        okLabel: "Remove",
+        cancelLabel: "Cancel",
+        danger: true // only if your showConfirm supports it
+      })
+    : confirm(`Remove ${selected.length} carriers from My Carriers?`);
+  
+  if (!ok) return;
 
   for (const cb of selected) {
     const dot = cb.dataset.dot;
