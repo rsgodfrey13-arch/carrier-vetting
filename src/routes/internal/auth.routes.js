@@ -23,7 +23,7 @@ router.get("/me", async (req, res) => {
         u.id,
         u.email, u.carrier_limit, 
         u.view_insurance, u.email_alerts, u.send_contracts,
-        uc.carrier_count
+        COALESCE(uc.carrier_count, 0) AS carrier_count
       FROM users u
       LEFT JOIN (select count(carrier_dot) carrier_count, user_id from user_carriers group by user_id) uc
       ON u.id = uc.user_id
