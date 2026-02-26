@@ -98,7 +98,7 @@ router.post("/my-carriers", requireAuth, async (req, res) => {
       return res.status(401).json({ ok: false, error: "Unauthorized" });
     }
 
-    const limit = u.rows[0].carrier_limit; // bigint or null
+    const limit = Number(u.rows[0].carrier_limit || 0);
 
     // 2) Current count (FOR UPDATE here is optional; user row lock is enough)
     const c = await client.query(
@@ -111,7 +111,6 @@ router.post("/my-carriers", requireAuth, async (req, res) => {
     const count = c.rows[0].carrier_count;
 
     // Treat NULL limit as "unlimited" (you can change this behavior)
-    const hasLimit = limit !== null && limit !== undefined;
 
     // 3) If already added, return success (do not count against limit)
     const exists = await client.query(
@@ -128,7 +127,7 @@ router.post("/my-carriers", requireAuth, async (req, res) => {
     }
 
     // 4) Enforce limit BEFORE insert
-    if (hasLimit && count >= Number(limit)) {
+    if (count >= limit) {
       await client.query("ROLLBACK");
       return res.status(409).json({
         ok: false,
