@@ -1204,14 +1204,12 @@ bulkRemoveBtn.addEventListener("click", async () => {
   const isSearchMode = gridMode === "SEARCH";
 
   if (isSearchMode) {
-    const ok = (typeof window.showConfirm === "function")
-      ? await window.showConfirm({
-          title: `Add ${selected.length} carriers?`,
-          body: `Add ${selected.length} carriers to My Carriers?`,
-          okLabel: "Add",
-          cancelLabel: "Cancel"
-        })
-      : confirm(`Add ${selected.length} carriers to My Carriers?`);
+const ok = await window.showConfirm({
+  title: `Add ${selected.length} carriers?`,
+  message: `Add ${selected.length} carriers to My Carriers?`,
+  confirmText: "Add",
+  confirmVariant: "primary"
+});
     
     if (!ok) return;
 
@@ -1347,16 +1345,13 @@ selected.forEach((cb) => {
   }
 
   // ---- MY mode: remove (your existing logic) ----
-  const ok = (typeof window.showConfirm === "function")
-    ? await window.showConfirm({
-        title: `Remove ${selected.length} carriers?`,
-        body: `Remove ${selected.length} carriers from My Carriers?`,
-        okLabel: "Remove",
-        cancelLabel: "Cancel",
-        danger: true // only if your showConfirm supports it
-      })
-    : confirm(`Remove ${selected.length} carriers from My Carriers?`);
-  
+const ok = await window.showConfirm({
+  title: `Remove ${selected.length} carriers?`,
+  message: `Remove ${selected.length} carriers from My Carriers?`,
+  confirmText: "Remove",
+  confirmVariant: "danger"
+});
+
   if (!ok) return;
 
   for (const cb of selected) {
