@@ -1230,8 +1230,8 @@ bulkRemoveBtn.addEventListener("click", async () => {
       .filter(Boolean)
       .filter((d) => !myCarrierDots.has(d));
     
-    // If already at/over limit, no adds possible
-    if (limit > 0 && count >= limit) {
+    // If already at/over limit, no adds possible (0 means none allowed)
+    if (count >= limit) {
       showLimitGate({ limit, count });
       return;
     }
@@ -1782,6 +1782,27 @@ selected.forEach((cb) => {
         if (res.status === 401) {
           alert("You must be logged in to import carriers.");
           return;
+        }
+
+        if (res.status === 409) {
+          const errData = await res.json().catch(() => ({}));
+        
+          if (errData?.code === "CARRIER_LIMIT") {
+            // show your nice modal
+            showLimitGate({
+              limit: Number(errData.carrier_limit ?? 0),
+              count: Number(errData.carrier_count ?? 0),
+            });
+        
+            // and still take them to Step 3 with zeros (optional but feels clean)
+            if (doneInsertedEl) doneInsertedEl.textContent = "0";
+            if (doneDuplicatesEl) doneDuplicatesEl.textContent = "0";
+            if (doneInvalidEl) doneInvalidEl.textContent = "0";
+            if (doneSkippedEl) doneSkippedEl.textContent = "0";
+        
+            goToStep(3);
+            return;
+          }
         }
 
         if (!res.ok) {
