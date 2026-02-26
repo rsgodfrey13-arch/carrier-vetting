@@ -552,6 +552,29 @@
   </div>
 </div>
 
+
+
+<!-- Confirm Modal (used by window.showConfirm in shared.js) -->
+<div id="confirm-modal" class="import-modal hidden">
+  <div class="import-modal-backdrop" aria-hidden="true"></div>
+
+  <div class="import-modal-dialog glass-card" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+    <header class="import-modal-header">
+      <div>
+        <h2 class="import-modal-title" id="confirm-title">Confirm</h2>
+        <p class="import-modal-subtitle" id="confirm-message">Are you sure?</p>
+      </div>
+      <button class="import-modal-close" id="confirm-cancel" type="button" aria-label="Close">✕</button>
+    </header>
+
+    <div class="import-footer" style="display:flex; justify-content:flex-end; gap:10px; padding-top:14px;">
+      <button id="confirm-cancel" class="btn-ghost" type="button">Cancel</button>
+      <button id="confirm-ok" class="btn-primary" type="button">Confirm</button>
+    </div>
+  </div>
+</div>
+
+  
 <footer id="site-footer"></footer>
 
 
