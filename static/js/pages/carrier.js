@@ -1558,7 +1558,12 @@ if (contractBtn) {
           if (res.ok && body.ok) {
             // update UI immediately
             setState({ isSaved: true, isLoggedIn: true, canEmailAlerts, canSendContracts });
-            isSaved = true; // ✅ add this
+            isSaved = true;
+
+            // 🔥 Update cached carrier_count if backend returns it
+            if (typeof body.carrier_count === "number" && me) {
+              me.carrier_count = body.carrier_count;
+            }
           
             if (emailBtn) {
               if (canEmailAlerts) emailBtn.classList.remove("pill-disabled");
@@ -1611,6 +1616,11 @@ if (contractBtn) {
         }
 
         if (res.ok && body.ok) {
+          
+          if (typeof body.carrier_count === "number" && me) {
+            me.carrier_count = body.carrier_count;
+          }
+          
           // update UI immediately (trust the delete)
           setState({ isSaved: false, isLoggedIn: true, canEmailAlerts, canSendContracts });
           isSaved = false;
