@@ -246,35 +246,47 @@ router.post("/my-carriers/bulk", requireAuth, async (req, res) => {
 
     // 3) Insert up to remaining slots
     const sql = `
-      WITH input(dot) AS (
-        SELECT UNNEST($2::text[])
-      ),
-      valid AS (
-        SELECT i.dot
-        FROM input i
-        JOIN carriers c ON c.dotnumber::text = i.dot
-      ),
-      slots AS (
-        SELECT v.dot
-        FROM valid v
-        LIMIT $3
-      ),
-      ins AS (
-        INSERT INTO user_carriers (user_id, carrier_dot, added_at)
-        SELECT $1, s.dot, NOW()
-        FROM slots s
-        ON CONFLICT (user_id, carrier_dot) DO NOTHING
-        RETURNING carrier_dot
-      )
-      SELECT
-        (SELECT COUNT(*) FROM input) AS submitted,
-        (SELECT COUNT(*) FROM valid) AS valid,
-        (SELECT COUNT(*) FROM ins) AS inserted,
-        (SELECT COUNT(*) FROM valid) - (SELECT COUNT(*) FROM ins) AS duplicates,
-        (SELECT COUNT(*) FROM input) - (SELECT COUNT(*) FROM valid) AS invalid,
-        (SELECT COUNT(*) FROM valid) - (SELECT COUNT(*) FROM slots) AS skipped_limit,
-        (SELECT ARRAY_AGG(dot) FROM ins) AS inserted_dots;
-    `;
+  WITH input(dot) AS (
+    SELECT UNNEST($2::text[])
+  ),
+  valid AS (
+    SELECT i.dot
+    FROM input i
+    JOIN carriers c ON c.dotnumber::text = i.dot
+  ),
+  already AS (
+    SELECT v.dot
+    FROM valid v
+    JOIN user_carriers uc
+      ON uc.user_id = $1 AND uc.carrier_dot = v.dot
+  ),
+  new_valid AS (
+    SELECT v.dot
+    FROM valid v
+    LEFT JOIN already a ON a.dot = v.dot
+    WHERE a.dot IS NULL
+  ),
+  slots AS (
+    SELECT nv.dot
+    FROM new_valid nv
+    LIMIT $3
+  ),
+  ins AS (
+    INSERT INTO user_carriers (user_id, carrier_dot, added_at)
+    SELECT $1, s.dot, NOW()
+    FROM slots s
+    ON CONFLICT (user_id, carrier_dot) DO NOTHING
+    RETURNING carrier_dot
+  )
+  SELECT
+    (SELECT COUNT(*) FROM input) AS submitted,
+    (SELECT COUNT(*) FROM valid) AS valid,
+    (SELECT COUNT(*) FROM already) AS duplicates,
+    (SELECT COUNT(*) FROM ins) AS inserted,
+    (SELECT COUNT(*) FROM input) - (SELECT COUNT(*) FROM valid) AS invalid,
+    GREATEST((SELECT COUNT(*) FROM new_valid) - $3, 0) AS skipped_limit,
+    (SELECT COALESCE(ARRAY_AGG(carrier_dot), ARRAY[]::text[]) FROM ins) AS inserted_dots;
+`;
 
     const result = await client.query(sql, [userId, uniqueDots, remaining]);
     const s = result.rows[0];
@@ -313,6 +325,11 @@ router.post("/my-carriers/bulk", requireAuth, async (req, res) => {
 
     // 5) New count after insert (safe and simple)
     const newCount = carrierCount + Number(s.inserted || 0);
+    const skipped = Number(s.skipped_limit || 0);
+const note =
+  skipped > 0
+    ? `Added ${Number(s.inserted)}. Skipped ${skipped} due to your plan limit.`
+    : `Added ${Number(s.inserted)} carriers.`;
 
     await client.query("COMMIT");
 
@@ -320,7 +337,9 @@ router.post("/my-carriers/bulk", requireAuth, async (req, res) => {
       ok: true,
       carrier_limit: carrierLimit,
       carrier_count: newCount,
-      summary: {
+     inserted_dots: insertedDots,
+     note, 
+    summary: {
         totalSubmitted: Number(s.submitted),
         valid: Number(s.valid),
         inserted: Number(s.inserted),
