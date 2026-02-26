@@ -1287,15 +1287,20 @@ const invalid = Number(s.invalid || 0);
 const skipped = Number(s.skipped_limit || 0);
 
 if (skipped > 0) {
-  // “nice modal” using your existing system
-  if (typeof window.requireAccountOrGate === "function") {
-    const limitNow = Number(ME?.carrier_limit ?? 0);
-    const countNow = Number(ME?.carrier_count ?? 0);
+  const limitNow = Number(ME?.carrier_limit ?? 0);
+  const countNow = Number(ME?.carrier_count ?? 0);
+  const loggedIn = !!window.csIsLoggedIn;
 
-    window.requireAccountOrGate({
+  if (typeof window.showAccessGate === "function") {
+    window.showAccessGate({
       title: "Some carriers were skipped",
       body: `${inserted} added. ${skipped} skipped because you're at your carrier limit (${countNow}/${limitNow}).`,
-      note: "Upgrade your plan to add more carriers."
+      note: "Upgrade your plan to add more carriers.",
+      createLabel: loggedIn ? "Upgrade plan" : "Create account",
+      signInLabel: "Sign in",
+      createHref: loggedIn ? "/account?tab=plan" : "/create-account",
+      signInHref: "/login",
+      hideSignIn: loggedIn,
     });
   } else {
     alert(`${inserted} added. ${skipped} skipped due to plan limit.`);
