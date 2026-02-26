@@ -21,18 +21,22 @@ async function getMeCached() {
 }
 
 function showLimitGate({ limit, count }) {
-  // Use the same style modal system you already use everywhere
-  if (typeof window.requireAccountOrGate === "function") {
-    window.requireAccountOrGate({
+  if (typeof window.showAccessGate === "function") {
+    const loggedIn = !!window.csIsLoggedIn;
+
+    window.showAccessGate({
       title: "Carrier limit reached",
       body: `Your plan allows up to ${limit} carriers. You currently have ${count}.`,
       note: "Upgrade your plan to add more carriers.",
-      // if your modal supports primary action, point to plan:
-      // primaryText: "Upgrade plan",
-      // onPrimary: () => (window.location.href = "/account?tab=plan"),
+      createLabel: loggedIn ? "Upgrade plan" : "Create account",
+      signInLabel: "Sign in",
+      createHref: loggedIn ? "/account?tab=plan" : "/create-account",
+      signInHref: "/login",
+      hideSignIn: loggedIn, // optional: hide sign-in if already logged in
     });
     return;
   }
+
   alert(`Carrier limit reached (${count}/${limit}). Upgrade to add more.`);
 }
 
