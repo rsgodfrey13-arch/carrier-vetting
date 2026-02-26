@@ -1823,6 +1823,33 @@ selected.forEach((cb) => {
 
         const data = await res.json();
         const s = data.summary || {};
+
+        // ✅ If we partially imported due to plan limit, show the same gate popup as search-bulk
+        const skipped = Number(s.skipped_limit || 0);
+        const inserted = Number(s.inserted || 0);
+        
+        if (skipped > 0) {
+          const me = await getMeCached(); // you already have this helper in index.js
+          const limitNow = Number(me?.carrier_limit ?? 0);
+          const countNow  = Number(me?.carrier_count ?? 0);
+          const loggedIn = !!window.csIsLoggedIn;
+        
+          if (typeof window.showAccessGate === "function") {
+            window.showAccessGate({
+              title: "Some carriers were skipped",
+              body: `${inserted} added. ${skipped} skipped because you're at your carrier limit (${countNow}/${limitNow}).`,
+              note: "Upgrade your plan to add more carriers.",
+              createLabel: loggedIn ? "Upgrade plan" : "Create account",
+              signInLabel: "Sign in",
+              createHref: loggedIn ? "/account?tab=plan" : "/create-account",
+              signInHref: "/login",
+              hideSignIn: loggedIn,
+            });
+          } else {
+            alert(`${inserted} added. ${skipped} skipped due to plan limit.`);
+          }
+        }
+        
         if (doneSkippedEl) doneSkippedEl.textContent = String(s.skipped_limit || 0);
 
         if (doneInsertedEl) doneInsertedEl.textContent = String(s.inserted || 0);
