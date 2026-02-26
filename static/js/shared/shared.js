@@ -290,10 +290,20 @@ window.closeTour = function () {
       if (e.key === "Escape") window.hideAccessGate();
     });
 
-    // Buttons
-    document.getElementById("csGateNotNow").addEventListener("click", () => window.hideAccessGate());
-    document.getElementById("csGateSignIn").addEventListener("click", () => (window.location.href = "/login"));
-    document.getElementById("csGateCreate").addEventListener("click", () => (window.location.href = "/create-account"));
+// Buttons
+document.getElementById("csGateNotNow").addEventListener("click", () => window.hideAccessGate());
+
+document.getElementById("csGateSignIn").addEventListener("click", () => {
+  const overlay = document.getElementById(OVERLAY_ID);
+  const href = overlay?.dataset?.signInHref || "/login";
+  window.location.href = href;
+});
+
+document.getElementById("csGateCreate").addEventListener("click", () => {
+  const overlay = document.getElementById(OVERLAY_ID);
+  const href = overlay?.dataset?.createHref || "/create-account";
+  window.location.href = href;
+});
   }
 
   window.showAccessGate = function showAccessGate(opts = {}) {
@@ -326,6 +336,21 @@ window.closeTour = function () {
     }
     if (createLabel) createBtn.textContent = createLabel;
     if (signInLabel) signInBtn.textContent = signInLabel;
+
+
+const {
+  createHref,
+  signInHref,
+  hideSignIn,
+} = opts;
+
+overlay.dataset.createHref = createHref || "";
+overlay.dataset.signInHref = signInHref || "";
+
+if (signInBtn) {
+  signInBtn.style.display = hideSignIn ? "none" : "";
+}
+    
 
     overlay.classList.add("is-open");
     overlay.setAttribute("aria-hidden", "false");
