@@ -20,10 +20,13 @@ router.get("/me", async (req, res) => {
     const { rows } = await pool.query(
       `
       SELECT
-        id,
-        email,
-        view_insurance, email_alerts, send_contracts
-      FROM users
+        u.id,
+        u.email, u.carrier_limit, 
+        u.view_insurance, u.email_alerts, u.send_contracts,
+        uc.carrier_count
+      FROM users u
+      LEFT JOIN (select count(carrier_dot) carrier_count, user_id from user_carriers group by user_id) uc
+      ON u.id = uc.user_id
       WHERE id = $1
       LIMIT 1
       `,
