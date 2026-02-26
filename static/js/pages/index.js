@@ -1230,10 +1230,12 @@ bulkRemoveBtn.addEventListener("click", async () => {
       .filter(Boolean)
       .filter((d) => !myCarrierDots.has(d));
     
-    if (count + newDots.length > limit) {
+    // If already at/over limit, no adds possible
+    if (limit > 0 && count >= limit) {
       showLimitGate({ limit, count });
       return;
     }
+    // otherwise proceed (partial success is allowed)
 
     try {
       const res = await fetch("/api/my-carriers/bulk", {
@@ -1273,23 +1275,48 @@ bulkRemoveBtn.addEventListener("click", async () => {
 
 const body = await res.json().catch(() => ({}));
 if (ME && typeof body.carrier_count === "number") ME.carrier_count = body.carrier_count;
+
+  const s = body?.summary || {};
+const inserted = Number(s.inserted || 0);
+const duplicates = Number(s.duplicates || 0);
+const invalid = Number(s.invalid || 0);
+const skipped = Number(s.skipped_limit || 0);
+
+if (skipped > 0) {
+  // “nice modal” using your existing system
+  if (typeof window.requireAccountOrGate === "function") {
+    const limitNow = Number(ME?.carrier_limit ?? 0);
+    const countNow = Number(ME?.carrier_count ?? 0);
+
+    window.requireAccountOrGate({
+      title: "Some carriers were skipped",
+      body: `${inserted} added. ${skipped} skipped because you're at your carrier limit (${countNow}/${limitNow}).`,
+      note: "Upgrade your plan to add more carriers."
+    });
+  } else {
+    alert(`${inserted} added. ${skipped} skipped due to plan limit.`);
+  }
+} else {
+  // optional: success message if you want
+  // alert(`${inserted} carriers added.`);
+}
       
       // refresh truth from server (fixes pagination/search consistency)
       await buildMyCarrierDots();
 
-      
-      // Update local set + UI rows
-      dots.forEach((d) => myCarrierDots.add(normDot(d)));
+const insertedDots = Array.isArray(body.inserted_dots) ? body.inserted_dots.map(normDot) : [];
 
+insertedDots.forEach(d => myCarrierDots.add(d));
 
-      selected.forEach((cb) => {
-        const dot = normDot(cb.dataset.dot);
-        const row = cb.closest("tr");
-        const cell = cb.closest("td");
+selected.forEach((cb) => {
+  const dot = normDot(cb.dataset.dot);
+  if (!insertedDots.includes(dot)) return;
 
-        if (row) row.classList.add("is-mine");
-        if (cell) cell.innerHTML = `<span class="saved-check" title="Already in My Carriers">✓</span>`;
-      });
+  const row = cb.closest("tr");
+  const cell = cb.closest("td");
+  if (row) row.classList.add("is-mine");
+  if (cell) cell.innerHTML = `<span class="saved-check" title="Already in My Carriers">✓</span>`;
+});
 
       // hide bulk UI
       updateBulkBar();
@@ -1374,6 +1401,7 @@ if (ME && typeof body.carrier_count === "number") ME.carrier_count = body.carrie
     const doneInsertedEl = $("done-inserted");
     const doneDuplicatesEl = $("done-duplicates");
     const doneInvalidEl = $("done-invalid");
+    const doneSkippedEl = document.getElementById("done-skipped-count");
 
     const sectionNewBody = $("section-new-body");
     const sectionDupBody = $("section-dup-body");
@@ -1765,6 +1793,7 @@ if (ME && typeof body.carrier_count === "number") ME.carrier_count = body.carrie
 
         const data = await res.json();
         const s = data.summary || {};
+        if (doneSkippedEl) doneSkippedEl.textContent = String(s.skipped_limit || 0);
 
         if (doneInsertedEl) doneInsertedEl.textContent = String(s.inserted || 0);
         if (doneDuplicatesEl) doneDuplicatesEl.textContent = String(s.duplicates || 0);
