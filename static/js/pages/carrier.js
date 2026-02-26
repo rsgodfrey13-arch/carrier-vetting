@@ -144,7 +144,7 @@ function applyInsuranceLock(me) {
 
     if (titleEl) titleEl.textContent = "Insurance access isn’t enabled";
     if (bodyEl) bodyEl.textContent =
-      "Upgrade to Core to view carrier insurance coverages.";
+      "Upgrade to Pro to view carrier insurance coverages.";
 
     if (upgradeBtn) {
       upgradeBtn.textContent = "Upgrade your plan";
