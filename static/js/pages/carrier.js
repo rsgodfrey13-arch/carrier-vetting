@@ -1535,6 +1535,20 @@ if (contractBtn) {
           });
       
           const body = await res.json().catch(() => ({}));
+
+          // ✅ Carrier limit gate
+          if (res.status === 409 && body?.code === "CARRIER_LIMIT") {
+            const limit = Number(body.carrier_limit ?? me?.carrier_limit ?? 0);
+            const count = Number(body.carrier_count ?? me?.carrier_count ?? 0);
+          
+            return showFeatureGate({
+              title: "Carrier limit reached",
+              body: `You’ve added ${count} of ${limit} carriers on your current plan.`,
+              note: "Upgrade your plan to add more carriers.",
+              primaryText: "Upgrade Plan",
+              onPrimary: () => (window.location.href = "/account?tab=plan"),
+            });
+          }
       
           if (res.status === 401) {
             window.location.href = "/login.html";
