@@ -56,6 +56,41 @@ async function trackHomepageView() {
   }
 }
 
+window.showConfirm = function ({
+  title,
+  message,
+  confirmText = "Confirm",
+  confirmVariant = "primary"
+}) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById("confirm-modal");
+    const titleEl = document.getElementById("confirm-title");
+    const msgEl = document.getElementById("confirm-message");
+    const okBtn = document.getElementById("confirm-ok");
+    const cancelBtn = document.getElementById("confirm-cancel");
+
+    titleEl.textContent = title;
+    msgEl.textContent = message;
+    okBtn.textContent = confirmText;
+
+    okBtn.className =
+      confirmVariant === "danger"
+        ? "btn-danger"
+        : "btn-primary";
+
+    modal.classList.remove("hidden");
+
+    okBtn.onclick = () => {
+      modal.classList.add("hidden");
+      resolve(true);
+    };
+
+    cancelBtn.onclick = () => {
+      modal.classList.add("hidden");
+      resolve(false);
+    };
+  });
+};
 
 function setHelpMenu(isLoggedIn) {
   const helpLabel = document.getElementById("help-label");
