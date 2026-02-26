@@ -190,7 +190,7 @@ router.post("/my-carriers/bulk", requireAuth, async (req, res) => {
     let { dots } = req.body || {};
 
     if (!Array.isArray(dots) || dots.length === 0) {
-      return res.status(400).json({ error: "dots array required" });
+      return res.status(400).json({ ok: false, error: "dots array required" });
     }
 
     const uniqueDots = [...new Set(
@@ -200,12 +200,51 @@ router.post("/my-carriers/bulk", requireAuth, async (req, res) => {
     )];
 
     if (uniqueDots.length === 0) {
-      return res.status(400).json({ error: "No valid DOT numbers found" });
+      return res.status(400).json({ ok: false, error: "No valid DOT numbers found" });
     }
 
     await client.query("BEGIN");
 
-    // 1️⃣ Insert into user_carriers
+    // 1) Lock user row + get limit (NULL => 0)
+    const u = await client.query(
+      `SELECT COALESCE(carrier_limit, 0)::int AS carrier_limit
+       FROM users
+       WHERE id = $1
+       FOR UPDATE`,
+      [userId]
+    );
+
+    if (!u.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(401).json({ ok: false, error: "Unauthorized" });
+    }
+
+    const carrierLimit = Number(u.rows[0].carrier_limit || 0);
+
+    // 2) Current count
+    const c = await client.query(
+      `SELECT COUNT(*)::int AS carrier_count
+       FROM user_carriers
+       WHERE user_id = $1`,
+      [userId]
+    );
+
+    const carrierCount = Number(c.rows[0].carrier_count || 0);
+
+    const remaining = carrierLimit - carrierCount;
+
+    // If they cannot add any more, return limit response (for your modal)
+    if (remaining <= 0) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({
+        ok: false,
+        code: "CARRIER_LIMIT",
+        carrier_limit: carrierLimit,
+        carrier_count: carrierCount
+      });
+    }
+
+    // 3) Insert up to remaining slots
     const sql = `
       WITH input(dot) AS (
         SELECT UNNEST($2::text[])
@@ -215,10 +254,15 @@ router.post("/my-carriers/bulk", requireAuth, async (req, res) => {
         FROM input i
         JOIN carriers c ON c.dotnumber::text = i.dot
       ),
+      slots AS (
+        SELECT v.dot
+        FROM valid v
+        LIMIT $3
+      ),
       ins AS (
         INSERT INTO user_carriers (user_id, carrier_dot, added_at)
-        SELECT $1, v.dot, NOW()
-        FROM valid v
+        SELECT $1, s.dot, NOW()
+        FROM slots s
         ON CONFLICT (user_id, carrier_dot) DO NOTHING
         RETURNING carrier_dot
       )
@@ -228,16 +272,17 @@ router.post("/my-carriers/bulk", requireAuth, async (req, res) => {
         (SELECT COUNT(*) FROM ins) AS inserted,
         (SELECT COUNT(*) FROM valid) - (SELECT COUNT(*) FROM ins) AS duplicates,
         (SELECT COUNT(*) FROM input) - (SELECT COUNT(*) FROM valid) AS invalid,
-        (SELECT ARRAY_AGG(dot) FROM valid) AS valid_dots;
+        (SELECT COUNT(*) FROM valid) - (SELECT COUNT(*) FROM slots) AS skipped_limit,
+        (SELECT ARRAY_AGG(dot) FROM ins) AS inserted_dots;
     `;
 
-    const result = await client.query(sql, [userId, uniqueDots]);
+    const result = await client.query(sql, [userId, uniqueDots, remaining]);
     const s = result.rows[0];
 
-    const validDots = s.valid_dots || [];
+    const insertedDots = s.inserted_dots || [];
 
-    // 2️⃣ Insert into refresh queue (ONLY if carriers.updated_at is older than 72 hours)
-    if (validDots.length > 0) {
+    // 4) Refresh queue only for dots we actually inserted (and only if stale)
+    if (insertedDots.length > 0) {
       await client.query(
         `
         INSERT INTO carrier_refresh_queue (
@@ -262,25 +307,33 @@ router.post("/my-carriers/bulk", requireAuth, async (req, res) => {
            OR c.updated_at < NOW() - INTERVAL '72 hours'
         ON CONFLICT DO NOTHING;
         `,
-        [validDots, userId]
+        [insertedDots, userId]
       );
     }
+
+    // 5) New count after insert (safe and simple)
+    const newCount = carrierCount + Number(s.inserted || 0);
 
     await client.query("COMMIT");
 
     return res.json({
+      ok: true,
+      carrier_limit: carrierLimit,
+      carrier_count: newCount,
       summary: {
         totalSubmitted: Number(s.submitted),
+        valid: Number(s.valid),
         inserted: Number(s.inserted),
         duplicates: Number(s.duplicates),
-        invalid: Number(s.invalid)
+        invalid: Number(s.invalid),
+        skipped_limit: Number(s.skipped_limit)
       }
     });
 
   } catch (err) {
     await client.query("ROLLBACK");
     console.error("Error in POST /api/my-carriers/bulk:", err);
-    return res.status(500).json({ error: "Failed to bulk add carriers" });
+    return res.status(500).json({ ok: false, error: "Failed to bulk add carriers" });
   } finally {
     client.release();
   }
