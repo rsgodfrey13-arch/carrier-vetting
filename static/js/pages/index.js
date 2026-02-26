@@ -4,7 +4,7 @@
   // ---------------------------------------------
   // STATE
   // ---------------------------------------------
-  let myCarrierDots = new Set();.
+  let myCarrierDots = new Set();
   
 let ME = null;
 
