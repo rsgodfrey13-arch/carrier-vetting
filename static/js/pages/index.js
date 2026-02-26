@@ -4,8 +4,39 @@
   // ---------------------------------------------
   // STATE
   // ---------------------------------------------
-  let myCarrierDots = new Set();
+  let myCarrierDots = new Set();.
+  
+let ME = null;
 
+async function getMeCached() {
+  if (ME) return ME;
+  try {
+    const r = await fetch("/api/me", { credentials: "include" });
+    const j = await r.json().catch(() => ({}));
+    ME = j?.user || null;
+    return ME;
+  } catch {
+    return null;
+  }
+}
+
+function showLimitGate({ limit, count }) {
+  // Use the same style modal system you already use everywhere
+  if (typeof window.requireAccountOrGate === "function") {
+    window.requireAccountOrGate({
+      title: "Carrier limit reached",
+      body: `Your plan allows up to ${limit} carriers. You currently have ${count}.`,
+      note: "Upgrade your plan to add more carriers.",
+      // if your modal supports primary action, point to plan:
+      // primaryText: "Upgrade plan",
+      // onPrimary: () => (window.location.href = "/account?tab=plan"),
+    });
+    return;
+  }
+  alert(`Carrier limit reached (${count}/${limit}). Upgrade to add more.`);
+}
+
+  
   // Pagination
   let currentPage = 1;
   let pageSize = 25;
@@ -1174,6 +1205,36 @@ bulkRemoveBtn.addEventListener("click", async () => {
     // bulk add using your existing endpoint (same as import)
     const dots = selected.map((cb) => cb.dataset.dot).filter(Boolean);
 
+    // ✅ Limit gate (client-side UX)
+    const me = await getMeCached();
+    if (!me) {
+      // logged out (shouldn't happen much in SEARCH but safe)
+      if (typeof window.requireAccountOrGate === "function") {
+        window.requireAccountOrGate({
+          title: "Create an account to add carriers",
+          body: "Save carriers to your list and track updates in one place.",
+          note: "Starter is free (25 carriers).",
+        });
+        return;
+      }
+      window.location.href = "/login.html";
+      return;
+    }
+    
+    const limit = Number(me.carrier_limit ?? 0);
+    const count = Number(me.carrier_count ?? 0);
+    
+    // only count dots that are NOT already in My Carriers
+    const newDots = dots
+      .map(normDot)
+      .filter(Boolean)
+      .filter((d) => !myCarrierDots.has(d));
+    
+    if (count + newDots.length > limit) {
+      showLimitGate({ limit, count });
+      return;
+    }
+
     try {
       const res = await fetch("/api/my-carriers/bulk", {
         method: "POST",
@@ -1188,11 +1249,31 @@ bulkRemoveBtn.addEventListener("click", async () => {
       }
 
       if (!res.ok) {
-        console.error("Bulk add failed:", await res.text());
-        alert("Could not add carriers. Please try again.");
+        const body = await res.json().catch(() => ({}));
+      
+        // ✅ HARD ENFORCEMENT (server says limit hit)
+        if (res.status === 409 && body?.code === "CARRIER_LIMIT") {
+          // keep cached ME in sync if server provides these
+          if (ME) {
+            if (typeof body.carrier_count === "number") ME.carrier_count = body.carrier_count;
+            if (typeof body.carrier_limit === "number") ME.carrier_limit = body.carrier_limit;
+          }
+      
+          showLimitGate({
+            limit: Number(body.carrier_limit ?? ME?.carrier_limit ?? 0),
+            count: Number(body.carrier_count ?? ME?.carrier_count ?? 0),
+          });
+          return;
+        }
+      
+        console.error("Bulk add failed:", body);
+        alert(body?.error || "Could not add carriers. Please try again.");
         return;
       }
 
+const body = await res.json().catch(() => ({}));
+if (ME && typeof body.carrier_count === "number") ME.carrier_count = body.carrier_count;
+      
       // refresh truth from server (fixes pagination/search consistency)
       await buildMyCarrierDots();
 
