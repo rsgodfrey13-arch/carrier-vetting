@@ -70,27 +70,94 @@ router.get("/my-carriers", requireAuth, async (req, res) => {
   }
 });
 
-// Save a new carrier for this user
+// Save a new carrier for this user (enforces carrier_limit)
 router.post("/my-carriers", requireAuth, async (req, res) => {
-  try {
-    const userId = req.session.userId;
-    const { dot } = req.body;
+  const userId = req.session.userId;
+  const dotRaw = req.body?.dot;
 
-    if (!dot) {
-      return res.status(400).json({ error: "Carrier DOT required" });
+  const dot = String(dotRaw || "").replace(/\D/g, "");
+  if (!dot) {
+    return res.status(400).json({ ok: false, error: "Carrier DOT required" });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // 1) Lock the user row so limit checks are race-safe
+    const u = await client.query(
+      `SELECT carrier_limit
+       FROM users
+       WHERE id = $1
+       FOR UPDATE`,
+      [userId]
+    );
+
+    if (!u.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(401).json({ ok: false, error: "Unauthorized" });
     }
 
-    const sql = `
-      INSERT INTO user_carriers (user_id, carrier_dot)
-      VALUES ($1, $2)
-      ON CONFLICT (user_id, carrier_dot) DO NOTHING;
-    `;
+    const limit = u.rows[0].carrier_limit; // bigint or null
 
-    await pool.query(sql, [userId, dot]);
-    res.json({ ok: true });
+    // 2) Current count (FOR UPDATE here is optional; user row lock is enough)
+    const c = await client.query(
+      `SELECT COUNT(*)::int AS carrier_count
+       FROM user_carriers
+       WHERE user_id = $1`,
+      [userId]
+    );
+
+    const count = c.rows[0].carrier_count;
+
+    // Treat NULL limit as "unlimited" (you can change this behavior)
+    const hasLimit = limit !== null && limit !== undefined;
+
+    // 3) If already added, return success (do not count against limit)
+    const exists = await client.query(
+      `SELECT 1
+       FROM user_carriers
+       WHERE user_id = $1 AND carrier_dot = $2
+       LIMIT 1`,
+      [userId, dot]
+    );
+
+    if (exists.rows.length) {
+      await client.query("COMMIT");
+      return res.json({ ok: true, already: true, carrier_count: count, carrier_limit: limit });
+    }
+
+    // 4) Enforce limit BEFORE insert
+    if (hasLimit && count >= Number(limit)) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({
+        ok: false,
+        code: "CARRIER_LIMIT",
+        carrier_limit: Number(limit),
+        carrier_count: count
+      });
+    }
+
+    // 5) Insert
+    await client.query(
+      `INSERT INTO user_carriers (user_id, carrier_dot)
+       VALUES ($1, $2)`,
+      [userId, dot]
+    );
+
+    await client.query("COMMIT");
+    return res.json({
+      ok: true,
+      added: true,
+      carrier_count: count + 1,
+      carrier_limit: limit
+    });
   } catch (err) {
+    await client.query("ROLLBACK");
     console.error("Error in POST /api/my-carriers:", err);
-    res.status(500).json({ error: "Failed to add carrier" });
+    return res.status(500).json({ ok: false, error: "Failed to add carrier" });
+  } finally {
+    client.release();
   }
 });
 
