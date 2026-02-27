@@ -1420,18 +1420,27 @@ const ok = await window.showConfirm({
     const summaryNewCount = $("summary-new-count");
     const summaryDupCount = $("summary-dup-count");
     const summaryInvCount = $("summary-invalid-count");
+    
+// ✅ Step 3 "Done" IDs (match index.html)
+const doneInsertedEl   = $("done-imported-count");
+const doneDuplicatesEl = $("done-dup-count");
+const doneInvalidEl    = $("done-invalid-count");
+const doneSkippedEl    = $("done-skipped-count"); // only if you have this element in HTML
 
-    const doneInsertedEl = $("done-inserted");
-    const doneDuplicatesEl = $("done-duplicates");
-    const doneInvalidEl = $("done-invalid");
-    const doneSkippedEl = document.getElementById("done-skipped-count");
+// ✅ Step 2 section header counts (match index.html)
+const newCountEl = $("new-count");
+const dupCountEl = $("dup-count");
+const invalidCountEl = $("invalid-count");
 
-    const sectionNewBody = $("section-new-body");
-    const sectionDupBody = $("section-dup-body");
-    const sectionInvalidBody = $("section-invalid-body");
-    const sectionNewCountEl = $("section-new-count");
-    const sectionDupCountEl = $("section-dup-count");
-    const sectionInvalidCountEl = $("section-invalid-count");
+// ✅ Step 2 table bodies (match index.html)
+const newTbody = $("import-new-tbody");
+const dupTbody = $("import-dup-tbody");
+const invalidTbody = $("import-invalid-tbody");
+
+// ✅ "empty" placeholders (match index.html)
+const newEmptyEl = $("import-new-empty");
+const dupEmptyEl = $("import-dup-empty");
+const invalidEmptyEl = $("import-invalid-empty");
 
     const methodButtons = document.querySelectorAll(".import-method-btn");
     const csvPanel = $("import-panel-csv");
@@ -1464,10 +1473,15 @@ const ok = await window.showConfirm({
 
       if (dotPasteTextarea) dotPasteTextarea.value = "";
 
-      if (sectionNewBody) sectionNewBody.innerHTML = "";
-      if (sectionDupBody) sectionDupBody.innerHTML = "";
-      if (sectionInvalidBody) sectionInvalidBody.innerHTML = "";
-      setSummaryCounts(0, 0, 0);
+if (newTbody) newTbody.innerHTML = "";
+if (dupTbody) dupTbody.innerHTML = "";
+if (invalidTbody) invalidTbody.innerHTML = "";
+
+if (newEmptyEl) newEmptyEl.classList.remove("hidden");
+if (dupEmptyEl) dupEmptyEl.classList.remove("hidden");
+if (invalidEmptyEl) invalidEmptyEl.classList.remove("hidden");
+
+setSummaryCounts(0, 0, 0);
 
       if (loadingEl) loadingEl.classList.add("hidden");
       if (resultsEl) resultsEl.classList.add("hidden");
@@ -1656,84 +1670,70 @@ const ok = await window.showConfirm({
       return [...new Set(dots)];
     }
 
-    function setSummaryCounts(newCount, dupCount, invCount) {
-      if (summaryNewCount) summaryNewCount.textContent = String(newCount);
-      if (summaryDupCount) summaryDupCount.textContent = String(dupCount);
-      if (summaryInvCount) summaryInvCount.textContent = String(invCount);
+function setSummaryCounts(newCount, dupCount, invCount) {
+  // top summary pills
+  if (summaryNewCount) summaryNewCount.textContent = String(newCount);
+  if (summaryDupCount) summaryDupCount.textContent = String(dupCount);
+  if (summaryInvCount) summaryInvCount.textContent = String(invCount);
 
-      if (sectionNewCountEl) sectionNewCountEl.textContent = `${newCount} rows`;
-      if (sectionDupCountEl) sectionDupCountEl.textContent = `${dupCount} rows`;
-      if (sectionInvalidCountEl) sectionInvalidCountEl.textContent = `${invCount} rows`;
-    }
+  // section header counts (the "(0)" next to each section title)
+  if (newCountEl) newCountEl.textContent = String(newCount);
+  if (dupCountEl) dupCountEl.textContent = String(dupCount);
+  if (invalidCountEl) invalidCountEl.textContent = String(invCount);
+}
 
-    function renderSectionTable(container, rows, statusClass, emptyLabel) {
-      if (!container) return;
-      container.innerHTML = "";
+function renderRows(tbody, rows, kind) {
+  if (!tbody) return;
+  tbody.innerHTML = "";
 
-      if (!rows || !rows.length) {
-        const p = document.createElement("p");
-        p.className = "import-empty";
-        p.textContent = `No ${emptyLabel}.`;
-        container.appendChild(p);
-        return;
-      }
+  (rows || []).forEach((row) => {
+    const tr = document.createElement("tr");
 
-      const table = document.createElement("table");
-      table.className = "import-results-table";
+    // DOT / Value
+    const tdDot = document.createElement("td");
+    tdDot.textContent = row.dot || row.value || "—";
+    tr.appendChild(tdDot);
 
-      const thead = document.createElement("thead");
-      thead.innerHTML = `
-        <tr>
-          <th>DOT</th>
-          <th>Carrier</th>
-          <th>Location</th>
-          <th>Status</th>
-        </tr>
-      `;
-      table.appendChild(thead);
+    // Carrier / Reason
+    const td2 = document.createElement("td");
+    if (kind === "invalid") td2.textContent = row.reason || "Invalid DOT";
+    else td2.textContent = row.name || "—";
+    tr.appendChild(td2);
 
-      const tbody = document.createElement("tbody");
+    // Notes
+    const tdNotes = document.createElement("td");
+    const loc =
+      row.city || row.state
+        ? `${row.city || ""}${row.city && row.state ? ", " : ""}${row.state || ""}`
+        : "—";
+    tdNotes.textContent = kind === "invalid" ? (row.notes || "—") : loc;
+    tr.appendChild(tdNotes);
 
-      rows.forEach((row) => {
-        const tr = document.createElement("tr");
+    // Status
+    const tdStatus = document.createElement("td");
+    if (kind === "new") tdStatus.textContent = "New";
+    else if (kind === "dup") tdStatus.textContent = "Current Carrier";
+    else tdStatus.textContent = "Invalid";
+    tr.appendChild(tdStatus);
 
-        const tdDot = document.createElement("td");
-        tdDot.textContent = row.dot || "";
+    tbody.appendChild(tr);
+  });
+}
 
-        const tdName = document.createElement("td");
-        tdName.textContent = row.name || "—";
+function renderPreviewTable(preview) {
+  const newRows = preview?.new || [];
+  const dupRows = preview?.duplicates || [];
+  const invRows = preview?.invalid || [];
 
-        const tdLoc = document.createElement("td");
-        tdLoc.textContent =
-          row.city || row.state
-            ? `${row.city || ""}${row.city && row.state ? ", " : ""}${row.state || ""}`
-            : "—";
+  renderRows(newTbody, newRows, "new");
+  renderRows(dupTbody, dupRows, "dup");
+  renderRows(invalidTbody, invRows, "invalid");
 
-        const tdStatus = document.createElement("td");
-        const span = document.createElement("span");
-        span.classList.add("status-badge", statusClass);
-        if (statusClass === "status-new") span.textContent = "New";
-        if (statusClass === "status-duplicate") span.textContent = "Current Carrier";
-        if (statusClass === "status-invalid") span.textContent = "Invalid";
-        tdStatus.appendChild(span);
-
-        tr.appendChild(tdDot);
-        tr.appendChild(tdName);
-        tr.appendChild(tdLoc);
-        tr.appendChild(tdStatus);
-
-        tbody.appendChild(tr);
-      });
-
-      table.appendChild(tbody);
-      container.appendChild(table);
-    }
-
-    function renderPreviewTable(preview) {
-      renderSectionTable(sectionNewBody, preview.new || [], "status-new", "new carriers");
-      renderSectionTable(sectionDupBody, preview.duplicates || [], "status-duplicate", "duplicates");
-      renderSectionTable(sectionInvalidBody, preview.invalid || [], "status-invalid", "invalid DOTs");
-    }
+  // toggle empty placeholders
+  if (newEmptyEl) newEmptyEl.classList.toggle("hidden", newRows.length > 0);
+  if (dupEmptyEl) dupEmptyEl.classList.toggle("hidden", dupRows.length > 0);
+  if (invalidEmptyEl) invalidEmptyEl.classList.toggle("hidden", invRows.length > 0);
+}
 
     async function runPreview(dots) {
       if (!dots.length) {
