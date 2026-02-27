@@ -655,7 +655,8 @@ router.get("/refresh-queue/status", requireAuth, async (req, res) => {
 
 // Remove a carrier from this user's list
 router.delete("/my-carriers/:dot", requireAuth, async (req, res) => {
-  const userId = req.session.userId;;
+  const userId = req.session.userId;
+  const dot = String(req.params.dot || "").replace(/\D/g, "");
 
   try {
     const result = await pool.query(
