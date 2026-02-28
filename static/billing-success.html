@@ -6,185 +6,98 @@
   <title>Carrier Shark — Payment Successful</title>
   <link rel="stylesheet" href="/css/style1.css" />
   <style>
-    /* Small page-specific helpers (keeps your global CSS untouched) */
-    body { display:block; padding:0; }
-    .wrap { max-width: 960px; margin: 0 auto; padding: 28px 18px 52px; }
-    .card {
+    body{display:block;padding:0}
+    .wrap{max-width:980px;margin:0 auto;padding:34px 18px 64px}
+    .card{
       background: rgba(15,23,42,0.42);
       border: 1px solid rgba(148,163,184,0.18);
-      border-radius: var(--radius-lg, 22px);
+      border-radius: 22px;
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 18px 45px rgba(0,0,0,0.35);
-      padding: 22px 20px;
+      padding: 24px 22px;
     }
-    .hero {
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:16px;
-      flex-wrap:wrap;
-      margin-bottom: 14px;
+    .top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    .h1{margin:0;font-size:clamp(1.6rem,2.4vw,2.1rem);letter-spacing:.10em;text-transform:uppercase;color:#f9fafb}
+    .sub{margin:8px 0 0;color:rgba(229,231,235,.78);max-width:70ch;line-height:1.45}
+    .badge{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:8px 10px;border-radius:999px;
+      border:1px solid rgba(34,197,94,.35);
+      background:rgba(34,197,94,.10);
+      color:rgba(187,247,208,.92);
+      font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;font-weight:700;white-space:nowrap
     }
-    .badge {
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:8px 10px;
-      border-radius:999px;
-      border:1px solid rgba(34,197,94,0.35);
-      background: rgba(34,197,94,0.10);
-      color: rgba(187,247,208,0.92);
-      font-size: .78rem;
-      letter-spacing: .06em;
-      text-transform: uppercase;
-      font-weight: 700;
-      white-space: nowrap;
+    .dot{width:8px;height:8px;border-radius:999px;background:rgba(34,197,94,.9);box-shadow:0 0 0 4px rgba(34,197,94,.14)}
+    .hr{height:1px;background:rgba(148,163,184,.14);margin:16px 0;border:0}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .kv{padding:14px;border-radius:14px;border:1px solid rgba(148,163,184,.16);background:rgba(2,6,23,.35)}
+    .k{font-size:.70rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(148,163,184,.86)}
+    .v{margin-top:8px;font-size:1.05rem;color:#e5e7eb}
+    .center{display:flex;justify-content:center;margin-top:18px}
+    .btn{
+      height:44px; padding:0 18px; border-radius:999px;
+      border:1px solid rgba(56,189,248,.45);
+      background:rgba(56,189,248,.92);
+      color:rgba(6,20,37,.95);
+      font-size:.86rem;font-weight:750;letter-spacing:.08em;text-transform:uppercase;
+      text-decoration:none;display:inline-flex;align-items:center;justify-content:center;
+      min-width: 220px;
     }
-    .badge-dot{
-      width:8px;height:8px;border-radius:999px;
-      background: rgba(34,197,94,0.9);
-      box-shadow: 0 0 0 4px rgba(34,197,94,0.14);
-    }
-    .h1 {
-      margin:0;
-      font-family:"Space Grotesk", system-ui, sans-serif;
-      font-size: clamp(1.5rem, 2.3vw, 2rem);
-      letter-spacing: .10em;
-      text-transform: uppercase;
-      color:#f9fafb;
-    }
-    .sub {
-      margin: 6px 0 0;
-      color: rgba(229,231,235,0.78);
-      font-size: .92rem;
-      line-height: 1.45;
-      max-width: 62ch;
-    }
-    .hr {
-      height:1px;
-      background: rgba(148,163,184,0.14);
-      margin: 16px 0;
-      border:0;
-    }
-    .grid {
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-    .kv {
-      padding: 12px 12px;
-      border-radius: 14px;
-      border: 1px solid rgba(148,163,184,0.16);
-      background: rgba(2,6,23,0.35);
-    }
-    .k { font-size:.70rem; letter-spacing:.12em; text-transform:uppercase; color: rgba(148,163,184,0.86); }
-    .v { margin-top:6px; font-size:.95rem; color:#e5e7eb; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .actions { display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; margin-top: 16px; }
-    .btn {
-      height: 40px;
-      padding: 0 16px;
-      border-radius: 999px;
-      border: 1px solid rgba(148,163,184,.28);
-      background: rgba(15,23,42,.55);
-      color: #e5e7eb;
-      font-size: .82rem;
-      font-weight: 650;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-      cursor: pointer;
-      text-decoration:none;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      gap:8px;
-    }
-    .btn.primary{
-      background: rgba(56,189,248,0.92);
-      border-color: rgba(56,189,248,0.45);
-      color: rgba(6,20,37,0.95);
-    }
-    .hint {
-      margin-top: 10px;
-      font-size: .80rem;
-      color: rgba(148,163,184,0.86);
-    }
-    @media (max-width: 720px){
-      .grid { grid-template-columns: 1fr; }
-      .actions { justify-content:stretch; }
-      .btn { width:100%; }
-    }
+    .hint{margin-top:10px;text-align:center;color:rgba(148,163,184,.86);font-size:.82rem}
+    @media(max-width:720px){.row{grid-template-columns:1fr}.btn{width:100%}}
   </style>
 </head>
 
 <body class="carrier-list app-page">
   <div class="wrap">
     <div class="card">
-      <div class="hero">
+      <div class="top">
         <div>
           <h1 class="h1">Payment Successful</h1>
           <p class="sub">
-            You’re live. Your subscription is being activated now. If you don’t see access immediately,
-            give it a few seconds and refresh.
+            You’re live. Your subscription is being activated now.
+            If you don’t see access immediately, give it a few seconds and refresh.
           </p>
         </div>
-        <div class="badge" id="statusBadge">
-          <span class="badge-dot"></span>
-          <span id="badgeText">Activating</span>
-        </div>
+        <div class="badge"><span class="dot"></span><span id="badgeText">Activated</span></div>
       </div>
 
       <hr class="hr" />
 
-      <div class="grid">
-        <div class="kv">
-          <div class="k">Checkout Session</div>
-          <div class="v" id="sessionId">—</div>
-        </div>
-        <div class="kv">
-          <div class="k">Subscription</div>
-          <div class="v" id="subscriptionId">—</div>
-        </div>
+      <div class="row">
         <div class="kv">
           <div class="k">Plan</div>
-          <div class="v" id="planName">—</div>
+          <div class="v" id="planText">—</div>
         </div>
         <div class="kv">
-          <div class="k">Account</div>
-          <div class="v" id="userEmail">—</div>
+          <div class="k">Price</div>
+          <div class="v" id="priceText">—</div>
         </div>
       </div>
 
-      <div class="actions">
-        <a class="btn" href="/billing">View Billing</a>
-        <a class="btn primary" href="/account">Go to Dashboard</a>
+      <div class="center">
+        <a class="btn" href="/account">Go to Account</a>
       </div>
 
-      <div class="hint" id="hint">
-        Tip: bookmark your dashboard — billing is handled securely through Stripe.
+      <div class="hint" id="hintText">
+        Secure checkout powered by Stripe. We never store card details.
       </div>
     </div>
   </div>
 
   <script>
-    // Pull session_id from URL
     const params = new URLSearchParams(window.location.search);
     const sessionId = params.get("session_id");
 
-    const sessionEl = document.getElementById("sessionId");
-    const subEl = document.getElementById("subscriptionId");
-    const planEl = document.getElementById("planName");
-    const emailEl = document.getElementById("userEmail");
-    const badgeText = document.getElementById("badgeText");
-    const hintEl = document.getElementById("hint");
+    const planEl = document.getElementById("planText");
+    const priceEl = document.getElementById("priceText");
+    const hintEl = document.getElementById("hintText");
 
-    sessionEl.textContent = sessionId || "—";
-
-    // OPTIONAL (recommended):
-    // Call your backend to verify the session + show details.
-    // Implement endpoint like: GET /api/billing/session?session_id=cs_...
-    async function loadSessionDetails() {
+    async function hydrate() {
+      // If we don't have session_id, just show generic success.
       if (!sessionId) {
-        badgeText.textContent = "Missing session";
-        hintEl.textContent = "No session_id found. If you already paid, open Billing from your dashboard.";
+        planEl.textContent = "—";
+        priceEl.textContent = "—";
+        hintEl.textContent = "Activation complete. If your access doesn’t update, open your Account.";
         return;
       }
 
@@ -192,29 +105,21 @@
         const res = await fetch(`/api/billing/session?session_id=${encodeURIComponent(sessionId)}`, {
           credentials: "include"
         });
-
-        if (!res.ok) {
-          badgeText.textContent = "Activated";
-          hintEl.textContent = "Payment completed. If your access doesn't update, refresh the page or open Billing.";
-          return;
-        }
-
         const data = await res.json();
-        // expected shape (example):
-        // { status:"complete", subscription:"sub_x", plan:"enterprise", email:"..." }
 
-        badgeText.textContent = (data.status === "complete" ? "Activated" : "Activating");
-        subEl.textContent = data.subscription || "—";
-        planEl.textContent = data.plan || "—";
-        emailEl.textContent = data.email || "—";
+        if (!res.ok || !data.ok) throw new Error(data.error || "failed");
 
+        planEl.textContent = (data.plan || "—").toUpperCase();
+        priceEl.textContent = data.price || "—";
       } catch (e) {
-        badgeText.textContent = "Activated";
-        hintEl.textContent = "Payment completed. If your access doesn't update, refresh or check Billing.";
+        // Don’t block UX if the API fails.
+        planEl.textContent = "—";
+        priceEl.textContent = "—";
+        hintEl.textContent = "Payment completed. If your access doesn’t update, refresh or open your Account.";
       }
     }
 
-    loadSessionDetails();
+    hydrate();
   </script>
 </body>
 </html>
