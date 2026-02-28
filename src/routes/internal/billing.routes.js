@@ -10,9 +10,9 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 
 // Map your Stripe Price IDs here (from Dashboard)
 const PRICE_BY_PLAN = {
-  core: process.env.STRIPE_PRICE_CORE,         // e.g. price_123
-  pro: process.env.STRIPE_PRICE_PRO,           // e.g. price_456
-  enterprise: process.env.STRIPE_PRICE_ENT,    // optional (could be null if “Contact sales”)
+  core: process.env.STRIPE_PRICE_CORE,
+  pro: process.env.STRIPE_PRICE_PRO,
+  enterprise: process.env.STRIPE_PRICE_ENT,
 };
 
 // Helpers
@@ -25,8 +25,6 @@ function requireSession(req, res) {
 }
 
 async function getOrCreateStripeCustomer(req) {
-  // You can store stripe_customer_id on your users table.
-  // Adjust column/table names to match your schema.
   const userId = req.session.userId;
 
   const { rows } = await req.db.query(
@@ -72,7 +70,8 @@ router.post("/billing/checkout", async (req, res) => {
 
     const { customerId } = await getOrCreateStripeCustomer(req);
 
-    const baseUrl = process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get("host")}`;
+    const baseUrl =
+      process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get("host")}`;
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
@@ -89,9 +88,9 @@ router.post("/billing/checkout", async (req, res) => {
 
     return res.json({ url: session.url });
   } catch (e) {
-  console.error("POST /api/billing/checkout error:", e);
-  return res.status(500).json({ error: e.message || "Server error" });
-}
+    console.error("POST /billing/checkout error:", e);
+    return res.status(500).json({ error: e.message || "Server error" });
+  }
 });
 
 /**
@@ -104,7 +103,8 @@ router.post("/billing/portal", async (req, res) => {
   try {
     const { customerId } = await getOrCreateStripeCustomer(req);
 
-    const baseUrl = process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get("host")}`;
+    const baseUrl =
+      process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get("host")}`;
 
     const portal = await stripe.billingPortal.sessions.create({
       customer: customerId,
@@ -118,8 +118,64 @@ router.post("/billing/portal", async (req, res) => {
   }
 });
 
-// billing.routes.js
+/**
+ * GET /billing/session?session_id=cs_...
+ * Returns: { ok, plan, price, email, subscriptionId, subscriptionStatus }
+ */
 router.get("/billing/session", async (req, res) => {
   if (!requireSession(req, res)) return;
+
+  try {
+    const sessionId = String(req.query.session_id || "");
+    if (!sessionId.startsWith("cs_")) {
+      return res.status(400).json({ error: "Invalid session_id" });
+    }
+
+    // 1) Session (metadata + customer_details + subscription)
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ["subscription"],
+    });
+
+    // 2) Line items (reliable way to get the price)
+    const lineItems = await stripe.checkout.sessions.listLineItems(sessionId, {
+      limit: 1,
+      expand: ["data.price"],
+    });
+
+    const plan = session?.metadata?.plan || null;
+
+    const sub = session.subscription;
+    const subscriptionId = typeof sub === "string" ? sub : sub?.id || null;
+    const subscriptionStatus =
+      typeof sub === "object" ? sub?.status : null;
+
+    const email =
+      session.customer_details?.email ||
+      session.customer_email ||
+      null;
+
+    const line = lineItems.data?.[0];
+    const price = line?.price;
+
+    let priceText = null;
+    if (price?.unit_amount != null) {
+      const amount = (price.unit_amount / 100).toFixed(0);
+      const interval = price.recurring?.interval || "mo";
+      priceText = `$${amount}/${interval}`;
+    }
+
+    return res.json({
+      ok: true,
+      plan,
+      price: priceText,
+      email,
+      subscriptionId,
+      subscriptionStatus,
+    });
+  } catch (e) {
+    console.error("GET /billing/session error:", e);
+    return res.status(500).json({ error: "Failed to retrieve session" });
+  }
+});
 
 module.exports = router;
