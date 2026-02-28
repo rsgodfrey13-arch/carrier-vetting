@@ -50,7 +50,12 @@ app.post(
 
   
   // Parse incoming request bodies BEFORE routes
-  app.use(express.json({ limit: "10mb" }));
+app.use(express.json({
+  limit: "10mb",
+  verify: (req, res, buf) => {
+    req.rawBody = buf; // ✅ required for Stripe webhook signature verification
+  }
+}));
   app.use(express.urlencoded({ extended: false, limit: "10mb" }));
 
   // Sessions (used for internal routes)
