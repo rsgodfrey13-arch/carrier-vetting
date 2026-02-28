@@ -1,15 +1,18 @@
 "use strict";
 
 const Stripe = require("stripe");
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2024-06-20"
+});
 
 module.exports = async function stripeWebhookHandler(req, res) {
   let event;
 
   try {
     const sig = req.headers["stripe-signature"];
+
     event = stripe.webhooks.constructEvent(
-      req.body,
+      req.rawBody, // MUST be raw body
       sig,
       process.env.STRIPE_WEBHOOK_SECRET
     );
@@ -19,38 +22,86 @@ module.exports = async function stripeWebhookHandler(req, res) {
   }
 
   try {
-    // You have req.db normally via middleware, but this route is mounted before that.
-    // So we must import pool directly.
     const { pool } = require("../../db/pool");
 
+    // ===== CHECKOUT COMPLETED =====
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
 
       const userId = session.metadata?.userId;
       const plan = session.metadata?.plan;
 
+      if (!userId) {
+        console.error("Missing userId in metadata");
+        return res.json({ received: true });
+      }
+
       const stripeCustomerId = session.customer;
       const stripeSubscriptionId = session.subscription;
 
-      if (userId && plan) {
-        await pool.query(
-          `
-          UPDATE users
-          SET
-            plan = $1,
-            subscription_status = 'active',
-            stripe_customer_id = $2,
-            stripe_subscription_id = $3
-          WHERE id = $4
-          `,
-          [plan, stripeCustomerId, stripeSubscriptionId, userId]
-        );
-      }
+      // Fetch subscription to get real status + period end
+      const subscription = await stripe.subscriptions.retrieve(
+        stripeSubscriptionId
+      );
+
+      const status = subscription.status;
+      const currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+      const cancelAtPeriodEnd = subscription.cancel_at_period_end;
+
+      await pool.query(
+        `
+        UPDATE users
+        SET
+          plan = $1,
+          subscription_status = $2,
+          stripe_customer_id = $3,
+          stripe_subscription_id = $4,
+          current_period_end = $5,
+          cancel_at_period_end = $6
+        WHERE id = $7
+        `,
+        [
+          plan,
+          status,
+          stripeCustomerId,
+          stripeSubscriptionId,
+          currentPeriodEnd,
+          cancelAtPeriodEnd,
+          userId
+        ]
+      );
+
+      console.log("User upgraded:", userId, plan);
     }
 
+    // ===== SUBSCRIPTION UPDATED =====
+    if (event.type === "customer.subscription.updated") {
+      const subscription = event.data.object;
+
+      const stripeCustomerId = subscription.customer;
+      const status = subscription.status;
+      const currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+      const cancelAtPeriodEnd = subscription.cancel_at_period_end;
+
+      await pool.query(
+        `
+        UPDATE users
+        SET
+          subscription_status = $1,
+          current_period_end = $2,
+          cancel_at_period_end = $3
+        WHERE stripe_customer_id = $4
+        `,
+        [status, currentPeriodEnd, cancelAtPeriodEnd, stripeCustomerId]
+      );
+
+      console.log("Subscription updated:", stripeCustomerId, status);
+    }
+
+    // ===== SUBSCRIPTION CANCELED =====
     if (event.type === "customer.subscription.deleted") {
-      const sub = event.data.object;
-      const stripeCustomerId = sub.customer;
+      const subscription = event.data.object;
+      const stripeCustomerId = subscription.customer;
 
       await pool.query(
         `
@@ -60,8 +111,11 @@ module.exports = async function stripeWebhookHandler(req, res) {
         `,
         [stripeCustomerId]
       );
+
+      console.log("Subscription canceled:", stripeCustomerId);
     }
 
+    // ===== PAYMENT FAILED =====
     if (event.type === "invoice.payment_failed") {
       const invoice = event.data.object;
       const stripeCustomerId = invoice.customer;
@@ -74,9 +128,10 @@ module.exports = async function stripeWebhookHandler(req, res) {
         `,
         [stripeCustomerId]
       );
+
+      console.log("Payment failed:", stripeCustomerId);
     }
 
-    // Always 200 so Stripe stops retrying
     res.json({ received: true });
   } catch (err) {
     console.error("Stripe webhook handler error:", err);
