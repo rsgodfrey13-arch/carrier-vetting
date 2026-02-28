@@ -3,11 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Carrier Shark — Billing</title>
+  <title>Carrier Shark - Billing</title>
 
   <link rel="stylesheet" href="/static/css/base.css" />
   <link rel="stylesheet" href="/static/css/style1.css" />
-  <link rel="stylesheet" href="/static/css/style1.css"> 
   <link rel="stylesheet" href="/static/css/signup.css" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 </head>
@@ -23,12 +22,14 @@
         <span class="auth-eyebrow">Billing</span>
         <h1 class="auth-title">Activate monitoring.</h1>
         <p class="auth-subtitle">
-          Monitoring begins immediately upon activation.
+          Secure checkout powered by Stripe. Monitoring begins immediately upon activation.
         </p>
       </div>
 
       <div class="auth-card">
         <div class="auth-card-inner">
+
+          <!-- Header row -->
           <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
             <div class="summary-pill">
               Plan: <strong id="plan-label">Core</strong>
@@ -36,46 +37,52 @@
             <a class="cs-btn cs-btn-ghost" href="/activate-plan">Change</a>
           </div>
 
-          <form class="auth-form" method="post" action="/api/billing/activate">
-            <input type="hidden" name="plan" id="plan-input" value="core" />
-
-            <div>
-              <div class="cs-label">Name on card</div>
-              <input class="cs-input" name="card_name" autocomplete="cc-name" placeholder="Robert Godfrey" required />
-            </div>
-
-            <div>
-              <div class="cs-label">Card number</div>
-              <input class="cs-input" name="card_number" autocomplete="cc-number" inputmode="numeric" placeholder="1234 1234 1234 1234" required />
-            </div>
-
-            <div class="auth-grid-2">
+          <!-- Plan summary (premium, no card fields) -->
+          <div class="cs-panel" style="padding:14px; border-radius:16px; margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
               <div>
-                <div class="cs-label">Expiry</div>
-                <input class="cs-input" name="card_exp" autocomplete="cc-exp" placeholder="MM / YY" required />
+                <div class="cs-label" style="margin-bottom:6px;">Included</div>
+                <ul class="cs-bullets" style="margin:0; padding-left:16px;">
+                  <li>FMCSA monitoring + refresh status</li>
+                  <li>Insurance tracking + document history</li>
+                  <li>Email alerts and audit trail</li>
+                </ul>
               </div>
-              <div>
-                <div class="cs-label">CVC</div>
-                <input class="cs-input" name="card_cvc" autocomplete="cc-csc" inputmode="numeric" placeholder="123" required />
+              <div style="text-align:right;">
+                <div class="cs-label">Price</div>
+                <div style="font-size:22px; font-weight:800; letter-spacing:-0.02em;">
+                  <span id="price-label">$399</span><span style="opacity:.75; font-weight:700;">/mo</span>
+                </div>
+                <div class="cs-fineprint" style="margin-top:6px;">Cancel anytime.</div>
               </div>
             </div>
+          </div>
 
-            <div>
-              <div class="cs-label">Billing ZIP</div>
-              <input class="cs-input" name="billing_zip" autocomplete="postal-code" inputmode="numeric" placeholder="30303" required />
-            </div>
+          <!-- Trust strip -->
+          <div class="cs-fineprint" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:10px 0 14px;">
+            <span>🔒 Secure checkout by Stripe</span>
+            <span>•</span>
+            <span>We never store card details</span>
+            <span>•</span>
+            <span>Apple Pay / Google Pay when available</span>
+          </div>
 
-            <div class="cs-row cs-row-right" style="margin-top:4px;">
-              <button class="cs-btn cs-btn-primary" type="submit">
-                Activate monitoring
-              </button>
-            </div>
+          <!-- CTA -->
+          <div class="cs-row cs-row-right">
+            <button class="cs-btn cs-btn-primary" id="checkout-btn" type="button">
+              Continue to secure checkout
+            </button>
+          </div>
 
-            <div class="cs-fineprint" style="margin-top:12px;">
-              <span>Charges are tied to the plan you selected.</span>
-              <span><a href="/terms">Terms</a></span>
-            </div>
-          </form>
+          <!-- Error / loading -->
+          <div class="cs-fineprint" id="billing-status" style="margin-top:10px; display:none;"></div>
+
+          <div class="cs-fineprint" style="margin-top:14px;">
+            <span>By continuing, you agree to the </span><a href="/terms">Terms</a><span>.</span>
+          </div>
+
+          <input type="hidden" id="plan-input" value="core" />
+
         </div>
       </div>
     </section>
@@ -88,24 +95,24 @@
       const plan = (params.get("plan") || "core").toLowerCase();
 
       const pretty = { core: "Core", pro: "Pro", enterprise: "Enterprise" };
+      const price  = { core: "$399", pro: "$999", enterprise: "Custom" };
+
       document.getElementById("plan-label").textContent = pretty[plan] || "Core";
       document.getElementById("plan-input").value = (pretty[plan] ? plan : "core");
+      document.getElementById("price-label").textContent = price[plan] || "$399";
     })();
   </script>
 
-  <!-- 1. Load Sentry library -->
+  <script src="/js/billing.js"></script>
+
+  <!-- Sentry + shared -->
   <script
     src="https://js.sentry-cdn.com/1df77c56ba17c2098baf02e362c93be2.min.js"
     crossorigin="anonymous"
   ></script>
-  
-  <!-- 2. Initialize Sentry with YOUR DSN -->
   <script src="/js/shared/sentry.js"></script>
-  
-  <!-- 3. Your existing shared code -->
   <script src="/js/shared/shared.js"></script>
-  
-<footer id="site-footer"></footer>
-  
+
+  <footer id="site-footer"></footer>
 </body>
 </html>
