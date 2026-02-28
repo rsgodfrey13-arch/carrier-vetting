@@ -137,24 +137,28 @@
   </div>
 
 <script>
-  fetch("/api/me", { credentials: "include" })
-    .then(res => {
-      const btn = document.getElementById("secondary-btn");
-      if (!btn) return;
+  (async () => {
+    const btn = document.getElementById("secondary-btn");
+    if (!btn) return;
 
-      if (res.ok) {
-        // logged in
+    try {
+      const res = await fetch("/api/me", { credentials: "include" });
+
+      // IMPORTANT: only treat as logged-in if the API returns a user object
+      if (!res.ok) return;
+
+      const data = await res.json();
+      const user = data && (data.user || data.me || data);
+
+      if (user && (user.id || user.email)) {
         btn.textContent = "My Account";
         btn.href = "/account";
-      } else {
-        // not logged in (already correct, but explicit)
-        btn.textContent = "Carrier Shark Home";
-        btn.href = "/";
       }
-    })
-    .catch(() => {
-      // fail silently — keep Home
-    });
+      // else: leave as Home
+    } catch {
+      // leave as Home
+    }
+  })();
 </script>
 
   
