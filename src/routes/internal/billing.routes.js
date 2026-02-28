@@ -89,9 +89,9 @@ router.post("/billing/checkout", async (req, res) => {
 
     return res.json({ url: session.url });
   } catch (e) {
-    console.error("POST /billing/checkout error:", e);
-    return res.status(500).json({ error: "Server error" });
-  }
+  console.error("POST /api/billing/checkout error:", e);
+  return res.status(500).json({ error: e.message || "Server error" });
+}
 });
 
 /**
