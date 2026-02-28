@@ -11,6 +11,7 @@ const loginRoutes = require("./login.routes");
 const acceptableRoutes = require("./acceptable-use.routes");
 const activateRoutes = require("./activate-plan.routes");
 const billingRoutes = require("./billing.routes");
+const billingSuccessRoutes = require("./billing-success.routes");
 const createRoutes = require("./create-account.routes");
 const plansRoutes = require("./plans.routes");
 const verifyRoutes = require("./verify-email.routes");
@@ -46,6 +47,7 @@ function publicRoutes() {
   
   // Add New Ones Here
   router.use(contactRoutes);
+  router.use(billingSuccessRoutes);
   
   router.use(activateRoutes);
   router.use(billingRoutes);
