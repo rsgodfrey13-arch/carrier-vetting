@@ -36,6 +36,19 @@ function createApp({ redisClient } = {}) {
   // Also serve the same static files under /static/*
   app.use("/static", express.static(staticDir));
 
+
+
+
+// Stripe webhook MUST use raw body (before express.json)
+app.post(
+  "/api/v1/stripe/webhook",
+  express.raw({ type: "application/json" }),
+  require("../routes/external/stripeWebhook.handler")
+);
+
+
+
+  
   // Parse incoming request bodies BEFORE routes
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ extended: false, limit: "10mb" }));
