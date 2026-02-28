@@ -119,54 +119,7 @@ router.post("/billing/portal", async (req, res) => {
 });
 
 // billing.routes.js
-router.get("/billing/session", requireAuth, async (req, res) => {
-  try {
-    const sessionId = String(req.query.session_id || "");
-    if (!sessionId.startsWith("cs_")) {
-      return res.status(400).json({ error: "Invalid session_id" });
-    }
-
-    const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ["subscription", "line_items.data.price"],
-    });
-
-    const plan = session?.metadata?.plan || null;
-
-    // subscription may be expanded object or just id
-    const sub = session.subscription;
-    const subscriptionId = typeof sub === "string" ? sub : sub?.id || null;
-    const subscriptionStatus = typeof sub === "object" ? sub?.status : null;
-
-    // price display (optional)
-    let amount = null;
-    let interval = null;
-    const line = session.line_items?.data?.[0];
-    const price = line?.price;
-
-    if (price?.unit_amount != null) {
-      amount = (price.unit_amount / 100).toFixed(0);
-      interval = price.recurring?.interval || null;
-    }
-
-    // prefer customer_details email (it’s in the event payload you showed)
-    const email =
-      session.customer_details?.email ||
-      session.customer_email ||
-      null;
-
-    return res.json({
-      ok: true,
-      plan,
-      price: amount ? `$${amount}/${interval || "mo"}` : null,
-      subscriptionId,
-      subscriptionStatus,
-      email,
-    });
-  } catch (err) {
-    console.error("GET /api/billing/session failed:", err);
-    return res.status(500).json({ error: "Failed to retrieve session" });
-  }
-});
-
+router.get("/billing/session", async (req, res) => {
+  if (!requireSession(req, res)) return;
 
 module.exports = router;
