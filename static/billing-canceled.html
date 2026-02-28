@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Carrier Shark — Checkout Canceled</title>
+  <title>Carrier Shark - Checkout Canceled</title>
   <link rel="stylesheet" href="/css/style1.css" />
   <style>
     body { display:block; padding:0; }
@@ -68,7 +68,13 @@
       font-size: .90rem;
       line-height: 1.5;
     }
-    .actions { display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; margin-top: 16px; }
+    .actions {
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+      margin-top: 16px;
+    }
     .btn {
       height: 40px;
       padding: 0 16px;
@@ -106,7 +112,7 @@
         <div>
           <h1 class="h1">Checkout Canceled</h1>
           <p class="sub">
-            No worries — nothing was charged. When you’re ready, you can try again in a few seconds.
+            No worries — nothing was charged. You can try again whenever you’re ready.
           </p>
         </div>
 
@@ -117,15 +123,18 @@
       </div>
 
       <div class="panel">
-        If your payment was declined, Stripe usually tells you the reason right in Checkout.
-        You can retry with a different card or payment method.
-        <br /><br />
-        If you think something’s wrong on our side, open Billing from your dashboard and try again.
+        If your payment didn’t go through, double-check your card details and try again.
+        You can also use a different payment method if needed.
       </div>
 
       <div class="actions">
-        <a class="btn" href="/account">Back to Dashboard</a>
+        <!-- Primary action FIRST -->
         <a class="btn primary" href="/billing">Try Again</a>
+
+        <!-- Secondary action (label swaps server-side) -->
+        <!-- Logged in: My Account → /account -->
+        <!-- Logged out: Carrier Shark Home → / -->
+        <a class="btn" href="/account">My Account</a>
       </div>
     </div>
   </div>
