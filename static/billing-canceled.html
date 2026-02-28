@@ -105,6 +105,8 @@
   </style>
 </head>
 
+
+  
 <body class="carrier-list app-page">
   <div class="wrap">
     <div class="card">
@@ -127,16 +129,34 @@
         You can also use a different payment method if needed.
       </div>
 
-      <div class="actions">
-        <!-- Primary action FIRST -->
-        <a class="btn primary" href="/billing">Try Again</a>
-
-        <!-- Secondary action (label swaps server-side) -->
-        <!-- Logged in: My Account → /account -->
-        <!-- Logged out: Carrier Shark Home → / -->
-        <a class="btn" href="/account">My Account</a>
-      </div>
+<div class="actions">
+  <a class="btn primary" href="/billing">Try Again</a>
+  <a class="btn" id="secondary-btn" href="/">Carrier Shark Home</a>
+</div>
     </div>
   </div>
+
+<script>
+  fetch("/api/me", { credentials: "include" })
+    .then(res => {
+      const btn = document.getElementById("secondary-btn");
+      if (!btn) return;
+
+      if (res.ok) {
+        // logged in
+        btn.textContent = "My Account";
+        btn.href = "/account";
+      } else {
+        // not logged in (already correct, but explicit)
+        btn.textContent = "Carrier Shark Home";
+        btn.href = "/";
+      }
+    })
+    .catch(() => {
+      // fail silently — keep Home
+    });
+</script>
+
+  
 </body>
 </html>
