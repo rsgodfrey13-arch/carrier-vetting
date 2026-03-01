@@ -80,12 +80,22 @@ module.exports = async function stripeWebhookHandler(req, res) {
 
 // ===== SUBSCRIPTION UPDATED =====
 if (event.type === "customer.subscription.updated") {
-  const subscription = event.data.object;
+  const sub = event.data.object;
 
-  const stripeCustomerId = subscription.customer;
-  const status = String(subscription.status || "").toLowerCase();
-  const currentPeriodEnd = new Date(subscription.current_period_end * 1000);
-  const cancelAtPeriodEnd = subscription.cancel_at_period_end;
+  const stripeCustomerId =
+    typeof sub.customer === "string" ? sub.customer : sub.customer?.id;
+
+  const status = String(sub.status || "").toLowerCase();
+
+  const currentPeriodEnd =
+    sub.current_period_end ? new Date(sub.current_period_end * 1000) : null;
+
+  const cancelAtPeriodEnd = !!sub.cancel_at_period_end;
+
+  if (!stripeCustomerId) {
+    console.error("subscription.updated missing customer id");
+    return res.json({ received: true });
+  }
 
   await pool.query(
     `
@@ -93,22 +103,20 @@ if (event.type === "customer.subscription.updated") {
     SET
       subscription_status = $1,
       current_period_end = $2,
-      cancel_at_period_end = $3
-    WHERE stripe_customer_id = $4
+      cancel_at_period_end = $3,
+      stripe_subscription_id = COALESCE(stripe_subscription_id, $4)
+    WHERE stripe_customer_id = $5
     `,
-    [status, currentPeriodEnd, cancelAtPeriodEnd, stripeCustomerId]
+    [status, currentPeriodEnd, cancelAtPeriodEnd, sub.id, stripeCustomerId]
   );
 
-  console.log("Subscription updated:", stripeCustomerId, status);
-
-  // 🔒 Immediate lock logging
-  if (isLockedStatus(status)) {
-    console.warn(
-      `BILLING_LOCK: user locked immediately | customer=${stripeCustomerId} status=${status}`
-    );
-  }
+  console.log("Subscription updated:", stripeCustomerId, {
+    status,
+    cancelAtPeriodEnd,
+    currentPeriodEnd
+  });
 }
-
+    
     // ===== SUBSCRIPTION CANCELED =====
     if (event.type === "customer.subscription.deleted") {
       const subscription = event.data.object;
