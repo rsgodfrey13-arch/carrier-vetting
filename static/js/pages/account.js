@@ -12,6 +12,7 @@
     agreements: $("tab-agreements"),
     api: $("tab-api"),
     plan: $("tab-plan"),
+    billing: $("tab-billing"),
     security: $("tab-security"),
     help: $("tab-help"),
   };
@@ -785,10 +786,30 @@ if (currentBadge) currentBadge.textContent = current ? `Current: ${current.toUpp
     // 1) Snapshot
     const me = await apiGet("/api/account/overview");
 
+
     if ($("me-name")) $("me-name").textContent = me?.name || me?.user?.name || "—";
     if ($("me-email")) $("me-email").textContent = me?.email || me?.user?.email || "—";
     if ($("me-company")) $("me-company").textContent = me?.company || me?.user?.company || "—";
     if ($("me-plan")) $("me-plan").textContent = me?.plan || me?.user?.plan || "—";
+
+// Billing tab (safe if fields are missing)
+if ($("billing-plan")) $("billing-plan").textContent = me?.plan || me?.user?.plan || "—";
+
+if ($("billing-status")) {
+  const s = me?.subscription_status || me?.user?.subscription_status || "—";
+  $("billing-status").textContent = String(s).replaceAll("_", " ").toUpperCase();
+}
+
+if ($("billing-next-renewal")) {
+  const raw = me?.current_period_end || me?.user?.current_period_end;
+  $("billing-next-renewal").textContent = raw ? new Date(raw).toLocaleDateString() : "—";
+}
+
+if ($("billing-cancel-at-period-end")) {
+  const cap = me?.cancel_at_period_end ?? me?.user?.cancel_at_period_end;
+  $("billing-cancel-at-period-end").textContent =
+    cap === true ? "YES" : cap === false ? "NO" : "—";
+}
 
   // Email Alerts feature gate (single overlay)
   applyEmailAlertsLock(me);
