@@ -93,10 +93,7 @@ router.post("/billing/checkout", async (req, res) => {
   }
 });
 
-/**
- * POST /billing/portal
- * Returns: { url } to Stripe Billing Portal
- */
+//Billing Portal
 router.post("/billing/portal", async (req, res) => {
   if (!requireSession(req, res)) return;
 
@@ -106,9 +103,14 @@ router.post("/billing/portal", async (req, res) => {
     const baseUrl =
       process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get("host")}`;
 
+    // allow only internal return paths
+    const returnPath = String(req.body?.returnPath || "/account?tab=billing");
+    const safeReturnPath =
+      returnPath.startsWith("/") ? returnPath : "/account?tab=billing";
+
     const portal = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: `${baseUrl}/billing`,
+      return_url: `${baseUrl}${safeReturnPath}`,
     });
 
     return res.json({ url: portal.url });
