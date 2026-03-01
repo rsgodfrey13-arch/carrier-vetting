@@ -49,33 +49,20 @@
     }
   }
 
-  if (btn) {
+  if (btn && termsCheckbox) {
 
     // Start disabled
     btn.disabled = true;
+    if (helper) helper.style.display = "block";
 
-    if (termsCheckbox) {
+    termsCheckbox.addEventListener("change", () => {
+      const agreed = termsCheckbox.checked;
+      btn.disabled = !agreed;
 
-      // Show helper when user tries to hover disabled button
-      btn.addEventListener("mouseenter", () => {
-        if (!termsCheckbox.checked && helper) {
-          helper.style.display = "block";
-        }
-      });
-
-      btn.addEventListener("mouseleave", () => {
-        if (helper) helper.style.display = "none";
-      });
-
-      // Toggle enable/disable
-      termsCheckbox.addEventListener("change", () => {
-        btn.disabled = !termsCheckbox.checked;
-
-        if (helper) {
-          helper.style.display = termsCheckbox.checked ? "none" : "block";
-        }
-      });
-    }
+      if (helper) {
+        helper.style.display = agreed ? "none" : "block";
+      }
+    });
 
     btn.addEventListener("click", startCheckout);
   }
