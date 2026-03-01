@@ -1,9 +1,7 @@
 // /js/billing.js
 (
   
- const termsCheckbox = document.getElementById("terms-checkbox"); 
-  
-  
+ 
   function () {
   const btn = document.getElementById("checkout-btn");
   const statusEl = document.getElementById("billing-status");
