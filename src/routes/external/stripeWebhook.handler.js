@@ -5,6 +5,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2024-06-20"
 });
 
+function isLockedStatus(status) {
+  return !["active", "trialing"].includes(String(status || "").toLowerCase());
+}
+
 module.exports = async function stripeWebhookHandler(req, res) {
   let event;
 
@@ -105,9 +109,13 @@ module.exports = async function stripeWebhookHandler(req, res) {
 
       await pool.query(
         `
-        UPDATE users
-        SET subscription_status = 'canceled'
-        WHERE stripe_customer_id = $1
+          UPDATE users
+          SET
+            subscription_status = 'canceled',
+            cancel_at_period_end = false,
+            current_period_end = NULL,
+            stripe_subscription_id = NULL
+          WHERE stripe_customer_id = $1
         `,
         [stripeCustomerId]
       );
@@ -131,6 +139,13 @@ module.exports = async function stripeWebhookHandler(req, res) {
 
       console.log("Payment failed:", stripeCustomerId);
     }
+
+    const status = String(subscription.status || "").toLowerCase();
+      if (isLockedStatus(status)) {
+        console.warn(
+          `BILLING_LOCK: user locked immediately via subscription.updated | customer=${subscription.customer} sub=${subscription.id} status=${status}`
+        );
+      }
 
     res.json({ received: true });
   } catch (err) {
