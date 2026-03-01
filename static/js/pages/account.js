@@ -104,6 +104,32 @@ document.getElementById("btn-signout")?.addEventListener("click", (e) => {
     btn.addEventListener("click", () => setActiveTab(btn.dataset.tabJump));
   });
 
+document.getElementById("btn-manage-billing")?.addEventListener("click", async () => {
+  const btn = document.getElementById("btn-manage-billing");
+  btn.disabled = true;
+
+  try {
+    // This matches your existing pattern: POST -> get URL -> redirect
+    const r = await fetch("/api/billing/portal", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ returnPath: "/account?tab=billing" }),
+    });
+
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data?.error || `Portal failed: ${r.status}`);
+
+    if (data?.url) window.location.href = data.url;
+    else throw new Error("Missing portal URL");
+  } catch (e) {
+    console.error(e);
+    alert("Could not open billing portal. Try again.");
+    btn.disabled = false;
+  }
+});
+
+  
   // -----------------------------
   // Pills
   // -----------------------------
