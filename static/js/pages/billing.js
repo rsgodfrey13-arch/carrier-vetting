@@ -1,12 +1,11 @@
 // /js/billing.js
-(
-  
- 
-  function () {
+(function () {
+
   const btn = document.getElementById("checkout-btn");
   const statusEl = document.getElementById("billing-status");
   const planInput = document.getElementById("plan-input");
-  const termsCheckbox = document.getElementById("terms-checkbox"); 
+  const termsCheckbox = document.getElementById("terms-checkbox");
+  const helper = document.getElementById("terms-helper");
 
   function setStatus(msg, isError) {
     if (!statusEl) return;
@@ -50,15 +49,35 @@
     }
   }
 
-if (btn) {
-  btn.disabled = true;
+  if (btn) {
 
-  if (termsCheckbox) {
-    termsCheckbox.addEventListener("change", () => {
-      btn.disabled = !termsCheckbox.checked;
-    });
+    // Start disabled
+    btn.disabled = true;
+
+    if (termsCheckbox) {
+
+      // Show helper when user tries to hover disabled button
+      btn.addEventListener("mouseenter", () => {
+        if (!termsCheckbox.checked && helper) {
+          helper.style.display = "block";
+        }
+      });
+
+      btn.addEventListener("mouseleave", () => {
+        if (helper) helper.style.display = "none";
+      });
+
+      // Toggle enable/disable
+      termsCheckbox.addEventListener("change", () => {
+        btn.disabled = !termsCheckbox.checked;
+
+        if (helper) {
+          helper.style.display = termsCheckbox.checked ? "none" : "block";
+        }
+      });
+    }
+
+    btn.addEventListener("click", startCheckout);
   }
 
-  btn.addEventListener("click", startCheckout);
-}
 })();
