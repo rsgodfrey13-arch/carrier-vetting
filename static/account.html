@@ -61,6 +61,10 @@
           <span class="rail-dot"></span>
           Plan
         </button>
+        <button class="rail-item" data-tab="billing">
+          <span class="rail-dot"></span>
+          Billing
+        </button>
         <button class="rail-item" data-tab="security">
           <span class="rail-dot"></span>
           Security
@@ -485,6 +489,61 @@
           </div>
         </section>
 
+
+<!-- BILLING -->
+<section class="tab-panel" id="tab-billing">
+  <div class="card">
+    <div class="card-head">
+      <h2>Billing</h2>
+      <p class="muted">Manage payment method, invoices, and subscription settings.</p>
+    </div>
+
+    <div class="kv-grid">
+      <div class="kv">
+        <div class="kv-label">Plan</div>
+        <div class="kv-value" id="billing-plan">—</div>
+      </div>
+
+      <div class="kv">
+        <div class="kv-label">Status</div>
+        <div class="kv-value" id="billing-status">—</div>
+      </div>
+
+      <div class="kv">
+        <div class="kv-label">Next renewal</div>
+        <div class="kv-value" id="billing-next-renewal">—</div>
+      </div>
+
+      <div class="kv">
+        <div class="kv-label">Cancel at period end</div>
+        <div class="kv-value" id="billing-cancel-at-period-end">—</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="row">
+      <div class="row-main">
+        <div class="row-title">Manage billing in Stripe</div>
+        <div class="row-sub">
+          Update card, download invoices, cancel, or change billing details.
+        </div>
+      </div>
+
+      <div class="row-actions">
+        <button class="btn-primary" id="btn-manage-billing">
+          Manage billing
+        </button>
+      </div>
+    </div>
+
+    <div class="muted" style="margin-top:12px;">
+      Payments are processed by Stripe. We never store card details.
+    </div>
+  </div>
+</section>
+
+        
         <!-- SECURITY -->
         <section class="tab-panel" id="tab-security">
           <div class="card">
