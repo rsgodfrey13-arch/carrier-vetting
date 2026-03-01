@@ -1,8 +1,14 @@
 // /js/billing.js
-(function () {
+(
+  
+ const termsCheckbox = document.getElementById("terms-checkbox"); 
+  
+  
+  function () {
   const btn = document.getElementById("checkout-btn");
   const statusEl = document.getElementById("billing-status");
   const planInput = document.getElementById("plan-input");
+  const termsCheckbox = document.getElementById("terms-checkbox"); 
 
   function setStatus(msg, isError) {
     if (!statusEl) return;
@@ -46,5 +52,15 @@
     }
   }
 
-  if (btn) btn.addEventListener("click", startCheckout);
+if (btn) {
+  btn.disabled = true;
+
+  if (termsCheckbox) {
+    termsCheckbox.addEventListener("change", () => {
+      btn.disabled = !termsCheckbox.checked;
+    });
+  }
+
+  btn.addEventListener("click", startCheckout);
+}
 })();
