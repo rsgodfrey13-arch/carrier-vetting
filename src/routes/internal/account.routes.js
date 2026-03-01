@@ -17,7 +17,13 @@ router.get("/account/overview", async (req, res) => {
       u.name,
       u.email,
       u.company,
-      u.email_alerts, u.rest_alerts, u.webhook_alerts, u.plan
+      u.email_alerts,
+      u.rest_alerts,
+      u.webhook_alerts,
+      u.plan,
+      u.subscription_status,
+      u.current_period_end,
+      u.cancel_at_period_end
     FROM users u
     WHERE u.id = $1
     `,
