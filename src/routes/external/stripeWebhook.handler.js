@@ -77,7 +77,6 @@ await pool.query(
 
       console.log("User upgraded:", userId, plan);
     }
-
 // ===== SUBSCRIPTION UPDATED =====
 if (event.type === "customer.subscription.updated") {
   const sub = event.data.object;
@@ -86,13 +85,21 @@ if (event.type === "customer.subscription.updated") {
     typeof sub.customer === "string" ? sub.customer : sub.customer?.id;
 
   const status = String(sub.status || "").toLowerCase();
-
-  const currentPeriodEnd =
-    typeof sub.current_period_end === "number"
-      ? new Date(sub.current_period_end * 1000)
-      : null;
-
   const cancelAtPeriodEnd = !!sub.cancel_at_period_end;
+
+  // Robust current_period_end:
+  const periodEndUnix =
+    (typeof sub.current_period_end === "number" && sub.current_period_end) ||
+    (Array.isArray(sub.items?.data)
+      ? Math.max(
+          ...sub.items.data
+            .map((it) => it?.current_period_end)
+            .filter((v) => typeof v === "number")
+        )
+      : null) ||
+    null;
+
+  const currentPeriodEnd = periodEndUnix ? new Date(periodEndUnix * 1000) : null;
 
   await pool.query(
     `
