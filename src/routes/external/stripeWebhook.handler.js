@@ -52,27 +52,28 @@ module.exports = async function stripeWebhookHandler(req, res) {
       const currentPeriodEnd = new Date(subscription.current_period_end * 1000);
       const cancelAtPeriodEnd = subscription.cancel_at_period_end;
 
-      await pool.query(
-        `
-        UPDATE users
-        SET
-          plan = $1,
-          subscription_status = $2,
-          stripe_customer_id = $3,
-          stripe_subscription_id = $4,
-          cancel_at_period_end = $6
-        WHERE id = $7
-        `,
-        [
-          plan,
-          status,
-          stripeCustomerId,
-          stripeSubscriptionId,
-          currentPeriodEnd,
-          cancelAtPeriodEnd,
-          userId
-        ]
-      );
+await pool.query(
+  `
+  UPDATE users
+  SET
+    plan = $1,
+    subscription_status = $2,
+    stripe_customer_id = $3,
+    stripe_subscription_id = $4,
+    current_period_end = $5,
+    cancel_at_period_end = $6
+  WHERE id = $7
+  `,
+  [
+    plan,
+    status,
+    stripeCustomerId,
+    stripeSubscriptionId,
+    currentPeriodEnd,
+    cancelAtPeriodEnd,
+    userId
+  ]
+);
 
       console.log("User upgraded:", userId, plan);
     }
@@ -87,21 +88,18 @@ if (event.type === "customer.subscription.updated") {
   const status = String(sub.status || "").toLowerCase();
 
   const currentPeriodEnd =
-    sub.current_period_end ? new Date(sub.current_period_end * 1000) : null;
+    typeof sub.current_period_end === "number"
+      ? new Date(sub.current_period_end * 1000)
+      : null;
 
   const cancelAtPeriodEnd = !!sub.cancel_at_period_end;
-
-  if (!stripeCustomerId) {
-    console.error("subscription.updated missing customer id");
-    return res.json({ received: true });
-  }
 
   await pool.query(
     `
     UPDATE users
     SET
       subscription_status = $1,
-      current_period_end = $2,
+      current_period_end = $2::timestamp,
       cancel_at_period_end = $3,
       stripe_subscription_id = COALESCE(stripe_subscription_id, $4)
     WHERE stripe_customer_id = $5
@@ -112,7 +110,7 @@ if (event.type === "customer.subscription.updated") {
   console.log("Subscription updated:", stripeCustomerId, {
     status,
     cancelAtPeriodEnd,
-    currentPeriodEnd
+    currentPeriodEnd,
   });
 }
     
