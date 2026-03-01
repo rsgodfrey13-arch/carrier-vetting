@@ -77,9 +77,16 @@
           <!-- Error / loading -->
           <div class="cs-fineprint" id="billing-status" style="margin-top:10px; display:none;"></div>
 
-          <div class="cs-fineprint" style="margin-top:14px;">
-            <span>By continuing, you agree to the </span><a href="/terms">Terms</a><span>.</span>
-          </div>
+<!-- Terms agreement -->
+<div class="cs-fineprint" style="margin-top:14px;">
+  <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer;">
+    <input type="checkbox" id="terms-checkbox" style="margin-top:3px;" />
+    <span>
+      I agree to the <a href="/terms" target="_blank">Terms of Service</a>
+      and <a href="/privacy" target="_blank">Privacy Policy</a>.
+    </span>
+  </label>
+</div>
 
           <input type="hidden" id="plan-input" value="core" />
 
