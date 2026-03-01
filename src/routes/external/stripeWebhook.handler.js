@@ -147,6 +147,25 @@ if (event.type === "customer.subscription.updated") {
       console.log("Payment failed:", stripeCustomerId);
     }
 
+    
+// ===== PAYMENT SUCCEEDED =====
+if (event.type === "invoice.payment_succeeded") {
+  const invoice = event.data.object;
+  const stripeCustomerId = invoice.customer;
+
+  // bring them back from past_due/unpaid to active-ish
+  // NOTE: don't overwrite cancel_at_period_end here.
+  await pool.query(
+    `
+    UPDATE users
+    SET subscription_status = 'active'
+    WHERE stripe_customer_id = $1
+    `,
+    [stripeCustomerId]
+  );
+
+  console.log("Payment succeeded:", stripeCustomerId);
+}
 
 
     res.json({ received: true });
