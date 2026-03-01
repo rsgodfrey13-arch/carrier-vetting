@@ -78,29 +78,36 @@ module.exports = async function stripeWebhookHandler(req, res) {
       console.log("User upgraded:", userId, plan);
     }
 
-    // ===== SUBSCRIPTION UPDATED =====
-    if (event.type === "customer.subscription.updated") {
-      const subscription = event.data.object;
+// ===== SUBSCRIPTION UPDATED =====
+if (event.type === "customer.subscription.updated") {
+  const subscription = event.data.object;
 
-      const stripeCustomerId = subscription.customer;
-      const status = subscription.status;
-      const currentPeriodEnd = new Date(subscription.current_period_end * 1000);
-      const cancelAtPeriodEnd = subscription.cancel_at_period_end;
+  const stripeCustomerId = subscription.customer;
+  const status = String(subscription.status || "").toLowerCase();
+  const currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+  const cancelAtPeriodEnd = subscription.cancel_at_period_end;
 
-      await pool.query(
-        `
-        UPDATE users
-        SET
-          subscription_status = $1,
-          current_period_end = $2,
-          cancel_at_period_end = $3
-        WHERE stripe_customer_id = $4
-        `,
-        [status, currentPeriodEnd, cancelAtPeriodEnd, stripeCustomerId]
-      );
+  await pool.query(
+    `
+    UPDATE users
+    SET
+      subscription_status = $1,
+      current_period_end = $2,
+      cancel_at_period_end = $3
+    WHERE stripe_customer_id = $4
+    `,
+    [status, currentPeriodEnd, cancelAtPeriodEnd, stripeCustomerId]
+  );
 
-      console.log("Subscription updated:", stripeCustomerId, status);
-    }
+  console.log("Subscription updated:", stripeCustomerId, status);
+
+  // 🔒 Immediate lock logging
+  if (isLockedStatus(status)) {
+    console.warn(
+      `BILLING_LOCK: user locked immediately | customer=${stripeCustomerId} status=${status}`
+    );
+  }
+}
 
     // ===== SUBSCRIPTION CANCELED =====
     if (event.type === "customer.subscription.deleted") {
@@ -140,12 +147,7 @@ module.exports = async function stripeWebhookHandler(req, res) {
       console.log("Payment failed:", stripeCustomerId);
     }
 
-    const status = String(subscription.status || "").toLowerCase();
-      if (isLockedStatus(status)) {
-        console.warn(
-          `BILLING_LOCK: user locked immediately via subscription.updated | customer=${subscription.customer} sub=${subscription.id} status=${status}`
-        );
-      }
+
 
     res.json({ received: true });
   } catch (err) {
