@@ -60,7 +60,6 @@ module.exports = async function stripeWebhookHandler(req, res) {
           subscription_status = $2,
           stripe_customer_id = $3,
           stripe_subscription_id = $4,
-          current_period_end = $5,
           cancel_at_period_end = $6
         WHERE id = $7
         `,
