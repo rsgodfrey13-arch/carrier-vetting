@@ -16,116 +16,100 @@
   <div class="bg-grid"></div>
   <div id="site-header" data-header="slim"></div>
 
-  <main class="page">
-    <section class="auth-shell">
-      <div class="auth-hero">
-        <span class="auth-eyebrow">Billing</span>
+<main class="page">
+  <section class="auth-shell billing-min">
+    <div class="auth-hero">
+      <span class="auth-eyebrow">Billing</span>
+      <h1 class="auth-title" id="billing-title">Confirm your plan.</h1>
+      <p class="auth-subtitle" id="billing-subtitle">
+        Review price, accept the Terms, then continue to Stripe.
+      </p>
+    </div>
+
+    <div class="auth-card">
+      <div class="auth-card-inner">
+
+        <!-- Header row -->
+        <div class="billing-toprow">
+          <div class="summary-pill">
+            Plan: <strong id="plan-label">Core</strong>
+          </div>
+          <a class="cs-btn cs-btn-ghost" href="/activate-plan">Change</a>
+        </div>
+
+        <!-- Minimal plan summary -->
+        <div class="billing-summary">
+          <div class="billing-summary-left">
+            <div class="cs-label">Price</div>
+            <div class="billing-price">
+              <span id="price-label">$399</span><span class="billing-per">/mo</span>
+            </div>
+            <div class="cs-fineprint">Cancel anytime.</div>
+          </div>
+
+          <div class="billing-summary-right cs-fineprint">
+            Secure checkout by Stripe. We never store card details.
+          </div>
+        </div>
+
+        <!-- Terms agreement -->
+        <div class="billing-terms cs-fineprint">
+          <label class="billing-terms-label">
+            <input type="checkbox" id="terms-checkbox" />
+            <span>
+              I agree to the <a href="/terms" target="_blank">Terms of Service</a>
+              and <a href="/privacy" target="_blank">Privacy Policy</a>.
+            </span>
+          </label>
+
+          <div id="terms-helper" class="cs-fineprint billing-terms-helper" style="display:none;">
+            Please agree to the Terms to enable checkout.
+          </div>
+        </div>
+
+        <!-- CTA -->
+        <div class="cs-row cs-row-right">
           <button class="cs-btn cs-btn-primary" id="checkout-btn" type="button">
             <span id="checkout-btn-label">Continue</span>
           </button>
-      </div>
-
-      <div class="auth-card">
-        <div class="auth-card-inner">
-
-          <!-- Header row -->
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
-            <div class="summary-pill">
-              Plan: <strong id="plan-label">Core</strong>
-            </div>
-            <a class="cs-btn cs-btn-ghost" href="/activate-plan">Change</a>
-          </div>
-
-          <!-- Plan summary (premium, no card fields) -->
-          <div class="cs-panel" style="padding:14px; border-radius:16px; margin-bottom:12px;">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
-              <div>
-                <div class="cs-label" style="margin-bottom:6px;">Included</div>
-                <ul class="cs-bullets" style="margin:0; padding-left:16px;">
-                  <li>FMCSA monitoring + refresh status</li>
-                  <li>Insurance tracking + document history</li>
-                  <li>Email alerts and audit trail</li>
-                </ul>
-              </div>
-              <div style="text-align:right;">
-                <div class="cs-label">Price</div>
-                <div style="font-size:22px; font-weight:800; letter-spacing:-0.02em;">
-                  <span id="price-label">$399</span><span style="opacity:.75; font-weight:700;">/mo</span>
-                </div>
-                <div class="cs-fineprint" style="margin-top:6px;">Cancel anytime.</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Trust strip -->
-          <div class="cs-fineprint" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:10px 0 14px;">
-            <span>🔒 Secure checkout by Stripe</span>
-            <span>•</span>
-            <span>We never store card details</span>
-            <span>•</span>
-            <span>Apple Pay / Google Pay when available</span>
-          </div>
-
-          <!-- CTA -->
-          <div class="cs-row cs-row-right">
-            <button class="cs-btn cs-btn-primary" id="checkout-btn" type="button">
-              Continue to secure checkout
-            </button>
-          </div>
-
-          <!-- Error / loading -->
-          <div class="cs-fineprint" id="billing-status" style="margin-top:10px; display:none;"></div>
-
-<!-- Terms agreement -->
-<div class="cs-fineprint" style="margin-top:14px;">
-  <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer;">
-    <input type="checkbox" id="terms-checkbox" style="margin-top:3px;" />
-    <span>
-      I agree to the <a href="/terms" target="_blank">Terms of Service</a>
-      and <a href="/privacy" target="_blank">Privacy Policy</a>.
-    </span>
-  </label>
-</div>
-
-<div id="terms-helper" class="cs-fineprint" 
-     style="margin-top:6px; opacity:.7; display:none;">
-  Please agree to the Terms to enable checkout.
-</div>
-
-          <input type="hidden" id="plan-input" value="core" />
-
         </div>
-      </div>
-    </section>
-  </main>
 
-    <script>
-      (function(){
-        const params = new URLSearchParams(location.search);
-        const plan = (params.get("plan") || "core").toLowerCase();
-        const context = (params.get("context") || "").toLowerCase(); // "upgrade"
-    
-        const pretty = { core: "Core", pro: "Pro", enterprise: "Enterprise" };
-        const price  = { core: "$399", pro: "$999", enterprise: "Custom" };
-    
-        document.getElementById("plan-label").textContent = pretty[plan] || "Core";
-        document.getElementById("plan-input").value = (pretty[plan] ? plan : "core");
-        document.getElementById("price-label").textContent = price[plan] || "$399";
-    
-        // Copy tweaks for upgrades (Portal path)
-        const titleEl = document.getElementById("billing-title");
-        const subEl = document.getElementById("billing-subtitle");
-        const btnLabel = document.getElementById("checkout-btn-label");
-    
-        if (context === "upgrade") {
-          if (titleEl) titleEl.textContent = "Confirm plan change.";
-          if (subEl) subEl.textContent = "Review details and accept the Terms. You’ll finalize billing in Stripe.";
-          if (btnLabel) btnLabel.textContent = "Continue to billing portal";
-        } else {
-          if (btnLabel) btnLabel.textContent = "Continue to secure checkout";
-        }
-      })();
-    </script>
+        <!-- Error / loading -->
+        <div class="cs-fineprint" id="billing-status" style="margin-top:10px; display:none;"></div>
+
+        <input type="hidden" id="plan-input" value="core" />
+
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+  (function () {
+    const params = new URLSearchParams(location.search);
+    const plan = (params.get("plan") || "core").toLowerCase();
+    const context = (params.get("context") || "").toLowerCase(); // "upgrade"
+
+    const pretty = { core: "Core", pro: "Pro", enterprise: "Enterprise" };
+    const price  = { core: "$399", pro: "$999", enterprise: "Custom" };
+
+    document.getElementById("plan-label").textContent = pretty[plan] || "Core";
+    document.getElementById("plan-input").value = (pretty[plan] ? plan : "core");
+    document.getElementById("price-label").textContent = price[plan] || "$399";
+
+    const titleEl = document.getElementById("billing-title");
+    const subEl = document.getElementById("billing-subtitle");
+    const btnLabel = document.getElementById("checkout-btn-label");
+
+    if (context === "upgrade") {
+      if (titleEl) titleEl.textContent = "Confirm plan change.";
+      if (subEl) subEl.textContent = "Accept the Terms. You’ll finalize billing in Stripe.";
+      if (btnLabel) btnLabel.textContent = "Continue";
+    } else {
+      if (btnLabel) btnLabel.textContent = "Continue";
+    }
+  })();
+</script>
   
   <script src="/js/pages/billing.js"></script>
 
