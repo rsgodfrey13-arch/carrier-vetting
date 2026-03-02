@@ -856,6 +856,62 @@ function initAccountPlanPicker({ currentPlanId, subscriptionStatus }) {
   updateUI("");
 }
   
+function renderCreditsUsage(me) {
+  const card = document.getElementById("usage-card");
+  if (!card) return;
+
+  const src = me?.user ? me.user : me;
+
+  const used  = Number(src?.credits_used);
+  const limit = Number(src?.credits_limit);
+
+  // Optional reset fields (use whatever your backend returns)
+  const resetRaw =
+    src?.credits_reset_at ||
+    src?.credits_period_end ||
+    src?.current_period_end || null;
+
+  // If you don't have credits wired yet, keep it hidden (no ugly placeholders)
+  if (!Number.isFinite(used) || !Number.isFinite(limit) || limit <= 0) {
+    card.style.display = "none";
+    return;
+  }
+
+  card.style.display = "block";
+
+  const usedEl = document.getElementById("credits-used");
+  const limEl  = document.getElementById("credits-limit");
+  const rstEl  = document.getElementById("credits-reset");
+  const barEl  = document.getElementById("credits-bar");
+  const badge  = document.getElementById("credits-badge");
+  const foot   = document.getElementById("credits-footnote");
+
+  if (usedEl) usedEl.textContent = used.toLocaleString();
+  if (limEl)  limEl.textContent  = limit.toLocaleString();
+
+  // percent + bar
+  const pct = Math.max(0, Math.min(100, Math.round((used / limit) * 100)));
+  if (barEl) barEl.style.width = `${pct}%`;
+
+  // badge text
+  if (badge) badge.textContent = `${pct}% used`;
+
+  // reset date
+  if (rstEl) {
+    rstEl.textContent = resetRaw
+      ? new Date(resetRaw).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+      : "—";
+  }
+
+  // footer hint
+  if (foot) {
+    const remaining = Math.max(0, limit - used);
+    foot.textContent = `${remaining.toLocaleString()} credits remaining`;
+  }
+
+  // subtle warning states (optional, but clean)
+  card.classList.toggle("is-usage-warn", pct >= 90);
+}
   
   // -----------------------------
   // Main load
@@ -869,6 +925,8 @@ function initAccountPlanPicker({ currentPlanId, subscriptionStatus }) {
     if ($("me-email")) $("me-email").textContent = me?.email || me?.user?.email || "—";
     if ($("me-company")) $("me-company").textContent = me?.company || me?.user?.company || "—";
     if ($("me-plan")) $("me-plan").textContent = me?.plan || me?.user?.plan || "—";
+
+    renderCreditsUsage(me);
 
 const isCanceling =
   me?.cancel_at_period_end === true ||
