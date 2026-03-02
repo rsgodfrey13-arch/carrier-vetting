@@ -836,6 +836,21 @@ if (currentBadge) currentBadge.textContent = current ? `Current: ${current.toUpp
     if ($("me-company")) $("me-company").textContent = me?.company || me?.user?.company || "—";
     if ($("me-plan")) $("me-plan").textContent = me?.plan || me?.user?.plan || "—";
 
+const isCanceling =
+  me?.cancel_at_period_end === true ||
+  me?.user?.cancel_at_period_end === true;
+
+if ($("billing-next-renewal")) {
+  if (isCanceling) {
+    $("billing-next-renewal").closest(".kv").style.display = "none";
+  } else {
+    const raw = me?.current_period_end || me?.user?.current_period_end;
+    $("billing-next-renewal").textContent =
+      raw ? new Date(raw).toLocaleDateString() : "—";
+  }
+}
+
+    
 // Billing tab (safe if fields are missing)
 if ($("billing-plan")) $("billing-plan").textContent = me?.plan || me?.user?.plan || "—";
 
