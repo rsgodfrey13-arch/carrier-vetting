@@ -367,5 +367,99 @@
   scrollbar-width: thin;
 }
 
+/* ===== Billing: minimal cleanup ===== */
+
+/* 1) Kill the “orb/circle” that signup/auth pages often add */
+.billing-min .auth-hero::before,
+.billing-min .auth-shell::before,
+.billing-min .auth-card::before,
+.billing-min .auth-card-inner::before {
+  content: none !important;
+  display: none !important;
+}
+
+/* If your circle is an actual element instead of ::before, this catches it */
+.billing-min .auth-orb,
+.billing-min .orb,
+.billing-min .hero-orb {
+  display: none !important;
+}
+
+/* 2) Tighten spacing */
+.billing-min .auth-hero {
+  padding-bottom: 8px;
+}
+
+.billing-min .auth-title {
+  margin: 6px 0 6px;
+}
+
+.billing-min .auth-subtitle {
+  margin: 0;
+  opacity: 0.85;
+}
+
+/* Rows */
+.billing-toprow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.billing-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 12px;
+}
+
+.billing-price {
+  font-size: 26px;
+  font-weight: 850;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.billing-per {
+  opacity: 0.7;
+  font-weight: 700;
+  margin-left: 4px;
+  font-size: 16px;
+}
+
+.billing-summary-right {
+  text-align: right;
+  max-width: 260px;
+  opacity: 0.8;
+}
+
+.billing-terms {
+  margin-top: 10px;
+}
+
+.billing-terms-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.billing-terms-label input {
+  margin-top: 3px;
+}
+
+.billing-terms-helper {
+  margin-top: 6px;
+  opacity: 0.75;
+}
+
 html, body{ margin:0; }
 body.auth-page{ padding:0; margin:0; }
