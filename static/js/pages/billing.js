@@ -16,32 +16,34 @@
 
   async function startCheckout() {
     const plan = (planInput?.value || "core").toLowerCase();
+    const params = new URLSearchParams(window.location.search);
+    const context = (params.get("context") || "").toLowerCase(); // "upgrade" etc
 
     btn.disabled = true;
     btn.classList.add("is-loading");
-    setStatus("Redirecting to secure checkout…");
+    setStatus("Redirecting…");
 
     try {
-      const res = await fetch("/api/billing/checkout", {
+      const res = await fetch("/api/billing/continue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ plan })
+        body: JSON.stringify({ plan, context })
       });
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
-        throw new Error(text || `Checkout failed (${res.status})`);
+        throw new Error(text || `Request failed (${res.status})`);
       }
 
       const data = await res.json();
-      if (!data?.url) throw new Error("Missing checkout URL from server.");
+      if (!data?.url) throw new Error("Missing redirect URL from server.");
 
       window.location.href = data.url;
     } catch (err) {
       console.error(err);
       setStatus(
-        "Couldn’t start checkout. Please try again. If it keeps happening, contact support.",
+        "Couldn’t continue. Please try again. If it keeps happening, contact support.",
         true
       );
       btn.disabled = false;
