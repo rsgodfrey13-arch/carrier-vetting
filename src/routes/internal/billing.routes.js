@@ -52,6 +52,92 @@ async function getOrCreateStripeCustomer(req) {
   return { customerId: customer.id, email: user.email };
 }
 
+
+
+
+/**
+ * POST /billing/continue
+ * Body: { plan: "core" | "pro" | "enterprise", context?: "upgrade" | "new" }
+ * Returns: { url, mode }
+ */
+router.post("/billing/continue", async (req, res) => {
+  if (!requireSession(req, res)) return;
+
+  try {
+    const userId = req.session.userId;
+    const plan = String(req.body?.plan || "core").toLowerCase().trim();
+    const context = String(req.body?.context || "").toLowerCase().trim(); // optional
+
+    // Pull subscription state from your users table
+    const { rows } = await req.db.query(
+      `
+      SELECT stripe_customer_id, stripe_subscription_id, subscription_status
+      FROM users
+      WHERE id = $1
+      `,
+      [userId]
+    );
+
+    if (!rows.length) return res.status(404).json({ error: "User not found" });
+
+    const u = rows[0];
+    const status = String(u.subscription_status || "").toLowerCase();
+
+    const hasActiveishSub =
+      !!u.stripe_subscription_id &&
+      ["active", "trialing", "past_due"].includes(status);
+
+    const baseUrl =
+      process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get("host")}`;
+
+    // Make sure we have a Stripe customer for either path
+    const { customerId } = await getOrCreateStripeCustomer(req);
+
+    // EXISTING CUSTOMER: use Customer Portal
+    // (This is the key behavior change.)
+    if (hasActiveishSub || context === "upgrade") {
+      // allow only internal return paths (copying your portal safety pattern)
+      const returnPath = "/account?tab=plan";
+      const portal = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: `${baseUrl}${returnPath}`,
+      });
+
+      return res.json({ url: portal.url, mode: "portal" });
+    }
+
+    // NEW CUSTOMER: go to Checkout as you already do
+    const priceId = PRICE_BY_PLAN[plan];
+    if (!priceId) {
+      return res.status(400).json({ error: "Invalid plan." });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      customer: customerId,
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${baseUrl}/billing-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/billing-canceled`,
+      allow_promotion_codes: true,
+      metadata: {
+        userId: String(userId),
+        plan,
+      },
+    });
+
+    return res.json({ url: session.url, mode: "checkout" });
+  } catch (e) {
+    console.error("POST /billing/continue error:", e);
+    return res.status(500).json({ error: e.message || "Server error" });
+  }
+});
+
+
+
+
+
+
+
 /**
  * POST /billing/checkout
  * Body: { plan: "core" | "pro" | "enterprise" }
