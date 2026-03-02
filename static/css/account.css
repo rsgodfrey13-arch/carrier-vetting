@@ -2020,3 +2020,16 @@ body.account-page .page{
 .alerts-switch-wrap.is-off .switch-ui {
   /* your current red background styles */
 }
+
+
+.billing-ending-text {
+  font-weight: 900;
+  font-size: 1.05rem;
+  color: #FCA5A5; /* soft red, not panic red */
+  letter-spacing: .02em;
+}
+
+.billing-ending-text::before {
+  content: "⚠ ";
+  font-weight: 900;
+}
