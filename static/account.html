@@ -129,6 +129,45 @@
             </div>
           </div>
 
+          <!-- USAGE -->
+          <div class="card" id="usage-card" style="display:none;">
+            <div class="card-head">
+              <div>
+                <h2>Usage</h2>
+                <p class="muted" id="credits-subtext">Credits used this period.</p>
+              </div>
+          
+              <span class="badge" id="credits-badge">—</span>
+            </div>
+          
+            <div class="usage-grid">
+              <div class="usage-metric">
+                <div class="kv-label">Credits used</div>
+                <div class="usage-value">
+                  <span id="credits-used">—</span>
+                  <span class="usage-dim">/</span>
+                  <span id="credits-limit">—</span>
+                </div>
+              </div>
+          
+              <div class="usage-metric">
+                <div class="kv-label">Resets</div>
+                <div class="usage-value" id="credits-reset">—</div>
+              </div>
+            </div>
+          
+            <div class="usage-bar" aria-label="Credits usage">
+              <div class="usage-bar-fill" id="credits-bar" style="width:0%;"></div>
+            </div>
+          
+            <div class="usage-footer">
+              <div class="muted" id="credits-footnote">—</div>
+              <button class="link-btn" type="button" data-tab-jump="plan">
+                Manage plan
+              </button>
+            </div>
+          </div>
+
 
         </section>
 
