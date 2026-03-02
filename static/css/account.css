@@ -2061,3 +2061,62 @@ body.account-page .page{
   font-weight: 700;       /* bold instead of white */
   color: #00F2FF;         /* slightly brighter cyan */
 }
+
+
+/* -----------------------------
+   Usage (Credits)
+----------------------------- */
+.usage-grid{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
+  margin-top: 6px;
+}
+
+.usage-metric .kv-label{
+  margin-bottom: 6px;
+}
+
+.usage-value{
+  font-size: 1.05rem;
+  font-weight: 900;
+  letter-spacing: .01em;
+  color: rgba(229,231,235,.95);
+}
+
+.usage-dim{
+  opacity: .45;
+  margin: 0 6px;
+  font-weight: 800;
+}
+
+.usage-bar{
+  height: 12px;
+  border-radius: 999px;
+  margin-top: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(148,163,184,.20);
+  background: rgba(2, 6, 23, .35);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+.usage-bar-fill{
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(56,189,248,.95), rgba(45,212,191,.95));
+  box-shadow: 0 10px 26px rgba(56,189,248,.20);
+  transition: width .35s ease;
+}
+
+.usage-footer{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+@media (max-width: 920px){
+  .usage-grid{ grid-template-columns: 1fr; }
+}
