@@ -862,21 +862,18 @@ function renderCreditsUsage(me) {
 
   const src = me?.user ? me.user : me;
 
-  const used  = Number(src?.credits_used);
-  const limit = Number(src?.credits_limit);
+  const usedRaw  = src?.credits_used;
+  const limitRaw = src?.credits_limit;
 
-  // Optional reset fields (use whatever your backend returns)
+  const used  = Number(usedRaw);
+  const limit = Number(limitRaw);
+
   const resetRaw =
     src?.credits_reset_at ||
     src?.credits_period_end ||
     src?.current_period_end || null;
 
-  // If you don't have credits wired yet, keep it hidden (no ugly placeholders)
-  if (!Number.isFinite(used) || !Number.isFinite(limit) || limit <= 0) {
-    card.style.display = "none";
-    return;
-  }
-
+  // Always show the block so your UI is consistent
   card.style.display = "block";
 
   const usedEl = document.getElementById("credits-used");
@@ -886,30 +883,33 @@ function renderCreditsUsage(me) {
   const badge  = document.getElementById("credits-badge");
   const foot   = document.getElementById("credits-footnote");
 
-  if (usedEl) usedEl.textContent = used.toLocaleString();
-  if (limEl)  limEl.textContent  = limit.toLocaleString();
+  // Default placeholders
+  if (usedEl) usedEl.textContent = Number.isFinite(used) ? used.toLocaleString() : "—";
+  if (limEl)  limEl.textContent  = Number.isFinite(limit) ? limit.toLocaleString() : "—";
 
-  // percent + bar
-  const pct = Math.max(0, Math.min(100, Math.round((used / limit) * 100)));
-  if (barEl) barEl.style.width = `${pct}%`;
-
-  // badge text
-  if (badge) badge.textContent = `${pct}% used`;
-
-  // reset date
   if (rstEl) {
     rstEl.textContent = resetRaw
       ? new Date(resetRaw).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
       : "—";
   }
 
-  // footer hint
-  if (foot) {
-    const remaining = Math.max(0, limit - used);
-    foot.textContent = `${remaining.toLocaleString()} credits remaining`;
+  // If credits not wired yet, keep bar empty and badge neutral
+  if (!Number.isFinite(used) || !Number.isFinite(limit) || limit <= 0) {
+    if (barEl) barEl.style.width = "0%";
+    if (badge) badge.textContent = "—";
+    if (foot)  foot.textContent = "Credits will appear here once usage is available.";
+    card.classList.remove("is-usage-warn");
+    return;
   }
 
-  // subtle warning states (optional, but clean)
+  // percent + bar
+  const pct = Math.max(0, Math.min(100, Math.round((used / limit) * 100)));
+  if (barEl) barEl.style.width = `${pct}%`;
+  if (badge) badge.textContent = `${pct}% used`;
+
+  const remaining = Math.max(0, limit - used);
+  if (foot) foot.textContent = `${remaining.toLocaleString()} credits remaining`;
+
   card.classList.toggle("is-usage-warn", pct >= 90);
 }
   
