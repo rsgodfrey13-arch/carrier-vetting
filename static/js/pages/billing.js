@@ -1,6 +1,5 @@
-// /js/billing.js
+// /js/pages/billing.js
 (function () {
-
   const btn = document.getElementById("checkout-btn");
   const statusEl = document.getElementById("billing-status");
   const planInput = document.getElementById("plan-input");
@@ -17,7 +16,7 @@
   async function startCheckout() {
     const plan = (planInput?.value || "core").toLowerCase();
     const params = new URLSearchParams(window.location.search);
-    const context = (params.get("context") || "").toLowerCase(); // "upgrade" etc
+    const context = (params.get("context") || "").toLowerCase();
 
     btn.disabled = true;
     btn.classList.add("is-loading");
@@ -42,31 +41,23 @@
       window.location.href = data.url;
     } catch (err) {
       console.error(err);
-      setStatus(
-        "Couldn’t continue. Please try again. If it keeps happening, contact support.",
-        true
-      );
+      setStatus("Couldn’t continue. Please try again. If it keeps happening, contact support.", true);
       btn.disabled = false;
       btn.classList.remove("is-loading");
     }
   }
 
-  if (btn && termsCheckbox) {
+  if (!btn || !termsCheckbox) return;
 
-    // Start disabled
-    btn.disabled = true;
-    if (helper) helper.style.display = "block";
+  // Start disabled until Terms checked
+  btn.disabled = true;
+  if (helper) helper.style.display = "block";
 
-    termsCheckbox.addEventListener("change", () => {
-      const agreed = termsCheckbox.checked;
-      btn.disabled = !agreed;
+  termsCheckbox.addEventListener("change", () => {
+    const agreed = termsCheckbox.checked;
+    btn.disabled = !agreed;
+    if (helper) helper.style.display = agreed ? "none" : "block";
+  });
 
-      if (helper) {
-        helper.style.display = agreed ? "none" : "block";
-      }
-    });
-
-    btn.addEventListener("click", startCheckout);
-  }
-
+  btn.addEventListener("click", startCheckout);
 })();
