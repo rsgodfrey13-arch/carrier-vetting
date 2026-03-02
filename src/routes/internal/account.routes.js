@@ -23,8 +23,11 @@ router.get("/account/overview", async (req, res) => {
       u.plan,
       u.subscription_status,
       u.current_period_end,
-      u.cancel_at_period_end
+      u.cancel_at_period_end,
+      uc.credits_used,
+      u.carrier_limit
     FROM users u
+    LEFT JOIN (select count(distinct carrier_dot) credits_used, user_id from user_carriers group by user_id ) uc on u.id = uc.user_id
     WHERE u.id = $1
     `,
     [userId]
