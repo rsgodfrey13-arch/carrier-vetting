@@ -713,10 +713,11 @@ function normalizePlanId(v) {
   return ""; // unknown
 }
 
+
 function initAccountPlanPicker({ currentPlanId, subscriptionStatus }) {
   const selectedInput = document.getElementById("selected-plan");   // hidden input
   const continueBtn   = document.getElementById("continue-btn");    // your nice button
-  const helper = document.getElementById("stripe-helper");
+  const helper        = document.getElementById("stripe-helper");
   const planForm      = document.getElementById("plan-form");       // form wrapper (recommended)
 
   // If this tab/page doesn't have the table, bail.
@@ -725,8 +726,9 @@ function initAccountPlanPicker({ currentPlanId, subscriptionStatus }) {
   const current = normalizePlanId(currentPlanId);
 
   const currentBadge = document.getElementById("current-plan-badge");
-if (currentBadge) currentBadge.textContent = current ? `Current: ${current.toUpperCase()}` : "Current: —";
-
+  if (currentBadge) {
+    currentBadge.textContent = current ? `Current: ${current.toUpperCase()}` : "Current: —";
+  }
 
   function setSelected(planId) {
     const plan = normalizePlanId(planId);
@@ -757,30 +759,29 @@ if (currentBadge) currentBadge.textContent = current ? `Current: ${current.toUpp
       dot.classList.toggle("is-on", plan && col === plan);
     });
 
-    // Disable current-plan select buttons + show CURRENT label (optional)
+    // Disable current-plan select buttons + show CURRENT label
     document.querySelectorAll("[data-plan-btn]").forEach((btn) => {
       const btnPlan = normalizePlanId(btn.dataset.planBtn);
       const isCurrent = current && btnPlan === current;
       btn.disabled = !!isCurrent;
       btn.classList.toggle("is-current", !!isCurrent);
-
-      if (isCurrent) btn.textContent = "CURRENT";
-      else btn.textContent = "SELECT";
+      btn.textContent = isCurrent ? "CURRENT" : "SELECT";
     });
 
-    // Continue button state
+    // Continue button state + helper
     if (!plan) {
       continueBtn.disabled = true;
       continueBtn.textContent = "Current Plan";
       if (helper) helper.style.display = "none";
       return;
     }
-    
+
     continueBtn.disabled = false;
     continueBtn.textContent = "Finalize upgrade in Stripe →";
     if (helper) helper.style.display = "block";
+  } // ✅ IMPORTANT: closes updateUI()
 
-  // Click column OR select button
+  // ✅ Bind events ONCE (not inside updateUI)
   document.querySelectorAll("[data-plan-col]").forEach((el) => {
     el.style.cursor = "pointer";
     el.addEventListener("click", () => setSelected(el.dataset.planCol));
@@ -794,52 +795,50 @@ if (currentBadge) currentBadge.textContent = current ? `Current: ${current.toUpp
     });
   });
 
-// Submit -> upgrade flow:
-// - Existing subscribers: go straight to Stripe Billing Portal
-// - New customers: go to /billing (your terms + checkout page)
-const submitHandler = async (e) => {
-  const plan = normalizePlanId(selectedInput.value);
-  if (!plan) {
-    e.preventDefault();
-    return;
-  }
-
-  // If user is already paid/subscribed, skip billing.html entirely.
-  // NOTE: currentPlanId is the plan they have right now (core/pro/enterprise).
-  const s = String(subscriptionStatus || "").toLowerCase();
-  const isExistingSubscriber = ["active", "trialing", "past_due", "canceled", "unpaid"].includes(s);
-
-  if (isExistingSubscriber) {
-    continueBtn.disabled = true;
-    const oldText = continueBtn.textContent;
-    continueBtn.textContent = "Opening billing…";
-
-    try {
-      const r = await fetch("/api/billing/portal", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ returnPath: "/account?tab=plan" }),
-      });
-
-      const data = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(data?.error || `Portal failed: ${r.status}`);
-      if (!data?.url) throw new Error("Missing portal URL");
-
-      window.location.href = data.url;
-      return;
-    } catch (err) {
-      console.error(err);
-      alert("Could not open billing portal. Try again.");
-      continueBtn.disabled = false;
-      continueBtn.textContent = oldText;
+  // Submit -> upgrade flow:
+  // - Existing subscribers: go straight to Stripe Billing Portal
+  // - New customers: go to /billing (your terms + checkout page)
+  const submitHandler = async (e) => {
+    const plan = normalizePlanId(selectedInput.value);
+    if (!plan) {
+      e.preventDefault();
       return;
     }
-  }
 
-  // New / not subscribed yet: go through your billing page (terms + checkout)
-  window.location.href = `/billing?plan=${encodeURIComponent(plan)}`;
-};
+    const s = String(subscriptionStatus || "").toLowerCase();
+    const isExistingSubscriber = ["active", "trialing", "past_due", "canceled", "unpaid"].includes(s);
+
+    if (isExistingSubscriber) {
+      continueBtn.disabled = true;
+      const oldText = continueBtn.textContent;
+      continueBtn.textContent = "Opening billing…";
+
+      try {
+        const r = await fetch("/api/billing/portal", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ returnPath: "/account?tab=plan" }),
+        });
+
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data?.error || `Portal failed: ${r.status}`);
+        if (!data?.url) throw new Error("Missing portal URL");
+
+        window.location.href = data.url;
+        return;
+      } catch (err) {
+        console.error(err);
+        alert("Could not open billing portal. Try again.");
+        continueBtn.disabled = false;
+        continueBtn.textContent = oldText;
+        return;
+      }
+    }
+
+    // New / not subscribed yet
+    window.location.href = `/billing?plan=${encodeURIComponent(plan)}`;
+  };
 
   if (planForm) {
     planForm.addEventListener("submit", (e) => {
@@ -847,7 +846,6 @@ const submitHandler = async (e) => {
       submitHandler(e);
     });
   } else {
-    // fallback: if your Continue button isn't inside a <form>
     continueBtn.addEventListener("click", (e) => {
       e.preventDefault();
       submitHandler(e);
@@ -857,8 +855,6 @@ const submitHandler = async (e) => {
   // Initial state
   updateUI("");
 }
-
-
   
   
   // -----------------------------
