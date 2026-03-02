@@ -17,7 +17,25 @@
     help: $("tab-help"),
   };
 
+function renderCancellation({ cancel_at_period_end, current_period_end }) {
+  const row = document.getElementById("billing-cancel-row");
+  const text = document.getElementById("billing-cancel-text");
 
+  if (!row || !text) return;
+
+  if (cancel_at_period_end && current_period_end) {
+    const date = new Date(current_period_end).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric"
+    });
+
+    text.textContent = `Access ends on ${date}`;
+    row.style.display = "block";
+  } else {
+    row.style.display = "none";
+  }
+}
   
   function setPlanBadge(planRaw) {
   const el = document.getElementById("plan-badge");
