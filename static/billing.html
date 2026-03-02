@@ -20,10 +20,9 @@
     <section class="auth-shell">
       <div class="auth-hero">
         <span class="auth-eyebrow">Billing</span>
-        <h1 class="auth-title">Activate monitoring.</h1>
-        <p class="auth-subtitle">
-          Secure checkout powered by Stripe. Monitoring begins immediately upon activation.
-        </p>
+          <button class="cs-btn cs-btn-primary" id="checkout-btn" type="button">
+            <span id="checkout-btn-label">Continue</span>
+          </button>
       </div>
 
       <div class="auth-card">
@@ -100,20 +99,33 @@
     </section>
   </main>
 
-  <script>
-    // Minimal: read plan from query string and reflect it in UI.
-    (function(){
-      const params = new URLSearchParams(location.search);
-      const plan = (params.get("plan") || "core").toLowerCase();
-
-      const pretty = { core: "Core", pro: "Pro", enterprise: "Enterprise" };
-      const price  = { core: "$399", pro: "$999", enterprise: "Custom" };
-
-      document.getElementById("plan-label").textContent = pretty[plan] || "Core";
-      document.getElementById("plan-input").value = (pretty[plan] ? plan : "core");
-      document.getElementById("price-label").textContent = price[plan] || "$399";
-    })();
-  </script>
+    <script>
+      (function(){
+        const params = new URLSearchParams(location.search);
+        const plan = (params.get("plan") || "core").toLowerCase();
+        const context = (params.get("context") || "").toLowerCase(); // "upgrade"
+    
+        const pretty = { core: "Core", pro: "Pro", enterprise: "Enterprise" };
+        const price  = { core: "$399", pro: "$999", enterprise: "Custom" };
+    
+        document.getElementById("plan-label").textContent = pretty[plan] || "Core";
+        document.getElementById("plan-input").value = (pretty[plan] ? plan : "core");
+        document.getElementById("price-label").textContent = price[plan] || "$399";
+    
+        // Copy tweaks for upgrades (Portal path)
+        const titleEl = document.getElementById("billing-title");
+        const subEl = document.getElementById("billing-subtitle");
+        const btnLabel = document.getElementById("checkout-btn-label");
+    
+        if (context === "upgrade") {
+          if (titleEl) titleEl.textContent = "Confirm plan change.";
+          if (subEl) subEl.textContent = "Review details and accept the Terms. You’ll finalize billing in Stripe.";
+          if (btnLabel) btnLabel.textContent = "Continue to billing portal";
+        } else {
+          if (btnLabel) btnLabel.textContent = "Continue to secure checkout";
+        }
+      })();
+    </script>
   
   <script src="/js/pages/billing.js"></script>
 
