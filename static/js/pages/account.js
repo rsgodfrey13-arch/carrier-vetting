@@ -713,7 +713,7 @@ function normalizePlanId(v) {
   return ""; // unknown
 }
 
-function initAccountPlanPicker({ currentPlanId }) {
+function initAccountPlanPicker({ currentPlanId, subscriptionStatus }) {
   const selectedInput = document.getElementById("selected-plan");   // hidden input
   const continueBtn   = document.getElementById("continue-btn");    // your nice button
   const planForm      = document.getElementById("plan-form");       // form wrapper (recommended)
@@ -792,16 +792,52 @@ if (currentBadge) currentBadge.textContent = current ? `Current: ${current.toUpp
     });
   });
 
-  // Submit -> route to billing
-  const submitHandler = (e) => {
-    const plan = normalizePlanId(selectedInput.value);
-    if (!plan) {
-      e.preventDefault();
+// Submit -> upgrade flow:
+// - Existing subscribers: go straight to Stripe Billing Portal
+// - New customers: go to /billing (your terms + checkout page)
+const submitHandler = async (e) => {
+  const plan = normalizePlanId(selectedInput.value);
+  if (!plan) {
+    e.preventDefault();
+    return;
+  }
+
+  // If user is already paid/subscribed, skip billing.html entirely.
+  // NOTE: currentPlanId is the plan they have right now (core/pro/enterprise).
+  const s = String(subscriptionStatus || "").toLowerCase();
+  const isExistingSubscriber = ["active", "trialing", "past_due", "canceled", "unpaid"].includes(s);
+
+  if (isExistingSubscriber) {
+    continueBtn.disabled = true;
+    const oldText = continueBtn.textContent;
+    continueBtn.textContent = "Opening billing…";
+
+    try {
+      const r = await fetch("/api/billing/portal", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ returnPath: "/account?tab=plan" }),
+      });
+
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data?.error || `Portal failed: ${r.status}`);
+      if (!data?.url) throw new Error("Missing portal URL");
+
+      window.location.href = data.url;
+      return;
+    } catch (err) {
+      console.error(err);
+      alert("Could not open billing portal. Try again.");
+      continueBtn.disabled = false;
+      continueBtn.textContent = oldText;
       return;
     }
-    // same billing route used everywhere
-    window.location.href = `/billing?plan=${encodeURIComponent(plan)}&context=upgrade`;
-  };
+  }
+
+  // New / not subscribed yet: go through your billing page (terms + checkout)
+  window.location.href = `/billing?plan=${encodeURIComponent(plan)}`;
+};
 
   if (planForm) {
     planForm.addEventListener("submit", (e) => {
@@ -875,7 +911,8 @@ renderCancellation({
     setPlanBadge(me?.plan || me?.user?.plan);
 
 initAccountPlanPicker({
-  currentPlanId: me?.plan || me?.user?.plan
+  currentPlanId: me?.plan || me?.user?.plan,
+  subscriptionStatus: me?.subscription_status || me?.user?.subscription_status
 });
 
     
