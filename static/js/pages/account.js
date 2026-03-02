@@ -849,11 +849,10 @@ if ($("billing-next-renewal")) {
   $("billing-next-renewal").textContent = raw ? new Date(raw).toLocaleDateString() : "—";
 }
 
-if ($("billing-cancel-at-period-end")) {
-  const cap = me?.cancel_at_period_end ?? me?.user?.cancel_at_period_end;
-  $("billing-cancel-at-period-end").textContent =
-    cap === true ? "YES" : cap === false ? "NO" : "—";
-}
+renderCancellation({
+  cancel_at_period_end: me?.cancel_at_period_end ?? me?.user?.cancel_at_period_end,
+  current_period_end: me?.current_period_end ?? me?.user?.current_period_end
+});
 
   // Email Alerts feature gate (single overlay)
   applyEmailAlertsLock(me);
