@@ -2051,13 +2051,13 @@ body.account-page .page{
   margin-top: 8px;
   font-size: 0.85rem;
   font-weight: 500;
-  color: #00E0FF; /* brighter than your standard cyan */
+  color: #00E0FF; /* your pop cyan */
   letter-spacing: 0.2px;
   text-align: right;
   max-width: 320px;
 }
 
 .cs-upgrade-helper strong {
-  color: #FFFFFF;
-  font-weight: 600;
+  font-weight: 700;       /* bold instead of white */
+  color: #00F2FF;         /* slightly brighter cyan */
 }
