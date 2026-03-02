@@ -775,7 +775,7 @@ if (currentBadge) currentBadge.textContent = current ? `Current: ${current.toUpp
     }
 
     continueBtn.disabled = false;
-    continueBtn.textContent = `Continue with ${plan.toUpperCase()}`;
+    continueBtn.textContent = `Finalize upgrade in Stripe →`;
   }
 
   // Click column OR select button
