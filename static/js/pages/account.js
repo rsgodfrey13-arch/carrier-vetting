@@ -716,6 +716,7 @@ function normalizePlanId(v) {
 function initAccountPlanPicker({ currentPlanId, subscriptionStatus }) {
   const selectedInput = document.getElementById("selected-plan");   // hidden input
   const continueBtn   = document.getElementById("continue-btn");    // your nice button
+  const helper = document.getElementById("stripe-helper");
   const planForm      = document.getElementById("plan-form");       // form wrapper (recommended)
 
   // If this tab/page doesn't have the table, bail.
@@ -771,12 +772,13 @@ if (currentBadge) currentBadge.textContent = current ? `Current: ${current.toUpp
     if (!plan) {
       continueBtn.disabled = true;
       continueBtn.textContent = "Current Plan";
+      if (helper) helper.style.display = "none";
       return;
     }
-
+    
     continueBtn.disabled = false;
-    continueBtn.textContent = `Finalize upgrade in Stripe →`;
-  }
+    continueBtn.textContent = "Finalize upgrade in Stripe →";
+    if (helper) helper.style.display = "block";
 
   // Click column OR select button
   document.querySelectorAll("[data-plan-col]").forEach((el) => {
