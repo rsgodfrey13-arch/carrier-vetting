@@ -8,6 +8,7 @@
   const railItems = Array.from(document.querySelectorAll(".rail-item"));
   const panels = {
     overview: $("tab-overview"),
+    team: $("tab-team"),
     alerts: $("tab-alerts"),
     agreements: $("tab-agreements"),
     api: $("tab-api"),
@@ -183,6 +184,172 @@ document.getElementById("btn-manage-billing")?.addEventListener("click", async (
     if (!r.ok) throw new Error(`POST ${url} failed: ${r.status}`);
     return r.json();
   }
+
+// -----------------------------
+// Team
+// -----------------------------
+function teamMsg(text) {
+  const el = document.getElementById("team-msg");
+  if (!el) return;
+  el.textContent = text || "";
+  el.style.display = text ? "block" : "none";
+}
+
+function escapeHtml(str) {
+  return String(str ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function renderMembers(rows) {
+  const host = document.getElementById("team-members");
+  if (!host) return;
+
+  if (!rows?.length) {
+    host.innerHTML = `<div class="muted">No teammates yet.</div>`;
+    return;
+  }
+
+  host.innerHTML = rows.map(r => `
+    <div class="row" style="padding:10px 0;">
+      <div style="flex:1;">
+        <div class="row-title">${escapeHtml(r.name || r.email || "—")}</div>
+        <div class="row-sub">${escapeHtml(r.email || "—")}</div>
+      </div>
+      <div style="width:140px;" class="muted">${escapeHtml(r.role || "—")}</div>
+      <div style="width:120px;" class="muted">${escapeHtml(r.status || "—")}</div>
+      <div class="row-actions">
+        ${String(r.role) === "OWNER"
+          ? `<span class="muted">Owner</span>`
+          : `<button class="btn-ghost" data-team-disable="${r.id}">Disable</button>`
+        }
+      </div>
+    </div>
+  `).join("");
+
+  host.querySelectorAll("[data-team-disable]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.getAttribute("data-team-disable");
+      if (!id) return;
+      btn.disabled = true;
+      try {
+        await apiPost("/api/team/members/disable", { member_id: id });
+        await loadTeam();
+      } catch (e) {
+        console.error(e);
+        teamMsg("Could not disable member.");
+        btn.disabled = false;
+      }
+    });
+  });
+}
+
+function renderInvites(rows) {
+  const host = document.getElementById("team-invites");
+  if (!host) return;
+
+  if (!rows?.length) {
+    host.innerHTML = `<div class="muted">No pending invites.</div>`;
+    return;
+  }
+
+  host.innerHTML = rows.map(r => `
+    <div class="row" style="padding:10px 0;">
+      <div style="flex:1;">
+        <div class="row-title">${escapeHtml(r.invited_email || "—")}</div>
+        <div class="row-sub">Role: ${escapeHtml(r.role || "—")} • Expires: ${escapeHtml(r.expires_at ? new Date(r.expires_at).toLocaleDateString() : "—")}</div>
+      </div>
+      <div class="row-actions">
+        <button class="btn-ghost" data-team-resend="${r.id}">Resend</button>
+        <button class="btn-ghost" data-team-revoke="${r.id}">Revoke</button>
+      </div>
+    </div>
+  `).join("");
+
+  host.querySelectorAll("[data-team-resend]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.getAttribute("data-team-resend");
+      if (!id) return;
+      btn.disabled = true;
+      try {
+        await apiPost("/api/team/invites/resend", { invite_id: id });
+        teamMsg("Invite resent.");
+        await loadTeam();
+      } catch (e) {
+        console.error(e);
+        teamMsg("Could not resend invite.");
+        btn.disabled = false;
+      }
+    });
+  });
+
+  host.querySelectorAll("[data-team-revoke]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.getAttribute("data-team-revoke");
+      if (!id) return;
+      btn.disabled = true;
+      try {
+        await apiPost("/api/team/invites/revoke", { invite_id: id });
+        teamMsg("Invite revoked.");
+        await loadTeam();
+      } catch (e) {
+        console.error(e);
+        teamMsg("Could not revoke invite.");
+        btn.disabled = false;
+      }
+    });
+  });
+}
+
+async function loadTeam() {
+  teamMsg("");
+
+  const membersHost = document.getElementById("team-members");
+  const invitesHost = document.getElementById("team-invites");
+  if (membersHost) membersHost.innerHTML = `<div class="muted">Loading…</div>`;
+  if (invitesHost) invitesHost.innerHTML = `<div class="muted">Loading…</div>`;
+
+  const data = await apiGet("/api/team");
+  renderMembers(data.members || []);
+  renderInvites(data.invites || []);
+}
+
+// invite button
+document.getElementById("btn-team-invite")?.addEventListener("click", async () => {
+  const email = (document.getElementById("team-invite-email")?.value || "").trim();
+  const role = (document.getElementById("team-invite-role")?.value || "MEMBER").trim();
+
+  teamMsg("");
+  if (!email.includes("@")) return teamMsg("Enter a valid email.");
+
+  const btn = document.getElementById("btn-team-invite");
+  btn.disabled = true;
+
+  try {
+    await apiPost("/api/team/invites", { email, role });
+    document.getElementById("team-invite-email").value = "";
+    teamMsg("Invite sent.");
+    await loadTeam();
+  } catch (e) {
+    console.error(e);
+    teamMsg("Could not send invite.");
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById("btn-team-refresh")?.addEventListener("click", () => loadTeam());
+
+// Load team data whenever the Team tab becomes active
+// (easy: call it once on page load, and again on tab click if you want)
+setTimeout(() => {
+  // safe: only loads if endpoints exist
+  loadTeam().catch(() => {});
+}, 0);
+  
 
   // -----------------------------
   // Renderers (optional sections)
