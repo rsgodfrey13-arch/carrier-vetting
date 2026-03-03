@@ -7,6 +7,30 @@ const mg = mailgun.client({
   key: process.env.MAILGUN_API_KEY
 });
 
+
+async function sendTeamInviteEmail({
+  to,
+  inviter_name,
+  company_name,
+  invite_url
+}) {
+  const domain = process.env.MAILGUN_DOMAIN;
+
+  return mg.messages.create(domain, {
+    from: process.env.MAILGUN_FROM,
+    to,
+    subject: `${inviter_name} invited you to Carrier Shark`,
+    template: "team invite",
+
+    "h:X-Mailgun-Variables": JSON.stringify({
+      inviter_name,
+      company_name,
+      invite_url,
+      expires_hours: "72"
+    })
+  });
+}
+
 async function sendPublicContactEmail({ to, name, email, company, topic, subject, message }) {
   const domain = process.env.MAILGUN_DOMAIN;
 
