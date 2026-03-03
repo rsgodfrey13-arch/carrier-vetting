@@ -45,6 +45,10 @@
           <span class="rail-dot"></span>
           Overview
         </button>
+        <button class="rail-item" data-tab="team">
+          <span class="rail-dot"></span>
+          Teammates
+        </button>
         <button class="rail-item" data-tab="alerts">
           <span class="rail-dot"></span>
           Email Alerts
@@ -169,6 +173,60 @@
           </div>
 
 
+        </section>
+
+        <!-- TEAM -->
+        <section class="tab-panel" id="tab-team">
+          <div class="card">
+            <div class="card-head">
+              <h2>Teammates</h2>
+              <p class="muted">Invite teammates to your workspace and manage access.</p>
+            </div>
+        
+            <div class="row" style="align-items:flex-end;">
+              <div style="flex:1; min-width:240px;">
+                <div class="row-title" style="margin-bottom:6px;">Invite by email</div>
+                <input id="team-invite-email" class="api-input" type="email" placeholder="name@company.com" />
+              </div>
+        
+              <div style="width:180px;">
+                <div class="row-title" style="margin-bottom:6px;">Role</div>
+                <select id="team-invite-role" class="api-input">
+                  <option value="MEMBER">Member</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+              </div>
+        
+              <div class="row-actions">
+                <button class="btn-primary" id="btn-team-invite">Send invite</button>
+              </div>
+            </div>
+        
+            <div class="divider"></div>
+        
+            <div class="row" style="justify-content:space-between;">
+              <div>
+                <div class="row-title">Members</div>
+                <div class="row-sub">Active users in this workspace.</div>
+              </div>
+              <button class="btn-ghost" id="btn-team-refresh">Refresh</button>
+            </div>
+        
+            <div id="team-members" class="muted">Loading…</div>
+        
+            <div class="divider"></div>
+        
+            <div class="row" style="justify-content:space-between;">
+              <div>
+                <div class="row-title">Pending invites</div>
+                <div class="row-sub">Invites not accepted yet.</div>
+              </div>
+            </div>
+        
+            <div id="team-invites" class="muted">Loading…</div>
+        
+            <div class="muted" id="team-msg" style="margin-top:10px; display:none;"></div>
+          </div>
         </section>
 
         <!-- ALERTS -->
