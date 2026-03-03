@@ -1,156 +1,203 @@
 "use strict";
 
 const express = require("express");
+const crypto = require("crypto");
+const { pool } = require("../../db/pool");
+
 const router = express.Router();
 
-function genPublicId() {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no I/O/0/1
-  let s = "CS-";
-  for (let i = 0; i < 8; i++) s += alphabet[Math.floor(Math.random() * alphabet.length)];
-  return s;
+function requireLogin(req, res) {
+  if (!req.session?.userId) {
+    res.status(401).json({ error: "Not logged in" });
+    return false;
+  }
+  return true;
+}
+
+function maskKey(key) {
+  if (!key) return "—";
+  const s = String(key);
+  if (s.length <= 8) return "••••••••";
+  return `${s.slice(0, 4)}••••••••••••${s.slice(-4)}`;
+}
+
+function generateApiKey() {
+  return crypto.randomBytes(24).toString("hex");
+}
+
+// helper: get company id from logged in user
+async function getCompanyId(userId) {
+  const { rows } = await pool.query(
+    `
+    SELECT default_company_id
+    FROM public.users
+    WHERE id = $1
+    `,
+    [userId]
+  );
+
+  return rows?.[0]?.default_company_id || null;
 }
 
 
-// GET tickets for the logged-in user
-router.get("/support/tickets", async (req, res) => {
-  if (!req.session?.userId) {
-    return res.status(401).json({ error: "Not authenticated" });
-  }
+/* =========================================================
+   API KEY
+========================================================= */
 
-  const userId = req.session.userId;
+// GET /api/user/api
+router.get("/user/api", async (req, res) => {
+  if (!requireLogin(req, res)) return;
 
   try {
-    const { rows } = await req.db.query(
+    const userId = req.session.userId;
+    const companyId = await getCompanyId(userId);
+
+    if (!companyId) {
+      return res.json({ has_key: false, masked_key: null });
+    }
+
+    const result = await pool.query(
       `
-      SELECT id, public_id, subject, created_at, status
-      FROM support_tickets
-      WHERE user_id = $1
-      ORDER BY created_at DESC
-      LIMIT 25
+      SELECT api_key
+      FROM public.companies
+      WHERE id = $1
       `,
-      [userId]
+      [companyId]
     );
 
-    res.json({ tickets: rows });
-  } catch (e) {
-    console.error("GET /support/tickets error:", e);
-    res.status(500).json({ error: "Server error" });
-  }
-});
+    const apiKey = result.rows?.[0]?.api_key || null;
 
-// POST create ticket (send email later / optional)
-router.post("/support/tickets", async (req, res) => {
-  if (!req.session?.userId) {
-    return res.status(401).json({ error: "Not authenticated" });
-  }
-
-  const userId = req.session.userId;
-
-  const contact_email = String(req.body?.contact_email || "").trim();
-  const contact_phone = String(req.body?.contact_phone || "").trim();
-  const subject = String(req.body?.subject || "").trim();
-  const message = String(req.body?.message || "").trim();
-  const { sendSupportTicketEmail } = require("../../clients/mailgun"); 
-// adjust path if needed
-
-
-  // validation...
-
-  // NEW: generate a public id (retry if collision)
-  let publicId = genPublicId();
-
-  try {
-    // Retry loop in case of UNIQUE collision (rare, but real)
-    for (let attempt = 0; attempt < 5; attempt++) {
-      try {
-        const { rows } = await req.db.query(
-          `
-          INSERT INTO support_tickets (user_id, public_id, contact_email, contact_phone, subject, message)
-          VALUES ($1, $2, $3, $4, $5, $6)
-          RETURNING id, public_id
-          `,
-          [userId, publicId, contact_email, contact_phone || null, subject, message]
-        );
-
-
-        await sendSupportTicketEmail({
-          to: process.env.SUPPORT_INBOX,  // <— this is now centralized
-          ticketId: rows[0].public_id,
-          contactEmail: contact_email,
-          contactPhone: contact_phone,
-          subject,
-          message,
-          userEmail: req.session?.userEmail || null
-        });
-        
-        return res.json({
-          ticket_id: rows[0].id,
-          public_id: rows[0].public_id,
-        });
-
-
-        
-      } catch (e) {
-        // unique violation
-        if (e.code === "23505") {
-          publicId = genPublicId();
-          continue;
-        }
-        throw e;
-      }
-    }
-
-    // If we somehow collide 5 times
-    return res.status(500).json({ error: "Could not generate ticket reference." });
-  } catch (e) {
-    console.error("POST /support/tickets error:", e);
-    return res.status(500).json({ error: "Server error" });
-  }
-});
-
-// POST public contact (no auth required)
-router.post("/public/contact", async (req, res) => {
-  try {
-    const name = String(req.body?.name || "").trim();
-    const email = String(req.body?.email || "").trim();
-    const company = String(req.body?.company || "").trim();
-    const topic = String(req.body?.topic || "").trim();
-    const subject = String(req.body?.subject || "").trim();
-    const message = String(req.body?.message || "").trim();
-    const phone = String(req.body?.phone || "").trim();
-
-    // basic validation (keep it similar vibe to account)
-    if (!email || !email.includes("@") || email.length < 6) {
-      return res.status(400).json({ error: "Valid email required." });
-    }
-    if (!subject || subject.length < 3) {
-      return res.status(400).json({ error: "Subject is required." });
-    }
-    if (!message || message.length < 10) {
-      return res.status(400).json({ error: "Message is too short." });
-    }
-
-    const { sendPublicContactEmail } = require("../../clients/mailgun"); // same pattern as tickets :contentReference[oaicite:5]{index=5}
-
-    const refId = genPublicId();
-
-    await sendPublicContactEmail({
-      to: process.env.SUPPORT_INBOX,
-      refId,
-      name,
-      email,
-      company: company || null,
-      topic: topic || null,
-      subject,
-      message,
-      phone: phone || null
+    return res.json({
+      has_key: !!apiKey,
+      masked_key: maskKey(apiKey),
     });
 
-    return res.json({ ok: true, ref_id: refId });
-  } catch (e) {
-    console.error("POST /public/contact error:", e);
+  } catch (err) {
+    console.error("Error in GET /api/user/api:", err);
     return res.status(500).json({ error: "Server error" });
   }
 });
+
+
+// POST /api/user/api/rotate
+router.post("/user/api/rotate", async (req, res) => {
+  if (!requireLogin(req, res)) return;
+
+  try {
+    const userId = req.session.userId;
+    const companyId = await getCompanyId(userId);
+
+    if (!companyId) {
+      return res.status(400).json({ error: "No company found" });
+    }
+
+    const newKey = generateApiKey();
+
+    const result = await pool.query(
+      `
+      UPDATE public.companies
+      SET api_key = $1
+      WHERE id = $2
+      RETURNING api_key
+      `,
+      [newKey, companyId]
+    );
+
+    const saved = result.rows?.[0]?.api_key || null;
+
+    return res.json({
+      masked_key: maskKey(saved),
+      full_key: saved, // return once so UI can copy
+    });
+
+  } catch (err) {
+    console.error("Error in POST /api/user/api/rotate:", err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+
+/* =========================================================
+   WEBHOOK
+========================================================= */
+
+// GET /api/user/webhook
+router.get("/user/webhook", async (req, res) => {
+  if (!requireLogin(req, res)) return;
+
+  try {
+    const companyId = await getCompanyId(req.session.userId);
+
+    if (!companyId) {
+      return res.json({ webhook_url: "" });
+    }
+
+    const { rows } = await pool.query(
+      `
+      SELECT webhook_url
+      FROM public.companies
+      WHERE id = $1
+      `,
+      [companyId]
+    );
+
+    res.json({ webhook_url: rows[0]?.webhook_url || "" });
+
+  } catch (err) {
+    console.error("Error in GET /api/user/webhook:", err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+
+// POST /api/user/webhook
+router.post("/user/webhook", async (req, res) => {
+  if (!requireLogin(req, res)) return;
+
+  try {
+    const companyId = await getCompanyId(req.session.userId);
+
+    if (!companyId) {
+      return res.status(400).json({ error: "No company found" });
+    }
+
+    let url = String(req.body?.webhook_url || "").trim();
+
+    // allow clearing
+    if (!url) {
+      await pool.query(
+        `
+        UPDATE public.companies
+        SET webhook_url = NULL
+        WHERE id = $1
+        `,
+        [companyId]
+      );
+
+      return res.json({ ok: true });
+    }
+
+    // normalize
+    if (!/^https?:\/\//i.test(url)) {
+      url = "https://" + url;
+    }
+
+    await pool.query(
+      `
+      UPDATE public.companies
+      SET webhook_url = $1
+      WHERE id = $2
+      `,
+      [url, companyId]
+    );
+
+    res.json({ ok: true, webhook_url: url });
+
+  } catch (err) {
+    console.error("Error in POST /api/user/webhook:", err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
 
 module.exports = router;
