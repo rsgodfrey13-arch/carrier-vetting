@@ -9,7 +9,6 @@ const router = express.Router();
 const crypto = require("crypto");
 const { sendPasswordResetEmail, sendVerificationEmail } = require("../../clients/mailgun");
 
-
 // who am I? (used by UI + Postman to check login)
 router.get("/me", async (req, res) => {
   if (!req.session?.userId) {
@@ -21,32 +20,48 @@ router.get("/me", async (req, res) => {
       `
       SELECT
         u.id,
-        u.email, u.carrier_limit, 
-        u.view_insurance, u.email_alerts, u.send_contracts,
-        COALESCE(uc.carrier_count, 0) AS carrier_count,
+        u.email,
+        u.carrier_limit,
+        u.view_insurance,
+        u.email_alerts,
+        u.send_contracts,
+
+        u.default_company_id,
+
         cm.company_id,
-        cm.role AS company_role
-      FROM users u
-      LEFT JOIN company_members cm
-        ON cm.user_id = u.id
-       AND cm.status = 'ACTIVE'
-       AND cm.company_id = COALESCE(u.default_company_id, cm.company_id)
-      LEFT JOIN (
-        SELECT company_id, count(carrier_dot) AS carrier_count
-        FROM user_carriers
-        GROUP BY company_id
-      ) uc
-      ON uc.company_id = cm.company_id
-      WHERE id = $1
+        cm.role AS company_role,
+
+        COALESCE(uc.carrier_count, 0) AS carrier_count
+
+      FROM public.users u
+
+      -- pick ONE active membership row (prefer default company, else OWNER, else first)
+      LEFT JOIN LATERAL (
+        SELECT cm1.company_id, cm1.role
+        FROM public.company_members cm1
+        WHERE cm1.user_id = u.id
+          AND cm1.status = 'ACTIVE'
+        ORDER BY
+          (cm1.company_id = u.default_company_id) DESC,
+          (cm1.role = 'OWNER') DESC,
+          cm1.created_at ASC
+        LIMIT 1
+      ) cm ON TRUE
+
+      -- count carriers by company (new boundary)
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*)::bigint AS carrier_count
+        FROM public.user_carriers x
+        WHERE x.company_id = cm.company_id
+      ) uc ON TRUE
+
+      WHERE u.id = $1
       LIMIT 1
       `,
       [req.session.userId]
     );
 
-    if (!rows.length) {
-      return res.json({ user: null });
-    }
-
+    if (!rows.length) return res.json({ user: null });
     return res.json({ user: rows[0] });
   } catch (err) {
     console.error("GET /api/me failed:", err);
