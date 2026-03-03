@@ -25,34 +25,71 @@ router.get("/me", async (req, res) => {
         u.view_insurance,
         u.email_alerts,
         u.send_contracts,
-
         u.default_company_id,
 
-        cm.company_id,
-        cm.role AS company_role,
+        -- chosen company context
+        chosen.company_id,
+        chosen.company_role,
 
+        -- company info (null if no company yet)
+        c.name AS company_name,
+        c.plan,
+        c.carrier_limit AS company_carrier_limit,
+        c.subscription_status,
+        c.current_period_end,
+        c.cancel_at_period_end,
+        c.api_key,
+        c.webhook_url,
+
+        -- company-scoped carrier count (0 if no company)
         COALESCE(uc.carrier_count, 0) AS carrier_count
 
       FROM public.users u
 
-      -- pick ONE active membership row (prefer default company, else OWNER, else first)
+      -- choose a company_id safely:
+      -- 1) default_company_id if set
+      -- 2) else first ACTIVE membership (prefer OWNER)
       LEFT JOIN LATERAL (
-        SELECT cm1.company_id, cm1.role
-        FROM public.company_members cm1
-        WHERE cm1.user_id = u.id
-          AND cm1.status = 'ACTIVE'
-        ORDER BY
-          (cm1.company_id = u.default_company_id) DESC,
-          (cm1.role = 'OWNER') DESC,
-          cm1.created_at ASC
-        LIMIT 1
-      ) cm ON TRUE
+        SELECT
+          COALESCE(
+            u.default_company_id,
+            (
+              SELECT cm1.company_id
+              FROM public.company_members cm1
+              WHERE cm1.user_id = u.id
+                AND cm1.status = 'ACTIVE'
+              ORDER BY (cm1.role = 'OWNER') DESC, cm1.created_at ASC
+              LIMIT 1
+            )
+          ) AS company_id,
+          (
+            SELECT cm2.role
+            FROM public.company_members cm2
+            WHERE cm2.user_id = u.id
+              AND cm2.status = 'ACTIVE'
+              AND cm2.company_id = COALESCE(
+                u.default_company_id,
+                (
+                  SELECT cm3.company_id
+                  FROM public.company_members cm3
+                  WHERE cm3.user_id = u.id
+                    AND cm3.status = 'ACTIVE'
+                  ORDER BY (cm3.role = 'OWNER') DESC, cm3.created_at ASC
+                  LIMIT 1
+                )
+              )
+            LIMIT 1
+          ) AS company_role
+      ) chosen ON TRUE
 
-      -- count carriers by company (new boundary)
+      LEFT JOIN public.companies c
+        ON c.id = chosen.company_id
+
       LEFT JOIN LATERAL (
         SELECT COUNT(*)::bigint AS carrier_count
         FROM public.user_carriers x
-        WHERE x.company_id = cm.company_id
+        WHERE chosen.company_id IS NOT NULL
+          AND x.company_id = chosen.company_id
       ) uc ON TRUE
 
       WHERE u.id = $1
