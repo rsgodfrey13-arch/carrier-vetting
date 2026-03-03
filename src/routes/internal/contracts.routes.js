@@ -5,6 +5,7 @@ const crypto = require("crypto");
 
 const { pool } = require("../../db/pool");
 const { requireAuth } = require("../../middleware/requireAuth");
+const { loadCompanyContext } = require("../../middleware/companyContext");
 const { sendContractEmail } = require("../../clients/mailgun");
 
 const { spaces } = require("../../clients/spacesS3v2");
@@ -17,8 +18,8 @@ function makeToken() {
 }
 
 /** ---------- CONTRACT TEMPLATES (broker-side) ---------- **/
-router.get("/user-contracts", requireAuth, async (req, res) => {
-  const userId = req.session.userId;
+router.get("/user-contracts", requireAuth, loadCompanyContext, async (req, res) => {
+  const companyId = req.companyContext.companyId;
 
   try {
     const { rows } = await pool.query(
@@ -31,10 +32,10 @@ router.get("/user-contracts", requireAuth, async (req, res) => {
         storage_key,
         created_at
       FROM public.user_contracts
-      WHERE user_id = $1
+      WHERE company_id = $1
       ORDER BY created_at DESC;
       `,
-      [userId]
+      [companyId]
     );
 
     res.json({ rows });
@@ -45,8 +46,8 @@ router.get("/user-contracts", requireAuth, async (req, res) => {
 });
 
 /** ---------- CONTRACT TEMPLATE PDF (broker-side preview) ---------- **/
-router.get("/user-contracts/:id/pdf", requireAuth, async (req, res) => {
-  const userId = req.session.userId;
+router.get("/user-contracts/:id/pdf", requireAuth, loadCompanyContext, async (req, res) => {
+  const companyId = req.companyContext.companyId;
   const templateId = String(req.params.id || "").trim();
   if (!templateId) return res.status(400).send("Missing template id");
 
@@ -59,10 +60,10 @@ router.get("/user-contracts/:id/pdf", requireAuth, async (req, res) => {
         name
       FROM public.user_contracts
       WHERE id = $1
-        AND user_id = $2
+        AND company_id = $2
       LIMIT 1;
       `,
-      [templateId, userId]
+      [templateId, companyId]
     );
 
     if (rows.length === 0) return res.status(404).send("Not found");
@@ -110,10 +111,11 @@ router.get("/user-contracts/:id/pdf", requireAuth, async (req, res) => {
 
 
 /** ---------- CONTRACT SEND ROUTE ---------- **/
-router.post("/contracts/send/:dot", requireAuth, async (req, res) => {
+router.post("/contracts/send/:dot", requireAuth, loadCompanyContext, async (req, res) => {
   const dotnumber = req.params.dot;
   const { user_contract_id, email_to,carrier_name } = req.body || {};
   const user_id = req.session.userId;
+  const companyId = req.companyContext.companyId;
 
   if (!user_contract_id || !email_to) {
     return res.status(400).json({
@@ -136,12 +138,12 @@ const templateRes = await client.query(
     display_name
   FROM public.user_contracts
   WHERE id = $1
-    AND user_id = $2
+    AND company_id = $2
     AND storage_provider = 'DO_SPACES'
     AND storage_key IS NOT NULL
   LIMIT 1;
   `,
-  [user_contract_id, user_id]
+  [user_contract_id, companyId]
 );
 
 if (templateRes.rowCount === 0) {
@@ -158,6 +160,7 @@ const broker_name = templateRes.rows[0].display_name || "Carrier Agreement";
       INSERT INTO public.contracts
         (
           user_id,
+          company_id,
           dotnumber,
           status,
           channel,
@@ -173,21 +176,23 @@ const broker_name = templateRes.rows[0].display_name || "Carrier Agreement";
         (
           $1,
           $2,
+          $3,
           'SENT',
           'EMAIL',
           'MAILGUN',
-          $3::jsonb,
+          $4::jsonb,
           NOW(),
-          $4,
           $5,
           $6,
-          $7
+          $7,
+          $8
         )
       RETURNING contract_id;
     `;
 
     const { rows } = await client.query(insertSql, [
       user_id,
+      companyId,
       dotnumber,
       JSON.stringify({ broker_name, agreement_type }),
       token,
@@ -233,8 +238,8 @@ const broker_name = templateRes.rows[0].display_name || "Carrier Agreement";
 });
 
 /** ---------- LATEST CONTRACT FOR DOT (broker-side) ---------- **/
-router.get("/contracts/latest/:dot", requireAuth, async (req, res) => {
-  const userId = req.session.userId;
+router.get("/contracts/latest/:dot", requireAuth, loadCompanyContext, async (req, res) => {
+  const companyId = req.companyContext.companyId;
   const dotnumber = String(req.params.dot || "").trim();
 
   if (!dotnumber) return res.status(400).json({ error: "dot is required" });
@@ -268,12 +273,12 @@ router.get("/contracts/latest/:dot", requireAuth, async (req, res) => {
         ON uc.id = c.user_contract_id
       LEFT JOIN public.contract_acceptances ca
         ON ca.contract_id = c.contract_id
-      WHERE c.user_id = $1
+      WHERE c.company_id = $1
         AND c.dotnumber = $2
       ORDER BY c.created_at DESC
       LIMIT 1;
       `,
-      [userId, dotnumber]
+      [companyId, dotnumber]
     );
 
     if (rows.length === 0) return res.json({ row: null });
@@ -285,8 +290,8 @@ router.get("/contracts/latest/:dot", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/contracts/:dot", requireAuth, async (req, res) => {
-  const userId = req.session.userId;
+router.get("/contracts/:dot", requireAuth, loadCompanyContext, async (req, res) => {
+  const companyId = req.companyContext.companyId;
   const dotnumber = String(req.params.dot || "").trim();
 
   try {
@@ -295,11 +300,11 @@ router.get("/contracts/:dot", requireAuth, async (req, res) => {
       SELECT
         contract_id, status, email_to, sent_at, created_at, updated_at, user_contract_id
       FROM public.contracts
-      WHERE user_id = $1 AND dotnumber = $2
+      WHERE company_id = $1 AND dotnumber = $2
       ORDER BY created_at DESC
       LIMIT 50;
       `,
-      [userId, dotnumber]
+      [companyId, dotnumber]
     );
 
     res.json({ rows });

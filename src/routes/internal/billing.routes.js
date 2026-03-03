@@ -3,6 +3,7 @@
 const express = require("express");
 const router = express.Router();
 const Stripe = require("stripe");
+const { loadCompanyContext, requireCompanyOwner } = require("../../middleware/companyContext");
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2024-06-20",
@@ -25,31 +26,37 @@ function requireSession(req, res) {
 }
 
 async function getOrCreateStripeCustomer(req) {
-  const userId = req.session.userId;
+  const companyId = req.companyContext.companyId;
+  const ownerUserId = req.companyContext.ownerUserId;
 
   const { rows } = await req.db.query(
-    `SELECT id, email, stripe_customer_id FROM users WHERE id = $1`,
-    [userId]
+    `
+    SELECT c.id, c.stripe_customer_id, u.email
+    FROM companies c
+    LEFT JOIN users u ON u.id = $2
+    WHERE c.id = $1
+    `,
+    [companyId, ownerUserId]
   );
-  if (!rows.length) throw new Error("User not found");
+  if (!rows.length) throw new Error("Company not found");
 
-  const user = rows[0];
+  const company = rows[0];
 
-  if (user.stripe_customer_id) {
-    return { customerId: user.stripe_customer_id, email: user.email };
+  if (company.stripe_customer_id) {
+    return { customerId: company.stripe_customer_id, email: company.email };
   }
 
   const customer = await stripe.customers.create({
-    email: user.email,
-    metadata: { userId: String(userId) },
+    email: company.email,
+    metadata: { companyId: String(companyId), ownerUserId: String(ownerUserId || "") },
   });
 
   await req.db.query(
-    `UPDATE users SET stripe_customer_id = $1 WHERE id = $2`,
-    [customer.id, userId]
+    `UPDATE companies SET stripe_customer_id = $1 WHERE id = $2`,
+    [customer.id, companyId]
   );
 
-  return { customerId: customer.id, email: user.email };
+  return { customerId: customer.id, email: company.email };
 }
 
 
@@ -60,11 +67,11 @@ async function getOrCreateStripeCustomer(req) {
  * Body: { plan: "core" | "pro" | "enterprise", context?: "upgrade" | "new" }
  * Returns: { url, mode }
  */
-router.post("/billing/continue", async (req, res) => {
+router.post("/billing/continue", loadCompanyContext, requireCompanyOwner, async (req, res) => {
   if (!requireSession(req, res)) return;
 
   try {
-    const userId = req.session.userId;
+    const companyId = req.companyContext.companyId;
     const plan = String(req.body?.plan || "core").toLowerCase().trim();
     const context = String(req.body?.context || "").toLowerCase().trim(); // optional
 
@@ -72,13 +79,13 @@ router.post("/billing/continue", async (req, res) => {
     const { rows } = await req.db.query(
       `
       SELECT stripe_customer_id, stripe_subscription_id, subscription_status
-      FROM users
+      FROM companies
       WHERE id = $1
       `,
-      [userId]
+      [companyId]
     );
 
-    if (!rows.length) return res.status(404).json({ error: "User not found" });
+    if (!rows.length) return res.status(404).json({ error: "Company not found" });
 
     const u = rows[0];
     const status = String(u.subscription_status || "").toLowerCase();
@@ -120,7 +127,8 @@ router.post("/billing/continue", async (req, res) => {
       cancel_url: `${baseUrl}/billing-canceled`,
       allow_promotion_codes: true,
       metadata: {
-        userId: String(userId),
+        userId: String(req.session.userId),
+        companyId: String(companyId),
         plan,
       },
     });
@@ -143,10 +151,11 @@ router.post("/billing/continue", async (req, res) => {
  * Body: { plan: "core" | "pro" | "enterprise" }
  * Returns: { url }
  */
-router.post("/billing/checkout", async (req, res) => {
+router.post("/billing/checkout", loadCompanyContext, requireCompanyOwner, async (req, res) => {
   if (!requireSession(req, res)) return;
 
   try {
+    const companyId = req.companyContext.companyId;
     const plan = String(req.body?.plan || "core").toLowerCase().trim();
     const priceId = PRICE_BY_PLAN[plan];
 
@@ -168,6 +177,7 @@ router.post("/billing/checkout", async (req, res) => {
       allow_promotion_codes: true,
       metadata: {
         userId: String(req.session.userId),
+        companyId: String(companyId),
         plan,
       },
     });
@@ -180,7 +190,7 @@ router.post("/billing/checkout", async (req, res) => {
 });
 
 //Billing Portal
-router.post("/billing/portal", async (req, res) => {
+router.post("/billing/portal", loadCompanyContext, requireCompanyOwner, async (req, res) => {
   if (!requireSession(req, res)) return;
 
   try {
@@ -210,7 +220,7 @@ router.post("/billing/portal", async (req, res) => {
  * GET /billing/session?session_id=cs_...
  * Returns: { ok, plan, price, email, subscriptionId, subscriptionStatus }
  */
-router.get("/billing/session", async (req, res) => {
+router.get("/billing/session", loadCompanyContext, requireCompanyOwner, async (req, res) => {
   if (!requireSession(req, res)) return;
 
   try {

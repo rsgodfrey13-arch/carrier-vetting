@@ -23,10 +23,20 @@ router.get("/me", async (req, res) => {
         u.id,
         u.email, u.carrier_limit, 
         u.view_insurance, u.email_alerts, u.send_contracts,
-        COALESCE(uc.carrier_count, 0) AS carrier_count
+        COALESCE(uc.carrier_count, 0) AS carrier_count,
+        cm.company_id,
+        cm.role AS company_role
       FROM users u
-      LEFT JOIN (select count(carrier_dot) carrier_count, user_id from user_carriers group by user_id) uc
-      ON u.id = uc.user_id
+      LEFT JOIN company_members cm
+        ON cm.user_id = u.id
+       AND cm.status = 'ACTIVE'
+       AND cm.company_id = COALESCE(u.default_company_id, cm.company_id)
+      LEFT JOIN (
+        SELECT company_id, count(carrier_dot) AS carrier_count
+        FROM user_carriers
+        GROUP BY company_id
+      ) uc
+      ON uc.company_id = cm.company_id
       WHERE id = $1
       LIMIT 1
       `,

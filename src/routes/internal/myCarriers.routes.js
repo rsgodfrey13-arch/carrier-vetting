@@ -3,15 +3,16 @@
 const express = require("express");
 const { pool } = require("../../db/pool");
 const { requireAuth } = require("../../middleware/requireAuth");
+const { loadCompanyContext } = require("../../middleware/companyContext");
 
 const router = express.Router();
 
 /** ---------- MY CARRIERS ROUTES ---------- **/
 
 // Get list of carriers saved by this user (paginated + sortable)
-router.get("/my-carriers", requireAuth, async (req, res) => {
+router.get("/my-carriers", requireAuth, loadCompanyContext, async (req, res) => {
   try {
-    const userId = req.session.userId;
+    const companyId = req.companyContext.companyId;
 
     const page = parseInt(req.query.page, 10) || 1;
     const pageSize = parseInt(req.query.pageSize, 10) || 25;
@@ -42,7 +43,7 @@ router.get("/my-carriers", requireAuth, async (req, res) => {
       FROM user_carriers uc
       JOIN carriers c
         ON c.dotnumber = uc.carrier_dot
-      WHERE uc.user_id = $1
+      WHERE uc.company_id = $1
       ORDER BY ${orderColumn} ${sortDir}
       LIMIT $2 OFFSET $3;
     `;
@@ -50,12 +51,12 @@ router.get("/my-carriers", requireAuth, async (req, res) => {
     const countSql = `
       SELECT COUNT(*)::int AS count
       FROM user_carriers
-      WHERE user_id = $1;
+      WHERE company_id = $1;
     `;
 
     const [dataResult, countResult] = await Promise.all([
-      pool.query(dataSql, [userId, pageSize, offset]),
-      pool.query(countSql, [userId])
+      pool.query(dataSql, [companyId, pageSize, offset]),
+      pool.query(countSql, [companyId])
     ]);
 
     res.json({
@@ -71,8 +72,9 @@ router.get("/my-carriers", requireAuth, async (req, res) => {
 });
 
 // Save a new carrier for this user (enforces carrier_limit)
-router.post("/my-carriers", requireAuth, async (req, res) => {
+router.post("/my-carriers", requireAuth, loadCompanyContext, async (req, res) => {
   const userId = req.session.userId;
+  const companyId = req.companyContext.companyId;
   const dotRaw = req.body?.dot;
 
   const dot = String(dotRaw || "").replace(/\D/g, "");
@@ -84,13 +86,13 @@ router.post("/my-carriers", requireAuth, async (req, res) => {
   try {
     await client.query("BEGIN");
 
-    // 1) Lock the user row so limit checks are race-safe
+    // 1) Lock the company row so limit checks are race-safe
     const u = await client.query(
       `SELECT carrier_limit
-       FROM users
+       FROM companies
        WHERE id = $1
        FOR UPDATE`,
-      [userId]
+      [companyId]
     );
 
     if (!u.rows.length) {
@@ -104,8 +106,8 @@ router.post("/my-carriers", requireAuth, async (req, res) => {
     const c = await client.query(
       `SELECT COUNT(*)::int AS carrier_count
        FROM user_carriers
-       WHERE user_id = $1`,
-      [userId]
+       WHERE company_id = $1`,
+      [companyId]
     );
 
     const count = c.rows[0].carrier_count;
@@ -116,9 +118,9 @@ router.post("/my-carriers", requireAuth, async (req, res) => {
     const exists = await client.query(
       `SELECT 1
        FROM user_carriers
-       WHERE user_id = $1 AND carrier_dot = $2
+       WHERE company_id = $1 AND carrier_dot = $2
        LIMIT 1`,
-      [userId, dot]
+      [companyId, dot]
     );
 
     if (exists.rows.length) {
@@ -139,9 +141,9 @@ router.post("/my-carriers", requireAuth, async (req, res) => {
 
     // 5) Insert
     await client.query(
-      `INSERT INTO user_carriers (user_id, carrier_dot)
-       VALUES ($1, $2)`,
-      [userId, dot]
+      `INSERT INTO user_carriers (company_id, user_id, carrier_dot)
+       VALUES ($1, $2, $3)`,
+      [companyId, userId, dot]
     );
 
     await client.query("COMMIT");
@@ -162,15 +164,15 @@ router.post("/my-carriers", requireAuth, async (req, res) => {
 
 
 // Get ALL saved DOTs for this user (no join, no pagination) - used by UI to mark "My Carrier"
-router.get("/my-carriers/dots", requireAuth, async (req, res) => {
+router.get("/my-carriers/dots", requireAuth, loadCompanyContext, async (req, res) => {
   try {
-    const userId = req.session.userId;
+    const companyId = req.companyContext.companyId;
 
     const result = await pool.query(
       `SELECT carrier_dot
        FROM user_carriers
-       WHERE user_id = $1;`,
-      [userId]
+       WHERE company_id = $1;`,
+      [companyId]
     );
 
     // return array of strings
@@ -182,8 +184,9 @@ router.get("/my-carriers/dots", requireAuth, async (req, res) => {
 });
 
 
-router.post("/my-carriers/bulk", requireAuth, async (req, res) => {
+router.post("/my-carriers/bulk", requireAuth, loadCompanyContext, async (req, res) => {
   const userId = req.session.userId;
+  const companyId = req.companyContext.companyId;
   const client = await pool.connect();
 
   try {
@@ -208,10 +211,10 @@ router.post("/my-carriers/bulk", requireAuth, async (req, res) => {
     // 1) Lock user row + get limit (NULL => 0)
     const u = await client.query(
       `SELECT COALESCE(carrier_limit, 0)::int AS carrier_limit
-       FROM users
+       FROM companies
        WHERE id = $1
        FOR UPDATE`,
-      [userId]
+      [companyId]
     );
 
     if (!u.rows.length) {
@@ -225,8 +228,8 @@ router.post("/my-carriers/bulk", requireAuth, async (req, res) => {
     const c = await client.query(
       `SELECT COUNT(*)::int AS carrier_count
        FROM user_carriers
-       WHERE user_id = $1`,
-      [userId]
+       WHERE company_id = $1`,
+      [companyId]
     );
 
     const carrierCount = Number(c.rows[0].carrier_count || 0);
@@ -247,7 +250,7 @@ router.post("/my-carriers/bulk", requireAuth, async (req, res) => {
     // 3) Insert up to remaining slots
     const sql = `
   WITH input(dot) AS (
-    SELECT UNNEST($2::text[])
+    SELECT UNNEST($3::text[])
   ),
   valid AS (
     SELECT i.dot
@@ -258,7 +261,7 @@ router.post("/my-carriers/bulk", requireAuth, async (req, res) => {
     SELECT v.dot
     FROM valid v
     JOIN user_carriers uc
-      ON uc.user_id = $1 AND uc.carrier_dot = v.dot
+      ON uc.company_id = $1 AND uc.carrier_dot = v.dot
   ),
   new_valid AS (
     SELECT v.dot
@@ -269,13 +272,13 @@ router.post("/my-carriers/bulk", requireAuth, async (req, res) => {
   slots AS (
     SELECT nv.dot
     FROM new_valid nv
-    LIMIT $3
+    LIMIT $4
   ),
   ins AS (
-    INSERT INTO user_carriers (user_id, carrier_dot, added_at)
-    SELECT $1, s.dot, NOW()
+    INSERT INTO user_carriers (company_id, user_id, carrier_dot, added_at)
+    SELECT $1, $2, s.dot, NOW()
     FROM slots s
-    ON CONFLICT (user_id, carrier_dot) DO NOTHING
+    ON CONFLICT (company_id, carrier_dot) DO NOTHING
     RETURNING carrier_dot
   )
   SELECT
@@ -284,11 +287,11 @@ router.post("/my-carriers/bulk", requireAuth, async (req, res) => {
     (SELECT COUNT(*) FROM already) AS duplicates,
     (SELECT COUNT(*) FROM ins) AS inserted,
     (SELECT COUNT(*) FROM input) - (SELECT COUNT(*) FROM valid) AS invalid,
-    GREATEST((SELECT COUNT(*) FROM new_valid) - $3, 0) AS skipped_limit,
+    GREATEST((SELECT COUNT(*) FROM new_valid) - $4, 0) AS skipped_limit,
     (SELECT COALESCE(ARRAY_AGG(carrier_dot), ARRAY[]::text[]) FROM ins) AS inserted_dots;
 `;
 
-    const result = await client.query(sql, [userId, uniqueDots, remaining]);
+    const result = await client.query(sql, [companyId, userId, uniqueDots, remaining]);
     const s = result.rows[0];
 
     const insertedDots = s.inserted_dots || [];
@@ -360,9 +363,9 @@ const note =
 
 
 // Preview bulk import (no DB writes)
-router.post("/my-carriers/bulk/preview", requireAuth, async (req, res) => {
+router.post("/my-carriers/bulk/preview", requireAuth, loadCompanyContext, async (req, res) => {
   try {
-    const userId = req.session.userId;
+    const companyId = req.companyContext.companyId;
     let { dots } = req.body || {};
 
     if (!Array.isArray(dots) || dots.length === 0) {
@@ -405,10 +408,10 @@ router.post("/my-carriers/bulk/preview", requireAuth, async (req, res) => {
       `
       SELECT carrier_dot
       FROM user_carriers
-      WHERE user_id = $1
+      WHERE company_id = $1
         AND carrier_dot = ANY($2::text[]);
       `,
-      [userId, uniqueDots]
+      [companyId, uniqueDots]
     );
 
     const userSet = new Set(userRes.rows.map((r) => r.carrier_dot));
@@ -460,14 +463,14 @@ router.post("/my-carriers/bulk/preview", requireAuth, async (req, res) => {
 
 // Check if THIS dot is already saved for this user
 
-router.get("/my-carriers/:dot", requireAuth, async (req, res) => {
-  const userId = req.session.userId;
+router.get("/my-carriers/:dot", requireAuth, loadCompanyContext, async (req, res) => {
+  const companyId = req.companyContext.companyId;
   const { dot } = req.params;
 
   try {
     const result = await pool.query(
-      "SELECT 1 FROM user_carriers WHERE user_id = $1 AND carrier_dot = $2",
-      [userId, dot]
+      "SELECT 1 FROM user_carriers WHERE company_id = $1 AND carrier_dot = $2",
+      [companyId, dot]
     );
 
     if (result.rowCount > 0) {
@@ -484,8 +487,8 @@ router.get("/my-carriers/:dot", requireAuth, async (req, res) => {
 
 
 // Get email alert settings for THIS carrier
-router.get("/my-carriers/:dot/alerts/email", requireAuth, async (req, res) => {
-  const userId = req.session.userId;
+router.get("/my-carriers/:dot/alerts/email", requireAuth, loadCompanyContext, async (req, res) => {
+  const companyId = req.companyContext.companyId;
   const { dot } = req.params;
 
   try {
@@ -494,9 +497,9 @@ router.get("/my-carriers/:dot/alerts/email", requireAuth, async (req, res) => {
       `
       SELECT email_alerts
       FROM user_carriers
-      WHERE user_id = $1 AND carrier_dot = $2
+      WHERE company_id = $1 AND carrier_dot = $2
       `,
-      [userId, dot]
+      [companyId, dot]
     );
 
     if (uc.rowCount === 0) {
@@ -508,7 +511,7 @@ router.get("/my-carriers/:dot/alerts/email", requireAuth, async (req, res) => {
     // 2) Default email (for now: user email)
     const userRes = await pool.query(
       `SELECT email FROM users WHERE id = $1`,
-      [userId]
+      [req.session.userId]
     );
 
     const defaultEmail = userRes.rows[0]?.email || null;
@@ -518,10 +521,10 @@ router.get("/my-carriers/:dot/alerts/email", requireAuth, async (req, res) => {
       `
       SELECT email
       FROM user_carrier_alert_recipients
-      WHERE user_id = $1 AND carrier_dot = $2
+      WHERE company_id = $1 AND carrier_dot = $2
       ORDER BY email
       `,
-      [userId, dot]
+      [companyId, dot]
     );
 
     return res.json({
@@ -537,8 +540,8 @@ router.get("/my-carriers/:dot/alerts/email", requireAuth, async (req, res) => {
 
 
 // Save email alert settings for THIS carrier (toggle + recipients list)
-router.put("/my-carriers/:dot/alerts/email", requireAuth, async (req, res) => {
-  const userId = req.session.userId;
+router.put("/my-carriers/:dot/alerts/email", requireAuth, loadCompanyContext, async (req, res) => {
+  const companyId = req.companyContext.companyId;
   const { dot } = req.params;
 
   try {
@@ -560,8 +563,8 @@ router.put("/my-carriers/:dot/alerts/email", requireAuth, async (req, res) => {
 
     // must exist in user_carriers
     const exists = await pool.query(
-      `SELECT 1 FROM user_carriers WHERE user_id = $1 AND carrier_dot = $2`,
-      [userId, dot]
+      `SELECT 1 FROM user_carriers WHERE company_id = $1 AND carrier_dot = $2`,
+      [companyId, dot]
     );
 
     if (exists.rowCount === 0) {
@@ -577,26 +580,26 @@ router.put("/my-carriers/:dot/alerts/email", requireAuth, async (req, res) => {
         `
         UPDATE user_carriers
         SET email_alerts = $3
-        WHERE user_id = $1 AND carrier_dot = $2
+        WHERE company_id = $1 AND carrier_dot = $2
         `,
-        [userId, dot, enabled ? "Y" : "N"]
+        [companyId, dot, enabled ? "Y" : "N"]
       );
 
       await client.query(
         `
         DELETE FROM user_carrier_alert_recipients
-        WHERE user_id = $1 AND carrier_dot = $2
+        WHERE company_id = $1 AND carrier_dot = $2
         `,
-        [userId, dot]
+        [companyId, dot]
       );
 
       if (recipients.length > 0) {
         await client.query(
           `
-          INSERT INTO user_carrier_alert_recipients (user_id, carrier_dot, email)
-          SELECT $1, $2, UNNEST($3::text[])
+          INSERT INTO user_carrier_alert_recipients (company_id, user_id, carrier_dot, email)
+          SELECT $1, NULL, $2, UNNEST($3::text[])
           `,
-          [userId, dot, recipients]
+          [companyId, dot, recipients]
         );
       }
 
@@ -654,14 +657,14 @@ router.get("/refresh-queue/status", requireAuth, async (req, res) => {
 
 
 // Remove a carrier from this user's list
-router.delete("/my-carriers/:dot", requireAuth, async (req, res) => {
-  const userId = req.session.userId;
+router.delete("/my-carriers/:dot", requireAuth, loadCompanyContext, async (req, res) => {
+  const companyId = req.companyContext.companyId;
   const dot = String(req.params.dot || "").replace(/\D/g, "");
 
   try {
     const result = await pool.query(
-      "DELETE FROM user_carriers WHERE user_id = $1 AND carrier_dot = $2",
-      [userId, dot]
+      "DELETE FROM user_carriers WHERE company_id = $1 AND carrier_dot = $2",
+      [companyId, dot]
     );
 
     res.json({ ok: true, deleted: result.rowCount });

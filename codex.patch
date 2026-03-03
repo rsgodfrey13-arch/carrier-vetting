@@ -1,0 +1,1731 @@
+diff --git a/db/migrations/20260303_phase1_multi_user.sql b/db/migrations/20260303_phase1_multi_user.sql
+new file mode 100644
+index 0000000000000000000000000000000000000000..cb196d49c7cc76c9fe076673696c8791ae36f181
+--- /dev/null
++++ b/db/migrations/20260303_phase1_multi_user.sql
+@@ -0,0 +1,149 @@
++-- Phase 1 (backend-first): multi-user foundation + company-scoped business data
++
++BEGIN;
++
++CREATE EXTENSION IF NOT EXISTS pgcrypto;
++
++CREATE TABLE IF NOT EXISTS public.companies (
++  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
++  name varchar(255) NOT NULL,
++  created_at timestamptz NOT NULL DEFAULT now(),
++  plan varchar(100),
++  carrier_limit bigint,
++  stripe_customer_id text,
++  stripe_subscription_id text,
++  subscription_status text,
++  current_period_end timestamp,
++  cancel_at_period_end boolean DEFAULT false
++);
++CREATE INDEX IF NOT EXISTS companies_name_idx ON public.companies(name);
++CREATE UNIQUE INDEX IF NOT EXISTS companies_stripe_customer_id_uidx
++  ON public.companies (stripe_customer_id)
++  WHERE stripe_customer_id IS NOT NULL;
++
++CREATE TABLE IF NOT EXISTS public.company_members (
++  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
++  company_id uuid NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
++  user_id int4 NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
++  role varchar(20) NOT NULL CHECK (role IN ('OWNER', 'ADMIN', 'MEMBER')),
++  status varchar(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INVITED', 'DISABLED')),
++  created_at timestamptz NOT NULL DEFAULT now(),
++  UNIQUE (company_id, user_id)
++);
++CREATE INDEX IF NOT EXISTS company_members_company_id_idx ON public.company_members(company_id);
++CREATE INDEX IF NOT EXISTS company_members_user_id_idx ON public.company_members(user_id);
++CREATE UNIQUE INDEX IF NOT EXISTS company_members_one_owner_uidx
++  ON public.company_members(company_id)
++  WHERE role = 'OWNER' AND status = 'ACTIVE';
++
++CREATE TABLE IF NOT EXISTS public.company_invites (
++  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
++  company_id uuid NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
++  invited_email text NOT NULL,
++  role varchar(20) NOT NULL CHECK (role IN ('ADMIN', 'MEMBER')),
++  invited_by_user_id int4 NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
++  token text NOT NULL UNIQUE,
++  status varchar(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','ACCEPTED','EXPIRED','REVOKED')),
++  expires_at timestamptz NOT NULL,
++  created_at timestamptz NOT NULL DEFAULT now(),
++  accepted_at timestamptz
++);
++CREATE INDEX IF NOT EXISTS company_invites_company_id_idx ON public.company_invites(company_id);
++CREATE INDEX IF NOT EXISTS company_invites_invited_email_idx ON public.company_invites(lower(invited_email));
++
++ALTER TABLE public.users
++  ADD COLUMN IF NOT EXISTS default_company_id uuid REFERENCES public.companies(id) ON DELETE SET NULL;
++CREATE INDEX IF NOT EXISTS users_default_company_id_idx ON public.users(default_company_id);
++
++-- one-company-per-existing-user backfill
++WITH seed_users AS (
++  SELECT
++    u.id AS user_id,
++    gen_random_uuid() AS company_id,
++    COALESCE(NULLIF(TRIM(u.company), ''), split_part(u.email, '@', 1) || ' Company') AS company_name,
++    u.plan,
++    u.carrier_limit,
++    u.stripe_customer_id,
++    u.stripe_subscription_id,
++    u.subscription_status,
++    u.current_period_end,
++    COALESCE(u.cancel_at_period_end, false) AS cancel_at_period_end
++  FROM public.users u
++  LEFT JOIN public.company_members cm ON cm.user_id = u.id
++  WHERE cm.id IS NULL
++), inserted_companies AS (
++  INSERT INTO public.companies (
++    id,
++    name,
++    plan,
++    carrier_limit,
++    stripe_customer_id,
++    stripe_subscription_id,
++    subscription_status,
++    current_period_end,
++    cancel_at_period_end
++  )
++  SELECT
++    su.company_id,
++    su.company_name,
++    su.plan,
++    su.carrier_limit,
++    su.stripe_customer_id,
++    su.stripe_subscription_id,
++    su.subscription_status,
++    su.current_period_end,
++    su.cancel_at_period_end
++  FROM seed_users su
++  ON CONFLICT (id) DO NOTHING
++)
++INSERT INTO public.company_members (company_id, user_id, role, status)
++SELECT su.company_id, su.user_id, 'OWNER', 'ACTIVE'
++FROM seed_users su
++ON CONFLICT (company_id, user_id) DO NOTHING;
++
++UPDATE public.users u
++SET default_company_id = cm.company_id
++FROM public.company_members cm
++WHERE cm.user_id = u.id
++  AND cm.role = 'OWNER'
++  AND cm.status = 'ACTIVE'
++  AND u.default_company_id IS NULL;
++
++ALTER TABLE public.user_carriers ADD COLUMN IF NOT EXISTS company_id uuid;
++UPDATE public.user_carriers uc
++SET company_id = u.default_company_id
++FROM public.users u
++WHERE uc.user_id = u.id
++  AND uc.company_id IS NULL;
++ALTER TABLE public.user_carriers ALTER COLUMN company_id SET NOT NULL;
++CREATE INDEX IF NOT EXISTS user_carriers_company_id_idx ON public.user_carriers(company_id);
++CREATE UNIQUE INDEX IF NOT EXISTS user_carriers_company_dot_uidx ON public.user_carriers(company_id, carrier_dot);
++
++ALTER TABLE public.user_carrier_alert_recipients ADD COLUMN IF NOT EXISTS company_id uuid;
++UPDATE public.user_carrier_alert_recipients ucar
++SET company_id = u.default_company_id
++FROM public.users u
++WHERE ucar.user_id = u.id
++  AND ucar.company_id IS NULL;
++ALTER TABLE public.user_carrier_alert_recipients ALTER COLUMN company_id SET NOT NULL;
++CREATE INDEX IF NOT EXISTS ucar_company_dot_idx ON public.user_carrier_alert_recipients(company_id, carrier_dot);
++
++ALTER TABLE public.user_contracts ADD COLUMN IF NOT EXISTS company_id uuid;
++UPDATE public.user_contracts uc
++SET company_id = u.default_company_id
++FROM public.users u
++WHERE uc.user_id = u.id
++  AND uc.company_id IS NULL;
++ALTER TABLE public.user_contracts ALTER COLUMN company_id SET NOT NULL;
++CREATE INDEX IF NOT EXISTS user_contracts_company_id_idx ON public.user_contracts(company_id);
++
++ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS company_id uuid;
++UPDATE public.contracts c
++SET company_id = u.default_company_id
++FROM public.users u
++WHERE c.user_id = u.id
++  AND c.company_id IS NULL;
++ALTER TABLE public.contracts ALTER COLUMN company_id SET NOT NULL;
++CREATE INDEX IF NOT EXISTS contracts_company_dot_idx ON public.contracts(company_id, dotnumber, sent_at DESC);
++
++COMMIT;
+diff --git a/docs/multi-user-migration-phase-plan.md b/docs/multi-user-migration-phase-plan.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..7fb89664222587c4a625452bdb0873d0ce0f6210
+--- /dev/null
++++ b/docs/multi-user-migration-phase-plan.md
+@@ -0,0 +1,69 @@
++# Multi-user migration: inventory + staged rollout plan
++
++## Inventory (current account boundary = `users.id`)
++
++### Auth/session boundary
++- `requireAuth` only checks `req.session.userId`; no workspace context is loaded.
++- `GET /api/me` returns user-scoped counts (`user_carriers.user_id`) and no company role/context.
++
++### Company-scoped business data currently user-scoped
++- **Saved carriers + carrier alert recipients**
++  - `/api/my-carriers*` reads/writes `user_carriers` by `user_id`.
++  - Email recipients for carrier alerts use `user_carrier_alert_recipients.user_id`.
++- **Contracts**
++  - `/api/user-contracts*` reads templates by `user_id`.
++  - `/api/contracts*` reads/writes contracts by `contracts.user_id`.
++- **Billing**
++  - `/api/billing/*` reads/writes `stripe_*` and subscription status from `users`.
++
++### User-owned/personal settings (remain user-owned)
++- Auth credentials and password reset state.
++- Personal preferences currently in `users` (`time_zone`, per-user toggles, etc.).
++
++### Data leakage risks identified
++- Any future multi-user company with these current queries would leak by omission (using `user_id` instead of company boundary).
++- “Get by id” style routes for contracts/template ids were protected by `user_id`; those need equivalent `company_id` guards.
++
++## Ownership model (target)
++
++### Company-owned
++- account boundary (`companies.id`)
++- membership (`company_members`)
++- business carriers and shared carrier alerts
++- contract templates and contracts
++- billing/subscription fields and Stripe customer/subscription ids
++
++### User-owned
++- login identity + password + verified state
++- personal profile/preferences and default company chooser (`users.default_company_id`)
++
++## Staged migration plan
++
++### Phase 0 (safe foundation)
++- Add `companies`, `company_members`, `company_invites`.
++- Add `users.default_company_id`.
++- Backfill one company per existing user and owner membership.
++- Add `company_id` columns + backfill for company business tables.
++
++### Phase 1 (MVP multi-user)
++- Add middleware to resolve active company context (`company_id`, `role`, `owner_user_id`).
++- Enforce company scoping in internal routes for:
++  - saved carriers + carrier alert recipients,
++  - contracts/templates,
++  - billing reads/writes.
++- Enforce owner-only billing access.
++- Extend `/api/me` with company context and company-scoped carrier count.
++
++### Phase 2
++- Move Stripe webhook plan/subscription writes from `users` to `companies`.
++- Update external API routes (`/api/v1/*`) to company boundary.
++- Add invite/accept flows and company switching UX.
++
++### Phase 3
++- Remove legacy user-scoped assumptions and old uniqueness constraints after data is stable.
++- Add full integration tests for cross-company isolation and role permissions.
++
++## MVP multi-user milestone
++- Multiple users in one company can share saved carriers/contracts.
++- Every internal business query is scoped by `company_id`.
++- Non-owners are blocked from billing endpoints.
+diff --git a/src/middleware/companyContext.js b/src/middleware/companyContext.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..ba0dd3d5a80064dac084f1297fdbcf78aa0ed7eb
+--- /dev/null
++++ b/src/middleware/companyContext.js
+@@ -0,0 +1,70 @@
++"use strict";
++
++const { pool } = require("../db/pool");
++
++async function loadCompanyContext(req, res, next) {
++  try {
++    const userId = req.session?.userId;
++    if (!userId) {
++      return res.status(401).json({ error: "Not authenticated" });
++    }
++
++    const { rows } = await pool.query(
++      `
++      WITH picked AS (
++        SELECT
++          cm.company_id,
++          cm.role,
++          u.default_company_id,
++          ROW_NUMBER() OVER (
++            ORDER BY CASE WHEN cm.company_id = u.default_company_id THEN 0 ELSE 1 END,
++                     cm.created_at ASC
++          ) AS rn
++        FROM users u
++        JOIN company_members cm
++          ON cm.user_id = u.id
++         AND cm.status = 'ACTIVE'
++        WHERE u.id = $1
++      )
++      SELECT p.company_id, p.role,
++             owner.user_id AS owner_user_id
++      FROM picked p
++      LEFT JOIN company_members owner
++        ON owner.company_id = p.company_id
++       AND owner.role = 'OWNER'
++       AND owner.status = 'ACTIVE'
++      WHERE p.rn = 1
++      LIMIT 1
++      `,
++      [userId]
++    );
++
++    if (!rows.length) {
++      return res.status(403).json({ error: "No active company membership" });
++    }
++
++    req.companyContext = {
++      companyId: rows[0].company_id,
++      role: rows[0].role,
++      ownerUserId: rows[0].owner_user_id,
++    };
++
++    return next();
++  } catch (err) {
++    console.error("loadCompanyContext error:", err);
++    return res.status(500).json({ error: "Failed to load company context" });
++  }
++}
++
++function requireCompanyOwner(req, res, next) {
++  const role = req.companyContext?.role;
++  if (role !== "OWNER") {
++    return res.status(403).json({ error: "Owner access required" });
++  }
++  return next();
++}
++
++module.exports = {
++  loadCompanyContext,
++  requireCompanyOwner,
++};
+diff --git a/src/routes/internal/auth.routes.js b/src/routes/internal/auth.routes.js
+index b463137308836e721a43d3daec886b4d3dc8102f..c3d8f0cc5c2e574537d0fee4a20684c122ab5ead 100644
+--- a/src/routes/internal/auth.routes.js
++++ b/src/routes/internal/auth.routes.js
+@@ -1,54 +1,64 @@
+ "use strict";
+ 
+ const express = require("express");
+ const bcrypt = require("bcrypt");
+ const { pool } = require("../../db/pool");
+ 
+ const router = express.Router();
+ 
+ const crypto = require("crypto");
+ const { sendPasswordResetEmail, sendVerificationEmail } = require("../../clients/mailgun");
+ 
+ 
+ // who am I? (used by UI + Postman to check login)
+ router.get("/me", async (req, res) => {
+   if (!req.session?.userId) {
+     return res.json({ user: null });
+   }
+ 
+   try {
+     const { rows } = await pool.query(
+       `
+       SELECT
+         u.id,
+         u.email, u.carrier_limit, 
+         u.view_insurance, u.email_alerts, u.send_contracts,
+-        COALESCE(uc.carrier_count, 0) AS carrier_count
++        COALESCE(uc.carrier_count, 0) AS carrier_count,
++        cm.company_id,
++        cm.role AS company_role
+       FROM users u
+-      LEFT JOIN (select count(carrier_dot) carrier_count, user_id from user_carriers group by user_id) uc
+-      ON u.id = uc.user_id
++      LEFT JOIN company_members cm
++        ON cm.user_id = u.id
++       AND cm.status = 'ACTIVE'
++       AND cm.company_id = COALESCE(u.default_company_id, cm.company_id)
++      LEFT JOIN (
++        SELECT company_id, count(carrier_dot) AS carrier_count
++        FROM user_carriers
++        GROUP BY company_id
++      ) uc
++      ON uc.company_id = cm.company_id
+       WHERE id = $1
+       LIMIT 1
+       `,
+       [req.session.userId]
+     );
+ 
+     if (!rows.length) {
+       return res.json({ user: null });
+     }
+ 
+     return res.json({ user: rows[0] });
+   } catch (err) {
+     console.error("GET /api/me failed:", err);
+     return res.status(500).json({ error: "Server error" });
+   }
+ });
+ 
+ // login: expects { "email": "x", "password": "y" }
+ router.post("/login", async (req, res) => {
+   const { email, password } = req.body || {};
+   if (!email || !password) {
+     return res.status(400).json({ error: "email and password required" });
+   }
+ 
+   try {
+diff --git a/src/routes/internal/billing.routes.js b/src/routes/internal/billing.routes.js
+index ea3cea928c5da4821546aea6098578153a7344c3..7d58411438f3e4d367936f7f5f654b28b6e8479c 100644
+--- a/src/routes/internal/billing.routes.js
++++ b/src/routes/internal/billing.routes.js
+@@ -1,238 +1,248 @@
+ "use strict";
+ 
+ const express = require("express");
+ const router = express.Router();
+ const Stripe = require("stripe");
++const { loadCompanyContext, requireCompanyOwner } = require("../../middleware/companyContext");
+ 
+ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+   apiVersion: "2024-06-20",
+ });
+ 
+ // Map your Stripe Price IDs here (from Dashboard)
+ const PRICE_BY_PLAN = {
+   core: process.env.STRIPE_PRICE_CORE,
+   pro: process.env.STRIPE_PRICE_PRO,
+   enterprise: process.env.STRIPE_PRICE_ENT,
+ };
+ 
+ // Helpers
+ function requireSession(req, res) {
+   if (!req.session?.userId) {
+     res.status(401).json({ error: "Not authenticated" });
+     return false;
+   }
+   return true;
+ }
+ 
+ async function getOrCreateStripeCustomer(req) {
+-  const userId = req.session.userId;
++  const companyId = req.companyContext.companyId;
++  const ownerUserId = req.companyContext.ownerUserId;
+ 
+   const { rows } = await req.db.query(
+-    `SELECT id, email, stripe_customer_id FROM users WHERE id = $1`,
+-    [userId]
++    `
++    SELECT c.id, c.stripe_customer_id, u.email
++    FROM companies c
++    LEFT JOIN users u ON u.id = $2
++    WHERE c.id = $1
++    `,
++    [companyId, ownerUserId]
+   );
+-  if (!rows.length) throw new Error("User not found");
++  if (!rows.length) throw new Error("Company not found");
+ 
+-  const user = rows[0];
++  const company = rows[0];
+ 
+-  if (user.stripe_customer_id) {
+-    return { customerId: user.stripe_customer_id, email: user.email };
++  if (company.stripe_customer_id) {
++    return { customerId: company.stripe_customer_id, email: company.email };
+   }
+ 
+   const customer = await stripe.customers.create({
+-    email: user.email,
+-    metadata: { userId: String(userId) },
++    email: company.email,
++    metadata: { companyId: String(companyId), ownerUserId: String(ownerUserId || "") },
+   });
+ 
+   await req.db.query(
+-    `UPDATE users SET stripe_customer_id = $1 WHERE id = $2`,
+-    [customer.id, userId]
++    `UPDATE companies SET stripe_customer_id = $1 WHERE id = $2`,
++    [customer.id, companyId]
+   );
+ 
+-  return { customerId: customer.id, email: user.email };
++  return { customerId: customer.id, email: company.email };
+ }
+ 
+ 
+ 
+ 
+ /**
+  * POST /billing/continue
+  * Body: { plan: "core" | "pro" | "enterprise", context?: "upgrade" | "new" }
+  * Returns: { url, mode }
+  */
+-router.post("/billing/continue", async (req, res) => {
++router.post("/billing/continue", loadCompanyContext, requireCompanyOwner, async (req, res) => {
+   if (!requireSession(req, res)) return;
+ 
+   try {
+-    const userId = req.session.userId;
++    const companyId = req.companyContext.companyId;
+     const plan = String(req.body?.plan || "core").toLowerCase().trim();
+     const context = String(req.body?.context || "").toLowerCase().trim(); // optional
+ 
+     // Pull subscription state from your users table
+     const { rows } = await req.db.query(
+       `
+       SELECT stripe_customer_id, stripe_subscription_id, subscription_status
+-      FROM users
++      FROM companies
+       WHERE id = $1
+       `,
+-      [userId]
++      [companyId]
+     );
+ 
+-    if (!rows.length) return res.status(404).json({ error: "User not found" });
++    if (!rows.length) return res.status(404).json({ error: "Company not found" });
+ 
+     const u = rows[0];
+     const status = String(u.subscription_status || "").toLowerCase();
+ 
+     const hasActiveishSub =
+       !!u.stripe_subscription_id &&
+       ["active", "trialing", "past_due"].includes(status);
+ 
+     const baseUrl =
+       process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get("host")}`;
+ 
+     // Make sure we have a Stripe customer for either path
+     const { customerId } = await getOrCreateStripeCustomer(req);
+ 
+     // EXISTING CUSTOMER: use Customer Portal
+     // (This is the key behavior change.)
+     if (hasActiveishSub || context === "upgrade") {
+       // allow only internal return paths (copying your portal safety pattern)
+       const returnPath = "/account?tab=plan";
+       const portal = await stripe.billingPortal.sessions.create({
+         customer: customerId,
+         return_url: `${baseUrl}${returnPath}`,
+       });
+ 
+       return res.json({ url: portal.url, mode: "portal" });
+     }
+ 
+     // NEW CUSTOMER: go to Checkout as you already do
+     const priceId = PRICE_BY_PLAN[plan];
+     if (!priceId) {
+       return res.status(400).json({ error: "Invalid plan." });
+     }
+ 
+     const session = await stripe.checkout.sessions.create({
+       mode: "subscription",
+       customer: customerId,
+       line_items: [{ price: priceId, quantity: 1 }],
+       success_url: `${baseUrl}/billing-success?session_id={CHECKOUT_SESSION_ID}`,
+       cancel_url: `${baseUrl}/billing-canceled`,
+       allow_promotion_codes: true,
+       metadata: {
+-        userId: String(userId),
++        userId: String(req.session.userId),
++        companyId: String(companyId),
+         plan,
+       },
+     });
+ 
+     return res.json({ url: session.url, mode: "checkout" });
+   } catch (e) {
+     console.error("POST /billing/continue error:", e);
+     return res.status(500).json({ error: e.message || "Server error" });
+   }
+ });
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ /**
+  * POST /billing/checkout
+  * Body: { plan: "core" | "pro" | "enterprise" }
+  * Returns: { url }
+  */
+-router.post("/billing/checkout", async (req, res) => {
++router.post("/billing/checkout", loadCompanyContext, requireCompanyOwner, async (req, res) => {
+   if (!requireSession(req, res)) return;
+ 
+   try {
++    const companyId = req.companyContext.companyId;
+     const plan = String(req.body?.plan || "core").toLowerCase().trim();
+     const priceId = PRICE_BY_PLAN[plan];
+ 
+     if (!priceId) {
+       return res.status(400).json({ error: "Invalid plan." });
+     }
+ 
+     const { customerId } = await getOrCreateStripeCustomer(req);
+ 
+     const baseUrl =
+       process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get("host")}`;
+ 
+     const session = await stripe.checkout.sessions.create({
+       mode: "subscription",
+       customer: customerId,
+       line_items: [{ price: priceId, quantity: 1 }],
+       success_url: `${baseUrl}/billing-success?session_id={CHECKOUT_SESSION_ID}`,
+       cancel_url: `${baseUrl}/billing-canceled`,
+       allow_promotion_codes: true,
+       metadata: {
+         userId: String(req.session.userId),
++        companyId: String(companyId),
+         plan,
+       },
+     });
+ 
+     return res.json({ url: session.url });
+   } catch (e) {
+     console.error("POST /billing/checkout error:", e);
+     return res.status(500).json({ error: e.message || "Server error" });
+   }
+ });
+ 
+ //Billing Portal
+-router.post("/billing/portal", async (req, res) => {
++router.post("/billing/portal", loadCompanyContext, requireCompanyOwner, async (req, res) => {
+   if (!requireSession(req, res)) return;
+ 
+   try {
+     const { customerId } = await getOrCreateStripeCustomer(req);
+ 
+     const baseUrl =
+       process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get("host")}`;
+ 
+     // allow only internal return paths
+     const returnPath = String(req.body?.returnPath || "/account?tab=billing");
+     const safeReturnPath =
+       returnPath.startsWith("/") ? returnPath : "/account?tab=billing";
+ 
+     const portal = await stripe.billingPortal.sessions.create({
+       customer: customerId,
+       return_url: `${baseUrl}${safeReturnPath}`,
+     });
+ 
+     return res.json({ url: portal.url });
+   } catch (e) {
+     console.error("POST /billing/portal error:", e);
+     return res.status(500).json({ error: "Server error" });
+   }
+ });
+ 
+ /**
+  * GET /billing/session?session_id=cs_...
+  * Returns: { ok, plan, price, email, subscriptionId, subscriptionStatus }
+  */
+-router.get("/billing/session", async (req, res) => {
++router.get("/billing/session", loadCompanyContext, requireCompanyOwner, async (req, res) => {
+   if (!requireSession(req, res)) return;
+ 
+   try {
+     const sessionId = String(req.query.session_id || "");
+     if (!sessionId.startsWith("cs_")) {
+       return res.status(400).json({ error: "Invalid session_id" });
+     }
+ 
+     // 1) Session (metadata + customer_details + subscription)
+     const session = await stripe.checkout.sessions.retrieve(sessionId, {
+       expand: ["subscription"],
+     });
+ 
+     // 2) Line items (reliable way to get the price)
+     const lineItems = await stripe.checkout.sessions.listLineItems(sessionId, {
+       limit: 1,
+       expand: ["data.price"],
+     });
+ 
+     const plan = session?.metadata?.plan || null;
+ 
+     const sub = session.subscription;
+     const subscriptionId = typeof sub === "string" ? sub : sub?.id || null;
+     const subscriptionStatus =
+       typeof sub === "object" ? sub?.status : null;
+diff --git a/src/routes/internal/contracts.routes.js b/src/routes/internal/contracts.routes.js
+index 4047ce4a172b32a165e7229f836c7668bce7fa32..b241667e0fd72f7505218eb8db72a1e6575d984f 100644
+--- a/src/routes/internal/contracts.routes.js
++++ b/src/routes/internal/contracts.routes.js
+@@ -1,327 +1,332 @@
+ "use strict";
+ 
+ const express = require("express");
+ const crypto = require("crypto");
+ 
+ const { pool } = require("../../db/pool");
+ const { requireAuth } = require("../../middleware/requireAuth");
++const { loadCompanyContext } = require("../../middleware/companyContext");
+ const { sendContractEmail } = require("../../clients/mailgun");
+ 
+ const { spaces } = require("../../clients/spacesS3v2");
+ 
+ 
+ const router = express.Router();
+ 
+ function makeToken() {
+   return crypto.randomBytes(24).toString("hex");
+ }
+ 
+ /** ---------- CONTRACT TEMPLATES (broker-side) ---------- **/
+-router.get("/user-contracts", requireAuth, async (req, res) => {
+-  const userId = req.session.userId;
++router.get("/user-contracts", requireAuth, loadCompanyContext, async (req, res) => {
++  const companyId = req.companyContext.companyId;
+ 
+   try {
+     const { rows } = await pool.query(
+       `
+       SELECT
+         id,
+         name,
+         version,
+         storage_provider,
+         storage_key,
+         created_at
+       FROM public.user_contracts
+-      WHERE user_id = $1
++      WHERE company_id = $1
+       ORDER BY created_at DESC;
+       `,
+-      [userId]
++      [companyId]
+     );
+ 
+     res.json({ rows });
+   } catch (err) {
+     console.error("GET /api/user-contracts error:", err);
+     res.status(500).json({ error: "Failed to load contract templates" });
+   }
+ });
+ 
+ /** ---------- CONTRACT TEMPLATE PDF (broker-side preview) ---------- **/
+-router.get("/user-contracts/:id/pdf", requireAuth, async (req, res) => {
+-  const userId = req.session.userId;
++router.get("/user-contracts/:id/pdf", requireAuth, loadCompanyContext, async (req, res) => {
++  const companyId = req.companyContext.companyId;
+   const templateId = String(req.params.id || "").trim();
+   if (!templateId) return res.status(400).send("Missing template id");
+ 
+   try {
+     const { rows } = await pool.query(
+       `
+       SELECT
+         storage_provider,
+         storage_key,
+         name
+       FROM public.user_contracts
+       WHERE id = $1
+-        AND user_id = $2
++        AND company_id = $2
+       LIMIT 1;
+       `,
+-      [templateId, userId]
++      [templateId, companyId]
+     );
+ 
+     if (rows.length === 0) return res.status(404).send("Not found");
+ 
+     const row = rows[0];
+ 
+     if (row.storage_provider !== "DO_SPACES") {
+       return res.status(500).send("Storage provider not configured");
+     }
+     if (!row.storage_key) {
+       return res.status(500).send("Missing storage key");
+     }
+ 
+     const Bucket = process.env.SPACES_BUCKET;
+     const Key = row.storage_key;
+ 
+     // Stream from Spaces
+     const obj = spaces.getObject({ Bucket, Key }).createReadStream();
+ 
+     obj.on("error", (err) => {
+       console.error("SPACES getObject error:", err?.code, err?.message, err);
+       if (err?.code === "NoSuchKey") return res.status(404).send("PDF not found");
+       return res.status(500).send("Failed to load PDF");
+     });
+ 
+     const safeName = String(row.name || "contract")
+       .replace(/[^\w\-]+/g, "_")
+       .slice(0, 60);
+ 
+     res.setHeader("Content-Type", "application/pdf");
+     res.setHeader(
+       "Content-Disposition",
+       `inline; filename="${safeName}.pdf"`
+     );
+     // Private caching is fine for broker-side templates
+     res.setHeader("Cache-Control", "private, max-age=300");
+ 
+     obj.pipe(res);
+   } catch (err) {
+     console.error("GET /api/user-contracts/:id/pdf error:", err?.message, err);
+     return res.status(500).send("Server error");
+   }
+ });
+ 
+ 
+ 
+ /** ---------- CONTRACT SEND ROUTE ---------- **/
+-router.post("/contracts/send/:dot", requireAuth, async (req, res) => {
++router.post("/contracts/send/:dot", requireAuth, loadCompanyContext, async (req, res) => {
+   const dotnumber = req.params.dot;
+   const { user_contract_id, email_to,carrier_name } = req.body || {};
+   const user_id = req.session.userId;
++  const companyId = req.companyContext.companyId;
+ 
+   if (!user_contract_id || !email_to) {
+     return res.status(400).json({
+       error: "user_contract_id and email_to are required"
+     });
+   }
+ 
+   const token = makeToken();
+   const token_expires_at = new Date(Date.now() + 72 * 60 * 60 * 1000);
+   const link = `https://carriershark.com/contract/${token}`;
+ 
+   const client = await pool.connect();
+   try {
+     await client.query("BEGIN");
+ 
+ const templateRes = await client.query(
+   `
+   SELECT
+     name,
+     display_name
+   FROM public.user_contracts
+   WHERE id = $1
+-    AND user_id = $2
++    AND company_id = $2
+     AND storage_provider = 'DO_SPACES'
+     AND storage_key IS NOT NULL
+   LIMIT 1;
+   `,
+-  [user_contract_id, user_id]
++  [user_contract_id, companyId]
+ );
+ 
+ if (templateRes.rowCount === 0) {
+   throw Object.assign(new Error("Invalid or unauthorized contract template"), {
+     statusCode: 400
+   });
+ }
+ 
+ const agreement_type = templateRes.rows[0].name || "Carrier Agreement";
+ const broker_name = templateRes.rows[0].display_name || "Carrier Agreement";
+ 
+ 
+     const insertSql = `
+       INSERT INTO public.contracts
+         (
+           user_id,
++          company_id,
+           dotnumber,
+           status,
+           channel,
+           provider,
+           payload,
+           sent_at,
+           token,
+           token_expires_at,
+           email_to,
+           user_contract_id
+         )
+       VALUES
+         (
+           $1,
+           $2,
++          $3,
+           'SENT',
+           'EMAIL',
+           'MAILGUN',
+-          $3::jsonb,
++          $4::jsonb,
+           NOW(),
+-          $4,
+           $5,
+           $6,
+-          $7
++          $7,
++          $8
+         )
+       RETURNING contract_id;
+     `;
+ 
+     const { rows } = await client.query(insertSql, [
+       user_id,
++      companyId,
+       dotnumber,
+       JSON.stringify({ broker_name, agreement_type }),
+       token,
+       token_expires_at.toISOString(),
+       email_to,
+       user_contract_id
+     ]);
+ 
+ 
+     const contract_id = rows[0]?.contract_id;
+     if (!contract_id) throw new Error("Failed to create contract");
+ 
+     await sendContractEmail({
+       to: email_to,
+       broker_name,
+       carrier_name: carrier_name || "", // optional for now
+       dotnumber: String(dotnumber),
+       agreement_type,
+       link
+     });
+ 
+     await client.query("COMMIT");
+ 
+     return res.json({
+       ok: true,
+       contract_id,
+       status: "SENT",
+       link
+     });
+   } catch (err) {
+     try {
+       await client.query("ROLLBACK");
+     } catch {}
+ 
+     console.error("SEND CONTRACT ERROR:", err);
+ 
+     return res.status(err.statusCode || 500).json({
+       error: err.message || "Failed to send contract"
+     });
+   } finally {
+     client.release();
+   }
+ });
+ 
+ /** ---------- LATEST CONTRACT FOR DOT (broker-side) ---------- **/
+-router.get("/contracts/latest/:dot", requireAuth, async (req, res) => {
+-  const userId = req.session.userId;
++router.get("/contracts/latest/:dot", requireAuth, loadCompanyContext, async (req, res) => {
++  const companyId = req.companyContext.companyId;
+   const dotnumber = String(req.params.dot || "").trim();
+ 
+   if (!dotnumber) return res.status(400).json({ error: "dot is required" });
+ 
+   try {
+     const { rows } = await pool.query(
+       `
+       SELECT
+         c.contract_id,
+         c.user_id,
+         c.dotnumber,
+         c.status,
+         c.channel,
+         c.provider,
+         c.email_to,
+         c.sent_at,
+         c.signed_at,
+         c.created_at,
+         c.updated_at,
+         c.user_contract_id,
+         uc.name AS contract_name,
+         uc.version AS contract_version,
+         ca.method AS acceptance_method,
+         ca.accepted_at,
+         ca.accepted_name,
+         ca.accepted_title,
+         ca.accepted_email,
+         ca.accepted_ip
+       FROM public.contracts c
+       LEFT JOIN public.user_contracts uc
+         ON uc.id = c.user_contract_id
+       LEFT JOIN public.contract_acceptances ca
+         ON ca.contract_id = c.contract_id
+-      WHERE c.user_id = $1
++      WHERE c.company_id = $1
+         AND c.dotnumber = $2
+       ORDER BY c.created_at DESC
+       LIMIT 1;
+       `,
+-      [userId, dotnumber]
++      [companyId, dotnumber]
+     );
+ 
+     if (rows.length === 0) return res.json({ row: null });
+ 
+     res.json({ row: rows[0] });
+   } catch (err) {
+     console.error("GET /api/contracts/latest/:dot error:", err);
+     res.status(500).json({ error: "Failed to load latest contract" });
+   }
+ });
+ 
+-router.get("/contracts/:dot", requireAuth, async (req, res) => {
+-  const userId = req.session.userId;
++router.get("/contracts/:dot", requireAuth, loadCompanyContext, async (req, res) => {
++  const companyId = req.companyContext.companyId;
+   const dotnumber = String(req.params.dot || "").trim();
+ 
+   try {
+     const { rows } = await pool.query(
+       `
+       SELECT
+         contract_id, status, email_to, sent_at, created_at, updated_at, user_contract_id
+       FROM public.contracts
+-      WHERE user_id = $1 AND dotnumber = $2
++      WHERE company_id = $1 AND dotnumber = $2
+       ORDER BY created_at DESC
+       LIMIT 50;
+       `,
+-      [userId, dotnumber]
++      [companyId, dotnumber]
+     );
+ 
+     res.json({ rows });
+   } catch (err) {
+     console.error("GET /api/contracts/:dot error:", err);
+     res.status(500).json({ error: "Failed to load contract history" });
+   }
+ });
+ 
+ 
+ // ---------- DEFAULT CONTRACT TEMPLATE ----------
+ router.get("/agreements/default", requireAuth, async (req, res) => {
+   const userId = req.session.userId;
+ 
+   try {
+     const { rows } = await pool.query(
+       `
+       SELECT
+         d.default_user_contract_id,
+         uc.name,
+         uc.version,
+         uc.created_at
+       FROM public.user_contract_defaults d
+       JOIN public.user_contracts uc
+         ON uc.id = d.default_user_contract_id
+diff --git a/src/routes/internal/myCarriers.routes.js b/src/routes/internal/myCarriers.routes.js
+index 92faaf7ded9ae17139f800ccd4b0fccc4e7c13f2..1f0d0e87a510943926ca4941d9e433268a0e797c 100644
+--- a/src/routes/internal/myCarriers.routes.js
++++ b/src/routes/internal/myCarriers.routes.js
+@@ -1,316 +1,319 @@
+ "use strict";
+ 
+ const express = require("express");
+ const { pool } = require("../../db/pool");
+ const { requireAuth } = require("../../middleware/requireAuth");
++const { loadCompanyContext } = require("../../middleware/companyContext");
+ 
+ const router = express.Router();
+ 
+ /** ---------- MY CARRIERS ROUTES ---------- **/
+ 
+ // Get list of carriers saved by this user (paginated + sortable)
+-router.get("/my-carriers", requireAuth, async (req, res) => {
++router.get("/my-carriers", requireAuth, loadCompanyContext, async (req, res) => {
+   try {
+-    const userId = req.session.userId;
++    const companyId = req.companyContext.companyId;
+ 
+     const page = parseInt(req.query.page, 10) || 1;
+     const pageSize = parseInt(req.query.pageSize, 10) || 25;
+     const offset = (page - 1) * pageSize;
+ 
+     const sortBy = req.query.sortBy || null;
+     const sortDir =
+       (req.query.sortDir || "asc").toLowerCase() === "desc" ? "DESC" : "ASC";
+ 
+     const sortMap = {
+       dot: "c.dotnumber",
+       mc: "c.mc_number",
+       carrier: "COALESCE(c.legalname, c.dbaname)",
+       location: "COALESCE(c.phycity,'') || ', ' || COALESCE(c.phystate,'')",
+       operating: "c.allowedtooperate",
+       common: "c.commonauthoritystatus",
+       contract: "c.contractauthoritystatus",
+       broker: "c.brokerauthoritystatus",
+       safety: "c.safetyrating"
+     };
+ 
+     const orderColumn = sortMap[sortBy] || "uc.added_at";
+ 
+     const dataSql = `
+       SELECT
+         c.dotnumber AS dot,
+         c.*
+       FROM user_carriers uc
+       JOIN carriers c
+         ON c.dotnumber = uc.carrier_dot
+-      WHERE uc.user_id = $1
++      WHERE uc.company_id = $1
+       ORDER BY ${orderColumn} ${sortDir}
+       LIMIT $2 OFFSET $3;
+     `;
+ 
+     const countSql = `
+       SELECT COUNT(*)::int AS count
+       FROM user_carriers
+-      WHERE user_id = $1;
++      WHERE company_id = $1;
+     `;
+ 
+     const [dataResult, countResult] = await Promise.all([
+-      pool.query(dataSql, [userId, pageSize, offset]),
+-      pool.query(countSql, [userId])
++      pool.query(dataSql, [companyId, pageSize, offset]),
++      pool.query(countSql, [companyId])
+     ]);
+ 
+     res.json({
+       rows: dataResult.rows,
+       total: countResult.rows[0].count,
+       page,
+       pageSize
+     });
+   } catch (err) {
+     console.error("Error in GET /api/my-carriers:", err);
+     res.status(500).json({ error: "Failed to load user carriers" });
+   }
+ });
+ 
+ // Save a new carrier for this user (enforces carrier_limit)
+-router.post("/my-carriers", requireAuth, async (req, res) => {
++router.post("/my-carriers", requireAuth, loadCompanyContext, async (req, res) => {
+   const userId = req.session.userId;
++  const companyId = req.companyContext.companyId;
+   const dotRaw = req.body?.dot;
+ 
+   const dot = String(dotRaw || "").replace(/\D/g, "");
+   if (!dot) {
+     return res.status(400).json({ ok: false, error: "Carrier DOT required" });
+   }
+ 
+   const client = await pool.connect();
+   try {
+     await client.query("BEGIN");
+ 
+-    // 1) Lock the user row so limit checks are race-safe
++    // 1) Lock the company row so limit checks are race-safe
+     const u = await client.query(
+       `SELECT carrier_limit
+-       FROM users
++       FROM companies
+        WHERE id = $1
+        FOR UPDATE`,
+-      [userId]
++      [companyId]
+     );
+ 
+     if (!u.rows.length) {
+       await client.query("ROLLBACK");
+       return res.status(401).json({ ok: false, error: "Unauthorized" });
+     }
+ 
+     const limit = Number(u.rows[0].carrier_limit || 0);
+ 
+     // 2) Current count (FOR UPDATE here is optional; user row lock is enough)
+     const c = await client.query(
+       `SELECT COUNT(*)::int AS carrier_count
+        FROM user_carriers
+-       WHERE user_id = $1`,
+-      [userId]
++       WHERE company_id = $1`,
++      [companyId]
+     );
+ 
+     const count = c.rows[0].carrier_count;
+ 
+     // Treat NULL limit as "unlimited" (you can change this behavior)
+ 
+     // 3) If already added, return success (do not count against limit)
+     const exists = await client.query(
+       `SELECT 1
+        FROM user_carriers
+-       WHERE user_id = $1 AND carrier_dot = $2
++       WHERE company_id = $1 AND carrier_dot = $2
+        LIMIT 1`,
+-      [userId, dot]
++      [companyId, dot]
+     );
+ 
+     if (exists.rows.length) {
+       await client.query("COMMIT");
+       return res.json({ ok: true, already: true, carrier_count: count, carrier_limit: limit });
+     }
+ 
+     // 4) Enforce limit BEFORE insert
+     if (count >= limit) {
+       await client.query("ROLLBACK");
+       return res.status(409).json({
+         ok: false,
+         code: "CARRIER_LIMIT",
+         carrier_limit: Number(limit),
+         carrier_count: count
+       });
+     }
+ 
+     // 5) Insert
+     await client.query(
+-      `INSERT INTO user_carriers (user_id, carrier_dot)
+-       VALUES ($1, $2)`,
+-      [userId, dot]
++      `INSERT INTO user_carriers (company_id, user_id, carrier_dot)
++       VALUES ($1, $2, $3)`,
++      [companyId, userId, dot]
+     );
+ 
+     await client.query("COMMIT");
+     return res.json({
+       ok: true,
+       added: true,
+       carrier_count: count + 1,
+       carrier_limit: limit
+     });
+   } catch (err) {
+     await client.query("ROLLBACK");
+     console.error("Error in POST /api/my-carriers:", err);
+     return res.status(500).json({ ok: false, error: "Failed to add carrier" });
+   } finally {
+     client.release();
+   }
+ });
+ 
+ 
+ // Get ALL saved DOTs for this user (no join, no pagination) - used by UI to mark "My Carrier"
+-router.get("/my-carriers/dots", requireAuth, async (req, res) => {
++router.get("/my-carriers/dots", requireAuth, loadCompanyContext, async (req, res) => {
+   try {
+-    const userId = req.session.userId;
++    const companyId = req.companyContext.companyId;
+ 
+     const result = await pool.query(
+       `SELECT carrier_dot
+        FROM user_carriers
+-       WHERE user_id = $1;`,
+-      [userId]
++       WHERE company_id = $1;`,
++      [companyId]
+     );
+ 
+     // return array of strings
+     res.json(result.rows.map(r => String(r.carrier_dot)));
+   } catch (err) {
+     console.error("Error in GET /api/my-carriers/dots:", err);
+     res.status(500).json({ error: "Failed to load carrier dots" });
+   }
+ });
+ 
+ 
+-router.post("/my-carriers/bulk", requireAuth, async (req, res) => {
++router.post("/my-carriers/bulk", requireAuth, loadCompanyContext, async (req, res) => {
+   const userId = req.session.userId;
++  const companyId = req.companyContext.companyId;
+   const client = await pool.connect();
+ 
+   try {
+     let { dots } = req.body || {};
+ 
+     if (!Array.isArray(dots) || dots.length === 0) {
+       return res.status(400).json({ ok: false, error: "dots array required" });
+     }
+ 
+     const uniqueDots = [...new Set(
+       dots
+         .map((d) => String(d).trim())
+         .filter((d) => d && /^\d+$/.test(d))
+     )];
+ 
+     if (uniqueDots.length === 0) {
+       return res.status(400).json({ ok: false, error: "No valid DOT numbers found" });
+     }
+ 
+     await client.query("BEGIN");
+ 
+     // 1) Lock user row + get limit (NULL => 0)
+     const u = await client.query(
+       `SELECT COALESCE(carrier_limit, 0)::int AS carrier_limit
+-       FROM users
++       FROM companies
+        WHERE id = $1
+        FOR UPDATE`,
+-      [userId]
++      [companyId]
+     );
+ 
+     if (!u.rows.length) {
+       await client.query("ROLLBACK");
+       return res.status(401).json({ ok: false, error: "Unauthorized" });
+     }
+ 
+     const carrierLimit = Number(u.rows[0].carrier_limit || 0);
+ 
+     // 2) Current count
+     const c = await client.query(
+       `SELECT COUNT(*)::int AS carrier_count
+        FROM user_carriers
+-       WHERE user_id = $1`,
+-      [userId]
++       WHERE company_id = $1`,
++      [companyId]
+     );
+ 
+     const carrierCount = Number(c.rows[0].carrier_count || 0);
+ 
+     const remaining = carrierLimit - carrierCount;
+ 
+     // If they cannot add any more, return limit response (for your modal)
+     if (remaining <= 0) {
+       await client.query("ROLLBACK");
+       return res.status(409).json({
+         ok: false,
+         code: "CARRIER_LIMIT",
+         carrier_limit: carrierLimit,
+         carrier_count: carrierCount
+       });
+     }
+ 
+     // 3) Insert up to remaining slots
+     const sql = `
+   WITH input(dot) AS (
+-    SELECT UNNEST($2::text[])
++    SELECT UNNEST($3::text[])
+   ),
+   valid AS (
+     SELECT i.dot
+     FROM input i
+     JOIN carriers c ON c.dotnumber::text = i.dot
+   ),
+   already AS (
+     SELECT v.dot
+     FROM valid v
+     JOIN user_carriers uc
+-      ON uc.user_id = $1 AND uc.carrier_dot = v.dot
++      ON uc.company_id = $1 AND uc.carrier_dot = v.dot
+   ),
+   new_valid AS (
+     SELECT v.dot
+     FROM valid v
+     LEFT JOIN already a ON a.dot = v.dot
+     WHERE a.dot IS NULL
+   ),
+   slots AS (
+     SELECT nv.dot
+     FROM new_valid nv
+-    LIMIT $3
++    LIMIT $4
+   ),
+   ins AS (
+-    INSERT INTO user_carriers (user_id, carrier_dot, added_at)
+-    SELECT $1, s.dot, NOW()
++    INSERT INTO user_carriers (company_id, user_id, carrier_dot, added_at)
++    SELECT $1, $2, s.dot, NOW()
+     FROM slots s
+-    ON CONFLICT (user_id, carrier_dot) DO NOTHING
++    ON CONFLICT (company_id, carrier_dot) DO NOTHING
+     RETURNING carrier_dot
+   )
+   SELECT
+     (SELECT COUNT(*) FROM input) AS submitted,
+     (SELECT COUNT(*) FROM valid) AS valid,
+     (SELECT COUNT(*) FROM already) AS duplicates,
+     (SELECT COUNT(*) FROM ins) AS inserted,
+     (SELECT COUNT(*) FROM input) - (SELECT COUNT(*) FROM valid) AS invalid,
+-    GREATEST((SELECT COUNT(*) FROM new_valid) - $3, 0) AS skipped_limit,
++    GREATEST((SELECT COUNT(*) FROM new_valid) - $4, 0) AS skipped_limit,
+     (SELECT COALESCE(ARRAY_AGG(carrier_dot), ARRAY[]::text[]) FROM ins) AS inserted_dots;
+ `;
+ 
+-    const result = await client.query(sql, [userId, uniqueDots, remaining]);
++    const result = await client.query(sql, [companyId, userId, uniqueDots, remaining]);
+     const s = result.rows[0];
+ 
+     const insertedDots = s.inserted_dots || [];
+ 
+     // 4) Refresh queue only for dots we actually inserted (and only if stale)
+     if (insertedDots.length > 0) {
+       await client.query(
+         `
+         INSERT INTO carrier_refresh_queue (
+           dotnumber,
+           requested_by,
+           source,
+           priority,
+           status,
+           created_at
+         )
+         SELECT
+           c.dotnumber::text,
+           $2,
+           'IMPORT',
+           80,
+           'PENDING',
+           NOW()
+         FROM carriers c
+         JOIN UNNEST($1::text[]) d(dot)
+@@ -338,99 +341,99 @@ const note =
+       carrier_limit: carrierLimit,
+       carrier_count: newCount,
+      inserted_dots: insertedDots,
+      note, 
+     summary: {
+         totalSubmitted: Number(s.submitted),
+         valid: Number(s.valid),
+         inserted: Number(s.inserted),
+         duplicates: Number(s.duplicates),
+         invalid: Number(s.invalid),
+         skipped_limit: Number(s.skipped_limit)
+       }
+     });
+ 
+   } catch (err) {
+     await client.query("ROLLBACK");
+     console.error("Error in POST /api/my-carriers/bulk:", err);
+     return res.status(500).json({ ok: false, error: "Failed to bulk add carriers" });
+   } finally {
+     client.release();
+   }
+ });
+ 
+ 
+ // Preview bulk import (no DB writes)
+-router.post("/my-carriers/bulk/preview", requireAuth, async (req, res) => {
++router.post("/my-carriers/bulk/preview", requireAuth, loadCompanyContext, async (req, res) => {
+   try {
+-    const userId = req.session.userId;
++    const companyId = req.companyContext.companyId;
+     let { dots } = req.body || {};
+ 
+     if (!Array.isArray(dots) || dots.length === 0) {
+       return res.status(400).json({ error: "dots array required" });
+     }
+ 
+     dots = dots
+       .map((d) => String(d).trim())
+       .filter((d) => d && /^\d+$/.test(d));
+ 
+     const uniqueDots = [...new Set(dots)];
+ 
+     if (uniqueDots.length === 0) {
+       return res.status(400).json({ error: "No valid DOT numbers found" });
+     }
+ 
+     const carriersRes = await pool.query(
+       `
+       SELECT dotnumber,
+              COALESCE(legalname, dbaname) AS name,
+              phycity,
+              phystate
+       FROM carriers
+       WHERE dotnumber = ANY($1::text[]);
+       `,
+       [uniqueDots]
+     );
+ 
+     const carriersMap = new Map();
+     carriersRes.rows.forEach((r) => {
+       carriersMap.set(r.dotnumber, {
+         dot: r.dotnumber,
+         name: r.name,
+         city: r.phycity,
+         state: r.phystate
+       });
+     });
+ 
+     const userRes = await pool.query(
+       `
+       SELECT carrier_dot
+       FROM user_carriers
+-      WHERE user_id = $1
++      WHERE company_id = $1
+         AND carrier_dot = ANY($2::text[]);
+       `,
+-      [userId, uniqueDots]
++      [companyId, uniqueDots]
+     );
+ 
+     const userSet = new Set(userRes.rows.map((r) => r.carrier_dot));
+ 
+     const newList = [];
+     const duplicates = [];
+     const invalid = [];
+ 
+     for (const dot of uniqueDots) {
+       const carrier = carriersMap.get(dot);
+ 
+       if (!carrier) {
+         invalid.push({
+           dot,
+           status: "invalid",
+           name: null,
+           city: null,
+           state: null
+         });
+       } else if (userSet.has(dot)) {
+         duplicates.push({
+           ...carrier,
+           status: "duplicate"
+         });
+       } else {
+@@ -438,187 +441,187 @@ router.post("/my-carriers/bulk/preview", requireAuth, async (req, res) => {
+           ...carrier,
+           status: "new"
+         });
+       }
+     }
+ 
+     res.json({
+       summary: {
+         totalSubmitted: uniqueDots.length,
+         new: newList.length,
+         duplicates: duplicates.length,
+         invalid: invalid.length
+       },
+       new: newList,
+       duplicates,
+       invalid
+     });
+   } catch (err) {
+     console.error("Error in POST /api/my-carriers/bulk/preview:", err);
+     res.status(500).json({ error: "Failed to preview bulk import" });
+   }
+ });
+ 
+ // Check if THIS dot is already saved for this user
+ 
+-router.get("/my-carriers/:dot", requireAuth, async (req, res) => {
+-  const userId = req.session.userId;
++router.get("/my-carriers/:dot", requireAuth, loadCompanyContext, async (req, res) => {
++  const companyId = req.companyContext.companyId;
+   const { dot } = req.params;
+ 
+   try {
+     const result = await pool.query(
+-      "SELECT 1 FROM user_carriers WHERE user_id = $1 AND carrier_dot = $2",
+-      [userId, dot]
++      "SELECT 1 FROM user_carriers WHERE company_id = $1 AND carrier_dot = $2",
++      [companyId, dot]
+     );
+ 
+     if (result.rowCount > 0) {
+       return res.json({ saved: true });
+     } else {
+       return res.status(404).json({ saved: false });
+     }
+   } catch (err) {
+     console.error("Error in GET /api/my-carriers/:dot:", err);
+     return res.status(500).json({ error: "Failed to check carrier" });
+   }
+ });
+ 
+ 
+ 
+ // Get email alert settings for THIS carrier
+-router.get("/my-carriers/:dot/alerts/email", requireAuth, async (req, res) => {
+-  const userId = req.session.userId;
++router.get("/my-carriers/:dot/alerts/email", requireAuth, loadCompanyContext, async (req, res) => {
++  const companyId = req.companyContext.companyId;
+   const { dot } = req.params;
+ 
+   try {
+     // 1) Ensure carrier is saved (optional but cleaner UX)
+     const uc = await pool.query(
+       `
+       SELECT email_alerts
+       FROM user_carriers
+-      WHERE user_id = $1 AND carrier_dot = $2
++      WHERE company_id = $1 AND carrier_dot = $2
+       `,
+-      [userId, dot]
++      [companyId, dot]
+     );
+ 
+     if (uc.rowCount === 0) {
+       return res.status(404).json({ error: "Carrier not saved" });
+     }
+ 
+     const enabled = String(uc.rows[0].email_alerts || "N").toUpperCase() === "Y";
+ 
+     // 2) Default email (for now: user email)
+     const userRes = await pool.query(
+       `SELECT email FROM users WHERE id = $1`,
+-      [userId]
++      [req.session.userId]
+     );
+ 
+     const defaultEmail = userRes.rows[0]?.email || null;
+ 
+     // 3) Extra recipients for this carrier
+     const recips = await pool.query(
+       `
+       SELECT email
+       FROM user_carrier_alert_recipients
+-      WHERE user_id = $1 AND carrier_dot = $2
++      WHERE company_id = $1 AND carrier_dot = $2
+       ORDER BY email
+       `,
+-      [userId, dot]
++      [companyId, dot]
+     );
+ 
+     return res.json({
+       enabled,
+       defaultEmail,
+       recipients: recips.rows.map(r => r.email)
+     });
+   } catch (err) {
+     console.error("Error in GET /api/my-carriers/:dot/alerts/email:", err);
+     return res.status(500).json({ error: "Failed to load email alert settings" });
+   }
+ });
+ 
+ 
+ // Save email alert settings for THIS carrier (toggle + recipients list)
+-router.put("/my-carriers/:dot/alerts/email", requireAuth, async (req, res) => {
+-  const userId = req.session.userId;
++router.put("/my-carriers/:dot/alerts/email", requireAuth, loadCompanyContext, async (req, res) => {
++  const companyId = req.companyContext.companyId;
+   const { dot } = req.params;
+ 
+   try {
+     const enabled = !!req.body?.enabled;
+     let recipients = Array.isArray(req.body?.recipients) ? req.body.recipients : [];
+ 
+     // normalize + validate emails
+     recipients = [...new Set(
+       recipients
+         .map(e => String(e || "").trim().toLowerCase())
+         .filter(Boolean)
+     )];
+ 
+     // basic email sanity check (keep simple)
+     const bad = recipients.find(e => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+     if (bad) {
+       return res.status(400).json({ error: `Invalid email: ${bad}` });
+     }
+ 
+     // must exist in user_carriers
+     const exists = await pool.query(
+-      `SELECT 1 FROM user_carriers WHERE user_id = $1 AND carrier_dot = $2`,
+-      [userId, dot]
++      `SELECT 1 FROM user_carriers WHERE company_id = $1 AND carrier_dot = $2`,
++      [companyId, dot]
+     );
+ 
+     if (exists.rowCount === 0) {
+       return res.status(404).json({ error: "Carrier not saved" });
+     }
+ 
+     // transaction: update toggle + replace recipients
+     const client = await pool.connect();
+     try {
+       await client.query("BEGIN");
+ 
+       await client.query(
+         `
+         UPDATE user_carriers
+         SET email_alerts = $3
+-        WHERE user_id = $1 AND carrier_dot = $2
++        WHERE company_id = $1 AND carrier_dot = $2
+         `,
+-        [userId, dot, enabled ? "Y" : "N"]
++        [companyId, dot, enabled ? "Y" : "N"]
+       );
+ 
+       await client.query(
+         `
+         DELETE FROM user_carrier_alert_recipients
+-        WHERE user_id = $1 AND carrier_dot = $2
++        WHERE company_id = $1 AND carrier_dot = $2
+         `,
+-        [userId, dot]
++        [companyId, dot]
+       );
+ 
+       if (recipients.length > 0) {
+         await client.query(
+           `
+-          INSERT INTO user_carrier_alert_recipients (user_id, carrier_dot, email)
+-          SELECT $1, $2, UNNEST($3::text[])
++          INSERT INTO user_carrier_alert_recipients (company_id, user_id, carrier_dot, email)
++          SELECT $1, NULL, $2, UNNEST($3::text[])
+           `,
+-          [userId, dot, recipients]
++          [companyId, dot, recipients]
+         );
+       }
+ 
+       await client.query("COMMIT");
+     } catch (e) {
+       await client.query("ROLLBACK");
+       throw e;
+     } finally {
+       client.release();
+     }
+ 
+     return res.json({ ok: true });
+   } catch (err) {
+     console.error("Error in PUT /api/my-carriers/:dot/alerts/email:", err);
+     return res.status(500).json({ error: "Failed to save email alert settings" });
+   }
+ });
+ 
+ 
+ /* ---------------- reffresh queue route ---------------- */
+ 
+ // src/routes/api/refreshQueue.routes.js (example)
+ 
+ 
+ router.get("/refresh-queue/status", requireAuth, async (req, res) => {
+@@ -632,43 +635,43 @@ router.get("/refresh-queue/status", requireAuth, async (req, res) => {
+       AND status IN ('PENDING','RUNNING')
+     `,
+     [userId]
+   );
+ 
+   const pending = [];
+   const running = [];
+   for (const r of rows) {
+     const dot = String(r.dotnumber || "").replace(/\D/g, "");
+     if (!dot) continue;
+     if (r.status === "PENDING") pending.push(dot);
+     else if (r.status === "RUNNING") running.push(dot);
+   }
+ 
+   res.json({
+     pending,
+     running,
+     counts: { pending: pending.length, running: running.length }
+   });
+ });
+ 
+ 
+ 
+ 
+ // Remove a carrier from this user's list
+-router.delete("/my-carriers/:dot", requireAuth, async (req, res) => {
+-  const userId = req.session.userId;
++router.delete("/my-carriers/:dot", requireAuth, loadCompanyContext, async (req, res) => {
++  const companyId = req.companyContext.companyId;
+   const dot = String(req.params.dot || "").replace(/\D/g, "");
+ 
+   try {
+     const result = await pool.query(
+-      "DELETE FROM user_carriers WHERE user_id = $1 AND carrier_dot = $2",
+-      [userId, dot]
++      "DELETE FROM user_carriers WHERE company_id = $1 AND carrier_dot = $2",
++      [companyId, dot]
+     );
+ 
+     res.json({ ok: true, deleted: result.rowCount });
+   } catch (err) {
+     console.error("Error in DELETE /api/my-carriers/:dot:", err);
+     res.status(500).json({ error: "Failed to remove carrier" });
+   }
+ });
+ 
+ module.exports = router;
