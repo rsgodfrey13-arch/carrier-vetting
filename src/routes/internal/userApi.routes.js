@@ -22,9 +22,27 @@ function maskKey(key) {
 }
 
 function generateApiKey() {
-  // 48 chars hex
   return crypto.randomBytes(24).toString("hex");
 }
+
+// helper: get company id from logged in user
+async function getCompanyId(userId) {
+  const { rows } = await pool.query(
+    `
+    SELECT default_company_id
+    FROM public.users
+    WHERE id = $1
+    `,
+    [userId]
+  );
+
+  return rows?.[0]?.default_company_id || null;
+}
+
+
+/* =========================================================
+   API KEY
+========================================================= */
 
 // GET /api/user/api
 router.get("/user/api", async (req, res) => {
@@ -32,24 +50,34 @@ router.get("/user/api", async (req, res) => {
 
   try {
     const userId = req.session.userId;
+    const companyId = await getCompanyId(userId);
+
+    if (!companyId) {
+      return res.json({ has_key: false, masked_key: null });
+    }
 
     const result = await pool.query(
-      "SELECT API_KEY FROM PUBLIC.USERS WHERE ID = $1",
-      [userId]
+      `
+      SELECT api_key
+      FROM public.companies
+      WHERE id = $1
+      `,
+      [companyId]
     );
 
     const apiKey = result.rows?.[0]?.api_key || null;
 
-    // Best practice: do NOT return the full key here.
     return res.json({
       has_key: !!apiKey,
       masked_key: maskKey(apiKey),
     });
+
   } catch (err) {
     console.error("Error in GET /api/user/api:", err);
     return res.status(500).json({ error: "Server error" });
   }
 });
+
 
 // POST /api/user/api/rotate
 router.post("/user/api/rotate", async (req, res) => {
@@ -57,19 +85,31 @@ router.post("/user/api/rotate", async (req, res) => {
 
   try {
     const userId = req.session.userId;
+    const companyId = await getCompanyId(userId);
+
+    if (!companyId) {
+      return res.status(400).json({ error: "No company found" });
+    }
+
     const newKey = generateApiKey();
 
     const result = await pool.query(
-      "UPDATE PUBLIC.USERS SET API_KEY = $1 WHERE ID = $2 RETURNING API_KEY",
-      [newKey, userId]
+      `
+      UPDATE public.companies
+      SET api_key = $1
+      WHERE id = $2
+      RETURNING api_key
+      `,
+      [newKey, companyId]
     );
 
     const saved = result.rows?.[0]?.api_key || null;
 
     return res.json({
       masked_key: maskKey(saved),
-      full_key: saved, // return once on rotate so UI can copy
+      full_key: saved, // return once so UI can copy
     });
+
   } catch (err) {
     console.error("Error in POST /api/user/api/rotate:", err);
     return res.status(500).json({ error: "Server error" });
@@ -77,49 +117,87 @@ router.post("/user/api/rotate", async (req, res) => {
 });
 
 
+/* =========================================================
+   WEBHOOK
+========================================================= */
+
 // GET /api/user/webhook
 router.get("/user/webhook", async (req, res) => {
-  if (!req.session?.userId) {
-    return res.status(401).json({ error: "Not logged in" });
-  }
+  if (!requireLogin(req, res)) return;
 
-  const { rows } = await pool.query(
-    "SELECT WEBHOOK_URL FROM PUBLIC.USERS WHERE ID = $1",
-    [req.session.userId]
-  );
+  try {
+    const companyId = await getCompanyId(req.session.userId);
 
-  res.json({ webhook_url: rows[0]?.webhook_url || "" });
-});
+    if (!companyId) {
+      return res.json({ webhook_url: "" });
+    }
 
-router.post("/user/webhook", async (req, res) => {
-  if (!req.session?.userId) {
-    return res.status(401).json({ error: "Not logged in" });
-  }
-
-  let url = String(req.body?.webhook_url || "").trim();
-
-  // allow clearing
-  if (!url) {
-    await pool.query(
-      "UPDATE PUBLIC.USERS SET WEBHOOK_URL = NULL WHERE ID = $1",
-      [req.session.userId]
+    const { rows } = await pool.query(
+      `
+      SELECT webhook_url
+      FROM public.companies
+      WHERE id = $1
+      `,
+      [companyId]
     );
-    return res.json({ ok: true });
+
+    res.json({ webhook_url: rows[0]?.webhook_url || "" });
+
+  } catch (err) {
+    console.error("Error in GET /api/user/webhook:", err);
+    return res.status(500).json({ error: "Server error" });
   }
-
-  // normalize if they forgot https
-  if (!/^https?:\/\//i.test(url)) {
-    url = "https://" + url;
-  }
-
-  await pool.query(
-    "UPDATE PUBLIC.USERS SET WEBHOOK_URL = $1 WHERE ID = $2",
-    [url, req.session.userId]
-  );
-
-  res.json({ ok: true, webhook_url: url });
 });
 
+
+// POST /api/user/webhook
+router.post("/user/webhook", async (req, res) => {
+  if (!requireLogin(req, res)) return;
+
+  try {
+    const companyId = await getCompanyId(req.session.userId);
+
+    if (!companyId) {
+      return res.status(400).json({ error: "No company found" });
+    }
+
+    let url = String(req.body?.webhook_url || "").trim();
+
+    // allow clearing
+    if (!url) {
+      await pool.query(
+        `
+        UPDATE public.companies
+        SET webhook_url = NULL
+        WHERE id = $1
+        `,
+        [companyId]
+      );
+
+      return res.json({ ok: true });
+    }
+
+    // normalize
+    if (!/^https?:\/\//i.test(url)) {
+      url = "https://" + url;
+    }
+
+    await pool.query(
+      `
+      UPDATE public.companies
+      SET webhook_url = $1
+      WHERE id = $2
+      `,
+      [url, companyId]
+    );
+
+    res.json({ ok: true, webhook_url: url });
+
+  } catch (err) {
+    console.error("Error in POST /api/user/webhook:", err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
 
 
 module.exports = router;
