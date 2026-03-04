@@ -2,7 +2,7 @@
 
 const express = require("express");
 const crypto = require("crypto");
-
+const bcrypt = require("bcrypt");
 const { pool } = require("../../db/pool");
 const { requireAuth } = require("../../middleware/requireAuth");
 const { loadCompanyContext } = require("../../middleware/companyContext");
@@ -466,7 +466,7 @@ router.post("/team/invites/accept", requireAuth, async (req, res) => {
   }
 });
 
-//const bcrypt = require("bcryptjs");
+
 
 router.post("/team/invites/accept-and-signup", async (req, res) => {
   const token = String(req.body?.token || "").trim();
