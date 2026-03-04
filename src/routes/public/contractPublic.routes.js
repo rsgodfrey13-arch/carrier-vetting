@@ -160,6 +160,97 @@ router.get("/contract/:token", async (req, res) => {
     .msg { font-size: 14px; }
     .ok { color: #86efac; }
     .err { color: #fca5a5; }
+
+/* modal (same vibe as account modal) */
+.modal-backdrop{
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding: 18px;
+  z-index: 9999;
+}
+.modal-backdrop.is-open{ display:flex; }
+.modal{
+  width: min(520px, 100%);
+  background: rgba(15,23,42,0.98);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.45);
+  overflow:hidden;
+}
+.modal-head{
+  display:flex; align-items:center; justify-content:space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+}
+.modal-head h3{ margin:0; font-size: 16px; }
+.icon-btn{
+  background: transparent;
+  border: 0;
+  color: #e6eefc;
+  font-size: 18px;
+  cursor:pointer;
+}
+.modal-body{ padding: 14px 16px; }
+.field-label{ font-size: 13px; opacity: 0.9; display:block; margin-bottom:6px; }
+.field-input{
+  width:100%;
+  padding: 12px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.06);
+  color:#e6eefc;
+  outline:none;
+}
+.modal-actions{
+  display:flex; gap:10px; justify-content:flex-end;
+  padding: 14px 16px;
+  border-top: 1px solid rgba(255,255,255,0.10);
+}
+.btn-primary{
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: #22c55e;
+  color:#06220f;
+  border:0;
+  font-weight: 800;
+  cursor:pointer;
+}
+.btn-ghost{
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.08);
+  color:#e6eefc;
+  border: 1px solid rgba(255,255,255,0.12);
+  cursor:pointer;
+}
+.form-error{
+  margin-top:10px;
+  color:#fca5a5;
+}
+
+/* success overlay */
+.success-screen{
+  position: fixed; inset: 0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background: #0b1220;
+  z-index: 9000;
+}
+.success-card{
+  width: min(640px, 92vw);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 18px;
+  padding: 22px;
+  text-align:center;
+}
+.success-title{ font-size: 22px; font-weight: 900; }
+.success-sub{ margin-top: 8px; opacity: 0.92; }
+    
   </style>
 </head>
 <body>
@@ -245,6 +336,87 @@ router.get("/contract/:token", async (req, res) => {
   </div>
 
   <script>
+
+  function openOtpModal(deliveryTarget) {
+  const m = document.getElementById("otp-modal");
+  const sub = document.getElementById("otp-sub");
+  const input = document.getElementById("otp-code");
+  const err = document.getElementById("otp-error");
+
+  if (sub) sub.textContent = "Enter the 6-digit code sent to " + (deliveryTarget || "your email") + ".";
+  if (err) { err.style.display = "none"; err.textContent = ""; }
+  if (input) input.value = "";
+
+  m.classList.add("is-open");
+  m.setAttribute("aria-hidden", "false");
+  setTimeout(() => input?.focus(), 0);
+}
+
+function closeOtpModal() {
+  const m = document.getElementById("otp-modal");
+  if (!m) return;
+  m.classList.remove("is-open");
+  m.setAttribute("aria-hidden", "true");
+}
+
+function otpError(msg) {
+  const err = document.getElementById("otp-error");
+  if (!err) return;
+  err.textContent = msg || "Invalid code.";
+  err.style.display = "block";
+}
+
+function waitForOtp() {
+  return new Promise((resolve, reject) => {
+    const input = document.getElementById("otp-code");
+    const verifyBtn = document.getElementById("otp-verify");
+    const cancelBtn = document.getElementById("otp-cancel");
+    const closeBtn  = document.getElementById("otp-close");
+    const modal     = document.getElementById("otp-modal");
+
+    function cleanup() {
+      verifyBtn?.removeEventListener("click", onVerify);
+      cancelBtn?.removeEventListener("click", onCancel);
+      closeBtn?.removeEventListener("click", onCancel);
+      modal?.removeEventListener("click", onBackdrop);
+      document.removeEventListener("keydown", onKey);
+      input?.removeEventListener("keydown", onEnter);
+    }
+
+    function onCancel() {
+      cleanup();
+      closeOtpModal();
+      reject(new Error("Authentication cancelled."));
+    }
+
+    function onBackdrop(e) {
+      if (e.target === modal) onCancel();
+    }
+
+    function onKey(e) {
+      if (e.key === "Escape") onCancel();
+    }
+
+    function onEnter(e) {
+      if (e.key === "Enter") onVerify();
+    }
+
+    function onVerify() {
+      const code = (input?.value || "").trim();
+      if (!/^\d{6}$/.test(code)) return otpError("Enter a valid 6-digit code.");
+      cleanup();
+      closeOtpModal();
+      resolve(code);
+    }
+
+    verifyBtn?.addEventListener("click", onVerify);
+    cancelBtn?.addEventListener("click", onCancel);
+    closeBtn?.addEventListener("click", onCancel);
+    modal?.addEventListener("click", onBackdrop);
+    document.addEventListener("keydown", onKey);
+    input?.addEventListener("keydown", onEnter);
+  });
+}
     (function () {
       const alreadyAccepted = ${alreadyAccepted ? "true" : "false"};
       if (alreadyAccepted) return;
@@ -292,11 +464,19 @@ router.get("/contract/:token", async (req, res) => {
       
           // 2️⃣ If not already validated, prompt for OTP
           if (startData.status !== "MFA_ALREADY_VALID") {
-            const deliveryTarget = startData.deliveryTarget || "your email";
-            const code = window.prompt("Enter the 6-digit code sent to " + deliveryTarget + ":");
-      
-            if (!code) throw new Error("Authentication code required.");
-      
+
+const deliveryTarget = startData.deliveryTarget || "your email";
+openOtpModal(deliveryTarget);
+const code = await waitForOtp();
+
+const verifyResp = await fetch("/contract/" + encodeURIComponent(token) + "/mfa/verify", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ mfa_event_id: startData.mfa_event_id, otp: code })
+});
+
+const verifyData = await verifyResp.json().catch(() => ({}));
+if (!verifyResp.ok) throw new Error(verifyData.error || "Invalid authentication code.");
             const verifyResp = await fetch("/contract/" + encodeURIComponent(token) + "/mfa/verify", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -328,9 +508,8 @@ router.get("/contract/:token", async (req, res) => {
             btn.disabled = false;
             btn.textContent = "Accept Agreement";
           } else {
-            setMsg("Accepted. You may close this page.", "ok");
-            btn.textContent = "Accepted";
-            btn.disabled = true;
+            document.getElementById("signed-screen").style.display = "flex";
+            document.querySelector(".wrap").style.display = "none";
           }
         } catch (e) {
           setMsg(e.message || "Network error. Please try again.", "err");
