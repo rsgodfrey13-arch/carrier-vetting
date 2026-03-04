@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Carrier Shark - Accept Invite</title>
+
+  <link rel="stylesheet" href="/static/css/base.css" />
+  <link rel="stylesheet" href="/static/css/style1.css" />
+  <link rel="stylesheet" href="/static/css/signup.css" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+</head>
+
+<body class="auth-page">
+  <div class="bg-gradient"></div>
+
+  <div class="auth-shell">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="logo-row">
+          <img src="/static/img/logo-mark.svg" alt="Carrier Shark" class="logo-mark" />
+          <div class="logo-text">
+            <div class="brand">Carrier Shark</div>
+            <div class="tagline">Team Invite</div>
+          </div>
+        </div>
+      </div>
+
+      <h1 class="auth-title">Accept your invite</h1>
+      <p class="auth-subtitle" id="sub">Checking invite…</p>
+
+      <div class="auth-actions" style="margin-top:18px;">
+        <button class="btn-primary" id="btn-accept" disabled>Accept Invite</button>
+        <a class="btn-ghost" id="btn-login" href="/login">Log in</a>
+        <a class="btn-ghost" id="btn-create" href="/create-account">Create account</a>
+      </div>
+
+      <div class="muted" id="msg" style="margin-top:14px; display:none;"></div>
+    </div>
+  </div>
+
+<script>
+(function() {
+  const token = location.pathname.split("/accept-invite/")[1] || "";
+  const msg = document.getElementById("msg");
+  const sub = document.getElementById("sub");
+  const btn = document.getElementById("btn-accept");
+
+  function show(text) {
+    msg.textContent = text;
+    msg.style.display = text ? "block" : "none";
+  }
+
+  async function apiPost(url, body) {
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(body || {})
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      const e = new Error(data.error || "Request failed");
+      e.status = r.status;
+      throw e;
+    }
+    return data;
+  }
+
+  // Update login/create links to bounce back here
+  document.getElementById("btn-login").href = "/login?next=" + encodeURIComponent(location.pathname);
+  document.getElementById("btn-create").href = "/create-account?invite=" + encodeURIComponent(token);
+
+  sub.textContent = "Ready when you are.";
+  btn.disabled = false;
+
+  btn.addEventListener("click", async () => {
+    show("");
+    btn.disabled = true;
+    btn.textContent = "Accepting…";
+
+    try {
+      await apiPost("/api/team/invites/accept", { token });
+      sub.textContent = "Invite accepted.";
+      show("Welcome — taking you back to your account…");
+      setTimeout(() => {
+        window.location.href = "/account?tab=team";
+      }, 400);
+    } catch (e) {
+      console.error(e);
+
+      if (e.status === 401) {
+        sub.textContent = "You need an account first.";
+        show("Log in or create an account, then come back to this link.");
+      } else if (e.status === 410) {
+        sub.textContent = "Invite expired.";
+        show("Ask your teammate to resend the invite.");
+      } else {
+        sub.textContent = "Could not accept invite.";
+        show(e.message || "Something went wrong.");
+      }
+
+      btn.disabled = false;
+      btn.textContent = "Accept Invite";
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
