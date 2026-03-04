@@ -536,7 +536,7 @@ router.post("/contract/:token/mfa/start", async (req, res) => {
       INSERT INTO public.contract_mfa_events
         (contract_id, user_id, delivery_channel, delivery_target, otp_hash, expires_at, otp_ip, otp_user_agent, metadata)
       VALUES
-        ($1, NULL, 'email', $2, $3, $4, $5, $6, jsonb_build_object('token', $7))
+        ($1, NULL, 'email', $2, $3, $4, $5, $6, jsonb_build_object('token', $7::text))
       RETURNING id;
       `,
       [contract_id, delivery_target, otp_hash, expires_at, accepted_ip, accepted_user_agent, token]
