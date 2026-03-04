@@ -1069,17 +1069,18 @@ function initAccountPlanPicker({ currentPlanId, subscriptionStatus }) {
 }
   
 function renderCreditsUsage(me) {
-
-  // relabel UI
-const sub = document.getElementById("credits-subtext");
-if (sub) sub.textContent = "Carriers monitored.";
-
-const usedLabel = card.querySelector(".usage-metric .kv-label");
-if (usedLabel) usedLabel.textContent = "Carriers monitored";
-
-  
   const card = document.getElementById("usage-card");
   if (!card) return;
+
+  // show card (JS controls it)
+  card.style.display = "block";
+
+  // relabel UI (now that card exists)
+  const sub = document.getElementById("credits-subtext");
+  if (sub) sub.textContent = "Carriers monitored.";
+
+  const usedLabel = card.querySelector(".usage-metric .kv-label");
+  if (usedLabel) usedLabel.textContent = "Carriers monitored";
 
   const src = me?.user ? me.user : me;
 
@@ -1089,41 +1090,30 @@ if (usedLabel) usedLabel.textContent = "Carriers monitored";
   const used  = Number(usedRaw);
   const limit = Number(limitRaw);
 
-
-  // Always show the block so your UI is consistent
-  card.style.display = "block";
-
   const usedEl = document.getElementById("credits-used");
   const limEl  = document.getElementById("credits-limit");
-  const rstEl  = document.getElementById("credits-reset");
   const barEl  = document.getElementById("credits-bar");
   const badge  = document.getElementById("credits-badge");
   const foot   = document.getElementById("credits-footnote");
 
-  // Default placeholders
   if (usedEl) usedEl.textContent = Number.isFinite(used) ? used.toLocaleString() : "—";
   if (limEl)  limEl.textContent  = Number.isFinite(limit) ? limit.toLocaleString() : "—";
 
-
-
-  // If credits not wired yet, keep bar empty and badge neutral
   if (!Number.isFinite(used) || !Number.isFinite(limit) || limit <= 0) {
     if (barEl) barEl.style.width = "0%";
     if (badge) badge.textContent = "—";
-    if (foot)  foot.textContent = "Credits will appear here once usage is available.";
+    if (foot)  foot.textContent = "Carrier monitoring usage will appear here.";
     card.classList.remove("is-usage-warn");
     return;
   }
 
-  // percent + bar
   const pct = Math.max(0, Math.min(100, Math.round((used / limit) * 100)));
   if (barEl) barEl.style.width = `${pct}%`;
-  if (badge) badge.textContent = `${pct}% used`;
+  if (badge) badge.textContent = `${pct}% of limit`;
 
-const remaining = Math.max(0, limit - used);
-if (foot) foot.textContent = `${remaining.toLocaleString()} carrier slots remaining`;
-if (badge) badge.textContent = `${pct}% of limit`;
-  
+  const remaining = Math.max(0, limit - used);
+  if (foot) foot.textContent = `${remaining.toLocaleString()} carrier slots remaining`;
+
   card.classList.toggle("is-usage-warn", pct >= 90);
 }
   
