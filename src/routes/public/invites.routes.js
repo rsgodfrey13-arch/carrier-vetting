@@ -11,7 +11,6 @@ router.get("/accept-invite/:token", async (req, res) => {
   const token = String(req.params.token || "").trim();
   if (!token) return res.status(400).send("Missing token");
 
-  // Optional: validate invite exists so you can show a nicer error page
   try {
     const { rows } = await pool.query(
       `
@@ -27,16 +26,15 @@ router.get("/accept-invite/:token", async (req, res) => {
       [token]
     );
 
-    if (!rows.length) {
-      return res.status(404).send("Invite not found.");
-    }
+    if (!rows.length) return res.status(404).send("Invite not found.");
 
-    // Serve static HTML file
+    const inv = rows[0];
+    if (inv.status !== "PENDING") return res.status(409).send("Invite is no longer valid.");
+    if (inv.expires_at && new Date(inv.expires_at) < new Date()) return res.status(410).send("Invite expired.");
+
     return res.sendFile(
       path.join(__dirname, "../../../static", "accept-invite.html")
     );
-
-    res.sendFile(path.join(__dirname, ""));
   } catch (err) {
     console.error("GET /accept-invite/:token error:", err);
     return res.status(500).send("Server error");
