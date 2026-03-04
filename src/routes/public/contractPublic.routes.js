@@ -323,6 +323,46 @@ router.get("/contract/:token", async (req, res) => {
       });
 
     })();
+
+const achInput = document.getElementById("achUpload");
+const achBtn = document.getElementById("uploadAchBtn");
+const achMsg = document.getElementById("achMsg");
+
+if (achBtn) {
+  achBtn.addEventListener("click", async () => {
+    const file = achInput.files[0];
+
+    if (!file) {
+      achMsg.textContent = "Please choose a file.";
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    achBtn.disabled = true;
+    achBtn.textContent = "Uploading...";
+
+    try {
+      const resp = await fetch("/contract/" + encodeURIComponent(token) + "/ach-upload", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await resp.json();
+
+      if (!resp.ok) throw new Error(data.error || "Upload failed");
+
+      achMsg.textContent = "ACH document uploaded successfully.";
+    } catch (err) {
+      achMsg.textContent = err.message;
+    }
+
+    achBtn.disabled = false;
+    achBtn.textContent = "Upload ACH Document";
+  });
+}
+    
   </script>
 </body>
 </html>`);
@@ -332,6 +372,47 @@ router.get("/contract/:token", async (req, res) => {
   }
 });
 
+
+router.post("/contract/:token/ach-upload", async (req, res) => {
+  const token = req.params.token;
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT contract_id FROM contracts WHERE token = $1 LIMIT 1`,
+      [token]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ error: "Invalid contract" });
+    }
+
+    const contractId = rows[0].contract_id;
+
+    const file = req.files?.file;
+    if (!file) return res.status(400).json({ error: "Missing file" });
+
+    const key = `ach/${contractId}/${Date.now()}_${file.name}`;
+
+    await spaces.putObject({
+      Bucket: process.env.SPACES_BUCKET,
+      Key: key,
+      Body: file.data,
+      ContentType: file.mimetype
+    }).promise();
+
+    await pool.query(
+      `INSERT INTO contract_ach_documents (contract_id, storage_key)
+       VALUES ($1, $2)`,
+      [contractId, key]
+    );
+
+    res.json({ ok: true });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Upload failed" });
+  }
+});
 
 router.post("/contract/:token/mfa/start", async (req, res) => {
   const token = String(req.params.token || "").trim();
