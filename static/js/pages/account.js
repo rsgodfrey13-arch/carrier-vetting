@@ -18,6 +18,56 @@
     help: $("tab-help"),
   };
 
+function applyTabAccessByRole(roleRaw) {
+  const role = String(roleRaw || "").trim().toUpperCase();
+
+  // ✅ what you showed with green checks: only these for non-OWNER
+  const allowedForMember = new Set(["overview", "billing", "security"]);
+
+  // Owners see everything
+  const allowed = (role === "OWNER")
+    ? new Set(Object.keys(panels))
+    : allowedForMember;
+
+  // 1) Hide rail items that aren’t allowed
+  railItems.forEach((btn) => {
+    const tab = btn.dataset.tab;
+    const ok = allowed.has(tab);
+    btn.style.display = ok ? "" : "none";
+  });
+
+  // 2) Hide panels that aren’t allowed
+  Object.entries(panels).forEach(([tab, el]) => {
+    if (!el) return;
+    el.style.display = allowed.has(tab) ? "" : "none";
+  });
+
+  // 3) Block “jump” buttons to disallowed tabs (Manage links, etc.)
+  document.querySelectorAll("[data-tab-jump]").forEach((btn) => {
+    const target = String(btn.dataset.tabJump || "").trim().toLowerCase();
+    if (!target) return;
+    btn.style.display = allowed.has(target) ? "" : "none";
+  });
+
+  // 4) If current tab is no longer allowed, force Overview
+  if (!allowed.has(activeTab)) {
+    window.location.hash = "overview";
+    setActiveTab("overview");
+  }
+
+  // 5) Patch setActiveTab so even manual calls can’t open locked tabs
+  const _setActiveTab = setActiveTab;
+  setActiveTab = (name) => {
+    if (!allowed.has(name)) {
+      window.location.hash = "overview";
+      return _setActiveTab("overview");
+    }
+    return _setActiveTab(name);
+  };
+}
+
+
+  
 function renderCancellation({ cancel_at_period_end, current_period_end }) {
   const row = document.getElementById("billing-cancel-row");
   const text = document.getElementById("billing-cancel-text");
@@ -1086,6 +1136,10 @@ function renderCreditsUsage(me) {
   async function loadEverything() {
     // 1) Snapshot
     const me = await apiGet("/api/account/overview");
+    
+    // You need your backend to include member role on the response.
+    // Prefer: me.role (or me.user.role)
+    applyTabAccessByRole(me?.role || me?.user?.role);
 
 
     if ($("me-name")) $("me-name").textContent = me?.name || me?.user?.name || "—";
