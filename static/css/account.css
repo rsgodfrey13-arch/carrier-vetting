@@ -2120,3 +2120,59 @@ body.account-page .page{
 @media (max-width: 920px){
   .usage-grid{ grid-template-columns: 1fr; }
 }
+
+
+/* TEAM: consistent columns */
+.team-row{
+  display: grid;
+  grid-template-columns: 1fr 140px 120px 120px; /* who | role | status | action */
+  gap: 14px;
+  align-items: center;
+  padding: 10px 0;
+}
+
+.team-col{
+  min-width: 0;
+}
+
+.team-role,
+.team-status{
+  color: rgba(148,163,184,.95); /* same vibe as .muted */
+  font-size: .85rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.team-action{
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.team-owner-pill{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 74px;           /* keeps the Owner label “button-sized” */
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(148,163,184,.22);
+  background: rgba(15,23,42,.35);
+}
+
+/* Responsive: stack columns nicely */
+@media (max-width: 720px){
+  .team-row{
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .team-action{
+    justify-content: flex-start;
+  }
+  .team-role,
+  .team-status{
+    text-transform: none;
+    letter-spacing: 0;
+  }
+}
