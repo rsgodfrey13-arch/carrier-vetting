@@ -88,23 +88,18 @@ function renderCancellation({ cancel_at_period_end, current_period_end }) {
   }
 }
   
-  function setPlanBadge(planRaw) {
+function setPlanBadge(planRaw) {
   const el = document.getElementById("plan-badge");
   if (!el) return;
 
-  const tier = String(planRaw || "").trim().toLowerCase(); // "gold", "silver", etc
+  const tier = String(planRaw || "").trim().toLowerCase();
 
-  // text
   el.textContent = tier ? tier.toUpperCase() : "—";
 
-  // base class for the fancy badge styling
   el.classList.add("plan-badge");
+  el.classList.remove("plan-core", "plan-pro", "plan-enterprise");
 
-  // clear old tier classes
-  el.classList.remove("plan-bronze", "plan-silver", "plan-gold", "plan-platinum");
-
-  // apply tier class (only if valid)
-  const allowed = new Set(["bronze", "silver", "gold", "platinum"]);
+  const allowed = new Set(["core", "pro", "enterprise"]);
   if (allowed.has(tier)) el.classList.add(`plan-${tier}`);
 }
 
@@ -1074,6 +1069,15 @@ function initAccountPlanPicker({ currentPlanId, subscriptionStatus }) {
 }
   
 function renderCreditsUsage(me) {
+
+  // relabel UI
+const sub = document.getElementById("credits-subtext");
+if (sub) sub.textContent = "Carriers monitored.";
+
+const usedLabel = card.querySelector(".usage-metric .kv-label");
+if (usedLabel) usedLabel.textContent = "Carriers monitored";
+
+  
   const card = document.getElementById("usage-card");
   if (!card) return;
 
@@ -1085,10 +1089,6 @@ function renderCreditsUsage(me) {
   const used  = Number(usedRaw);
   const limit = Number(limitRaw);
 
-  const resetRaw =
-    src?.credits_reset_at ||
-    src?.credits_period_end ||
-    src?.current_period_end || null;
 
   // Always show the block so your UI is consistent
   card.style.display = "block";
@@ -1104,11 +1104,7 @@ function renderCreditsUsage(me) {
   if (usedEl) usedEl.textContent = Number.isFinite(used) ? used.toLocaleString() : "—";
   if (limEl)  limEl.textContent  = Number.isFinite(limit) ? limit.toLocaleString() : "—";
 
-  if (rstEl) {
-    rstEl.textContent = resetRaw
-      ? new Date(resetRaw).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
-      : "—";
-  }
+
 
   // If credits not wired yet, keep bar empty and badge neutral
   if (!Number.isFinite(used) || !Number.isFinite(limit) || limit <= 0) {
@@ -1124,9 +1120,10 @@ function renderCreditsUsage(me) {
   if (barEl) barEl.style.width = `${pct}%`;
   if (badge) badge.textContent = `${pct}% used`;
 
-  const remaining = Math.max(0, limit - used);
-  if (foot) foot.textContent = `${remaining.toLocaleString()} credits remaining`;
-
+const remaining = Math.max(0, limit - used);
+if (foot) foot.textContent = `${remaining.toLocaleString()} carrier slots remaining`;
+if (badge) badge.textContent = `${pct}% of limit`;
+  
   card.classList.toggle("is-usage-warn", pct >= 90);
 }
   
@@ -1145,8 +1142,8 @@ function renderCreditsUsage(me) {
     if ($("me-name")) $("me-name").textContent = me?.name || me?.user?.name || "—";
     if ($("me-email")) $("me-email").textContent = me?.email || me?.user?.email || "—";
     if ($("me-company")) $("me-company").textContent = me?.company || me?.user?.company || "—";
-    if ($("me-plan")) $("me-plan").textContent = me?.plan || me?.user?.plan || "—";
-
+    if ($("account-plan")) $("account-plan").textContent = (me?.plan || me?.user?.plan || "—").toUpperCase();
+    
     renderCreditsUsage(me);
 
 const isCanceling =
