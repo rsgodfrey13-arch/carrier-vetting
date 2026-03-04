@@ -21,6 +21,7 @@ const dpaRoutes = require("./dpa.routes");
 const faqRoutes = require("./faq.routes");
 const helpRoutes = require("./help.routes");
 const aboutRoutes = require("./about.routes");
+const invitesRoutes = require("./invites.routes");
 
 // Add New Ones Here
 const contactRoutes = require("./contact.routes");
@@ -45,6 +46,7 @@ function publicRoutes() {
   router.use(faqRoutes);
   router.use(helpRoutes);
   router.use(aboutRoutes);
+  router.use(invitesRoutes);
   
   // Add New Ones Here
   router.use(contactRoutes);
