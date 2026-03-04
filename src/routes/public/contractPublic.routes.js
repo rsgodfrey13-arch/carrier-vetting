@@ -250,6 +250,43 @@ router.get("/contract/:token", async (req, res) => {
 }
 .success-title{ font-size: 22px; font-weight: 900; }
 .success-sub{ margin-top: 8px; opacity: 0.92; }
+
+
+/* PDF: desktop vs mobile */
+.pdfMobileCard { display:none; }
+
+@media (max-width: 720px) {
+  .wrap { padding: 14px; }
+  iframe { height: 56vh; } /* still fine on some phones, but we’ll hide it */
+  .pdfWrap { display:none !important; }
+
+  .pdfMobileCard{
+    display:block;
+    padding:14px;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,0.12);
+    background:rgba(255,255,255,0.06);
+    margin-bottom:14px;
+  }
+  .pdfMobileTitle{ font-weight:900; font-size:18px; }
+  .pdfMobileSub{ opacity:.85; margin-top:6px; font-size:14px; line-height:1.35; }
+  .pdfMobileBtn{
+    display:inline-block;
+    margin-top:10px;
+    padding:12px 14px;
+    border-radius:12px;
+    background:#2b6cff;
+    color:#fff;
+    font-weight:800;
+    text-decoration:none;
+  }
+}
+
+@media (max-width: 720px) {
+  .top { flex-direction: row; }
+  .brand { font-size: 18px; }
+  .row { grid-template-columns: 1fr; } /* stack Name/Title */
+}
     
   </style>
 </head>
@@ -261,8 +298,18 @@ router.get("/contract/:token", async (req, res) => {
     </div>
 
     <div class="card">
-      <iframe src="${pdfUrl}"></iframe>
-      <div class="muted">If the PDF doesn’t display on your device, tap “Open PDF”.</div>
+      <div class="pdfWrap">
+        <iframe src="${pdfUrl}"></iframe>
+        <div class="muted">If the PDF doesn’t display on your device, tap “Open PDF”.</div>
+      </div>
+      
+      <div class="pdfMobileCard">
+        <div class="pdfMobileTitle">Carrier Agreement</div>
+        <div class="pdfMobileSub">
+          Tap below to review the agreement in a clean PDF viewer.
+        </div>
+        <a class="pdfMobileBtn" href="${pdfUrl}" target="_blank" rel="noopener">Open PDF</a>
+      </div>
 
       <div class="form" id="ackWrap">
         ${
