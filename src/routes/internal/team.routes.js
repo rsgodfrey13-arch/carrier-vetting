@@ -372,4 +372,99 @@ router.post("/team/members/disable", requireAuth, loadCompanyContext, async (req
   }
 });
 
+router.post("/team/invites/accept", requireAuth, async (req, res) => {
+  const token = String(req.body?.token || "").trim();
+  if (!token) return res.status(400).json({ error: "Missing token" });
+
+  const userId = req.session.userId;
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const invRes = await client.query(
+      `
+      SELECT
+        i.id,
+        i.company_id,
+        i.role,
+        i.status,
+        i.expires_at,
+        c.name AS company_name
+      FROM public.company_invites i
+      JOIN public.companies c ON c.id = i.company_id
+      WHERE i.token = $1
+      LIMIT 1
+      FOR UPDATE
+      `,
+      [token]
+    );
+
+    if (invRes.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Invite not found" });
+    }
+
+    const inv = invRes.rows[0];
+
+    if (inv.status !== "PENDING") {
+      await client.query("ROLLBACK");
+      return res.status(409).json({ error: "Invite is no longer pending" });
+    }
+
+    if (inv.expires_at && new Date(inv.expires_at) < new Date()) {
+      await client.query("ROLLBACK");
+      return res.status(410).json({ error: "Invite expired" });
+    }
+
+    // Create membership (idempotent)
+    await client.query(
+      `
+      INSERT INTO public.company_members (company_id, user_id, role, status)
+      VALUES ($1, $2, $3, 'ACTIVE')
+      ON CONFLICT (company_id, user_id)
+      DO UPDATE SET
+        role = EXCLUDED.role,
+        status = 'ACTIVE'
+      `,
+      [inv.company_id, userId, inv.role]
+    );
+
+    // Mark invite accepted
+    await client.query(
+      `
+      UPDATE public.company_invites
+      SET status = 'ACCEPTED', accepted_at = NOW()
+      WHERE id = $1
+      `,
+      [inv.id]
+    );
+
+    // If user doesn't have a default company yet, set it
+    await client.query(
+      `
+      UPDATE public.users
+      SET default_company_id = COALESCE(default_company_id, $1)
+      WHERE id = $2
+      `,
+      [inv.company_id, userId]
+    );
+
+    await client.query("COMMIT");
+
+    return res.json({
+      ok: true,
+      company_id: inv.company_id,
+      company_name: inv.company_name,
+    });
+  } catch (err) {
+    try { await client.query("ROLLBACK"); } catch {}
+    console.error("POST /api/team/invites/accept error:", err);
+    return res.status(500).json({ error: "Failed to accept invite" });
+  } finally {
+    client.release();
+  }
+});
+
+
 module.exports = router;
