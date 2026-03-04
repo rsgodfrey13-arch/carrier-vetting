@@ -518,8 +518,6 @@ if (!verifyResp.ok) throw new Error(verifyData.error || "Invalid authentication 
         }
       });
 
-    })();
-
 const achInput = document.getElementById("achUpload");
 const achBtn = document.getElementById("uploadAchBtn");
 const achMsg = document.getElementById("achMsg");
@@ -558,6 +556,8 @@ if (achBtn) {
     achBtn.textContent = "Upload ACH Document";
   });
 }
+    })();
+
     
   </script>
 
