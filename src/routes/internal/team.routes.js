@@ -6,7 +6,7 @@ const crypto = require("crypto");
 const { pool } = require("../../db/pool");
 const { requireAuth } = require("../../middleware/requireAuth");
 const { loadCompanyContext } = require("../../middleware/companyContext");
-const { sendTeamInviteEmail } = require("../../clients/mailgun"); // adjust if different
+const { sendTeamInviteEmail } = require("../../clients/mailgun");
 
 const router = express.Router();
 
