@@ -466,7 +466,7 @@ router.post("/team/invites/accept", requireAuth, async (req, res) => {
   }
 });
 
-const bcrypt = require("bcryptjs");
+//const bcrypt = require("bcryptjs");
 
 router.post("/team/invites/accept-and-signup", async (req, res) => {
   const token = String(req.body?.token || "").trim();
