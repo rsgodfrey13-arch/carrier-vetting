@@ -462,35 +462,30 @@ function waitForOtp() {
             throw new Error(startData.error || "Failed to send authentication code.");
           }
       
-          // 2️⃣ If not already validated, prompt for OTP
-          if (startData.status !== "MFA_ALREADY_VALID") {
+// 2️⃣ If not already validated, prompt for OTP
+if (startData.status !== "MFA_ALREADY_VALID") {
+  const deliveryTarget = startData.deliveryTarget || "your email";
 
-const deliveryTarget = startData.deliveryTarget || "your email";
-openOtpModal(deliveryTarget);
-const code = await waitForOtp();
+  openOtpModal(deliveryTarget);
+  const code = await waitForOtp();
 
-const verifyResp = await fetch("/contract/" + encodeURIComponent(token) + "/mfa/verify", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ mfa_event_id: startData.mfa_event_id, otp: code })
-});
+  const verifyResp = await fetch(
+    "/contract/" + encodeURIComponent(token) + "/mfa/verify",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mfa_event_id: startData.mfa_event_id,
+        otp: code
+      })
+    }
+  );
 
-const verifyData = await verifyResp.json().catch(() => ({}));
-if (!verifyResp.ok) throw new Error(verifyData.error || "Invalid authentication code.");
-            const verifyResp = await fetch("/contract/" + encodeURIComponent(token) + "/mfa/verify", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                mfa_event_id: startData.mfa_event_id,
-                otp: code
-              })
-            });
-      
-            const verifyData = await verifyResp.json().catch(() => ({}));
-            if (!verifyResp.ok) {
-              throw new Error(verifyData.error || "Invalid authentication code.");
-            }
-          }
+  const verifyData = await verifyResp.json().catch(() => ({}));
+  if (!verifyResp.ok) {
+    throw new Error(verifyData.error || "Invalid authentication code.");
+  }
+}
       
           // 3️⃣ Now submit ACK
           btn.textContent = "Submitting...";
