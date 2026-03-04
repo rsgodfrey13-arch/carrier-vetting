@@ -6,12 +6,11 @@ const crypto = require("crypto");
 const { pool } = require("../../db/pool");
 const { requireAuth } = require("../../middleware/requireAuth");
 const { loadCompanyContext } = require("../../middleware/companyContext");
-const { sendContractEmail } = require("../../clients/mailgun");
-
-const { spaces } = require("../../clients/spacesS3v2");
-
+const { sendTeamInviteEmail } = require("../../clients/mailgun"); // adjust if different
 
 const router = express.Router();
+
+const INVITE_EXPIRES_HOURS = 72;;
 
 function makeToken() {
   return crypto.randomBytes(24).toString("hex");
