@@ -33,8 +33,10 @@ router.get("/accept-invite/:token", async (req, res) => {
 
     // Serve static HTML file
     return res.sendFile(
-      path.join(__dirname, "../../public/accept-invite.html")
+      path.join(__dirname, "../../../static", "accept-invite.html")
     );
+
+    res.sendFile(path.join(__dirname, ""));
   } catch (err) {
     console.error("GET /accept-invite/:token error:", err);
     return res.status(500).send("Server error");
