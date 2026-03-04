@@ -402,11 +402,14 @@ function waitForOtp() {
     }
 
     function onVerify() {
-      const code = (input?.value || "").trim();
-      if (!/^\d{6}$/.test(code)) return otpError("Enter a valid 6-digit code.");
+      const raw = (input?.value || "").trim();
+      const digits = raw.replace(/\D/g, ""); // keep only 0-9
+    
+      if (digits.length !== 6) return otpError("Enter a valid 6-digit code.");
+    
       cleanup();
       closeOtpModal();
-      resolve(code);
+      resolve(digits);
     }
 
     verifyBtn?.addEventListener("click", onVerify);
@@ -569,7 +572,7 @@ if (achBtn) {
 
       <div class="field" style="margin-top:12px;">
         <label class="field-label" for="otp-code">6-digit code</label>
-        <input class="field-input" id="otp-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" />
+        <input class="field-input" id="otp-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="123456" class="form-input" />
       </div>
 
       <div class="form-error" id="otp-error" style="display:none;"></div>
