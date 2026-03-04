@@ -11,31 +11,109 @@ router.get("/account/overview", async (req, res) => {
 
   const userId = req.session.userId;
 
-  const { rows } = await req.db.query(
-    `
-    SELECT
-      u.name,
-      u.email,
-      u.company,
-      u.email_alerts,
-      u.rest_alerts,
-      u.webhook_alerts,
-      u.plan,
-      u.subscription_status,
-      u.current_period_end,
-      u.cancel_at_period_end,
-      uc.credits_used,
-      u.carrier_limit credits_limit
-    FROM users u
-    LEFT JOIN (select count(distinct carrier_dot) credits_used, user_id from user_carriers group by user_id ) uc on u.id = uc.user_id
-    WHERE u.id = $1
-    `,
-    [userId]
-  );
+  try {
+    const { rows } = await req.db.query(
+      `
+      SELECT
+        u.name,
+        u.email,
+        u.company,
 
-  if (!rows.length) return res.status(404).json({ error: "User not found" });
+        -- feature flags / entitlements (keep as-is if you still store on users)
+        u.email_alerts,
+        u.rest_alerts,
+        u.webhook_alerts,
 
-  res.json(rows[0]);
+        -- ✅ chosen company context (what UI needs for tab access)
+        chosen.company_id,
+        chosen.company_role,
+
+        -- billing/plan should be company-scoped in the new architecture.
+        -- if you haven't moved these yet, this will still work once you do.
+        c.plan,
+        c.subscription_status,
+        c.current_period_end,
+        c.cancel_at_period_end,
+
+        -- credits: company-scoped
+        COALESCE(uc.credits_used, 0)::text AS credits_used,
+        COALESCE(c.carrier_limit, u.carrier_limit)::text AS credits_limit
+
+      FROM public.users u
+
+      -- choose company safely:
+      -- 1) default_company_id if it points to an ACTIVE membership
+      -- 2) else first ACTIVE membership (prefer OWNER)
+      LEFT JOIN LATERAL (
+        SELECT
+          COALESCE(
+            (
+              SELECT cm0.company_id
+              FROM public.company_members cm0
+              WHERE cm0.user_id = u.id
+                AND cm0.status = 'ACTIVE'
+                AND cm0.company_id = u.default_company_id
+              LIMIT 1
+            ),
+            (
+              SELECT cm1.company_id
+              FROM public.company_members cm1
+              WHERE cm1.user_id = u.id
+                AND cm1.status = 'ACTIVE'
+              ORDER BY (cm1.role = 'OWNER') DESC, cm1.created_at ASC
+              LIMIT 1
+            )
+          ) AS company_id,
+          (
+            SELECT cm2.role
+            FROM public.company_members cm2
+            WHERE cm2.user_id = u.id
+              AND cm2.status = 'ACTIVE'
+              AND cm2.company_id = COALESCE(
+                (
+                  SELECT cm0.company_id
+                  FROM public.company_members cm0
+                  WHERE cm0.user_id = u.id
+                    AND cm0.status = 'ACTIVE'
+                    AND cm0.company_id = u.default_company_id
+                  LIMIT 1
+                ),
+                (
+                  SELECT cm1.company_id
+                  FROM public.company_members cm1
+                  WHERE cm1.user_id = u.id
+                    AND cm1.status = 'ACTIVE'
+                  ORDER BY (cm1.role = 'OWNER') DESC, cm1.created_at ASC
+                  LIMIT 1
+                )
+              )
+            LIMIT 1
+          ) AS company_role
+      ) chosen ON TRUE
+
+      LEFT JOIN public.companies c
+        ON c.id = chosen.company_id
+
+      LEFT JOIN LATERAL (
+        SELECT COUNT(DISTINCT carrier_dot)::bigint AS credits_used
+        FROM public.user_carriers x
+        WHERE chosen.company_id IS NOT NULL
+          AND x.company_id = chosen.company_id
+      ) uc ON TRUE
+
+      WHERE u.id = $1
+      LIMIT 1
+      `,
+      [userId]
+    );
+
+    if (!rows.length) return res.status(404).json({ error: "User not found" });
+
+    return res.json(rows[0]);
+  } catch (err) {
+    console.error("GET /api/account/overview failed:", err);
+    return res.status(500).json({ error: "Server error" });
+  }
 });
 
 // Get Email Alert Fields
