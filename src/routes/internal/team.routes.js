@@ -466,5 +466,164 @@ router.post("/team/invites/accept", requireAuth, async (req, res) => {
   }
 });
 
+const bcrypt = require("bcryptjs");
 
+router.post("/team/invites/accept-and-signup", async (req, res) => {
+  const token = String(req.body?.token || "").trim();
+  const name = String(req.body?.name || "").trim();
+  const password = String(req.body?.password || "");
+  const confirm = String(req.body?.confirm_password || "");
+
+  if (!token) return res.status(400).json({ error: "Missing token" });
+
+  // If user is not logged in, require signup fields
+  const isLoggedIn = !!req.session?.userId;
+
+  if (!isLoggedIn) {
+    if (!name) return res.status(400).json({ error: "Name is required" });
+    if (password.length < 8) return res.status(400).json({ error: "Password must be at least 8 characters" });
+    if (password !== confirm) return res.status(400).json({ error: "Passwords do not match" });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // lock invite row
+    const invRes = await client.query(
+      `
+      SELECT
+        i.id,
+        i.company_id,
+        i.invited_email,
+        i.role,
+        i.status,
+        i.expires_at,
+        c.name AS company_name
+      FROM public.company_invites i
+      JOIN public.companies c ON c.id = i.company_id
+      WHERE i.token = $1
+      LIMIT 1
+      FOR UPDATE
+      `,
+      [token]
+    );
+
+    if (invRes.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Invite not found" });
+    }
+
+    const inv = invRes.rows[0];
+
+    if (inv.status !== "PENDING") {
+      await client.query("ROLLBACK");
+      return res.status(409).json({ error: "Invite is no longer pending" });
+    }
+
+    if (inv.expires_at && new Date(inv.expires_at) < new Date()) {
+      await client.query("ROLLBACK");
+      return res.status(410).json({ error: "Invite expired" });
+    }
+
+    const invitedEmail = String(inv.invited_email || "").toLowerCase();
+
+    let userId = req.session?.userId || null;
+
+    // If not logged in, create/find user by invited email
+    if (!userId) {
+      const existing = await client.query(
+        `SELECT id FROM public.users WHERE lower(email) = $1 LIMIT 1`,
+        [invitedEmail]
+      );
+
+      if (existing.rowCount > 0) {
+        // If they already have an account, we DON'T reset password here.
+        // They should log in normally if they forgot it.
+        await client.query("ROLLBACK");
+        return res.status(409).json({
+          error: "An account with this email already exists. Please log in to accept the invite."
+        });
+      }
+
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      const created = await client.query(
+        `
+        INSERT INTO public.users (email, password_hash, name, email_verified_at)
+        VALUES ($1, $2, $3, NOW())
+        RETURNING id
+        `,
+        [invitedEmail, passwordHash, name]
+      );
+
+      userId = created.rows[0].id;
+    } else {
+      // logged in: optional safety check:
+      // force that logged-in user matches invited email
+      const me = await client.query(
+        `SELECT email FROM public.users WHERE id = $1 LIMIT 1`,
+        [userId]
+      );
+      const myEmail = String(me.rows?.[0]?.email || "").toLowerCase();
+      if (myEmail && myEmail !== invitedEmail) {
+        await client.query("ROLLBACK");
+        return res.status(403).json({
+          error: "This invite was sent to a different email. Log in with the invited email to accept."
+        });
+      }
+    }
+
+    // membership upsert
+    await client.query(
+      `
+      INSERT INTO public.company_members (company_id, user_id, role, status)
+      VALUES ($1, $2, $3, 'ACTIVE')
+      ON CONFLICT (company_id, user_id)
+      DO UPDATE SET
+        role = EXCLUDED.role,
+        status = 'ACTIVE'
+      `,
+      [inv.company_id, userId, inv.role]
+    );
+
+    // set default company if missing
+    await client.query(
+      `
+      UPDATE public.users
+      SET default_company_id = COALESCE(default_company_id, $1)
+      WHERE id = $2
+      `,
+      [inv.company_id, userId]
+    );
+
+    // accept invite
+    await client.query(
+      `
+      UPDATE public.company_invites
+      SET status = 'ACCEPTED', accepted_at = NOW()
+      WHERE id = $1
+      `,
+      [inv.id]
+    );
+
+    await client.query("COMMIT");
+
+    // log them in if we created them
+    req.session.userId = userId;
+
+    return res.json({
+      ok: true,
+      company_name: inv.company_name,
+      redirect: "/account?tab=team"
+    });
+
+  } catch (err) {
+    try { await client.query("ROLLBACK"); } catch {}
+    console.error("POST /api/team/invites/accept-and-signup error:", err);
+    return res.status(500).json({ error: "Failed to accept invite" });
+  } finally {
+    client.release();
+  }
+});
 module.exports = router;
