@@ -258,23 +258,26 @@ function renderMembers(rows) {
     return;
   }
 
-  host.innerHTML = rows.map(r => `
-    <div class="row" style="padding:10px 0;">
-      <div style="flex:1;">
-        <div class="row-title">${escapeHtml(r.name || r.email || "—")}</div>
-        <div class="row-sub">${escapeHtml(r.email || "—")}</div>
-      </div>
-      <div style="width:140px;" class="muted">${escapeHtml(r.role || "—")}</div>
-      <div style="width:120px;" class="muted">${escapeHtml(r.status || "—")}</div>
-      <div class="row-actions">
-        ${String(r.role) === "OWNER"
-          ? `<span class="muted">Owner</span>`
-          : `<button class="btn-ghost" data-team-disable="${r.id}">Disable</button>`
-        }
-      </div>
+host.innerHTML = rows.map(r => `
+  <div class="team-row">
+    <div class="team-col team-who">
+      <div class="row-title">${escapeHtml(r.name || r.email || "—")}</div>
+      <div class="row-sub">${escapeHtml(r.email || "—")}</div>
     </div>
-  `).join("");
 
+    <div class="team-col team-role">${escapeHtml(r.role || "—")}</div>
+    <div class="team-col team-status">${escapeHtml(r.status || "—")}</div>
+
+    <div class="team-col team-action">
+      ${
+        String(r.role) === "OWNER"
+          ? `<span class="muted team-owner-pill">Owner</span>`
+          : `<button class="btn-ghost" data-team-disable="${r.id}">Disable</button>`
+      }
+    </div>
+  </div>
+`).join("");
+  
   host.querySelectorAll("[data-team-disable]").forEach(btn => {
     btn.addEventListener("click", async () => {
       const id = btn.getAttribute("data-team-disable");
