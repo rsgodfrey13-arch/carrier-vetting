@@ -213,6 +213,7 @@ module.exports = {
   sendPasswordResetEmail,
   sendVerificationEmail,
   sendSupportTicketEmail,
+  sendTeamInviteEmail,
   sendPublicContactEmail
 };
 
