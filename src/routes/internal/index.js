@@ -12,6 +12,7 @@ const accountRoutes = require("./account.routes");
 const debugRoutes = require("./debug.routes");
 const userApiRoutes = require("./userApi.routes");
 const supportRoutes = require("./support.routes");
+const teamRoutes = require("./team.routes");
 const InsuranceCoveragesRoutes = require("./InsuranceCoverages.routes");
 const insuranceDocumentsRoutes = require("./insuranceDocuments.routes");
 const billingRoutes = require("./billing.routes");
@@ -41,6 +42,7 @@ function internalRoutes({ pool } = {}) {
   router.use(authRoutes);
   router.use(carrierSearchRoutes);
   router.use(carrierSearchResultsRoutes);
+  router.use(teamRoutes);
   router.use(carriersRoutes);
   router.use(myCarriersRoutes);
   router.use(contractsRoutes);
