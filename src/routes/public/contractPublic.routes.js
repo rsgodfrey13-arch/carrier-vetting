@@ -221,7 +221,24 @@ router.get("/contract/:token", async (req, res) => {
           <button id="submitBtn" class="btn2">Accept Agreement</button>
           <div id="msg" class="msg"></div>
         </div>
-            `
+        
+<div class="card" style="margin-top:16px;">
+  <div style="font-weight:700; margin-bottom:8px;">
+    ACH / Payment Information (Optional)
+  </div>
+
+  <div class="muted" style="margin-bottom:10px;">
+    Upload a voided check or ACH form for the broker's accounting team.
+  </div>
+
+  <input type="file" id="achUpload" accept=".pdf,.png,.jpg,.jpeg" />
+
+  <button id="uploadAchBtn" class="btn2" style="margin-top:10px;">
+    Upload ACH Document
+  </button>
+
+  <div id="achMsg" class="msg"></div>
+</div>       `
         }
       </div>
     </div>
