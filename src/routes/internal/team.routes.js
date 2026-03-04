@@ -626,4 +626,47 @@ router.post("/team/invites/accept-and-signup", async (req, res) => {
     client.release();
   }
 });
+
+
+// Public: used by /accept-invite/:token page to lock email + show company name
+router.get("/team/invites/:token", async (req, res) => {
+  const token = String(req.params.token || "").trim();
+  if (!token) return res.status(400).json({ error: "Missing token" });
+
+  try {
+    const { rows } = await pool.query(
+      `
+      SELECT
+        i.invited_email,
+        i.role,
+        i.status,
+        i.expires_at,
+        c.name AS company_name
+      FROM public.company_invites i
+      JOIN public.companies c ON c.id = i.company_id
+      WHERE i.token = $1
+      LIMIT 1
+      `,
+      [token]
+    );
+
+    if (!rows.length) return res.status(404).json({ error: "Invite not found" });
+
+    const inv = rows[0];
+    if (inv.status !== "PENDING") return res.status(409).json({ error: "Invite not pending" });
+    if (inv.expires_at && new Date(inv.expires_at) < new Date()) {
+      return res.status(410).json({ error: "Invite expired" });
+    }
+
+    return res.json({
+      invited_email: inv.invited_email,
+      company_name: inv.company_name,
+      role: inv.role,
+    });
+  } catch (err) {
+    console.error("GET /api/team/invites/:token error:", err);
+    return res.status(500).json({ error: "Failed to load invite" });
+  }
+});
+
 module.exports = router;
