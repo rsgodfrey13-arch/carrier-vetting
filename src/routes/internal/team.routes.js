@@ -2,16 +2,11 @@
 
 const express = require("express");
 const crypto = require("crypto");
+
 const { pool } = require("../../db/pool");
-
-// adjust these imports to match your project
-const requireAuth = require("../middleware/requireAuth");
-const loadCompanyContext = require("../middleware/loadCompanyContext");
-
-// You implement this in your mailgun helper.
-// Expected signature:
-// sendTeamInviteEmail({ to, inviter_name, company_name, invite_url, expires_hours })
-const { sendTeamInviteEmail } = require("../../utils/mailgun"); // <-- adjust path
+const { requireAuth } = require("../../middleware/requireAuth");
+const { loadCompanyContext } = require("../../middleware/companyContext");
+const { sendTeamInviteEmail } = require("../../clients/mailgun"); // adjust if different
 
 const router = express.Router();
 
