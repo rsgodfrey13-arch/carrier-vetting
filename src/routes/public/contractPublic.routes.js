@@ -381,6 +381,44 @@ if (achBtn) {
 }
     
   </script>
+
+<!-- OTP Modal -->
+<div class="modal-backdrop" id="otp-modal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="otp-title">
+    <div class="modal-head">
+      <h3 id="otp-title">Confirm acceptance</h3>
+      <button class="icon-btn" type="button" id="otp-close" aria-label="Close">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="muted" id="otp-sub">Enter the 6-digit code we sent.</div>
+
+      <div class="field" style="margin-top:12px;">
+        <label class="field-label" for="otp-code">6-digit code</label>
+        <input class="field-input" id="otp-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" />
+      </div>
+
+      <div class="form-error" id="otp-error" style="display:none;"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-ghost" type="button" id="otp-cancel">Cancel</button>
+      <button class="btn-primary" type="button" id="otp-verify">Verify</button>
+    </div>
+  </div>
+</div>
+
+<!-- Success Screen (swap-in) -->
+<div class="success-screen" id="signed-screen" style="display:none;">
+  <div class="success-card">
+    <div class="success-title">Thank you.</div>
+    <div class="success-sub">This agreement has been signed successfully.</div>
+    <div class="success-sub muted" style="margin-top:10px;">
+      You can close this tab now.
+    </div>
+  </div>
+</div>
+
 </body>
 </html>`);
   } catch (err) {
