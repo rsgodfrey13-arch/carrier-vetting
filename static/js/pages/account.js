@@ -22,7 +22,7 @@ function applyTabAccessByRole(roleRaw) {
   const role = String(roleRaw || "").trim().toUpperCase();
 
   // ✅ what you showed with green checks: only these for non-OWNER
-  const allowedForMember = new Set(["overview", "billing", "security"]);
+  const allowedForMember = new Set(["overview", "security"]);
 
   // Owners see everything
   const allowed = (role === "OWNER")
@@ -1139,7 +1139,7 @@ function renderCreditsUsage(me) {
     
     // You need your backend to include member role on the response.
     // Prefer: me.role (or me.user.role)
-    applyTabAccessByRole(me?.role || me?.user?.role);
+    applyTabAccessByRole(me?.company_role || me?.user?.company_role);
 
 
     if ($("me-name")) $("me-name").textContent = me?.name || me?.user?.name || "—";
