@@ -565,7 +565,26 @@ router.get("/contract/:token", async (req, res) => {
   </button>
 
   <div id="achMsg" class="msg"></div>
-</div>       `
+</div> 
+
+<div class="card" style="margin-top:16px;">
+  <div style="font-weight:700; margin-bottom:8px;">
+    Insurance / COI (Optional)
+  </div>
+
+  <div class="muted" style="margin-bottom:10px;">
+    Upload your Certificate of Insurance (COI) for the broker’s compliance team.
+  </div>
+
+  <input type="file" id="insUpload" accept=".pdf,.png,.jpg,.jpeg" />
+
+  <button id="uploadInsBtn" class="btn2" style="margin-top:10px;">
+    Upload Insurance Document
+  </button>
+
+  <div id="insMsg" class="msg"></div>
+</div>
+`
         }
       </div>
     </div>
@@ -790,6 +809,45 @@ if (achBtn) {
     achBtn.textContent = "Upload ACH Document";
   });
 }
+
+const insInput = document.getElementById("insUpload");
+const insBtn = document.getElementById("uploadInsBtn");
+const insMsg = document.getElementById("insMsg");
+
+if (insBtn) {
+  insBtn.addEventListener("click", async () => {
+    const file = insInput.files[0];
+
+    if (!file) {
+      insMsg.textContent = "Please choose a file.";
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    insBtn.disabled = true;
+    insBtn.textContent = "Uploading...";
+
+    try {
+      const resp = await fetch("/contract/" + encodeURIComponent(token) + "/insurance-upload", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data.error || "Upload failed");
+
+      insMsg.textContent = "Insurance document uploaded successfully.";
+    } catch (err) {
+      insMsg.textContent = err.message || "Upload failed.";
+    }
+
+    insBtn.disabled = false;
+    insBtn.textContent = "Upload Insurance Document";
+  });
+}
+
     })();
 
     
@@ -905,6 +963,67 @@ router.post("/contract/:token/ach-upload", async (req, res) => {
 
   } catch (err) {
     console.error(err);
+    res.status(500).json({ error: "Upload failed" });
+  }
+});
+
+
+router.post("/contract/:token/insurance-upload", async (req, res) => {
+  const token = String(req.params.token || "").trim();
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT contract_id, company_id, dotnumber FROM public.contracts WHERE token = $1 LIMIT 1`,
+      [token]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ error: "Invalid contract" });
+    }
+
+    const { contract_id: contractId, company_id: companyId, dotnumber } = rows[0];
+
+    const file = req.files?.file;
+    if (!file) return res.status(400).json({ error: "Missing file" });
+
+    // (Optional) basic allowlist like ACH
+    const okMime = ["application/pdf", "image/png", "image/jpeg"].includes(String(file.mimetype || ""));
+    if (!okMime) return res.status(400).json({ error: "Only PDF/JPG/PNG allowed" });
+
+    const safeName = String(file.name || "upload")
+      .replace(/[^\w.\-]+/g, "_")
+      .slice(0, 120);
+
+    const key = `insurance/${companyId}/${contractId}/${Date.now()}_${safeName}`;
+
+    await spaces.putObject({
+      Bucket: process.env.SPACES_BUCKET,
+      Key: key,
+      Body: file.data,
+      ContentType: file.mimetype
+    }).promise();
+
+    // ✅ store with company_id boundary (not user_id)
+    await pool.query(
+      `
+      INSERT INTO public.contract_insurance_documents
+        (company_id, contract_id, dot_number, storage_key, file_type)
+      VALUES
+        ($1, $2, $3, $4, $5)
+      `,
+      [
+        companyId,
+        contractId,
+        String(dotnumber || "").replace(/\D/g, "") || null,
+        key,
+        String(file.mimetype || "")
+      ]
+    );
+
+    res.json({ ok: true });
+
+  } catch (err) {
+    console.error("insurance-upload error:", err?.message, err);
     res.status(500).json({ error: "Upload failed" });
   }
 });
