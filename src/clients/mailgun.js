@@ -116,7 +116,8 @@ async function sendCarrierContractAcceptedEmail({
   carrier_name,
   dotnumber,
   agreement_type,
-  pdf_link
+  pdf_link,
+  cert_link
 }) {
   const domain = process.env.MAILGUN_DOMAIN;
 
@@ -131,7 +132,8 @@ async function sendCarrierContractAcceptedEmail({
       carrier_name: carrier_name || "",
       dotnumber: dotnumber || "",
       agreement_type: agreement_type || "Carrier Agreement",
-      pdf_link: pdf_link || ""
+      pdf_link: pdf_link || "",
+      cert_link: cert_link || ""
     })
   });
 }
@@ -146,7 +148,8 @@ async function sendBrokerContractAcceptedEmail({
   accepted_name,
   accepted_title,
   accepted_email,
-  pdf_link
+  pdf_link,
+  cert_link
 }) {
   const domain = process.env.MAILGUN_DOMAIN;
 
@@ -164,7 +167,8 @@ async function sendBrokerContractAcceptedEmail({
       accepted_name: accepted_name || "",
       accepted_title: accepted_title || "",
       accepted_email: accepted_email || "",
-      pdf_link: pdf_link || ""
+      pdf_link: pdf_link || "",
+      cert_link: cert_link || ""
     })
   });
 }
