@@ -108,15 +108,10 @@ async function sendContractEmail({
 }
 
 
-const recipients = [contract.email_to, accepted_email]
-  .filter(Boolean)
-  .map(e => e.toLowerCase().trim());
-
-const toCarrier = [...new Set(recipients)];
 
 
 async function sendCarrierContractAcceptedEmail({
-  to,
+  to,                 // string or array
   broker_name,
   carrier_name,
   dotnumber,
@@ -128,8 +123,9 @@ async function sendCarrierContractAcceptedEmail({
   return mg.messages.create(domain, {
     from: process.env.MAILGUN_FROM,
     to,
-    subject: `Agreement signed — ${agreement_type || "Carrier Agreement"} (DOT ${dotnumber || ""})`,
+    subject: `Agreement signed — ${agreement_type} (DOT ${dotnumber})`,
     template: "carrier_contract_accepted",
+
     "h:X-Mailgun-Variables": JSON.stringify({
       broker_name: broker_name || "",
       carrier_name: carrier_name || "",
@@ -139,6 +135,7 @@ async function sendCarrierContractAcceptedEmail({
     })
   });
 }
+
 
 async function sendBrokerContractAcceptedEmail({
   to,
@@ -156,8 +153,9 @@ async function sendBrokerContractAcceptedEmail({
   return mg.messages.create(domain, {
     from: process.env.MAILGUN_FROM,
     to,
-    subject: `Carrier accepted agreement — DOT ${dotnumber || ""}`,
+    subject: `Carrier accepted agreement — DOT ${dotnumber}`,
     template: "broker_contract_accepted",
+
     "h:X-Mailgun-Variables": JSON.stringify({
       broker_name: broker_name || "",
       carrier_name: carrier_name || "",
@@ -170,6 +168,7 @@ async function sendBrokerContractAcceptedEmail({
     })
   });
 }
+
 
 async function sendPasswordResetEmail({ to, link }) {
   const domain = process.env.MAILGUN_DOMAIN;
@@ -283,4 +282,3 @@ module.exports = {
   sendTeamInviteEmail,
   sendPublicContactEmail
 };
-
