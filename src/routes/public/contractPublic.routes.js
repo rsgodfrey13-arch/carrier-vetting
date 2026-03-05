@@ -5,7 +5,11 @@ const { pool } = require("../../db/pool");
 const { spaces } = require("../../clients/spacesS3v2");
 const crypto = require("crypto");
 const router = express.Router();
-const { sendContractOtpEmail } = require("../../clients/mailgun");
+const {
+  sendContractOtpEmail,
+  sendCarrierContractAcceptedEmail,
+  sendBrokerContractAcceptedEmail,
+} = require("../../clients/mailgun");
 
 
 const OTP_EXPIRES_MIN = 5;
@@ -1062,6 +1066,26 @@ router.post("/contract/:token/ack", async (req, res) => {
     // 2) Transaction begins ONLY when we need to write
     // ============================================================
 
+    const metaRes = await client.query(
+      `
+      SELECT
+        c.dotnumber,
+        c.email_to,
+        c.user_id,
+        uc.name        AS agreement_type,
+        uc.display_name AS broker_name,
+        u.email        AS broker_email
+      FROM public.contracts c
+      JOIN public.user_contracts uc ON uc.id = c.user_contract_id
+      JOIN public.users u ON u.id = c.user_id
+      WHERE c.contract_id = $1
+      LIMIT 1;
+      `,
+      [contract_id]
+    );
+    
+    const meta = metaRes.rows[0] || {};
+    
     await client.query("BEGIN");
 
     // (Optional but clean) Re-check token is still valid inside transaction
@@ -1089,8 +1113,48 @@ router.post("/contract/:token/ack", async (req, res) => {
 
     // If another request acknowledged it between our first check and now:
     if (status2 === "ACKNOWLEDGED" || status2 === "SIGNED") {
-      await client.query("COMMIT");
-      return res.json({ ok: true, status: status2 });
+      
+    await client.query("COMMIT");
+    
+    // send emails AFTER commit (so acceptance isn't lost if mailgun hiccups)
+    try {
+      const baseUrl = process.env.APP_BASE_URL || "https://carriershark.com";
+      const pdf_link = `${baseUrl}/contract/${encodeURIComponent(token)}/pdf`;
+    
+      // Carrier email goes to: contracts.email_to + signer email (if provided)
+      const toCarrier = [meta.email_to, accepted_email].filter(Boolean);
+      const uniqueCarrier = [...new Set(toCarrier.map((x) => String(x).trim().toLowerCase()))];
+    
+      if (uniqueCarrier.length) {
+        await sendCarrierContractAcceptedEmail({
+          to: uniqueCarrier,
+          broker_name: meta.broker_name || "Carrier Shark Customer",
+          carrier_name: null, // you can wire this in later if you want
+          dotnumber: meta.dotnumber,
+          agreement_type: meta.agreement_type || "Carrier Agreement",
+          pdf_link,
+        });
+      }
+    
+      // Broker email is separate
+      if (meta.broker_email) {
+        await sendBrokerContractAcceptedEmail({
+          to: meta.broker_email,
+          broker_name: meta.broker_name || "Carrier Shark Customer",
+          carrier_name: null,
+          dotnumber: meta.dotnumber,
+          agreement_type: meta.agreement_type || "Carrier Agreement",
+          accepted_name,
+          accepted_title,
+          accepted_email,
+          pdf_link,
+        });
+      }
+    } catch (e) {
+      console.error("Contract acceptance email failed:", e?.message, e);
+    }
+    
+    return res.json({ ok: true });
     }
 
     // ============================================================
