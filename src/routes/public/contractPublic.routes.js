@@ -815,10 +815,37 @@ if (achBtn) {
 <div class="success-screen" id="signed-screen" style="display:none;">
   <div class="success-card">
     <div class="success-title">Thank you.</div>
-    <div class="success-sub">This agreement has been signed successfully.</div>
-    <div class="success-sub muted" style="margin-top:10px;">
-      You can close this tab now.
+
+    <div class="success-sub">
+      This agreement has been signed successfully.
     </div>
+
+    <div class="success-sub muted" style="margin-top:10px;">
+      You can download a copy of the agreement below.
+    </div>
+
+    <div style="margin-top:20px; display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
+
+      <a
+        class="pdfMobileBtn"
+        href="/contract/${token}/pdf"
+        target="_blank"
+        rel="noopener"
+      >
+        Open Contract PDF
+      </a>
+
+      <a
+        class="pdfMobileBtn"
+        href="/contract/${token}/certificate"
+        target="_blank"
+        rel="noopener"
+      >
+        Signature Certificate
+      </a>
+
+    </div>
+
   </div>
 </div>
 
