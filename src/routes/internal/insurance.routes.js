@@ -12,7 +12,9 @@ const { PutObjectCommand, GetObjectCommand } = require("@aws-sdk/client-s3");
 const { parseAcord25FromText } = require("../../services/insurance/parseAcord25");
 const { ocrPdfBufferWithTextract } = require("../../../ocr/textractPdf");
 
-
+// ✅ add these (adjust paths if your middleware lives elsewhere)
+const { requireAuth } = require("../../middleware/requireAuth");
+const { loadCompanyContext } = require("../../middleware/companyContext");
 
 const router = express.Router();
 
@@ -36,9 +38,10 @@ function normalizeDot(dot) {
   return cleaned;
 }
 
+// ✅ FIX: do NOT map BROKER -> CUSTOMER
 function normalizeUploadedBy(v) {
   const x = String(v || "").toUpperCase().trim();
-  if (x === "BROKER") return "CUSTOMER";
+  if (x === "BROKER") return "BROKER";
   if (x === "CARRIER") return "CARRIER";
   if (x === "AGENT") return "AGENT";
   if (x === "CUSTOMER") return "CUSTOMER";
@@ -54,20 +57,23 @@ function normalizeDocType(v) {
 /**
  * GET /api/insurance/latest?dot=123
  */
-router.get("/insurance/latest", async (req, res) => {
+router.get("/insurance/latest", requireAuth, loadCompanyContext, async (req, res) => {
   try {
+    const companyId = req.companyContext?.companyId || req.company_id || req.companyId;
+    if (!companyId) throw new Error("Missing company context.");
+
     const dot = String(req.query.dot || "").replace(/\D/g, "");
     if (!dot) throw new Error("dot query param is required (numbers only).");
 
     const r = await pool.query(
       `
-      SELECT id, dot_number, uploaded_by, document_type, status, uploaded_at, spaces_key
+      SELECT id, company_id, dot_number, uploaded_by, document_type, status, uploaded_at, spaces_key
       FROM insurance_documents
-      WHERE dot_number = $1
+      WHERE company_id = $1 AND dot_number = $2
       ORDER BY uploaded_at DESC
       LIMIT 1
       `,
-      [dot]
+      [companyId, dot]
     );
 
     if (r.rowCount === 0) {
@@ -81,7 +87,7 @@ router.get("/insurance/latest", async (req, res) => {
       Bucket: process.env.SPACES_BUCKET,
       Key: doc.spaces_key,
       ResponseContentType: "application/pdf",
-      ResponseContentDisposition: `inline; filename="COI-${doc.dot_number}.pdf"`
+      ResponseContentDisposition: `inline; filename="COI-${doc.dot_number}.pdf"`,
     });
 
     const signedUrl = await getSignedUrl(s3, command, { expiresIn: 60 * 10 });
@@ -90,7 +96,7 @@ router.get("/insurance/latest", async (req, res) => {
       ok: true,
       dot_number: dot,
       document: doc,
-      signedUrl
+      signedUrl,
     });
   } catch (err) {
     return res.status(400).json({ ok: false, error: err.message });
@@ -98,84 +104,101 @@ router.get("/insurance/latest", async (req, res) => {
 });
 
 /**
- * POST /api/insurance/documents  (multipart form-data: document=pdf, dot_number, uploaded_by, document_type)
+ * POST /api/insurance/documents
+ * (multipart form-data: document=pdf, dot_number, uploaded_by, document_type)
  */
-router.post("/insurance/documents", upload.single("document"), async (req, res) => {
-  const client = await pool.connect();
-  try {
-    if (!req.file) throw new Error("document (PDF) is required.");
+router.post(
+  "/insurance/documents",
+  requireAuth,
+  loadCompanyContext,
+  upload.single("document"),
+  async (req, res) => {
+    const client = await pool.connect();
+    try {
+      const companyId = req.companyContext?.companyId || req.company_id || req.companyId;
+      if (!companyId) throw new Error("Missing company context.");
 
-    const dot_number = normalizeDot(req.body.dot_number);
-    const uploaded_by = normalizeUploadedBy(req.body.uploaded_by);
-    const document_type = normalizeDocType(req.body.document_type);
+      if (!req.file) throw new Error("document (PDF) is required.");
 
-    const rand = crypto.randomBytes(10).toString("hex");
-    const key = `insurance/${dot_number}/${Date.now()}-${rand}.pdf`;
+      const dot_number = normalizeDot(req.body.dot_number);
+      const uploaded_by = normalizeUploadedBy(req.body.uploaded_by);
+      const document_type = normalizeDocType(req.body.document_type);
 
-    await s3.send(new PutObjectCommand({
-      Bucket: process.env.SPACES_BUCKET,
-      Key: key,
-      Body: req.file.buffer,
-      ContentType: "application/pdf",
-      ACL: "private",
-      Metadata: { dot_number, uploaded_by, document_type }
-    }));
+      const rand = crypto.randomBytes(10).toString("hex");
+      const key = `insurance/${companyId}/${dot_number}/${Date.now()}-${rand}.pdf`;
 
-    const file_url = `s3://${process.env.SPACES_BUCKET}/${key}`;
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: process.env.SPACES_BUCKET,
+          Key: key,
+          Body: req.file.buffer,
+          ContentType: "application/pdf",
+          ACL: "private",
+          Metadata: { dot_number, uploaded_by, document_type, company_id: String(companyId) },
+        })
+      );
 
-    await client.query("BEGIN");
+      const file_url = `s3://${process.env.SPACES_BUCKET}/${key}`;
 
-    const result = await client.query(
-      `
-      INSERT INTO insurance_documents
-        (dot_number, uploaded_by, file_url, spaces_key, file_type, document_type, status, ocr_status)
-      VALUES
-        ($1, $2, $3, $4, 'PDF', $5, 'ON_FILE', 'PENDING')
-      RETURNING id, dot_number, uploaded_by, file_url, spaces_key, file_type, document_type, status, uploaded_at, ocr_status
-      `,
-      [dot_number, uploaded_by, file_url, key, document_type]
-    );
+      await client.query("BEGIN");
 
-    const documentId = result.rows[0].id;
+      // ✅ add company_id to the record
+      const result = await client.query(
+        `
+        INSERT INTO insurance_documents
+          (company_id, dot_number, uploaded_by, file_url, spaces_key, file_type, document_type, status, ocr_status)
+        VALUES
+          ($1, $2, $3, $4, $5, 'PDF', $6, 'ON_FILE', 'PENDING')
+        RETURNING id, company_id, dot_number, uploaded_by, file_url, spaces_key, file_type, document_type, status, uploaded_at, ocr_status
+        `,
+        [companyId, dot_number, uploaded_by, file_url, key, document_type]
+      );
 
-    await client.query(
-      `
-      INSERT INTO insurance_ocr_jobs (document_id, provider, status, attempt, dot_number)
-      VALUES ($1, 'DOCUPIPE', 'PENDING', 0, $2)
-      `,
-      [documentId, dot_number]
-    );
+      const documentId = result.rows[0].id;
 
-    await client.query("COMMIT");
+      await client.query(
+        `
+        INSERT INTO insurance_ocr_jobs (document_id, provider, status, attempt, dot_number)
+        VALUES ($1, 'DOCUPIPE', 'PENDING', 0, $2)
+        `,
+        [documentId, dot_number]
+      );
 
-    return res.status(201).json({ ok: true, document: result.rows[0] });
-  } catch (err) {
-    try { await client.query("ROLLBACK"); } catch {}
-    return res.status(400).json({ ok: false, error: err.message || "Upload failed" });
-  } finally {
-    client.release();
+      await client.query("COMMIT");
+
+      return res.status(201).json({ ok: true, document: result.rows[0] });
+    } catch (err) {
+      try {
+        await client.query("ROLLBACK");
+      } catch {}
+      return res.status(400).json({ ok: false, error: err.message || "Upload failed" });
+    } finally {
+      client.release();
+    }
   }
-});
-
+);
 
 /**
  * GET /api/insurance/documents?dot=123
  */
-router.get("/insurance/documents", async (req, res) => {
+router.get("/insurance/documents", requireAuth, loadCompanyContext, async (req, res) => {
   try {
+    const companyId = req.companyContext?.companyId || req.company_id || req.companyId;
+    if (!companyId) throw new Error("Missing company context.");
+
     const dot = String(req.query.dot || "").replace(/\D/g, "");
     if (!dot) throw new Error("dot query param is required (numbers only).");
 
     const r = await pool.query(
       `
-      SELECT id, dot_number, uploaded_by, document_type, status, uploaded_at
-           , file_url, spaces_key
+      SELECT id, company_id, dot_number, uploaded_by, document_type, status, uploaded_at,
+             file_url, spaces_key
       FROM insurance_documents
-      WHERE dot_number = $1
+      WHERE company_id = $1 AND dot_number = $2
       ORDER BY uploaded_at DESC
       LIMIT 50
       `,
-      [dot]
+      [companyId, dot]
     );
 
     res.json({ ok: true, documents: r.rows });
@@ -187,17 +210,20 @@ router.get("/insurance/documents", async (req, res) => {
 /**
  * GET /api/insurance/documents/:id/signed-url
  */
-router.get("/insurance/documents/:id/signed-url", async (req, res) => {
+router.get("/insurance/documents/:id/signed-url", requireAuth, loadCompanyContext, async (req, res) => {
   try {
+    const companyId = req.companyContext?.companyId || req.company_id || req.companyId;
+    if (!companyId) throw new Error("Missing company context.");
+
     const { id } = req.params;
 
     const r = await pool.query(
       `
-      SELECT id, dot_number, spaces_key, file_url
+      SELECT id, company_id, dot_number, spaces_key, file_url
       FROM insurance_documents
-      WHERE id = $1
+      WHERE id = $1 AND company_id = $2
       `,
-      [id]
+      [id, companyId]
     );
 
     if (r.rowCount === 0) throw new Error("Document not found.");
@@ -207,7 +233,7 @@ router.get("/insurance/documents/:id/signed-url", async (req, res) => {
     const command = new GetObjectCommand({
       Bucket: process.env.SPACES_BUCKET,
       Key: doc.spaces_key,
-      ResponseContentType: "application/pdf"
+      ResponseContentType: "application/pdf",
     });
 
     const signedUrl = await getSignedUrl(s3, command, { expiresIn: 60 * 10 });
@@ -220,13 +246,17 @@ router.get("/insurance/documents/:id/signed-url", async (req, res) => {
 
 /**
  * POST /api/insurance/documents/:id/parse
+ * NOTE: this keeps your existing parse logic, but adds company scoping to prevent leakage.
  */
-router.post("/insurance/documents/:id/parse", async (req, res) => {
+router.post("/insurance/documents/:id/parse", requireAuth, loadCompanyContext, async (req, res) => {
   const client = await pool.connect();
 
   const forcedProvider = "TEXTRACT"; // keeping your hard-force behavior
 
   try {
+    const companyId = req.companyContext?.companyId || req.company_id || req.companyId;
+    if (!companyId) throw new Error("Missing company context.");
+
     const { id } = req.params;
 
     // ---------- 0) Lock + idempotency ----------
@@ -234,12 +264,12 @@ router.post("/insurance/documents/:id/parse", async (req, res) => {
 
     const r = await client.query(
       `
-      SELECT id, dot_number, spaces_key, ocr_status, ocr_provider, parse_result
+      SELECT id, company_id, dot_number, spaces_key, ocr_status, ocr_provider, parse_result
       FROM insurance_documents
-      WHERE id = $1
+      WHERE id = $1 AND company_id = $2
       FOR UPDATE
       `,
-      [id]
+      [id, companyId]
     );
 
     if (r.rowCount === 0) throw new Error("Document not found.");
@@ -259,7 +289,7 @@ router.post("/insurance/documents/:id/parse", async (req, res) => {
         document_id: id,
         dot_number: doc.dot_number,
         parseResult: doc.parse_result,
-        reused: true
+        reused: true,
       });
     }
 
@@ -269,9 +299,9 @@ router.post("/insurance/documents/:id/parse", async (req, res) => {
       SET ocr_status='PROCESSING',
           ocr_started_at=NOW(),
           ocr_attempts = COALESCE(ocr_attempts,0) + 1
-      WHERE id=$1
+      WHERE id=$1 AND company_id=$2
       `,
-      [id]
+      [id, companyId]
     );
 
     await client.query("COMMIT");
@@ -280,7 +310,7 @@ router.post("/insurance/documents/:id/parse", async (req, res) => {
     const obj = await s3.send(
       new GetObjectCommand({
         Bucket: process.env.SPACES_BUCKET,
-        Key: doc.spaces_key
+        Key: doc.spaces_key,
       })
     );
 
@@ -299,11 +329,14 @@ router.post("/insurance/documents/:id/parse", async (req, res) => {
 
     if (tryTextract) {
       providerUsed = "AWS_TEXTRACT";
-      await pool.query(`UPDATE insurance_documents SET ocr_provider='AWS_TEXTRACT' WHERE id=$1`, [id]);
+      await pool.query(`UPDATE insurance_documents SET ocr_provider='AWS_TEXTRACT' WHERE id=$1 AND company_id=$2`, [
+        id,
+        companyId,
+      ]);
 
       textract = await ocrPdfBufferWithTextract({
         pdfBuffer,
-        objectKeyHint: `${doc.dot_number}/${id}`
+        objectKeyHint: `${doc.dot_number}/${id}`,
       });
 
       text = textract.fullText || "";
@@ -318,21 +351,19 @@ router.post("/insurance/documents/:id/parse", async (req, res) => {
         avgLineConfidence: textract.confidence?.avgLineConfidence ?? null,
         lineCount: textract.confidence?.lineCount ?? null,
         tableCount: textract.tables?.length ?? 0,
-        keyCount: textract.keyValuePairs?.pairs?.length ?? 0
+        keyCount: textract.keyValuePairs?.pairs?.length ?? 0,
       };
     }
 
-// ---- normalize Textract confidence (0–100 → 0–1 for DB) ----
-const avgPct = textract?.confidence?.avgLineConfidence;
-const avg01 =
-  typeof avgPct === "number"
-    ? Math.max(0, Math.min(1, avgPct / 100))
-    : null;
+    // ---- normalize Textract confidence (0–100 → 0–1 for DB) ----
+    const avgPct = textract?.confidence?.avgLineConfidence;
+    const avg01 = typeof avgPct === "number" ? Math.max(0, Math.min(1, avgPct / 100)) : null;
 
-    
     // ---------- 3) Parse ----------
-    const { parseResult, confidence, coverageTypes, autoLimit, cargoLimit, glLimit } =
-      parseAcord25FromText(text, { ocrProvider: providerUsed, ocrMeta });
+    const { parseResult, confidence, coverageTypes, autoLimit, cargoLimit, glLimit } = parseAcord25FromText(text, {
+      ocrProvider: providerUsed,
+      ocrMeta,
+    });
 
     // ---------- 4) Save ----------
     await pool.query(
@@ -350,20 +381,12 @@ const avg01 =
           parse_confidence = $6::numeric,
           parsed_at = NOW(),
           status = CASE WHEN $6::numeric >= 70 THEN status ELSE 'NEEDS_REVIEW' END
-      WHERE id = $7
+      WHERE id = $7 AND company_id = $8
       `,
-      [
-        text,
-        textract?.jobId || null,
-        avg01,
-        textract?.inputS3Uri || null,
-        JSON.stringify(parseResult),
-        confidence,
-        id
-      ]
+      [text, textract?.jobId || null, avg01, textract?.inputS3Uri || null, JSON.stringify(parseResult), confidence, id, companyId]
     );
 
-    // ---------- 5) Promote to snapshots ----------
+    // ---------- 5) Promote to snapshots (kept as-is) ----------
     let newSnapshotVersion = null;
 
     if (confidence >= 70) {
@@ -392,10 +415,10 @@ const avg01 =
 
       newSnapshotVersion = upsert.rows[0]?.snapshot_version ?? 1;
 
-      await pool.query(
-        `DELETE FROM insurance_coverages WHERE dot_number = $1 AND snapshot_version = $2`,
-        [doc.dot_number, newSnapshotVersion]
-      );
+      await pool.query(`DELETE FROM insurance_coverages WHERE dot_number = $1 AND snapshot_version = $2`, [
+        doc.dot_number,
+        newSnapshotVersion,
+      ]);
 
       for (const ct of coverageTypes) {
         let limits = {};
@@ -422,29 +445,31 @@ const avg01 =
       ocr_provider: providerUsed,
       parseResult,
       promoted_to_snapshot: confidence >= 70,
-      snapshot_version: newSnapshotVersion
+      snapshot_version: newSnapshotVersion,
     });
   } catch (err) {
     try {
+      const companyId = req.companyContext?.companyId || req.company_id || req.companyId;
       await pool.query(
         `
         UPDATE insurance_documents
         SET ocr_status = 'FAILED',
             ocr_error = $2,
             ocr_completed_at = NOW()
-        WHERE id = $1
+        WHERE id = $1 AND company_id = $3
         `,
-        [req.params.id, String(err?.message || err)]
+        [req.params.id, String(err?.message || err), companyId]
       );
     } catch {}
 
-    try { await client.query("ROLLBACK"); } catch {}
+    try {
+      await client.query("ROLLBACK");
+    } catch {}
 
     return res.status(400).json({ ok: false, error: err.message });
   } finally {
     client.release();
   }
 });
-
 
 module.exports = router;
