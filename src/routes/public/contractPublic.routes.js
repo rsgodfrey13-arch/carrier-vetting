@@ -1473,7 +1473,7 @@ try {
       carrier_name: meta.carrier_name || "",
       dotnumber: meta.dotnumber ? String(meta.dotnumber) : "",
       agreement_type: meta.agreement_type || "Carrier Agreement",
-      pdf_link,
+      pdf_link, cert_link
     });
   }
 
@@ -1487,7 +1487,7 @@ try {
       accepted_name: accepted_name || "",
       accepted_title: accepted_title || "",
       accepted_email: accepted_email ? String(accepted_email).trim().toLowerCase() : "",
-      pdf_link,
+      pdf_link, cert_link
     });
   }
 } catch (e) {
