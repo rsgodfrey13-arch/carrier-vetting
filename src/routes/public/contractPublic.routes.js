@@ -1368,7 +1368,7 @@ try {
         ? String(accepted_email).trim().toLowerCase()
         : "",
 
-      pdf_link, cert_liink
+      pdf_link, cert_link
     });
   }
 
