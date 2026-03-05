@@ -8,6 +8,8 @@ const mg = mailgun.client({
 });
 
 
+
+
 async function sendTeamInviteEmail({
   to,
   inviter_name,
@@ -102,6 +104,72 @@ async function sendContractEmail({
       ``,
       `— Carrier Shark`
     ].join("\n")
+  });
+}
+
+
+async function sendCarrierContractAcceptedEmail({
+  to,                 // string or array
+  broker_name,
+  carrier_name,
+  dotnumber,
+  agreement_type,
+  pdf_link
+}) {
+  const domain = process.env.MAILGUN_DOMAIN;
+
+  return mg.messages.create(domain, {
+    from: process.env.MAILGUN_FROM,
+    to,
+    subject: `Contract accepted — ${agreement_type} (DOT ${dotnumber})`,
+    text: [
+      `This is a confirmation that the carrier agreement was accepted.`,
+      ``,
+      `Broker: ${broker_name || "—"}`,
+      `Carrier: ${carrier_name || "—"}`,
+      `DOT: ${dotnumber || "—"}`,
+      `Agreement: ${agreement_type || "—"}`,
+      ``,
+      `Signed copy:`,
+      pdf_link,
+      ``,
+      `— Carrier Shark`,
+    ].join("\n"),
+  });
+}
+
+async function sendBrokerContractAcceptedEmail({
+  to,                 // broker user email
+  broker_name,
+  carrier_name,
+  dotnumber,
+  agreement_type,
+  accepted_name,
+  accepted_title,
+  accepted_email,
+  pdf_link
+}) {
+  const domain = process.env.MAILGUN_DOMAIN;
+
+  return mg.messages.create(domain, {
+    from: process.env.MAILGUN_FROM,
+    to,
+    subject: `Carrier accepted contract — DOT ${dotnumber}`,
+    text: [
+      `A carrier just accepted your agreement in Carrier Shark.`,
+      ``,
+      `Carrier: ${carrier_name || "—"}`,
+      `DOT: ${dotnumber || "—"}`,
+      `Agreement: ${agreement_type || "—"}`,
+      ``,
+      `Signed by: ${accepted_name || "—"} (${accepted_title || "—"})`,
+      accepted_email ? `Signer email: ${accepted_email}` : null,
+      ``,
+      `Signed copy:`,
+      pdf_link,
+      ``,
+      `— Carrier Shark`,
+    ].filter(Boolean).join("\n"),
   });
 }
 
@@ -213,6 +281,8 @@ module.exports = {
   sendPasswordResetEmail,
   sendVerificationEmail,
   sendSupportTicketEmail,
+  sendCarrierContractAcceptedEmail,
+  sendBrokerContractAcceptedEmail,
   sendTeamInviteEmail,
   sendPublicContactEmail
 };
