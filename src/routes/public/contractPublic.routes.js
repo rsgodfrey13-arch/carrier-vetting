@@ -577,6 +577,7 @@ router.get("/contract/:token", async (req, res) => {
   </div>
 
   <input type="file" id="insUpload" accept=".pdf,.png,.jpg,.jpeg" />
+  <div class="muted" style="margin-top:6px;">Accepted: PDF, JPG, PNG (screenshots OK)</div>
 
   <button id="uploadInsBtn" class="btn2" style="margin-top:10px;">
     Upload Insurance Document
@@ -814,37 +815,53 @@ const insInput = document.getElementById("insUpload");
 const insBtn = document.getElementById("uploadInsBtn");
 const insMsg = document.getElementById("insMsg");
 
-if (insBtn) {
-  insBtn.addEventListener("click", async () => {
-    const file = insInput.files[0];
+async function uploadInsuranceFile(file) {
+  if (!file) return;
 
+  insMsg.textContent = "";
+  if (insBtn) {
+    insBtn.disabled = true;
+    insBtn.textContent = "Uploading...";
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    const resp = await fetch("/contract/" + encodeURIComponent(token) + "/insurance-upload", {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data.error || "Upload failed");
+
+    insMsg.textContent = "Insurance document uploaded successfully.";
+  } catch (err) {
+    insMsg.textContent = err.message || "Upload failed.";
+  } finally {
+    if (insBtn) {
+      insBtn.disabled = false;
+      insBtn.textContent = "Upload Insurance Document";
+    }
+  }
+}
+
+if (insInput) {
+  insInput.addEventListener("change", () => {
+    const file = insInput.files && insInput.files[0];
+    uploadInsuranceFile(file);
+  });
+}
+
+if (insBtn) {
+  insBtn.addEventListener("click", () => {
+    const file = insInput.files && insInput.files[0];
     if (!file) {
       insMsg.textContent = "Please choose a file.";
       return;
     }
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    insBtn.disabled = true;
-    insBtn.textContent = "Uploading...";
-
-    try {
-      const resp = await fetch("/contract/" + encodeURIComponent(token) + "/insurance-upload", {
-        method: "POST",
-        body: formData
-      });
-
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(data.error || "Upload failed");
-
-      insMsg.textContent = "Insurance document uploaded successfully.";
-    } catch (err) {
-      insMsg.textContent = err.message || "Upload failed.";
-    }
-
-    insBtn.disabled = false;
-    insBtn.textContent = "Upload Insurance Document";
+    uploadInsuranceFile(file);
   });
 }
 
@@ -973,58 +990,81 @@ router.post("/contract/:token/insurance-upload", async (req, res) => {
 
   try {
     const { rows } = await pool.query(
-      `SELECT contract_id, company_id, dotnumber FROM public.contracts WHERE token = $1 LIMIT 1`,
+      `SELECT contract_id, company_id, dotnumber
+       FROM public.contracts
+       WHERE token = $1
+       LIMIT 1`,
       [token]
     );
 
-    if (!rows.length) {
-      return res.status(404).json({ error: "Invalid contract" });
-    }
+    if (!rows.length) return res.status(404).json({ error: "Invalid contract" });
 
     const { contract_id: contractId, company_id: companyId, dotnumber } = rows[0];
+    const dot = String(dotnumber || "").replace(/\D/g, "");
 
     const file = req.files?.file;
     if (!file) return res.status(400).json({ error: "Missing file" });
 
-    // (Optional) basic allowlist like ACH
-    const okMime = ["application/pdf", "image/png", "image/jpeg"].includes(String(file.mimetype || ""));
-    if (!okMime) return res.status(400).json({ error: "Only PDF/JPG/PNG allowed" });
+    const mime = String(file.mimetype || "").toLowerCase();
+    const allowed = ["application/pdf", "image/jpeg", "image/png"];
+    if (!allowed.includes(mime)) {
+      return res.status(400).json({ error: "Only PDF, JPG, or PNG allowed." });
+    }
 
-    const safeName = String(file.name || "upload")
+    const ext =
+      mime === "application/pdf" ? "pdf" :
+      mime === "image/png" ? "png" :
+      mime === "image/jpeg" ? "jpg" :
+      "bin";
+
+    const safeBase = String(file.name || "upload")
+      .replace(/\.[^/.]+$/, "")
       .replace(/[^\w.\-]+/g, "_")
-      .slice(0, 120);
+      .slice(0, 80);
 
-    const key = `insurance/${companyId}/${contractId}/${Date.now()}_${safeName}`;
+    const key = `insurance/${companyId}/${dot || "unknown_dot"}/${contractId}/${Date.now()}_${safeBase}.${ext}`;
 
     await spaces.putObject({
       Bucket: process.env.SPACES_BUCKET,
       Key: key,
       Body: file.data,
-      ContentType: file.mimetype
+      ContentType: mime,
+      ACL: "private",
     }).promise();
 
-    // ✅ store with company_id boundary (not user_id)
-    await pool.query(
+    const fileUrl = `s3://${process.env.SPACES_BUCKET}/${key}`;
+
+    const ins = await pool.query(
       `
-      INSERT INTO public.contract_insurance_documents
-        (company_id, contract_id, dot_number, storage_key, file_type)
+      INSERT INTO public.insurance_documents
+        (company_id, dot_number, uploaded_by, file_url, file_type, document_type, status, uploaded_at, spaces_key, ocr_provider)
       VALUES
-        ($1, $2, $3, $4, $5)
+        ($1, $2, 'CARRIER', $3, $4, 'COI', 'ON_FILE', NOW(), $5, 'DOCUPIPE')
+      RETURNING id
       `,
       [
         companyId,
-        contractId,
-        String(dotnumber || "").replace(/\D/g, "") || null,
+        dot || "0",
+        fileUrl,
+        mime === "application/pdf" ? "PDF" : "PDF",
         key,
-        String(file.mimetype || "")
       ]
     );
 
-    res.json({ ok: true });
+    const documentId = ins.rows[0].id;
 
+    await pool.query(
+      `
+      INSERT INTO public.insurance_ocr_jobs (document_id, provider, status, attempt, dot_number)
+      VALUES ($1, 'DOCUPIPE', 'PENDING', 0, $2)
+      `,
+      [documentId, dot || null]
+    );
+
+    return res.json({ ok: true, document_id: documentId });
   } catch (err) {
     console.error("insurance-upload error:", err?.message, err);
-    res.status(500).json({ error: "Upload failed" });
+    return res.status(500).json({ error: "Upload failed" });
   }
 });
 
