@@ -1074,10 +1074,12 @@ router.post("/contract/:token/ack", async (req, res) => {
         c.user_id,
         uc.name        AS agreement_type,
         uc.display_name AS broker_name,
-        u.email        AS broker_email
+        u.email        AS broker_email,
+        COALESCE(pc.dbaname,pc.legalname) AS carrier_name
       FROM public.contracts c
       JOIN public.user_contracts uc ON uc.id = c.user_contract_id
       JOIN public.users u ON u.id = c.user_id
+      LEFT JOIN public.carriers pc on c.dotnumber = pc.dotnumber
       WHERE c.contract_id = $1
       LIMIT 1;
       `,
@@ -1115,38 +1117,45 @@ router.post("/contract/:token/ack", async (req, res) => {
     if (status2 === "ACKNOWLEDGED" || status2 === "SIGNED") {
       
     await client.query("COMMIT");
-    
-    // send emails AFTER commit (so acceptance isn't lost if mailgun hiccups)
-    try {
-      const baseUrl = process.env.APP_BASE_URL || "https://carriershark.com";
-      const pdf_link = `${baseUrl}/contract/${encodeURIComponent(token)}/pdf`;
-    
-      // Carrier email goes to: contracts.email_to + signer email (if provided)
-      const toCarrier = [meta.email_to, accepted_email].filter(Boolean);
-      const uniqueCarrier = [...new Set(toCarrier.map((x) => String(x).trim().toLowerCase()))];
-    
-      if (uniqueCarrier.length) {
-        await sendCarrierContractAcceptedEmail({
-          to: uniqueCarrier,
-          broker_name: meta.broker_name || "Carrier Shark Customer",
-          carrier_name: null, // you can wire this in later if you want
-          dotnumber: meta.dotnumber,
-          agreement_type: meta.agreement_type || "Carrier Agreement",
-          pdf_link,
-        });
-      }
+
+// send emails AFTER commit (so acceptance isn't lost if mailgun hiccups)
+try {
+  const baseUrl = process.env.APP_BASE_URL || "https://carriershark.com";
+  const pdf_link = `${baseUrl}/contract/${encodeURIComponent(token)}/pdf`;
+
+  // Carrier email goes to: contracts.email_to + signer email (if provided)
+  const toCarrier = [meta.email_to, accepted_email].filter(Boolean);
+  const uniqueCarrier = [...new Set(toCarrier.map((x) => String(x).trim().toLowerCase()))];
+
+  if (uniqueCarrier.length) {
+    await sendCarrierContractAcceptedEmail({
+      to: uniqueCarrier,
+      broker_name: meta.broker_name || "Carrier Shark Customer",
+      carrier_name: meta.carrier_name || "",                 // ✅ fixed
+      dotnumber: meta.dotnumber ? String(meta.dotnumber) : "",// ✅ safer
+      agreement_type: meta.agreement_type || "Carrier Agreement",
+      pdf_link,
+    });
+  }
+} catch (e) {
+  console.error("Contract acceptance email failed:", e?.message, e);
+}
     
       // Broker email is separate
       if (meta.broker_email) {
         await sendBrokerContractAcceptedEmail({
-          to: meta.broker_email,
+          to: String(meta.broker_email).trim().toLowerCase(),
+      
           broker_name: meta.broker_name || "Carrier Shark Customer",
-          carrier_name: null,
-          dotnumber: meta.dotnumber,
+          carrier_name: meta.carrier_name || "",
+      
+          dotnumber: meta.dotnumber ? String(meta.dotnumber) : "",
           agreement_type: meta.agreement_type || "Carrier Agreement",
-          accepted_name,
-          accepted_title,
-          accepted_email,
+      
+          accepted_name: accepted_name || "",
+          accepted_title: accepted_title || "",
+          accepted_email: accepted_email ? String(accepted_email).trim().toLowerCase() : "",
+      
           pdf_link,
         });
       }
