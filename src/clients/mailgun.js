@@ -108,6 +108,13 @@ async function sendContractEmail({
 }
 
 
+const recipients = [contract.email_to, accepted_email]
+  .filter(Boolean)
+  .map(e => e.toLowerCase().trim());
+
+const toCarrier = [...new Set(recipients)];
+
+
 async function sendCarrierContractAcceptedEmail({
   to,                 // string or array
   broker_name,
@@ -121,25 +128,22 @@ async function sendCarrierContractAcceptedEmail({
   return mg.messages.create(domain, {
     from: process.env.MAILGUN_FROM,
     to,
-    subject: `Contract accepted — ${agreement_type} (DOT ${dotnumber})`,
-    text: [
-      `This is a confirmation that the carrier agreement was accepted.`,
-      ``,
-      `Broker: ${broker_name || "—"}`,
-      `Carrier: ${carrier_name || "—"}`,
-      `DOT: ${dotnumber || "—"}`,
-      `Agreement: ${agreement_type || "—"}`,
-      ``,
-      `Signed copy:`,
-      pdf_link,
-      ``,
-      `— Carrier Shark`,
-    ].join("\n"),
+    subject: `Agreement signed — ${agreement_type} (DOT ${dotnumber})`,
+    template: "carrier_contract_accepted",
+
+    "h:X-Mailgun-Variables": JSON.stringify({
+      broker_name: broker_name || "",
+      carrier_name: carrier_name || "",
+      dotnumber: dotnumber || "",
+      agreement_type: agreement_type || "Carrier Agreement",
+      pdf_link: pdf_link || ""
+    })
   });
 }
 
+
 async function sendBrokerContractAcceptedEmail({
-  to,                 // broker user email
+  to,
   broker_name,
   carrier_name,
   dotnumber,
@@ -154,22 +158,19 @@ async function sendBrokerContractAcceptedEmail({
   return mg.messages.create(domain, {
     from: process.env.MAILGUN_FROM,
     to,
-    subject: `Carrier accepted contract — DOT ${dotnumber}`,
-    text: [
-      `A carrier just accepted your agreement in Carrier Shark.`,
-      ``,
-      `Carrier: ${carrier_name || "—"}`,
-      `DOT: ${dotnumber || "—"}`,
-      `Agreement: ${agreement_type || "—"}`,
-      ``,
-      `Signed by: ${accepted_name || "—"} (${accepted_title || "—"})`,
-      accepted_email ? `Signer email: ${accepted_email}` : null,
-      ``,
-      `Signed copy:`,
-      pdf_link,
-      ``,
-      `— Carrier Shark`,
-    ].filter(Boolean).join("\n"),
+    subject: `Carrier accepted agreement — DOT ${dotnumber}`,
+    template: "broker_contract_accepted",
+
+    "h:X-Mailgun-Variables": JSON.stringify({
+      broker_name: broker_name || "",
+      carrier_name: carrier_name || "",
+      dotnumber: dotnumber || "",
+      agreement_type: agreement_type || "Carrier Agreement",
+      accepted_name: accepted_name || "",
+      accepted_title: accepted_title || "",
+      accepted_email: accepted_email || "",
+      pdf_link: pdf_link || ""
+    })
   });
 }
 
