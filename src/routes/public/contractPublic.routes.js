@@ -1347,7 +1347,7 @@ try {
       carrier_name: meta.carrier_name || "",
       dotnumber: meta.dotnumber ? String(meta.dotnumber) : "",
       agreement_type: meta.agreement_type || "Carrier Agreement",
-      pdf_link,
+      pdf_link, cert_link
     });
   }
 
@@ -1368,7 +1368,7 @@ try {
         ? String(accepted_email).trim().toLowerCase()
         : "",
 
-      pdf_link,
+      pdf_link, cert_liink
     });
   }
 
