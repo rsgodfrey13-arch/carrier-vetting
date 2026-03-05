@@ -17,6 +17,16 @@ const MFA_VALID_MIN = 10;
 const MAX_ATTEMPTS = 6;
 const LOCK_MIN = 15;
 
+function escapeHtmlServer(v) {
+  return String(v ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+
 function generateOtp6() {
   const n = crypto.randomInt(0, 1000000);
   return String(n).padStart(6, "0");
@@ -179,21 +189,21 @@ router.get("/contract/:token/certificate", async (req, res) => {
       <div class="row">
         <div class="col">
           <div class="k">Agreement Type</div>
-          <div class="v">${escapeHtml(r.agreement_type || "Carrier Agreement")}</div>
+          <div class="v">${escapeHtmlServer(r.agreement_type || "Carrier Agreement")}</div>
         </div>
         <div class="col">
           <div class="k">Broker / Sender</div>
-          <div class="v">${escapeHtml(r.broker_name || "")}</div>
+          <div class="v">${escapeHtmlServer(r.broker_name || "")}</div>
         </div>
       </div>
       <div class="row" style="margin-top:10px;">
         <div class="col">
           <div class="k">Carrier DOT</div>
-          <div class="v">${escapeHtml(String(r.dotnumber || ""))}</div>
+          <div class="v">${escapeHtmlServer(String(r.dotnumber || ""))}</div>
         </div>
         <div class="col">
           <div class="k">Original Recipient Email</div>
-          <div class="v">${escapeHtml(String(r.email_to || ""))}</div>
+          <div class="v">${escapeHtmlServer(String(r.email_to || ""))}</div>
         </div>
       </div>
     </div>
@@ -202,38 +212,38 @@ router.get("/contract/:token/certificate", async (req, res) => {
       <div class="row">
         <div class="col">
           <div class="k">Accepted Name</div>
-          <div class="v">${escapeHtml(r.accepted_name || "")}</div>
+          <div class="v">${escapeHtmlServer(r.accepted_name || "")}</div>
         </div>
         <div class="col">
           <div class="k">Accepted Title</div>
-          <div class="v">${escapeHtml(r.accepted_title || "")}</div>
+          <div class="v">${escapeHtmlServer(r.accepted_title || "")}</div>
         </div>
       </div>
       <div class="row" style="margin-top:10px;">
         <div class="col">
           <div class="k">Accepted Email</div>
-          <div class="v">${escapeHtml(r.accepted_email || "")}</div>
+          <div class="v">${escapeHtmlServer(r.accepted_email || "")}</div>
         </div>
         <div class="col">
           <div class="k">Accepted At (UTC)</div>
-          <div class="v">${escapeHtml(acceptedAt)}</div>
+          <div class="v">${escapeHtmlServer(acceptedAt)}</div>
         </div>
       </div>
       <div class="row" style="margin-top:10px;">
         <div class="col">
           <div class="k">IP Address</div>
-          <div class="v">${escapeHtml(r.accepted_ip || "")}</div>
+          <div class="v">${escapeHtmlServer(r.accepted_ip || "")}</div>
         </div>
         <div class="col">
           <div class="k">User Agent</div>
-          <div class="v">${escapeHtml(r.accepted_user_agent || "")}</div>
+          <div class="v">${escapeHtmlServer(r.accepted_user_agent || "")}</div>
         </div>
       </div>
     </div>
 
     <div class="box">
       <div class="k">Document Hash (SHA-256)</div>
-      <div class="v">${escapeHtml(r.document_hash_sha256 || "")}</div>
+      <div class="v">${escapeHtmlServer(r.document_hash_sha256 || "")}</div>
       <div class="muted" style="margin-top:8px;">
         This hash identifies the exact PDF content that was accepted.
       </div>
@@ -253,7 +263,7 @@ router.get("/contract/:token/certificate", async (req, res) => {
   </div>
 
   <script>
-    function escapeHtml(str){
+    function escapeHtmlServer(str){
       return String(str||"")
         .replaceAll("&","&amp;")
         .replaceAll("<","&lt;")
