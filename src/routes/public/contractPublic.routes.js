@@ -98,6 +98,181 @@ router.get("/contract/:token/pdf", async (req, res) => {
   }
 });
 
+router.get("/contract/:token/certificate", async (req, res) => {
+  const token = String(req.params.token || "").trim();
+  if (!token) return res.status(400).send("Missing token");
+
+  try {
+    const { rows } = await pool.query(
+      `
+      SELECT
+        c.contract_id,
+        c.status,
+        c.dotnumber,
+        c.email_to,
+        c.sent_at,
+        c.signed_at,
+        c.token_expires_at,
+        uc.name AS agreement_type,
+        uc.display_name AS broker_name,
+        ca.accepted_at,
+        ca.accepted_name,
+        ca.accepted_title,
+        ca.accepted_email,
+        ca.accepted_ip,
+        ca.accepted_user_agent,
+        ca.document_hash_sha256,
+        ca.document_storage_key
+      FROM public.contracts c
+      JOIN public.user_contracts uc ON uc.id = c.user_contract_id
+      LEFT JOIN public.contract_acceptances ca ON ca.contract_id = c.contract_id
+      WHERE c.token = $1
+      LIMIT 1;
+      `,
+      [token]
+    );
+
+    if (!rows.length) return res.status(404).send("Invalid link");
+
+    const r = rows[0];
+    if (r.token_expires_at && new Date(r.token_expires_at) < new Date()) {
+      return res.status(410).send("This link has expired");
+    }
+
+    const accepted = (r.status === "ACKNOWLEDGED" || r.status === "SIGNED");
+    const acceptedAt = r.accepted_at ? new Date(r.accepted_at).toISOString() : "";
+    const signedAt = r.signed_at ? new Date(r.signed_at).toISOString() : "";
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
+
+    return res.send(`<!doctype html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Signature Certificate</title>
+  <style>
+    body{ font-family: Arial, sans-serif; margin:24px; color:#111; }
+    .wrap{ max-width:900px; margin:0 auto; }
+    .h{ font-size:22px; font-weight:800; margin-bottom:10px; }
+    .sub{ color:#444; margin-bottom:18px; }
+    .box{ border:1px solid #ddd; border-radius:10px; padding:14px; margin:12px 0; }
+    .row{ display:flex; gap:14px; flex-wrap:wrap; }
+    .col{ flex:1; min-width:260px; }
+    .k{ font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:#666; }
+    .v{ font-size:15px; margin-top:4px; word-break:break-word; }
+    .badge{ display:inline-block; padding:6px 10px; border-radius:999px; background:#eef6ff; border:1px solid #cfe3ff; font-weight:700; }
+    .muted{ color:#666; font-size:13px; line-height:1.45; }
+    .btn{ display:inline-block; margin-top:10px; padding:10px 12px; border-radius:10px; border:1px solid #ddd; text-decoration:none; color:#111; font-weight:700; }
+    @media print { .noPrint{ display:none; } body{ margin:0.5in; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="h">Signature Certificate</div>
+    <div class="sub">
+      This certificate records the electronic acceptance of an agreement delivered via Carrier Shark.
+      ${accepted ? `<span class="badge">Accepted</span>` : `<span class="badge">Not yet accepted</span>`}
+    </div>
+
+    <div class="box">
+      <div class="row">
+        <div class="col">
+          <div class="k">Agreement Type</div>
+          <div class="v">${escapeHtml(r.agreement_type || "Carrier Agreement")}</div>
+        </div>
+        <div class="col">
+          <div class="k">Broker / Sender</div>
+          <div class="v">${escapeHtml(r.broker_name || "")}</div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <div class="col">
+          <div class="k">Carrier DOT</div>
+          <div class="v">${escapeHtml(String(r.dotnumber || ""))}</div>
+        </div>
+        <div class="col">
+          <div class="k">Original Recipient Email</div>
+          <div class="v">${escapeHtml(String(r.email_to || ""))}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="box">
+      <div class="row">
+        <div class="col">
+          <div class="k">Accepted Name</div>
+          <div class="v">${escapeHtml(r.accepted_name || "")}</div>
+        </div>
+        <div class="col">
+          <div class="k">Accepted Title</div>
+          <div class="v">${escapeHtml(r.accepted_title || "")}</div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <div class="col">
+          <div class="k">Accepted Email</div>
+          <div class="v">${escapeHtml(r.accepted_email || "")}</div>
+        </div>
+        <div class="col">
+          <div class="k">Accepted At (UTC)</div>
+          <div class="v">${escapeHtml(acceptedAt)}</div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <div class="col">
+          <div class="k">IP Address</div>
+          <div class="v">${escapeHtml(r.accepted_ip || "")}</div>
+        </div>
+        <div class="col">
+          <div class="k">User Agent</div>
+          <div class="v">${escapeHtml(r.accepted_user_agent || "")}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="box">
+      <div class="k">Document Hash (SHA-256)</div>
+      <div class="v">${escapeHtml(r.document_hash_sha256 || "")}</div>
+      <div class="muted" style="margin-top:8px;">
+        This hash identifies the exact PDF content that was accepted.
+      </div>
+    </div>
+
+    <div class="box">
+      <div class="muted">
+        Carrier Shark provides technology for delivery and electronic acceptance and is not a party to the agreement.
+        Parties are responsible for verifying identity and authority.
+      </div>
+    </div>
+
+    <div class="noPrint">
+      <a class="btn" href="/contract/${encodeURIComponent(token)}/pdf" target="_blank" rel="noopener">Open Contract PDF</a>
+      <a class="btn" href="#" onclick="window.print(); return false;">Print / Save as PDF</a>
+    </div>
+  </div>
+
+  <script>
+    function escapeHtml(str){
+      return String(str||"")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+  </script>
+</body>
+</html>`);
+  } catch (err) {
+    console.error("GET /contract/:token/certificate error:", err?.message, err);
+    return res.status(500).send("Server error");
+  }
+});
+
+
+
+
 /** ---------- CONTRACT LANDING PAGE (token + ACK UI) ---------- **/
 router.get("/contract/:token", async (req, res) => {
   const token = String(req.params.token || "").trim();
@@ -1122,6 +1297,7 @@ router.post("/contract/:token/ack", async (req, res) => {
 try {
   const baseUrl = process.env.APP_BASE_URL || "https://carriershark.com";
   const pdf_link = `${baseUrl}/contract/${encodeURIComponent(token)}/pdf`;
+  const cert_link = `${baseUrl}/contract/${encodeURIComponent(token)}/certificate`;
 
   // Carrier email
   const toCarrier = [meta.email_to, accepted_email].filter(Boolean);
@@ -1248,6 +1424,7 @@ await client.query("COMMIT");
 try {
   const baseUrl = process.env.APP_BASE_URL || "https://carriershark.com";
   const pdf_link = `${baseUrl}/contract/${encodeURIComponent(token)}/pdf`;
+  const cert_link = `${baseUrl}/contract/${encodeURIComponent(token)}/certificate`;
 
   const toCarrier = [meta.email_to, accepted_email].filter(Boolean);
   const uniqueCarrier = [...new Set(toCarrier.map(x => String(x).trim().toLowerCase()))];
