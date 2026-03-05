@@ -8,7 +8,7 @@ const mg = mailgun.client({
 });
 
 
-
+// Check
 
 async function sendTeamInviteEmail({
   to,
