@@ -1123,45 +1123,45 @@ try {
   const baseUrl = process.env.APP_BASE_URL || "https://carriershark.com";
   const pdf_link = `${baseUrl}/contract/${encodeURIComponent(token)}/pdf`;
 
-  // Carrier email goes to: contracts.email_to + signer email (if provided)
+  // Carrier email
   const toCarrier = [meta.email_to, accepted_email].filter(Boolean);
-  const uniqueCarrier = [...new Set(toCarrier.map((x) => String(x).trim().toLowerCase()))];
+  const uniqueCarrier = [...new Set(toCarrier.map(x => String(x).trim().toLowerCase()))];
 
   if (uniqueCarrier.length) {
     await sendCarrierContractAcceptedEmail({
       to: uniqueCarrier,
       broker_name: meta.broker_name || "Carrier Shark Customer",
-      carrier_name: meta.carrier_name || "",                 // ✅ fixed
-      dotnumber: meta.dotnumber ? String(meta.dotnumber) : "",// ✅ safer
+      carrier_name: meta.carrier_name || "",
+      dotnumber: meta.dotnumber ? String(meta.dotnumber) : "",
       agreement_type: meta.agreement_type || "Carrier Agreement",
       pdf_link,
     });
   }
+
+  // Broker email
+  if (meta.broker_email) {
+    await sendBrokerContractAcceptedEmail({
+      to: String(meta.broker_email).trim().toLowerCase(),
+
+      broker_name: meta.broker_name || "Carrier Shark Customer",
+      carrier_name: meta.carrier_name || "",
+
+      dotnumber: meta.dotnumber ? String(meta.dotnumber) : "",
+      agreement_type: meta.agreement_type || "Carrier Agreement",
+
+      accepted_name: accepted_name || "",
+      accepted_title: accepted_title || "",
+      accepted_email: accepted_email
+        ? String(accepted_email).trim().toLowerCase()
+        : "",
+
+      pdf_link,
+    });
+  }
+
 } catch (e) {
   console.error("Contract acceptance email failed:", e?.message, e);
 }
-    
-      // Broker email is separate
-      if (meta.broker_email) {
-        await sendBrokerContractAcceptedEmail({
-          to: String(meta.broker_email).trim().toLowerCase(),
-      
-          broker_name: meta.broker_name || "Carrier Shark Customer",
-          carrier_name: meta.carrier_name || "",
-      
-          dotnumber: meta.dotnumber ? String(meta.dotnumber) : "",
-          agreement_type: meta.agreement_type || "Carrier Agreement",
-      
-          accepted_name: accepted_name || "",
-          accepted_title: accepted_title || "",
-          accepted_email: accepted_email ? String(accepted_email).trim().toLowerCase() : "",
-      
-          pdf_link,
-        });
-      }
-    } catch (e) {
-      console.error("Contract acceptance email failed:", e?.message, e);
-    }
     
     return res.json({ ok: true });
     }
