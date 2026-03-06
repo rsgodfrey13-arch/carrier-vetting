@@ -399,7 +399,7 @@ router.post("/agreements/default", requireAuth, async (req, res) => {
 
 router.get("/carrier-agreements/:dot", async (req, res) => {
   try {
-    if (!req.session?.user?.id) {
+    if (!req.session?.userId) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
