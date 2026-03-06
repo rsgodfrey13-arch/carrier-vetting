@@ -408,7 +408,7 @@ router.get("/carrier-agreements/:dot", async (req, res) => {
       return res.status(400).json({ error: "Invalid DOT" });
     }
 
-    const userId = req.session.user.id;
+    const userId = req.session.userId;
 
     // get the caller's company_id
     const userRes = await pool.query(
