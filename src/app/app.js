@@ -5,7 +5,7 @@ const Sentry = require("@sentry/node");
 const express = require("express");
 const path = require("path");
 const session = require("express-session");
-
+const fileUpload = require("express-fileupload");
 const { internalRoutes } = require("../routes/internal");
 const { publicRoutes } = require("../routes/public");
 const { externalV1Routes } = require("../routes/external/v1.routes");
@@ -57,6 +57,15 @@ app.use(express.json({
   }
 }));
   app.use(express.urlencoded({ extended: false, limit: "10mb" }));
+
+app.use(fileUpload({
+  limits: { fileSize: 20 * 1024 * 1024 },
+  abortOnLimit: true,
+  createParentPath: true,
+  safeFileNames: true,
+  preserveExtension: true
+}));
+  
 
   // Sessions (used for internal routes)
   app.use(
