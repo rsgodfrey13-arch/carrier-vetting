@@ -1220,7 +1220,7 @@ if (data && data.source === "cache_stale") {
       const wrap = document.getElementById("ins-coverages-body");
       if (wrap) wrap.innerHTML = `<div class="cs-hint">—</div>`;
     }
-
+await loadCarrierAgreements(dot);
       if (opts.manual === true) {
         setRefreshUi("idle", "Updated just now");
         setTimeout(() => setRefreshUi("idle", ""), 2200);
