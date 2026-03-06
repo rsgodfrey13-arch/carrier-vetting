@@ -397,7 +397,96 @@ router.post("/agreements/default", requireAuth, async (req, res) => {
   }
 });
 
+router.get("/carrier-agreements/:dot", async (req, res) => {
+  try {
+    if (!req.session?.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
 
+    const dot = String(req.params.dot || "").replace(/\D/g, "");
+    if (!dot) {
+      return res.status(400).json({ error: "Invalid DOT" });
+    }
+
+    const userId = req.session.user.id;
+
+    // get the caller's company_id
+    const userRes = await pool.query(
+      `
+      SELECT company_id
+      FROM public.users
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [userId]
+    );
+
+    const companyId = userRes.rows[0]?.company_id;
+    if (!companyId) {
+      return res.status(403).json({ error: "No company context found" });
+    }
+
+    // count signed/acknowledged agreements for this DOT only
+    const countRes = await pool.query(
+      `
+      SELECT COUNT(*)::int AS count
+      FROM public.contracts c
+      WHERE c.company_id = $1
+        AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
+        AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
+      `,
+      [companyId, dot]
+    );
+
+    // latest signed/acknowledged agreement for this DOT only
+    const latestRes = await pool.query(
+      `
+      SELECT
+        c.contract_id,
+        c.token,
+        c.status,
+        c.signed_at,
+        c.sent_at,
+        uc.name AS agreement_type
+      FROM public.contracts c
+      LEFT JOIN public.user_contracts uc
+        ON uc.id = c.user_contract_id
+      WHERE c.company_id = $1
+        AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
+        AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
+      ORDER BY COALESCE(c.signed_at, c.sent_at, c.created_at) DESC
+      LIMIT 1
+      `,
+      [companyId, dot]
+    );
+
+    const count = countRes.rows[0]?.count || 0;
+    const latest = latestRes.rows[0] || null;
+
+    if (!latest) {
+      return res.json({
+        count: 0,
+        latest: null
+      });
+    }
+
+    return res.json({
+      count,
+      latest: {
+        contract_id: latest.contract_id,
+        agreement_type: latest.agreement_type || "Carrier Agreement",
+        status: latest.status,
+        signed_at: latest.signed_at,
+        sent_at: latest.sent_at,
+        pdf_url: `/contract/${latest.token}/pdf`,
+        certificate_url: `/contract/${latest.token}/certificate`
+      }
+    });
+  } catch (err) {
+    console.error("GET /carrier-agreements/:dot error:", err?.message, err);
+    return res.status(500).json({ error: "Failed to load carrier agreements" });
+  }
+});
 
 
 
