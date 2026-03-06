@@ -390,15 +390,20 @@ function renderInsuranceDocumentOnly(doc, dot) {
         <div class="ins-limits">
           ${limits.map((l) => {
             const label = safeText(l.label);
+
+            //New Amount
+            const splitA = Number(l.amount_primary || 0);
+            const splitB = Number(l.amount_secondary || 0);
+            
             const value =
               (l.value_text && String(l.value_text).trim()) ||
               (l.amount_text && String(l.amount_text).trim()) ||
-              (l.amount_primary != null || l.amount_secondary != null)
+              (splitA > 0 || splitB > 0
                 ? [
-                    l.amount_primary != null ? fmtMoney(l.amount_primary, l.currency) : null,
-                    l.amount_secondary != null ? fmtMoney(l.amount_secondary, l.currency) : null
+                    splitA > 0 ? fmtMoney(splitA, l.currency) : null,
+                    splitB > 0 ? fmtMoney(splitB, l.currency) : null
                   ].filter(Boolean).join(" / ")
-                : (l.amount != null ? fmtMoney(l.amount, l.currency) : "—");
+                : (l.amount != null ? fmtMoney(l.amount, l.currency) : "—"));
 
             return `
               <div class="ins-limit-row">
