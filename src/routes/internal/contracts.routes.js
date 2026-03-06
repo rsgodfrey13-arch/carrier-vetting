@@ -413,7 +413,7 @@ router.get("/carrier-agreements/:dot", async (req, res) => {
     // get the caller's company_id
     const userRes = await pool.query(
       `
-      SELECT company_id
+      SELECT default_company_id company_id
       FROM public.users
       WHERE id = $1
       LIMIT 1
