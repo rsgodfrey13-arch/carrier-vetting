@@ -1249,35 +1249,34 @@ async function loadCarrierAgreements(dot) {
 
   if (!wrap || !statusEl || !pdfEl || !certEl) return;
 
-  // always start hidden + reset stale values
+  // always start hidden
   wrap.hidden = true;
-  statusEl.textContent = "0 Agreements Signed";
-  pdfEl.removeAttribute("href");
-  certEl.removeAttribute("href");
 
   try {
     const res = await fetch(`/api/carrier-agreements/${encodeURIComponent(dot)}`);
-    const data = await res.json().catch(() => ({}));
-
     if (!res.ok) return;
+
+    const data = await res.json().catch(() => ({}));
 
     const count = Number(data?.count || 0);
     const latest = data?.latest || null;
-    const pdfUrl = String(latest?.pdf_url || "").trim();
-    const certUrl = String(latest?.certificate_url || "").trim();
 
-    if (count <= 0 || !pdfUrl || !certUrl) {
-      wrap.hidden = true;
-      return;
+    if (
+      count > 0 &&
+      latest?.pdf_url &&
+      latest?.certificate_url
+    ) {
+      statusEl.textContent =
+        `${count} Agreement${count === 1 ? "" : "s"} Signed`;
+
+      pdfEl.href = latest.pdf_url;
+      certEl.href = latest.certificate_url;
+
+      wrap.hidden = false;
     }
 
-    statusEl.textContent = `${count} Agreement${count === 1 ? "" : "s"} Signed`;
-    pdfEl.href = pdfUrl;
-    certEl.href = certUrl;
-    wrap.hidden = false;
   } catch (err) {
     console.error("agreements load failed", err);
-    wrap.hidden = true;
   }
 }
 
