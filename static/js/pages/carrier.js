@@ -1252,7 +1252,7 @@ async function loadCarrierAgreements(dot) {
   wrap.hidden = true;
 
   try {
-    const res = await fetch(`/api/carriers/${encodeURIComponent(dot)}/agreements`);
+    const res = await fetch(`/api/contracts/carrier-agreements/${encodeURIComponent(dot)}`);
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) return;
