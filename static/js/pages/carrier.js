@@ -1249,37 +1249,48 @@ async function loadCarrierAgreements(dot) {
 
   if (!wrap || !statusEl || !pdfEl || !certEl) return;
 
-  // always start hidden
+  // hard reset every time
   wrap.hidden = true;
+  statusEl.textContent = "";
+  pdfEl.removeAttribute("href");
+  certEl.removeAttribute("href");
+  pdfEl.style.display = "none";
+  certEl.style.display = "none";
 
   try {
-    const res = await fetch(`/api/carrier-agreements/${encodeURIComponent(dot)}`);
+    const res = await fetch(`/api/carrier-agreements/${encodeURIComponent(dot)}`, {
+      credentials: "include"
+    });
+
     if (!res.ok) return;
 
-    const data = await res.json().catch(() => ({}));
+    const data = await res.json().catch(() => null);
+    if (!data || typeof data !== "object") return;
 
-    const count = Number(data?.count || 0);
-    const latest = data?.latest || null;
+    const count = Number(data.count ?? 0);
+    const latest = data.latest && typeof data.latest === "object" ? data.latest : null;
 
-    if (
-      count > 0 &&
-      latest?.pdf_url &&
-      latest?.certificate_url
-    ) {
-      statusEl.textContent =
-        `${count} Agreement${count === 1 ? "" : "s"} Signed`;
+    const pdfUrl =
+      latest && typeof latest.pdf_url === "string" ? latest.pdf_url.trim() : "";
+    const certUrl =
+      latest && typeof latest.certificate_url === "string" ? latest.certificate_url.trim() : "";
 
-      pdfEl.href = latest.pdf_url;
-      certEl.href = latest.certificate_url;
-
-      wrap.hidden = false;
+    // only show if there is a real signed agreement + both working links
+    if (count < 1 || !pdfUrl || !certUrl) {
+      return;
     }
 
+    statusEl.textContent = `${count} Agreement${count === 1 ? "" : "s"} Signed`;
+    pdfEl.href = pdfUrl;
+    certEl.href = certUrl;
+    pdfEl.style.display = "";
+    certEl.style.display = "";
+    wrap.hidden = false;
   } catch (err) {
     console.error("agreements load failed", err);
   }
 }
-
+  
   async function initCarrierButtons(dot) {
     if (initButtonsRunning) {
       initButtonsRerun = true;   // NEW
