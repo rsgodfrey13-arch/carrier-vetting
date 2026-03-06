@@ -1239,6 +1239,42 @@ if (data && data.source === "cache_stale") {
       if (nameEl) nameEl.textContent = "Error loading carrier";
     }
   }
+
+
+async function loadCarrierAgreements(dot) {
+  const wrap = document.getElementById("carrier-agreements");
+  const statusEl = document.getElementById("agreements-status");
+  const pdfEl = document.getElementById("agreements-pdf");
+  const certEl = document.getElementById("agreements-cert");
+
+  if (!wrap || !statusEl || !pdfEl || !certEl) return;
+
+  wrap.hidden = true;
+
+  try {
+    const res = await fetch(`/api/carriers/${encodeURIComponent(dot)}/agreements`);
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) return;
+
+    const count = Number(data.count || 0);
+    const latest = data.latest || null;
+
+    if (!count || !latest?.pdf_url || !latest?.certificate_url) {
+      wrap.hidden = true;
+      return;
+    }
+
+    statusEl.textContent = `${count} Agreement${count === 1 ? "" : "s"} Signed`;
+    pdfEl.href = latest.pdf_url;
+    certEl.href = latest.certificate_url;
+
+    wrap.hidden = false;
+  } catch (err) {
+    console.error("agreements load failed", err);
+    wrap.hidden = true;
+  }
+}
   
 
   async function initCarrierButtons(dot) {
