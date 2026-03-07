@@ -485,9 +485,19 @@ function normalizeCarrierDocumentRow(row, pdfLabel) {
     id: row.id,
     created_at: row.created_at,
     original_filename: row.original_filename || null,
+    mime_type: row.mime_type || null,
+    source: row.source || null,
     pdf_url: row.pdf_url,
     pdf_label: pdfLabel,
+    certificate_url: row.certificate_url || null,
   };
+}
+
+function normalizeCarrierDocumentRows(rows, pdfLabel) {
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+  return rows
+    .map((row) => normalizeCarrierDocumentRow(row, pdfLabel))
+    .filter(Boolean);
 }
 
 router.get("/carrier-agreements/:dot", async (req, res) => {
@@ -521,8 +531,7 @@ router.get("/carrier-agreements/:dot", async (req, res) => {
       [companyId, dot]
     );
 
-    // latest signed/acknowledged agreement for this DOT only
-    const latestRes = await pool.query(
+    const agreementsRes = await pool.query(
       `
       SELECT
         c.contract_id,
@@ -530,6 +539,7 @@ router.get("/carrier-agreements/:dot", async (req, res) => {
         c.status,
         c.signed_at,
         c.sent_at,
+        c.created_at,
         uc.name AS agreement_type
       FROM public.contracts c
       LEFT JOIN public.user_contracts uc
@@ -538,32 +548,28 @@ router.get("/carrier-agreements/:dot", async (req, res) => {
         AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
         AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
       ORDER BY COALESCE(c.signed_at, c.sent_at, c.created_at) DESC
-      LIMIT 1
       `,
       [companyId, dot]
     );
 
     const count = countRes.rows[0]?.count || 0;
-    const latest = latestRes.rows[0] || null;
-
-    if (!latest) {
-      return res.json({
-        count: 0,
-        latest: null
-      });
-    }
+    const agreements = Array.isArray(agreementsRes.rows)
+      ? agreementsRes.rows.map((agreement) => ({
+          contract_id: agreement.contract_id,
+          agreement_type: agreement.agreement_type || "Carrier Agreement",
+          status: agreement.status,
+          signed_at: agreement.signed_at,
+          sent_at: agreement.sent_at,
+          created_at: agreement.created_at,
+          pdf_url: `/contract/${agreement.token}/pdf`,
+          certificate_url: `/contract/${agreement.token}/certificate`,
+        }))
+      : [];
 
     return res.json({
       count,
-      latest: {
-        contract_id: latest.contract_id,
-        agreement_type: latest.agreement_type || "Carrier Agreement",
-        status: latest.status,
-        signed_at: latest.signed_at,
-        sent_at: latest.sent_at,
-        pdf_url: `/contract/${latest.token}/pdf`,
-        certificate_url: `/contract/${latest.token}/certificate`
-      }
+      latest_signed_at: agreements[0]?.signed_at || null,
+      agreements,
     });
   } catch (err) {
     console.error("GET /carrier-agreements/:dot error:", err?.message, err);
@@ -602,12 +608,13 @@ router.get("/carrier-ach-documents/:dot", async (req, res) => {
       [companyId, dot]
     );
 
-    const latestRes = await pool.query(
+    const documentsRes = await pool.query(
       `
       SELECT
         cad.id,
         cad.created_at,
         cad.original_filename,
+        cad.mime_type,
         c.token
       FROM public.contract_ach_documents cad
       JOIN public.contracts c
@@ -616,30 +623,24 @@ router.get("/carrier-ach-documents/:dot", async (req, res) => {
         AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
         AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
       ORDER BY cad.created_at DESC
-      LIMIT 1
       `,
       [companyId, dot]
     );
 
     const count = countRes.rows[0]?.count || 0;
-    const latest = latestRes.rows[0] || null;
-
-    if (!latest) {
-      return res.json({
-        count: 0,
-        latest: null
-      });
-    }
+    const documents = normalizeCarrierDocumentRows(
+      (documentsRes.rows || []).map((row) => ({
+        ...row,
+        source: "carrier",
+        pdf_url: `/contract/${row.token}/ach`,
+        certificate_url: `/contract/${row.token}/certificate`,
+      })),
+      "View Document"
+    );
 
     return res.json({
       count,
-      latest: {
-        id: latest.id,
-        created_at: latest.created_at,
-        original_filename: latest.original_filename || null,
-        pdf_url: `/contract/${latest.token}/ach`,
-        certificate_url: `/contract/${latest.token}/certificate`
-      }
+      documents,
     });
   } catch (err) {
     console.error("GET /carrier-ach-documents/:dot error:", err?.message, err);
@@ -678,12 +679,13 @@ router.get("/carrier-w9-documents/:dot", async (req, res) => {
       [companyId, dot]
     );
 
-    const latestRes = await pool.query(
+    const documentsRes = await pool.query(
       `
       SELECT
         cwd.id,
         cwd.created_at,
         cwd.original_filename,
+        cwd.mime_type,
         c.token
       FROM public.contract_w9_documents cwd
       JOIN public.contracts c
@@ -692,25 +694,23 @@ router.get("/carrier-w9-documents/:dot", async (req, res) => {
         AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
         AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
       ORDER BY cwd.created_at DESC
-      LIMIT 1
       `,
       [companyId, dot]
     );
 
     const count = countRes.rows[0]?.count || 0;
-    const latest = latestRes.rows[0] || null;
+    const documents = normalizeCarrierDocumentRows(
+      (documentsRes.rows || []).map((row) => ({
+        ...row,
+        source: "carrier",
+        pdf_url: `/contract/${row.token}/w9`,
+      })),
+      "View Document"
+    );
 
     return res.json({
       count,
-      latest: normalizeCarrierDocumentRow(
-        latest
-          ? {
-              ...latest,
-              pdf_url: `/contract/${latest.token}/w9`,
-            }
-          : null,
-        "View W-9"
-      ),
+      documents,
     });
   } catch (err) {
     console.error("GET /carrier-w9-documents/:dot error:", err?.message, err);
@@ -747,12 +747,13 @@ router.get("/carrier-other-documents/:dot", async (req, res) => {
       [companyId, dot]
     );
 
-    const latestRes = await pool.query(
+    const documentsRes = await pool.query(
       `
       SELECT
         cod.id,
         cod.created_at,
         cod.original_filename,
+        cod.mime_type,
         c.token
       FROM public.contract_other_documents cod
       JOIN public.contracts c
@@ -761,25 +762,23 @@ router.get("/carrier-other-documents/:dot", async (req, res) => {
         AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
         AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
       ORDER BY cod.created_at DESC
-      LIMIT 1
       `,
       [companyId, dot]
     );
 
     const count = countRes.rows[0]?.count || 0;
-    const latest = latestRes.rows[0] || null;
+    const documents = normalizeCarrierDocumentRows(
+      (documentsRes.rows || []).map((row) => ({
+        ...row,
+        source: "carrier",
+        pdf_url: `/contract/${row.token}/other/${row.id}`,
+      })),
+      "View Document"
+    );
 
     return res.json({
       count,
-      latest: normalizeCarrierDocumentRow(
-        latest
-          ? {
-              ...latest,
-              pdf_url: `/contract/${latest.token}/other/${latest.id}`,
-            }
-          : null,
-        "View Document"
-      ),
+      documents,
     });
   } catch (err) {
     console.error("GET /carrier-other-documents/:dot error:", err?.message, err);

@@ -155,14 +155,27 @@
   <div class="hero-accent-line"></div>
 
   <section id="carrier-agreements" class="carrier-agreements glass-card" hidden>
-    <div class="agreements-left">
-      <div class="agreements-kicker">Agreements</div>
-      <div id="agreements-status" class="agreements-status">1 Agreement Signed</div>
+    <div class="carrier-docs-header">
+      <div class="agreements-left">
+        <div class="agreements-kicker">Agreements</div>
+        <div id="agreements-status" class="agreements-status">No agreements signed</div>
+      </div>
+      <div id="agreements-summary-meta" class="docs-summary-meta"></div>
     </div>
-  
-    <div class="agreements-actions">
-      <a id="agreements-pdf" class="agreements-link" href="#" target="_blank" rel="noopener">View Contract</a>
-      <a id="agreements-cert" class="agreements-link" href="#" target="_blank" rel="noopener">Signature Certificate</a>
+
+    <div id="agreements-table-wrap" class="docs-table-wrap">
+      <table class="docs-table" aria-label="Carrier agreements">
+        <thead>
+          <tr>
+            <th>Agreement</th>
+            <th>Signed Date</th>
+            <th>Document</th>
+            <th>Certificate</th>
+          </tr>
+        </thead>
+        <tbody id="agreements-table-body"></tbody>
+      </table>
+      <div id="agreements-empty" class="docs-empty">No agreements signed yet.</div>
     </div>
   </section>
   
@@ -463,26 +476,29 @@
     </section>
 
       <section id="carrier-documents" class="carrier-agreements glass-card" hidden>
-      <div class="agreements-left">
-        <div class="agreements-kicker">Documents</div>
-        <div id="documents-summary-status" class="agreements-status">No documents on file</div>
+      <div class="carrier-docs-header">
+        <div class="agreements-left">
+          <div class="agreements-kicker">Documents</div>
+          <div id="documents-summary-status" class="agreements-status">No documents on file</div>
+        </div>
+        <div id="documents-type-summary" class="docs-summary-meta"></div>
       </div>
 
-      <div class="agreements-actions docs-actions-grid">
-        <div class="docs-item" id="docs-w9" hidden>
-          <div id="w9-docs-status" class="agreements-status docs-item-status">0 W-9 Documents</div>
-          <a id="w9-docs-pdf" class="agreements-link" href="#" target="_blank" rel="noopener">View W-9</a>
-        </div>
-
-        <div class="docs-item" id="docs-ach" hidden>
-          <div id="ach-docs-status" class="agreements-status docs-item-status">0 ACH Documents</div>
-          <a id="ach-docs-pdf" class="agreements-link" href="#" target="_blank" rel="noopener">View ACH Document</a>
-        </div>
-
-        <div class="docs-item" id="docs-other" hidden>
-          <div id="other-docs-status" class="agreements-status docs-item-status">0 Other Documents</div>
-          <a id="other-docs-pdf" class="agreements-link" href="#" target="_blank" rel="noopener">View Latest Document</a>
-        </div>
+      <div id="documents-table-wrap" class="docs-table-wrap">
+        <table class="docs-table" aria-label="Carrier documents">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>File Name</th>
+              <th>Uploaded Date</th>
+              <th>Uploaded By</th>
+              <th>MIME Type</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="documents-table-body"></tbody>
+        </table>
+        <div id="documents-empty" class="docs-empty">No carrier documents are on file yet.</div>
       </div>
     </section>
   </div>

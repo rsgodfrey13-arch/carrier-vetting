@@ -1908,10 +1908,19 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
 
 .carrier-agreements {
   display:flex;
-  justify-content:space-between;
-  align-items:center;
+  flex-direction: column;
+  gap: 14px;
   padding:14px 18px;
   margin-top:14px;
+}
+
+.carrier-docs-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
 }
 
 .agreements-title {
@@ -1926,21 +1935,82 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   font-weight:600;
 }
 
-.docs-actions-grid {
+.docs-summary-meta {
+  color: rgba(226,232,240,.78);
+  font-size: 13px;
   display: flex;
-  gap: 14px;
+  gap: 10px;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
 
-.docs-item {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  min-width: 180px;
+.docs-summary-chip {
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(56,189,248,.30);
+  background: rgba(15,23,42,.46);
 }
 
-.docs-item-status {
+.docs-table-wrap {
+  width: 100%;
+}
+
+.docs-table {
+  width: 100%;
+  border-collapse: collapse;
   font-size: 14px;
+}
+
+.docs-table th,
+.docs-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid rgba(148,163,184,.20);
+  vertical-align: middle;
+  text-align: left;
+}
+
+.docs-table th {
+  color: rgba(148,163,184,.95);
+  font-size: 12px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.docs-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.docs-row-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.agreements-link {
+  color: rgba(56,189,248,.96);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.agreements-link:hover {
+  text-decoration: underline;
+}
+
+.docs-empty {
+  display: none;
+  padding: 14px 4px 2px;
+  color: rgba(148,163,184,.90);
+  font-size: 14px;
+}
+
+.docs-empty.is-visible {
+  display: block;
+}
+
+@media (max-width: 900px) {
+  .docs-table {
+    display: block;
+    overflow-x: auto;
+  }
 }

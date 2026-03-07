@@ -1,0 +1,1057 @@
+diff --git a/src/routes/internal/contracts.routes.js b/src/routes/internal/contracts.routes.js
+index 4beab6efd0d130dd034f8f62c109a29d2b713ba9..65cb9e943f156e0800081df16768009634fb527f 100644
+--- a/src/routes/internal/contracts.routes.js
++++ b/src/routes/internal/contracts.routes.js
+@@ -463,328 +463,327 @@ router.post("/agreements/default", requireAuth, async (req, res) => {
+     client.release();
+   }
+ });
+ 
+ 
+ async function loadSessionCompanyId(userId) {
+   const userRes = await pool.query(
+     `
+     SELECT default_company_id company_id
+     FROM public.users
+     WHERE id = $1
+     LIMIT 1
+     `,
+     [userId]
+   );
+ 
+   return userRes.rows[0]?.company_id || null;
+ }
+ 
+ function normalizeCarrierDocumentRow(row, pdfLabel) {
+   if (!row) return null;
+   return {
+     id: row.id,
+     created_at: row.created_at,
+     original_filename: row.original_filename || null,
++    mime_type: row.mime_type || null,
++    source: row.source || null,
+     pdf_url: row.pdf_url,
+     pdf_label: pdfLabel,
++    certificate_url: row.certificate_url || null,
+   };
+ }
+ 
++function normalizeCarrierDocumentRows(rows, pdfLabel) {
++  if (!Array.isArray(rows) || rows.length === 0) return [];
++  return rows
++    .map((row) => normalizeCarrierDocumentRow(row, pdfLabel))
++    .filter(Boolean);
++}
++
+ router.get("/carrier-agreements/:dot", async (req, res) => {
+   try {
+     if (!req.session?.userId) {
+       return res.status(401).json({ error: "Unauthorized" });
+     }
+ 
+     const dot = String(req.params.dot || "").replace(/\D/g, "");
+     if (!dot) {
+       return res.status(400).json({ error: "Invalid DOT" });
+     }
+ 
+     const userId = req.session.userId;
+ 
+     // get the caller's company_id
+     const companyId = await loadSessionCompanyId(userId);
+     if (!companyId) {
+       return res.status(403).json({ error: "No company context found" });
+     }
+ 
+     // count signed/acknowledged agreements for this DOT only
+     const countRes = await pool.query(
+       `
+       SELECT COUNT(*)::int AS count
+       FROM public.contracts c
+       WHERE c.company_id = $1
+         AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
+         AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
+       `,
+       [companyId, dot]
+     );
+ 
+-    // latest signed/acknowledged agreement for this DOT only
+-    const latestRes = await pool.query(
++    const agreementsRes = await pool.query(
+       `
+       SELECT
+         c.contract_id,
+         c.token,
+         c.status,
+         c.signed_at,
+         c.sent_at,
++        c.created_at,
+         uc.name AS agreement_type
+       FROM public.contracts c
+       LEFT JOIN public.user_contracts uc
+         ON uc.id = c.user_contract_id
+       WHERE c.company_id = $1
+         AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
+         AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
+       ORDER BY COALESCE(c.signed_at, c.sent_at, c.created_at) DESC
+-      LIMIT 1
+       `,
+       [companyId, dot]
+     );
+ 
+     const count = countRes.rows[0]?.count || 0;
+-    const latest = latestRes.rows[0] || null;
+-
+-    if (!latest) {
+-      return res.json({
+-        count: 0,
+-        latest: null
+-      });
+-    }
++    const agreements = Array.isArray(agreementsRes.rows)
++      ? agreementsRes.rows.map((agreement) => ({
++          contract_id: agreement.contract_id,
++          agreement_type: agreement.agreement_type || "Carrier Agreement",
++          status: agreement.status,
++          signed_at: agreement.signed_at,
++          sent_at: agreement.sent_at,
++          created_at: agreement.created_at,
++          pdf_url: `/contract/${agreement.token}/pdf`,
++          certificate_url: `/contract/${agreement.token}/certificate`,
++        }))
++      : [];
+ 
+     return res.json({
+       count,
+-      latest: {
+-        contract_id: latest.contract_id,
+-        agreement_type: latest.agreement_type || "Carrier Agreement",
+-        status: latest.status,
+-        signed_at: latest.signed_at,
+-        sent_at: latest.sent_at,
+-        pdf_url: `/contract/${latest.token}/pdf`,
+-        certificate_url: `/contract/${latest.token}/certificate`
+-      }
++      latest_signed_at: agreements[0]?.signed_at || null,
++      agreements,
+     });
+   } catch (err) {
+     console.error("GET /carrier-agreements/:dot error:", err?.message, err);
+     return res.status(500).json({ error: "Failed to load carrier agreements" });
+   }
+ });
+ 
+ router.get("/carrier-ach-documents/:dot", async (req, res) => {
+   try {
+     if (!req.session?.userId) {
+       return res.status(401).json({ error: "Unauthorized" });
+     }
+ 
+     const dot = String(req.params.dot || "").replace(/\D/g, "");
+     if (!dot) {
+       return res.status(400).json({ error: "Invalid DOT" });
+     }
+ 
+     const userId = req.session.userId;
+ 
+     const companyId = await loadSessionCompanyId(userId);
+     if (!companyId) {
+       return res.status(403).json({ error: "No company context found" });
+     }
+ 
+     const countRes = await pool.query(
+       `
+       SELECT COUNT(*)::int AS count
+       FROM public.contract_ach_documents cad
+       JOIN public.contracts c
+         ON c.contract_id = cad.contract_id
+       WHERE c.company_id = $1
+         AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
+         AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
+       `,
+       [companyId, dot]
+     );
+ 
+-    const latestRes = await pool.query(
++    const documentsRes = await pool.query(
+       `
+       SELECT
+         cad.id,
+         cad.created_at,
+         cad.original_filename,
++        cad.mime_type,
+         c.token
+       FROM public.contract_ach_documents cad
+       JOIN public.contracts c
+         ON c.contract_id = cad.contract_id
+       WHERE c.company_id = $1
+         AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
+         AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
+       ORDER BY cad.created_at DESC
+-      LIMIT 1
+       `,
+       [companyId, dot]
+     );
+ 
+     const count = countRes.rows[0]?.count || 0;
+-    const latest = latestRes.rows[0] || null;
+-
+-    if (!latest) {
+-      return res.json({
+-        count: 0,
+-        latest: null
+-      });
+-    }
++    const documents = normalizeCarrierDocumentRows(
++      (documentsRes.rows || []).map((row) => ({
++        ...row,
++        source: "carrier",
++        pdf_url: `/contract/${row.token}/ach`,
++        certificate_url: `/contract/${row.token}/certificate`,
++      })),
++      "View Document"
++    );
+ 
+     return res.json({
+       count,
+-      latest: {
+-        id: latest.id,
+-        created_at: latest.created_at,
+-        original_filename: latest.original_filename || null,
+-        pdf_url: `/contract/${latest.token}/ach`,
+-        certificate_url: `/contract/${latest.token}/certificate`
+-      }
++      documents,
+     });
+   } catch (err) {
+     console.error("GET /carrier-ach-documents/:dot error:", err?.message, err);
+     return res.status(500).json({ error: "Failed to load carrier ACH documents" });
+   }
+ });
+ 
+ 
+ 
+ router.get("/carrier-w9-documents/:dot", async (req, res) => {
+   try {
+     if (!req.session?.userId) {
+       return res.status(401).json({ error: "Unauthorized" });
+     }
+ 
+     const dot = String(req.params.dot || "").replace(/\D/g, "");
+     if (!dot) {
+       return res.status(400).json({ error: "Invalid DOT" });
+     }
+ 
+     const companyId = await loadSessionCompanyId(req.session.userId);
+     if (!companyId) {
+       return res.status(403).json({ error: "No company context found" });
+     }
+ 
+     const countRes = await pool.query(
+       `
+       SELECT COUNT(*)::int AS count
+       FROM public.contract_w9_documents cwd
+       JOIN public.contracts c
+         ON c.contract_id = cwd.contract_id
+       WHERE c.company_id = $1
+         AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
+         AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
+       `,
+       [companyId, dot]
+     );
+ 
+-    const latestRes = await pool.query(
++    const documentsRes = await pool.query(
+       `
+       SELECT
+         cwd.id,
+         cwd.created_at,
+         cwd.original_filename,
++        cwd.mime_type,
+         c.token
+       FROM public.contract_w9_documents cwd
+       JOIN public.contracts c
+         ON c.contract_id = cwd.contract_id
+       WHERE c.company_id = $1
+         AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
+         AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
+       ORDER BY cwd.created_at DESC
+-      LIMIT 1
+       `,
+       [companyId, dot]
+     );
+ 
+     const count = countRes.rows[0]?.count || 0;
+-    const latest = latestRes.rows[0] || null;
++    const documents = normalizeCarrierDocumentRows(
++      (documentsRes.rows || []).map((row) => ({
++        ...row,
++        source: "carrier",
++        pdf_url: `/contract/${row.token}/w9`,
++      })),
++      "View Document"
++    );
+ 
+     return res.json({
+       count,
+-      latest: normalizeCarrierDocumentRow(
+-        latest
+-          ? {
+-              ...latest,
+-              pdf_url: `/contract/${latest.token}/w9`,
+-            }
+-          : null,
+-        "View W-9"
+-      ),
++      documents,
+     });
+   } catch (err) {
+     console.error("GET /carrier-w9-documents/:dot error:", err?.message, err);
+     return res.status(500).json({ error: "Failed to load carrier W9 documents" });
+   }
+ });
+ 
+ router.get("/carrier-other-documents/:dot", async (req, res) => {
+   try {
+     if (!req.session?.userId) {
+       return res.status(401).json({ error: "Unauthorized" });
+     }
+ 
+     const dot = String(req.params.dot || "").replace(/\D/g, "");
+     if (!dot) {
+       return res.status(400).json({ error: "Invalid DOT" });
+     }
+ 
+     const companyId = await loadSessionCompanyId(req.session.userId);
+     if (!companyId) {
+       return res.status(403).json({ error: "No company context found" });
+     }
+ 
+     const countRes = await pool.query(
+       `
+       SELECT COUNT(*)::int AS count
+       FROM public.contract_other_documents cod
+       JOIN public.contracts c
+         ON c.contract_id = cod.contract_id
+       WHERE c.company_id = $1
+         AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
+         AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
+       `,
+       [companyId, dot]
+     );
+ 
+-    const latestRes = await pool.query(
++    const documentsRes = await pool.query(
+       `
+       SELECT
+         cod.id,
+         cod.created_at,
+         cod.original_filename,
++        cod.mime_type,
+         c.token
+       FROM public.contract_other_documents cod
+       JOIN public.contracts c
+         ON c.contract_id = cod.contract_id
+       WHERE c.company_id = $1
+         AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
+         AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
+       ORDER BY cod.created_at DESC
+-      LIMIT 1
+       `,
+       [companyId, dot]
+     );
+ 
+     const count = countRes.rows[0]?.count || 0;
+-    const latest = latestRes.rows[0] || null;
++    const documents = normalizeCarrierDocumentRows(
++      (documentsRes.rows || []).map((row) => ({
++        ...row,
++        source: "carrier",
++        pdf_url: `/contract/${row.token}/other/${row.id}`,
++      })),
++      "View Document"
++    );
+ 
+     return res.json({
+       count,
+-      latest: normalizeCarrierDocumentRow(
+-        latest
+-          ? {
+-              ...latest,
+-              pdf_url: `/contract/${latest.token}/other/${latest.id}`,
+-            }
+-          : null,
+-        "View Document"
+-      ),
++      documents,
+     });
+   } catch (err) {
+     console.error("GET /carrier-other-documents/:dot error:", err?.message, err);
+     return res.status(500).json({ error: "Failed to load carrier other documents" });
+   }
+ });
+ 
+ module.exports = router;
+diff --git a/static/carrier.html b/static/carrier.html
+index 1a09d9afa4c1b58c8fdd01e32dcfe85a181534b8..e6ff61c6acf028643754ee9a0cecd811e4a3593d 100644
+--- a/static/carrier.html
++++ b/static/carrier.html
+@@ -133,58 +133,71 @@
+       <div class="carrier-actions">
+         
+         <!-- NEW: Send Contract -->
+         <button id="btn-send-contract" class="pill-btn pill-contract pill-disabled" type="button">
+           Send Contract
+         </button>
+         
+         <button id="btn-add-carrier" class="pill-btn pill-add">+ Add Carrier</button>
+         <button id="btn-remove-carrier" class="pill-btn pill-remove pill-disabled">Remove Carrier</button>
+       </div>
+     </div> <!-- end .carrier-right -->
+   </div> <!-- end .carrier-header-top -->
+     <!-- Quick Jump (subtle) -->
+     <nav class="quick-jump" aria-label="Quick jump">
+       <span class="quick-jump-label">Jump to</span>
+   
+       <button type="button" class="quick-jump-link is-active" data-jump="carrier-header">Summary</button>
+       <button type="button" class="quick-jump-link" data-jump="section-safety">Safety</button>
+       <button type="button" class="quick-jump-link" data-jump="section-inspections">Inspections</button>
+       <button type="button" class="quick-jump-link" data-jump="carrier-documents">Documents</button>
+       <button type="button" class="quick-jump-link" data-jump="ins-coverages-card">Insurance</button>
+     </nav>
+   <div class="hero-accent-line"></div>
+ 
+   <section id="carrier-agreements" class="carrier-agreements glass-card" hidden>
+-    <div class="agreements-left">
+-      <div class="agreements-kicker">Agreements</div>
+-      <div id="agreements-status" class="agreements-status">1 Agreement Signed</div>
++    <div class="carrier-docs-header">
++      <div class="agreements-left">
++        <div class="agreements-kicker">Agreements</div>
++        <div id="agreements-status" class="agreements-status">No agreements signed</div>
++      </div>
++      <div id="agreements-summary-meta" class="docs-summary-meta"></div>
+     </div>
+-  
+-    <div class="agreements-actions">
+-      <a id="agreements-pdf" class="agreements-link" href="#" target="_blank" rel="noopener">View Contract</a>
+-      <a id="agreements-cert" class="agreements-link" href="#" target="_blank" rel="noopener">Signature Certificate</a>
++
++    <div id="agreements-table-wrap" class="docs-table-wrap">
++      <table class="docs-table" aria-label="Carrier agreements">
++        <thead>
++          <tr>
++            <th>Agreement</th>
++            <th>Signed Date</th>
++            <th>Document</th>
++            <th>Certificate</th>
++          </tr>
++        </thead>
++        <tbody id="agreements-table-body"></tbody>
++      </table>
++      <div id="agreements-empty" class="docs-empty">No agreements signed yet.</div>
+     </div>
+   </section>
+   
+ </section>
+ 
+ 
+     <!-- MAIN GRID -->
+     <section class="card-grid">
+ 
+       <!-- Equipment Summary -->
+       <article id="section-equipment" class="info-card glass-card">
+         <div class="card-header">
+           <h2>Equipment Summary</h2>
+           <span class="card-tag">Assets</span>
+         </div>
+         <dl>
+           <div class="row">
+             <dt>Total Drivers</dt>
+             <dd id="field-totaldrivers">—</dd>
+           </div>
+           <div class="row">
+             <dt>Total Power Units</dt>
+             <dd id="field-totalpowerunits">—</dd>
+           </div>
+         </dl>
+@@ -441,70 +454,73 @@
+           </div>
+           <div class="row">
+             <dt>Docket Numbers</dt>
+             <dd>
+               <a id="field-link_docket_numbers" class="data-link" href="#" target="_blank">—</a>
+             </dd>
+           </div>
+           <div class="row">
+             <dt>Active For Hire</dt>
+             <dd>
+               <a id="field-link_active_for_hire" class="data-link" href="#" target="_blank">—</a>
+             </dd>
+           </div>
+           <div class="row">
+             <dt>Self Link</dt>
+             <dd>
+               <a id="field-link_self" class="data-link" href="#" target="_blank">—</a>
+             </dd>
+           </div>
+         </dl>
+       </article>
+       -->
+     </section>
+ 
+       <section id="carrier-documents" class="carrier-agreements glass-card" hidden>
+-      <div class="agreements-left">
+-        <div class="agreements-kicker">Documents</div>
+-        <div id="documents-summary-status" class="agreements-status">No documents on file</div>
+-      </div>
+-
+-      <div class="agreements-actions docs-actions-grid">
+-        <div class="docs-item" id="docs-w9" hidden>
+-          <div id="w9-docs-status" class="agreements-status docs-item-status">0 W-9 Documents</div>
+-          <a id="w9-docs-pdf" class="agreements-link" href="#" target="_blank" rel="noopener">View W-9</a>
+-        </div>
+-
+-        <div class="docs-item" id="docs-ach" hidden>
+-          <div id="ach-docs-status" class="agreements-status docs-item-status">0 ACH Documents</div>
+-          <a id="ach-docs-pdf" class="agreements-link" href="#" target="_blank" rel="noopener">View ACH Document</a>
++      <div class="carrier-docs-header">
++        <div class="agreements-left">
++          <div class="agreements-kicker">Documents</div>
++          <div id="documents-summary-status" class="agreements-status">No documents on file</div>
+         </div>
++        <div id="documents-type-summary" class="docs-summary-meta"></div>
++      </div>
+ 
+-        <div class="docs-item" id="docs-other" hidden>
+-          <div id="other-docs-status" class="agreements-status docs-item-status">0 Other Documents</div>
+-          <a id="other-docs-pdf" class="agreements-link" href="#" target="_blank" rel="noopener">View Latest Document</a>
+-        </div>
++      <div id="documents-table-wrap" class="docs-table-wrap">
++        <table class="docs-table" aria-label="Carrier documents">
++          <thead>
++            <tr>
++              <th>Type</th>
++              <th>File Name</th>
++              <th>Uploaded Date</th>
++              <th>Uploaded By</th>
++              <th>MIME Type</th>
++              <th>Actions</th>
++            </tr>
++          </thead>
++          <tbody id="documents-table-body"></tbody>
++        </table>
++        <div id="documents-empty" class="docs-empty">No carrier documents are on file yet.</div>
+       </div>
+     </section>
+   </div>
+ <!-- Feature Gate Modal (logged-in upsell / requirements) -->
+ <div id="feature-gate-modal" class="cs-modal-backdrop" hidden>
+   <div class="cs-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="feature-gate-title">
+ 
+     <div class="cs-modal-header">
+       <div class="cs-modal-headings">
+         <div id="feature-gate-title" class="cs-modal-title">Title</div>
+         <div id="feature-gate-body" class="cs-modal-subtitle">Body</div>
+       </div>
+       <button id="feature-gate-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
+     </div>
+ 
+     <div class="cs-modal-body">
+       <div id="feature-gate-note" class="cs-hint" style="margin-top:-6px;"></div>
+     </div>
+ 
+     <div class="cs-modal-footer">
+       <div class="cs-footer-right">
+         <button id="feature-gate-cancel" class="cs-btn cs-btn-ghost" type="button">Not now</button>
+         <button id="feature-gate-primary" class="cs-btn cs-btn-primary" type="button">Continue</button>
+       </div>
+     </div>
+diff --git a/static/css/profile_style.css b/static/css/profile_style.css
+index 8568f9ddb865ac14887aa9ac3ad11389b1274347..cfb07245042b5f745ef9862b5e638e61cdfa0fc5 100644
+--- a/static/css/profile_style.css
++++ b/static/css/profile_style.css
+@@ -1886,61 +1886,131 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
+   transform: none;
+ }
+ 
+ .meta-refresh.is-spinning{
+   pointer-events: none;
+ }
+ 
+ .meta-refresh.is-spinning::before{
+   content: "↻ ";
+   display: inline-block;
+   animation: csSpin .9s linear infinite;
+ }
+ 
+ @keyframes csSpin{
+   from { transform: rotate(0deg); }
+   to   { transform: rotate(360deg); }
+ }
+ 
+ .meta-refresh-status{
+   font-size: 12px;
+   color: rgba(226,232,240,.70);
+ }
+ 
+ .carrier-agreements {
+   display:flex;
+-  justify-content:space-between;
+-  align-items:center;
++  flex-direction: column;
++  gap: 14px;
+   padding:14px 18px;
+   margin-top:14px;
+ }
+ 
++.carrier-docs-header {
++  width: 100%;
++  display: flex;
++  justify-content: space-between;
++  gap: 12px;
++  align-items: flex-end;
++  flex-wrap: wrap;
++}
++
+ .agreements-title {
+   font-weight:700;
+   font-size:13px;
+   letter-spacing:.06em;
+   opacity:.7;
+ }
+ 
+ .agreements-status {
+   font-size:16px;
+   font-weight:600;
+ }
+ 
+-.docs-actions-grid {
++.docs-summary-meta {
++  color: rgba(226,232,240,.78);
++  font-size: 13px;
+   display: flex;
+-  gap: 14px;
++  gap: 10px;
+   flex-wrap: wrap;
+   justify-content: flex-end;
+ }
+ 
+-.docs-item {
++.docs-summary-chip {
++  padding: 4px 8px;
++  border-radius: 999px;
++  border: 1px solid rgba(56,189,248,.30);
++  background: rgba(15,23,42,.46);
++}
++
++.docs-table-wrap {
++  width: 100%;
++}
++
++.docs-table {
++  width: 100%;
++  border-collapse: collapse;
++  font-size: 14px;
++}
++
++.docs-table th,
++.docs-table td {
++  padding: 10px 8px;
++  border-bottom: 1px solid rgba(148,163,184,.20);
++  vertical-align: middle;
++  text-align: left;
++}
++
++.docs-table th {
++  color: rgba(148,163,184,.95);
++  font-size: 12px;
++  letter-spacing: .06em;
++  text-transform: uppercase;
++  font-weight: 700;
++}
++
++.docs-table tr:last-child td {
++  border-bottom: 0;
++}
++
++.docs-row-actions {
+   display: flex;
+-  flex-direction: column;
+-  align-items: flex-start;
+-  gap: 6px;
+-  min-width: 180px;
++  gap: 8px;
++  flex-wrap: wrap;
+ }
+ 
+-.docs-item-status {
++.agreements-link {
++  color: rgba(56,189,248,.96);
++  font-weight: 600;
++  text-decoration: none;
++}
++
++.agreements-link:hover {
++  text-decoration: underline;
++}
++
++.docs-empty {
++  display: none;
++  padding: 14px 4px 2px;
++  color: rgba(148,163,184,.90);
+   font-size: 14px;
+ }
++
++.docs-empty.is-visible {
++  display: block;
++}
++
++@media (max-width: 900px) {
++  .docs-table {
++    display: block;
++    overflow-x: auto;
++  }
++}
+diff --git a/static/js/pages/carrier.js b/static/js/pages/carrier.js
+index bdd90617f73fa30726a38fde49945daa9762af7d..633cae3779524bb3a46f0a7a473fafd11c30ef82 100644
+--- a/static/js/pages/carrier.js
++++ b/static/js/pages/carrier.js
+@@ -158,50 +158,72 @@ function applyInsuranceLock(me) {
+ 
+   // ------------------------
+   // ALLOWED
+   // ------------------------
+   setInsuranceLocked(false);
+ }
+ 
+ function setInsuranceLocked(locked) {
+   const card = document.getElementById("ins-coverages-card");
+   const overlay = document.getElementById("insurance-locked");
+ 
+   if (overlay) overlay.style.display = locked ? "flex" : "none";
+   if (card) card.classList.toggle("is-locked", locked);
+ }
+ 
+   
+ function fmtDate(d) {
+   if (!d) return "—";
+   // if backend returns YYYY-MM-DD
+   const s = String(d).slice(0, 10);
+   const [y, m, day] = s.split("-");
+   if (!y || !m || !day) return s;
+   return `${m}/${day}/${y}`;
+ }
+ 
++function fmtDateTime(d) {
++  if (!d) return "—";
++  const parsed = new Date(d);
++  if (Number.isNaN(parsed.getTime())) return fmtDate(d);
++  try {
++    return parsed.toLocaleString();
++  } catch {
++    return fmtDate(d);
++  }
++}
++
++function safeText(value, fallback = "—") {
++  if (value === null || value === undefined) return fallback;
++  const text = String(value).trim();
++  return text || fallback;
++}
++
++function renderRowActionLink({ href, label }) {
++  if (!href) return '<span class="cs-hint">—</span>';
++  return `<a class="agreements-link" href="${href}" target="_blank" rel="noopener">${label}</a>`;
++}
++
+ function fmtMoney(amount, currency) {
+   if (amount === null || amount === undefined || amount === "") return "—";
+   const n = Number(amount);
+   if (Number.isNaN(n)) return String(amount);
+   try {
+     // keep it simple & US-looking (ACORD-style)
+     return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+   } catch {
+     return String(amount);
+   }
+ }
+ 
+ function setRefreshUi(state, message) {
+   const btn = document.getElementById("btn-refresh-carrier");
+   const msg = document.getElementById("carrier-refresh-status");
+ 
+   if (msg) msg.textContent = message || "";
+ 
+   if (!btn) return;
+ 
+   if (state === "loading") {
+     btn.disabled = true;
+     btn.classList.add("is-spinning");
+   } else {
+     btn.disabled = false;
+@@ -1223,189 +1245,181 @@ if (data && data.source === "cache_stale") {
+       
+       await loadCarrierAgreements(dot);
+       await loadCarrierDocuments(dot);
+       if (opts.manual === true) {
+         setRefreshUi("idle", "Updated just now");
+         setTimeout(() => setRefreshUi("idle", ""), 2200);
+       }
+ 
+ 
+       // Buttons
+       await initCarrierButtons(dot);
+     } catch (err) {
+       console.error("Error fetching carrier:", err);
+       if (opts.manual === true) {
+         setRefreshUi("idle", "Couldn’t refresh");
+         setTimeout(() => setRefreshUi("idle", ""), 2200);
+       }
+       const nameEl = document.getElementById("carrier-name");
+       if (nameEl) nameEl.textContent = "Error loading carrier";
+     }
+   }
+ 
+   async function loadCarrierDocuments(dot) {
+   const wrap = document.getElementById("carrier-documents");
+   const summaryEl = document.getElementById("documents-summary-status");
++  const typeSummaryEl = document.getElementById("documents-type-summary");
++  const tableBodyEl = document.getElementById("documents-table-body");
++  const emptyEl = document.getElementById("documents-empty");
+ 
+-  const w9Row = document.getElementById("docs-w9");
+-  const w9StatusEl = document.getElementById("w9-docs-status");
+-  const w9PdfEl = document.getElementById("w9-docs-pdf");
+-
+-  const achRow = document.getElementById("docs-ach");
+-  const achStatusEl = document.getElementById("ach-docs-status");
+-  const achPdfEl = document.getElementById("ach-docs-pdf");
+-  const achCertEl = document.getElementById("ach-docs-cert");
+-
+-  const otherRow = document.getElementById("docs-other");
+-  const otherStatusEl = document.getElementById("other-docs-status");
+-  const otherPdfEl = document.getElementById("other-docs-pdf");
+-
+-  if (!wrap || !summaryEl) return;
++  if (!wrap || !summaryEl || !typeSummaryEl || !tableBodyEl || !emptyEl) return;
+ 
+   wrap.hidden = true;
+   summaryEl.textContent = "No documents on file";
+-
+-  [w9Row, achRow, otherRow].forEach((el) => {
+-    if (el) el.hidden = true;
+-  });
+-
+-  [w9PdfEl, achPdfEl, achCertEl, otherPdfEl].forEach((el) => {
+-    if (!el) return;
+-    el.removeAttribute("href");
+-    el.style.display = "none";
+-  });
++  typeSummaryEl.innerHTML = "";
++  tableBodyEl.innerHTML = "";
++  emptyEl.classList.remove("is-visible");
+ 
+   try {
+     const [w9Res, achRes, otherRes] = await Promise.all([
+       fetch(`/api/carrier-w9-documents/${encodeURIComponent(dot)}`, { credentials: "include" }),
+       fetch(`/api/carrier-ach-documents/${encodeURIComponent(dot)}`, { credentials: "include" }),
+       fetch(`/api/carrier-other-documents/${encodeURIComponent(dot)}`, { credentials: "include" }),
+     ]);
+ 
+     const w9Data = w9Res.ok ? await w9Res.json().catch(() => null) : null;
+     const achData = achRes.ok ? await achRes.json().catch(() => null) : null;
+     const otherData = otherRes.ok ? await otherRes.json().catch(() => null) : null;
+ 
+     const w9Count = Number(w9Data?.count ?? 0);
+     const achCount = Number(achData?.count ?? 0);
+     const otherCount = Number(otherData?.count ?? 0);
+     const total = w9Count + achCount + otherCount;
+ 
+-    if (w9Count > 0 && w9Data?.latest?.pdf_url && w9Row && w9StatusEl && w9PdfEl) {
+-      w9StatusEl.textContent = `${w9Count} W-9 Document${w9Count === 1 ? "" : "s"} On File`;
+-      w9PdfEl.href = w9Data.latest.pdf_url;
+-      w9PdfEl.style.display = "";
+-      w9Row.hidden = false;
+-    }
+-
+-    if (
+-      achCount > 0 &&
+-      achData?.latest?.pdf_url &&
+-      achRow &&
+-      achStatusEl &&
+-      achPdfEl
+-    ) {
+-      achStatusEl.textContent = `${achCount} ACH Document${achCount === 1 ? "" : "s"} On File`;
+-      achPdfEl.href = achData.latest.pdf_url;
+-      achPdfEl.style.display = "";
+-      achRow.hidden = false;
+-    
+-      if (achCertEl) {
+-        const certUrl = achData?.latest?.certificate_url || "";
+-        if (certUrl) {
+-          achCertEl.href = certUrl;
+-          achCertEl.style.display = "";
+-        } else {
+-          achCertEl.removeAttribute("href");
+-          achCertEl.style.display = "none";
++    const w9Docs = Array.isArray(w9Data?.documents) ? w9Data.documents : [];
++    const achDocs = Array.isArray(achData?.documents) ? achData.documents : [];
++    const otherDocs = Array.isArray(otherData?.documents) ? otherData.documents : [];
++    const allDocs = [
++      ...w9Docs.map((doc) => ({ ...doc, type: "W-9" })),
++      ...achDocs.map((doc) => ({ ...doc, type: "ACH" })),
++      ...otherDocs.map((doc) => ({ ...doc, type: "Other" })),
++    ].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
++
++    typeSummaryEl.innerHTML = [
++      `<span class="docs-summary-chip">W-9: ${w9Count} Document${w9Count === 1 ? "" : "s"} On File</span>`,
++      `<span class="docs-summary-chip">ACH: ${achCount} Document${achCount === 1 ? "" : "s"} On File</span>`,
++      `<span class="docs-summary-chip">Other: ${otherCount} Document${otherCount === 1 ? "" : "s"} On File</span>`,
++    ].join("");
++
++    if (allDocs.length > 0) {
++      tableBodyEl.innerHTML = allDocs.map((doc) => {
++        const actions = [
++          renderRowActionLink({ href: doc.pdf_url, label: "View" }),
++        ];
++        if (doc.certificate_url) {
++          actions.push(renderRowActionLink({ href: doc.certificate_url, label: "Certificate" }));
+         }
+-      }
+-    }
+-
+-    if (otherCount > 0 && otherData?.latest?.pdf_url && otherRow && otherStatusEl && otherPdfEl) {
+-      otherStatusEl.textContent = `${otherCount} Other Document${otherCount === 1 ? "" : "s"} On File`;
+-      otherPdfEl.href = otherData.latest.pdf_url;
+-      otherPdfEl.style.display = "";
+-      otherRow.hidden = false;
++        return `
++          <tr>
++            <td>${safeText(doc.type)}</td>
++            <td>${safeText(doc.original_filename)}</td>
++            <td>${fmtDateTime(doc.created_at)}</td>
++            <td>${safeText(doc.source, "Carrier")}</td>
++            <td>${safeText(doc.mime_type)}</td>
++            <td><div class="docs-row-actions">${actions.join("")}</div></td>
++          </tr>
++        `;
++      }).join("");
++    } else {
++      emptyEl.classList.add("is-visible");
+     }
+ 
+-    if (total > 0) {
+-      summaryEl.textContent = `${total} Document${total === 1 ? "" : "s"} On File`;
+-      wrap.hidden = false;
+-    }
++    summaryEl.textContent = total > 0
++      ? `${total} Document${total === 1 ? "" : "s"} On File`
++      : "No documents on file";
++    wrap.hidden = false;
+   } catch (err) {
+     console.error("carrier documents load failed", err);
++    wrap.hidden = false;
++    emptyEl.classList.add("is-visible");
+   }
+ }
+ 
+ async function loadCarrierAgreements(dot) {
+   const wrap = document.getElementById("carrier-agreements");
+   const statusEl = document.getElementById("agreements-status");
+-  const pdfEl = document.getElementById("agreements-pdf");
+-  const certEl = document.getElementById("agreements-cert");
++  const metaEl = document.getElementById("agreements-summary-meta");
++  const tableBodyEl = document.getElementById("agreements-table-body");
++  const emptyEl = document.getElementById("agreements-empty");
+ 
+-  if (!wrap || !statusEl || !pdfEl || !certEl) return;
++  if (!wrap || !statusEl || !metaEl || !tableBodyEl || !emptyEl) return;
+ 
+   // hard reset every time
+   wrap.hidden = true;
+-  statusEl.textContent = "";
+-  pdfEl.removeAttribute("href");
+-  certEl.removeAttribute("href");
+-  pdfEl.style.display = "none";
+-  certEl.style.display = "none";
++  statusEl.textContent = "No agreements signed";
++  metaEl.innerHTML = "";
++  tableBodyEl.innerHTML = "";
++  emptyEl.classList.remove("is-visible");
+ 
+   try {
+     const res = await fetch(`/api/carrier-agreements/${encodeURIComponent(dot)}`, {
+       credentials: "include"
+     });
+ 
+     if (!res.ok) return;
+ 
+     const data = await res.json().catch(() => null);
+     if (!data || typeof data !== "object") return;
+ 
+     const count = Number(data.count ?? 0);
+-    const latest = data.latest && typeof data.latest === "object" ? data.latest : null;
++    const agreements = Array.isArray(data.agreements) ? data.agreements : [];
++    const latestSignedAt = data.latest_signed_at;
+ 
+-    const pdfUrl =
+-      latest && typeof latest.pdf_url === "string" ? latest.pdf_url.trim() : "";
+-    const certUrl =
+-      latest && typeof latest.certificate_url === "string" ? latest.certificate_url.trim() : "";
++    statusEl.textContent = `${count} Agreement${count === 1 ? "" : "s"} Signed`;
+ 
+-    // only show if there is a real signed agreement + both working links
+-    if (count < 1 || !pdfUrl || !certUrl) {
+-      return;
++    if (latestSignedAt) {
++      metaEl.innerHTML = `<span class="docs-summary-chip">Latest Signed: ${fmtDateTime(latestSignedAt)}</span>`;
++    }
++
++    if (agreements.length > 0) {
++      tableBodyEl.innerHTML = agreements.map((agreement) => `
++        <tr>
++          <td>${safeText(agreement.agreement_type, "Carrier Agreement")}</td>
++          <td>${fmtDateTime(agreement.signed_at || agreement.sent_at || agreement.created_at)}</td>
++          <td>${renderRowActionLink({ href: agreement.pdf_url, label: "View Agreement" })}</td>
++          <td>${renderRowActionLink({ href: agreement.certificate_url, label: "View Certificate" })}</td>
++        </tr>
++      `).join("");
++    } else {
++      emptyEl.classList.add("is-visible");
+     }
+ 
+-    statusEl.textContent = `${count} Agreement${count === 1 ? "" : "s"} Signed`;
+-    pdfEl.href = pdfUrl;
+-    certEl.href = certUrl;
+-    pdfEl.style.display = "";
+-    certEl.style.display = "";
+     wrap.hidden = false;
+   } catch (err) {
+     console.error("agreements load failed", err);
++    wrap.hidden = false;
++    emptyEl.classList.add("is-visible");
+   }
+ }
+   
+   async function initCarrierButtons(dot) {
+     if (initButtonsRunning) {
+       initButtonsRerun = true;   // NEW
+       return;
+     }
+     initButtonsRunning = true;
+   
+     try {
+       const addBtn = document.getElementById("btn-add-carrier");
+       const removeBtn = document.getElementById("btn-remove-carrier");
+       const emailBtn = document.getElementById("btn-email-alerts"); 
+       const contractBtn = document.getElementById("btn-send-contract"); 
+   
+       if (!addBtn || !removeBtn) return;
+ 
+ 
+ 
+ 
+ 
+     function setState({ isSaved, isLoggedIn, canEmailAlerts, canSendContracts }) {
+       // NOT LOGGED IN
+       if (!isLoggedIn) {

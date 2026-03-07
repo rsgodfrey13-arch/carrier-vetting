@@ -180,6 +180,28 @@ function fmtDate(d) {
   return `${m}/${day}/${y}`;
 }
 
+function fmtDateTime(d) {
+  if (!d) return "—";
+  const parsed = new Date(d);
+  if (Number.isNaN(parsed.getTime())) return fmtDate(d);
+  try {
+    return parsed.toLocaleString();
+  } catch {
+    return fmtDate(d);
+  }
+}
+
+function safeText(value, fallback = "—") {
+  if (value === null || value === undefined) return fallback;
+  const text = String(value).trim();
+  return text || fallback;
+}
+
+function renderRowActionLink({ href, label }) {
+  if (!href) return '<span class="cs-hint">—</span>';
+  return `<a class="agreements-link" href="${href}" target="_blank" rel="noopener">${label}</a>`;
+}
+
 function fmtMoney(amount, currency) {
   if (amount === null || amount === undefined || amount === "") return "—";
   const n = Number(amount);
@@ -1245,34 +1267,17 @@ if (data && data.source === "cache_stale") {
   async function loadCarrierDocuments(dot) {
   const wrap = document.getElementById("carrier-documents");
   const summaryEl = document.getElementById("documents-summary-status");
+  const typeSummaryEl = document.getElementById("documents-type-summary");
+  const tableBodyEl = document.getElementById("documents-table-body");
+  const emptyEl = document.getElementById("documents-empty");
 
-  const w9Row = document.getElementById("docs-w9");
-  const w9StatusEl = document.getElementById("w9-docs-status");
-  const w9PdfEl = document.getElementById("w9-docs-pdf");
-
-  const achRow = document.getElementById("docs-ach");
-  const achStatusEl = document.getElementById("ach-docs-status");
-  const achPdfEl = document.getElementById("ach-docs-pdf");
-  const achCertEl = document.getElementById("ach-docs-cert");
-
-  const otherRow = document.getElementById("docs-other");
-  const otherStatusEl = document.getElementById("other-docs-status");
-  const otherPdfEl = document.getElementById("other-docs-pdf");
-
-  if (!wrap || !summaryEl) return;
+  if (!wrap || !summaryEl || !typeSummaryEl || !tableBodyEl || !emptyEl) return;
 
   wrap.hidden = true;
   summaryEl.textContent = "No documents on file";
-
-  [w9Row, achRow, otherRow].forEach((el) => {
-    if (el) el.hidden = true;
-  });
-
-  [w9PdfEl, achPdfEl, achCertEl, otherPdfEl].forEach((el) => {
-    if (!el) return;
-    el.removeAttribute("href");
-    el.style.display = "none";
-  });
+  typeSummaryEl.innerHTML = "";
+  tableBodyEl.innerHTML = "";
+  emptyEl.classList.remove("is-visible");
 
   try {
     const [w9Res, achRes, otherRes] = await Promise.all([
@@ -1290,68 +1295,70 @@ if (data && data.source === "cache_stale") {
     const otherCount = Number(otherData?.count ?? 0);
     const total = w9Count + achCount + otherCount;
 
-    if (w9Count > 0 && w9Data?.latest?.pdf_url && w9Row && w9StatusEl && w9PdfEl) {
-      w9StatusEl.textContent = `${w9Count} W-9 Document${w9Count === 1 ? "" : "s"} On File`;
-      w9PdfEl.href = w9Data.latest.pdf_url;
-      w9PdfEl.style.display = "";
-      w9Row.hidden = false;
-    }
+    const w9Docs = Array.isArray(w9Data?.documents) ? w9Data.documents : [];
+    const achDocs = Array.isArray(achData?.documents) ? achData.documents : [];
+    const otherDocs = Array.isArray(otherData?.documents) ? otherData.documents : [];
+    const allDocs = [
+      ...w9Docs.map((doc) => ({ ...doc, type: "W-9" })),
+      ...achDocs.map((doc) => ({ ...doc, type: "ACH" })),
+      ...otherDocs.map((doc) => ({ ...doc, type: "Other" })),
+    ].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
-    if (
-      achCount > 0 &&
-      achData?.latest?.pdf_url &&
-      achRow &&
-      achStatusEl &&
-      achPdfEl
-    ) {
-      achStatusEl.textContent = `${achCount} ACH Document${achCount === 1 ? "" : "s"} On File`;
-      achPdfEl.href = achData.latest.pdf_url;
-      achPdfEl.style.display = "";
-      achRow.hidden = false;
-    
-      if (achCertEl) {
-        const certUrl = achData?.latest?.certificate_url || "";
-        if (certUrl) {
-          achCertEl.href = certUrl;
-          achCertEl.style.display = "";
-        } else {
-          achCertEl.removeAttribute("href");
-          achCertEl.style.display = "none";
+    typeSummaryEl.innerHTML = [
+      `<span class="docs-summary-chip">W-9: ${w9Count} Document${w9Count === 1 ? "" : "s"} On File</span>`,
+      `<span class="docs-summary-chip">ACH: ${achCount} Document${achCount === 1 ? "" : "s"} On File</span>`,
+      `<span class="docs-summary-chip">Other: ${otherCount} Document${otherCount === 1 ? "" : "s"} On File</span>`,
+    ].join("");
+
+    if (allDocs.length > 0) {
+      tableBodyEl.innerHTML = allDocs.map((doc) => {
+        const actions = [
+          renderRowActionLink({ href: doc.pdf_url, label: "View" }),
+        ];
+        if (doc.certificate_url) {
+          actions.push(renderRowActionLink({ href: doc.certificate_url, label: "Certificate" }));
         }
-      }
+        return `
+          <tr>
+            <td>${safeText(doc.type)}</td>
+            <td>${safeText(doc.original_filename)}</td>
+            <td>${fmtDateTime(doc.created_at)}</td>
+            <td>${safeText(doc.source, "Carrier")}</td>
+            <td>${safeText(doc.mime_type)}</td>
+            <td><div class="docs-row-actions">${actions.join("")}</div></td>
+          </tr>
+        `;
+      }).join("");
+    } else {
+      emptyEl.classList.add("is-visible");
     }
 
-    if (otherCount > 0 && otherData?.latest?.pdf_url && otherRow && otherStatusEl && otherPdfEl) {
-      otherStatusEl.textContent = `${otherCount} Other Document${otherCount === 1 ? "" : "s"} On File`;
-      otherPdfEl.href = otherData.latest.pdf_url;
-      otherPdfEl.style.display = "";
-      otherRow.hidden = false;
-    }
-
-    if (total > 0) {
-      summaryEl.textContent = `${total} Document${total === 1 ? "" : "s"} On File`;
-      wrap.hidden = false;
-    }
+    summaryEl.textContent = total > 0
+      ? `${total} Document${total === 1 ? "" : "s"} On File`
+      : "No documents on file";
+    wrap.hidden = false;
   } catch (err) {
     console.error("carrier documents load failed", err);
+    wrap.hidden = false;
+    emptyEl.classList.add("is-visible");
   }
 }
 
 async function loadCarrierAgreements(dot) {
   const wrap = document.getElementById("carrier-agreements");
   const statusEl = document.getElementById("agreements-status");
-  const pdfEl = document.getElementById("agreements-pdf");
-  const certEl = document.getElementById("agreements-cert");
+  const metaEl = document.getElementById("agreements-summary-meta");
+  const tableBodyEl = document.getElementById("agreements-table-body");
+  const emptyEl = document.getElementById("agreements-empty");
 
-  if (!wrap || !statusEl || !pdfEl || !certEl) return;
+  if (!wrap || !statusEl || !metaEl || !tableBodyEl || !emptyEl) return;
 
   // hard reset every time
   wrap.hidden = true;
-  statusEl.textContent = "";
-  pdfEl.removeAttribute("href");
-  certEl.removeAttribute("href");
-  pdfEl.style.display = "none";
-  certEl.style.display = "none";
+  statusEl.textContent = "No agreements signed";
+  metaEl.innerHTML = "";
+  tableBodyEl.innerHTML = "";
+  emptyEl.classList.remove("is-visible");
 
   try {
     const res = await fetch(`/api/carrier-agreements/${encodeURIComponent(dot)}`, {
@@ -1364,26 +1371,33 @@ async function loadCarrierAgreements(dot) {
     if (!data || typeof data !== "object") return;
 
     const count = Number(data.count ?? 0);
-    const latest = data.latest && typeof data.latest === "object" ? data.latest : null;
-
-    const pdfUrl =
-      latest && typeof latest.pdf_url === "string" ? latest.pdf_url.trim() : "";
-    const certUrl =
-      latest && typeof latest.certificate_url === "string" ? latest.certificate_url.trim() : "";
-
-    // only show if there is a real signed agreement + both working links
-    if (count < 1 || !pdfUrl || !certUrl) {
-      return;
-    }
+    const agreements = Array.isArray(data.agreements) ? data.agreements : [];
+    const latestSignedAt = data.latest_signed_at;
 
     statusEl.textContent = `${count} Agreement${count === 1 ? "" : "s"} Signed`;
-    pdfEl.href = pdfUrl;
-    certEl.href = certUrl;
-    pdfEl.style.display = "";
-    certEl.style.display = "";
+
+    if (latestSignedAt) {
+      metaEl.innerHTML = `<span class="docs-summary-chip">Latest Signed: ${fmtDateTime(latestSignedAt)}</span>`;
+    }
+
+    if (agreements.length > 0) {
+      tableBodyEl.innerHTML = agreements.map((agreement) => `
+        <tr>
+          <td>${safeText(agreement.agreement_type, "Carrier Agreement")}</td>
+          <td>${fmtDateTime(agreement.signed_at || agreement.sent_at || agreement.created_at)}</td>
+          <td>${renderRowActionLink({ href: agreement.pdf_url, label: "View Agreement" })}</td>
+          <td>${renderRowActionLink({ href: agreement.certificate_url, label: "View Certificate" })}</td>
+        </tr>
+      `).join("");
+    } else {
+      emptyEl.classList.add("is-visible");
+    }
+
     wrap.hidden = false;
   } catch (err) {
     console.error("agreements load failed", err);
+    wrap.hidden = false;
+    emptyEl.classList.add("is-visible");
   }
 }
   
