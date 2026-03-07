@@ -1925,3 +1925,22 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   font-size:16px;
   font-weight:600;
 }
+
+.docs-actions-grid {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.docs-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 180px;
+}
+
+.docs-item-status {
+  font-size: 14px;
+}

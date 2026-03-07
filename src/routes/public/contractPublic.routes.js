@@ -100,6 +100,73 @@ async function uploadFileToSpaces({ file, key, mimeType }) {
     .promise();
 }
 
+function inferMimeType({ mimeType, storageKey }) {
+  let resolved = String(mimeType || "").toLowerCase().trim();
+  if (resolved) return resolved;
+
+  const lowerKey = String(storageKey || "").toLowerCase();
+  if (lowerKey.endsWith(".pdf")) return "application/pdf";
+  if (lowerKey.endsWith(".png")) return "image/png";
+  if (lowerKey.endsWith(".jpg") || lowerKey.endsWith(".jpeg")) return "image/jpeg";
+  if (lowerKey.endsWith(".webp")) return "image/webp";
+  return "application/octet-stream";
+}
+
+function sanitizeInlineFilename(name, fallback) {
+  const filename = String(name || "").trim() || String(fallback || "").trim() || "document";
+  return filename.replace(/"/g, "");
+}
+
+async function streamContractDocumentByToken({
+  req,
+  res,
+  query,
+  queryParams,
+  notFoundMessage,
+  missingStorageMessage,
+  logLabel,
+  fallbackFilename,
+}) {
+  const token = String(req.params.token || "").trim();
+  if (!token) return res.status(400).send("Missing token");
+
+  try {
+    const { rows } = await pool.query(query, queryParams);
+    if (rows.length === 0) return res.status(404).send(notFoundMessage);
+
+    const row = rows[0];
+    if (row.token_expires_at && new Date(row.token_expires_at) < new Date()) {
+      return res.status(410).send("This link has expired");
+    }
+
+    if (!row.storage_key) return res.status(500).send(missingStorageMessage);
+
+    const Bucket = process.env.SPACES_BUCKET;
+    const Key = row.storage_key;
+    const filename = sanitizeInlineFilename(row.original_filename, fallbackFilename || Key.split("/").pop());
+    const mime = inferMimeType({ mimeType: row.mime_type, storageKey: Key });
+
+    const obj = spaces.getObject({ Bucket, Key }).createReadStream();
+    obj.on("error", (err) => {
+      console.error(`SPACES getObject ${logLabel} error:`, err?.code, err?.message, err);
+      if (err?.code === "NoSuchKey") {
+        if (!res.headersSent) res.status(404).send(notFoundMessage);
+        return;
+      }
+      if (!res.headersSent) res.status(500).send(`Failed to load ${logLabel} document`);
+    });
+
+    res.setHeader("Content-Type", mime);
+    res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    obj.pipe(res);
+  } catch (err) {
+    console.error(`GET /contract/:token/${logLabel} error:`, err?.message, err);
+    return res.status(500).send("Server error");
+  }
+}
+
 
 
 /** ---------- CONTRACT PDF (token-gated) ---------- **/
@@ -382,7 +449,7 @@ router.get("/contract/:token", async (req, res) => {
       ach: normalizeRequiredFlag(contract.ach_required, false),
     };
 
-    const [achDocRes, insDocRes, w9DocRes] = await Promise.all([
+    const [achDocRes, insDocRes, w9DocRes, otherDocRes] = await Promise.all([
       pool.query(
         `
         SELECT original_filename
@@ -413,12 +480,23 @@ router.get("/contract/:token", async (req, res) => {
         `,
         [contract.contract_id]
       ),
+      pool.query(
+        `
+        SELECT original_filename
+        FROM public.contract_other_documents
+        WHERE contract_id = $1
+        ORDER BY created_at DESC
+        LIMIT 1
+        `,
+        [contract.contract_id]
+      ),
     ]);
 
     const uploadState = {
       ach: { uploaded: Boolean(achDocRes.rows[0]), filename: achDocRes.rows[0]?.original_filename || null },
       insurance: { uploaded: Boolean(insDocRes.rows[0]), filename: insDocRes.rows[0]?.original_filename || null },
       w9: { uploaded: Boolean(w9DocRes.rows[0]), filename: w9DocRes.rows[0]?.original_filename || null },
+      other: { uploaded: Boolean(otherDocRes.rows[0]), filename: otherDocRes.rows[0]?.original_filename || null },
     };
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -694,6 +772,13 @@ router.get("/contract/:token", async (req, res) => {
     <input type="file" id="achUpload" accept=".pdf,.png,.jpg,.jpeg,.webp" />
     <div id="achMsg" class="docStatus">Not uploaded</div>
   </div>
+
+  <div class="docRow">
+    <div>Other Documents</div>
+    <div id="otherRequired" class="docReq">—</div>
+    <input type="file" id="otherUpload" accept=".pdf,.png,.jpg,.jpeg,.webp" />
+    <div id="otherMsg" class="docStatus">Not uploaded</div>
+  </div>
 </div>
 
         <div class="submitline">
@@ -826,6 +911,13 @@ function waitForOtp() {
           statusEl: document.getElementById("achMsg"),
           reqEl: document.getElementById("achRequired"),
           label: "ACH / Payment Info",
+        },
+        other: {
+          endpoint: "/other-upload",
+          inputEl: document.getElementById("otherUpload"),
+          statusEl: document.getElementById("otherMsg"),
+          reqEl: document.getElementById("otherRequired"),
+          label: "Other Documents",
         },
       };
 
@@ -1259,6 +1351,14 @@ router.post("/contract/:token/w9-upload", async (req, res) => {
   });
 });
 
+router.post("/contract/:token/other-upload", async (req, res) => {
+  return handleContractDocumentUpload(req, res, {
+    table: "public.contract_other_documents",
+    storagePrefix: "other",
+    documentType: "other",
+  });
+});
+
 router.post("/contract/:token/mfa/start", async (req, res) => {
   const token = String(req.params.token || "").trim();
   if (!token) return res.status(400).json({ error: "Missing token" });
@@ -1532,16 +1632,13 @@ router.post("/contract/:token/mfa/verify", async (req, res) => {
 
 router.get("/contract/:token/ach", async (req, res) => {
   const token = String(req.params.token || "").trim();
-  if (!token) return res.status(400).send("Missing token");
-
-  try {
-    const { rows } = await pool.query(
-      `
+  return streamContractDocumentByToken({
+    req,
+    res,
+    query: `
       SELECT
-        c.contract_id,
         c.token_expires_at,
         cad.storage_key,
-        cad.created_at,
         cad.mime_type,
         cad.original_filename
       FROM public.contracts c
@@ -1550,59 +1647,68 @@ router.get("/contract/:token/ach", async (req, res) => {
       WHERE c.token = $1
       ORDER BY cad.created_at DESC
       LIMIT 1
-      `,
-      [token]
-    );
+    `,
+    queryParams: [token],
+    notFoundMessage: "ACH document not found",
+    missingStorageMessage: "Missing ACH storage key",
+    logLabel: "ach",
+    fallbackFilename: "ach_document",
+  });
+});
 
-    if (rows.length === 0) return res.status(404).send("ACH document not found");
+router.get("/contract/:token/w9", async (req, res) => {
+  const token = String(req.params.token || "").trim();
+  return streamContractDocumentByToken({
+    req,
+    res,
+    query: `
+      SELECT
+        c.token_expires_at,
+        cwd.storage_key,
+        cwd.mime_type,
+        cwd.original_filename
+      FROM public.contracts c
+      JOIN public.contract_w9_documents cwd
+        ON cwd.contract_id = c.contract_id
+      WHERE c.token = $1
+      ORDER BY cwd.created_at DESC
+      LIMIT 1
+    `,
+    queryParams: [token],
+    notFoundMessage: "W9 document not found",
+    missingStorageMessage: "Missing W9 storage key",
+    logLabel: "w9",
+    fallbackFilename: "w9_document",
+  });
+});
 
-    const row = rows[0];
+router.get("/contract/:token/other/:id", async (req, res) => {
+  const token = String(req.params.token || "").trim();
+  const documentId = String(req.params.id || "").trim();
+  if (!documentId) return res.status(400).send("Missing other document id");
 
-    if (row.token_expires_at && new Date(row.token_expires_at) < new Date()) {
-      return res.status(410).send("This link has expired");
-    }
-
-    if (!row.storage_key) {
-      return res.status(500).send("Missing ACH storage key");
-    }
-
-    const Bucket = process.env.SPACES_BUCKET;
-    const Key = row.storage_key;
-
-    // Prefer stored mime_type, otherwise infer from extension
-    let mime = String(row.mime_type || "").toLowerCase().trim();
-    const filename = String(row.original_filename || "").trim() || Key.split("/").pop() || "ach_document";
-    const lowerKey = Key.toLowerCase();
-
-    if (!mime) {
-      if (lowerKey.endsWith(".pdf")) mime = "application/pdf";
-      else if (lowerKey.endsWith(".png")) mime = "image/png";
-      else if (lowerKey.endsWith(".jpg") || lowerKey.endsWith(".jpeg")) mime = "image/jpeg";
-      else if (lowerKey.endsWith(".webp")) mime = "image/webp";
-      else mime = "application/octet-stream";
-    }
-
-    const obj = spaces.getObject({ Bucket, Key }).createReadStream();
-
-    obj.on("error", (err) => {
-      console.error("SPACES getObject ACH error:", err?.code, err?.message, err);
-      if (err?.code === "NoSuchKey") {
-        if (!res.headersSent) res.status(404).send("ACH document not found");
-        return;
-      }
-      if (!res.headersSent) res.status(500).send("Failed to load ACH document");
-    });
-
-    res.setHeader("Content-Type", mime);
-    res.setHeader("Content-Disposition", `inline; filename="${filename.replace(/"/g, "")}"`);
-    res.setHeader("Cache-Control", "no-store");
-    res.setHeader("X-Content-Type-Options", "nosniff");
-
-    obj.pipe(res);
-  } catch (err) {
-    console.error("GET /contract/:token/ach error:", err?.message, err);
-    return res.status(500).send("Server error");
-  }
+  return streamContractDocumentByToken({
+    req,
+    res,
+    query: `
+      SELECT
+        c.token_expires_at,
+        cod.storage_key,
+        cod.mime_type,
+        cod.original_filename
+      FROM public.contracts c
+      JOIN public.contract_other_documents cod
+        ON cod.contract_id = c.contract_id
+      WHERE c.token = $1
+        AND cod.id = $2
+      LIMIT 1
+    `,
+    queryParams: [token, documentId],
+    notFoundMessage: "Other document not found",
+    missingStorageMessage: "Missing other document storage key",
+    logLabel: "other",
+    fallbackFilename: "other_document",
+  });
 });
 
 

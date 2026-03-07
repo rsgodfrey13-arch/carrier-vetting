@@ -1222,7 +1222,7 @@ if (data && data.source === "cache_stale") {
     }
       
       await loadCarrierAgreements(dot);
-      await loadCarrierAchDocuments(dot);
+      await loadCarrierDocuments(dot);
       if (opts.manual === true) {
         setRefreshUi("idle", "Updated just now");
         setTimeout(() => setRefreshUi("idle", ""), 2200);
@@ -1242,51 +1242,91 @@ if (data && data.source === "cache_stale") {
     }
   }
 
-  async function loadCarrierAchDocuments(dot) {
-  const wrap = document.getElementById("carrier-ach-documents");
-  const statusEl = document.getElementById("ach-docs-status");
-  const pdfEl = document.getElementById("ach-docs-pdf");
-  const certEl = document.getElementById("ach-docs-cert");
+  async function loadCarrierDocuments(dot) {
+  const wrap = document.getElementById("carrier-documents");
+  const summaryEl = document.getElementById("documents-summary-status");
 
-  if (!wrap || !statusEl || !pdfEl || !certEl) return;
+  const w9Row = document.getElementById("docs-w9");
+  const w9StatusEl = document.getElementById("w9-docs-status");
+  const w9PdfEl = document.getElementById("w9-docs-pdf");
+
+  const achRow = document.getElementById("docs-ach");
+  const achStatusEl = document.getElementById("ach-docs-status");
+  const achPdfEl = document.getElementById("ach-docs-pdf");
+  const achCertEl = document.getElementById("ach-docs-cert");
+
+  const otherRow = document.getElementById("docs-other");
+  const otherStatusEl = document.getElementById("other-docs-status");
+  const otherPdfEl = document.getElementById("other-docs-pdf");
+
+  if (!wrap || !summaryEl) return;
 
   wrap.hidden = true;
-  statusEl.textContent = "";
-  pdfEl.removeAttribute("href");
-  certEl.removeAttribute("href");
-  pdfEl.style.display = "none";
-  certEl.style.display = "none";
+  summaryEl.textContent = "No documents on file";
+
+  [w9Row, achRow, otherRow].forEach((el) => {
+    if (el) el.hidden = true;
+  });
+
+  [w9PdfEl, achPdfEl, achCertEl, otherPdfEl].forEach((el) => {
+    if (!el) return;
+    el.removeAttribute("href");
+    el.style.display = "none";
+  });
 
   try {
-    const res = await fetch(`/api/carrier-ach-documents/${encodeURIComponent(dot)}`, {
-      credentials: "include"
-    });
+    const [w9Res, achRes, otherRes] = await Promise.all([
+      fetch(`/api/carrier-w9-documents/${encodeURIComponent(dot)}`, { credentials: "include" }),
+      fetch(`/api/carrier-ach-documents/${encodeURIComponent(dot)}`, { credentials: "include" }),
+      fetch(`/api/carrier-other-documents/${encodeURIComponent(dot)}`, { credentials: "include" }),
+    ]);
 
-    if (!res.ok) return;
+    const w9Data = w9Res.ok ? await w9Res.json().catch(() => null) : null;
+    const achData = achRes.ok ? await achRes.json().catch(() => null) : null;
+    const otherData = otherRes.ok ? await otherRes.json().catch(() => null) : null;
 
-    const data = await res.json().catch(() => null);
-    if (!data || typeof data !== "object") return;
+    const w9Count = Number(w9Data?.count ?? 0);
+    const achCount = Number(achData?.count ?? 0);
+    const otherCount = Number(otherData?.count ?? 0);
+    const total = w9Count + achCount + otherCount;
 
-    const count = Number(data.count ?? 0);
-    const latest = data.latest && typeof data.latest === "object" ? data.latest : null;
-
-    const pdfUrl =
-      latest && typeof latest.pdf_url === "string" ? latest.pdf_url.trim() : "";
-    const certUrl =
-      latest && typeof latest.certificate_url === "string" ? latest.certificate_url.trim() : "";
-
-    if (count < 1 || !pdfUrl || !certUrl) {
-      return;
+    if (w9Count > 0 && w9Data?.latest?.pdf_url && w9Row && w9StatusEl && w9PdfEl) {
+      w9StatusEl.textContent = `${w9Count} W-9 Document${w9Count === 1 ? "" : "s"} On File`;
+      w9PdfEl.href = w9Data.latest.pdf_url;
+      w9PdfEl.style.display = "";
+      w9Row.hidden = false;
     }
 
-    statusEl.textContent = `${count} ACH Document${count === 1 ? "" : "s"} On File`;
-    pdfEl.href = pdfUrl;
-    certEl.href = certUrl;
-    pdfEl.style.display = "";
-    certEl.style.display = "";
-    wrap.hidden = false;
+    if (
+      achCount > 0 &&
+      achData?.latest?.pdf_url &&
+      achData?.latest?.certificate_url &&
+      achRow &&
+      achStatusEl &&
+      achPdfEl &&
+      achCertEl
+    ) {
+      achStatusEl.textContent = `${achCount} ACH Document${achCount === 1 ? "" : "s"} On File`;
+      achPdfEl.href = achData.latest.pdf_url;
+      achCertEl.href = achData.latest.certificate_url;
+      achPdfEl.style.display = "";
+      achCertEl.style.display = "";
+      achRow.hidden = false;
+    }
+
+    if (otherCount > 0 && otherData?.latest?.pdf_url && otherRow && otherStatusEl && otherPdfEl) {
+      otherStatusEl.textContent = `${otherCount} Other Document${otherCount === 1 ? "" : "s"} On File`;
+      otherPdfEl.href = otherData.latest.pdf_url;
+      otherPdfEl.style.display = "";
+      otherRow.hidden = false;
+    }
+
+    if (total > 0) {
+      summaryEl.textContent = `${total} Document${total === 1 ? "" : "s"} On File`;
+      wrap.hidden = false;
+    }
   } catch (err) {
-    console.error("ach documents load failed", err);
+    console.error("carrier documents load failed", err);
   }
 }
 

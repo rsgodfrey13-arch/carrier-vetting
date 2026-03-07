@@ -149,6 +149,7 @@
       <button type="button" class="quick-jump-link is-active" data-jump="carrier-header">Summary</button>
       <button type="button" class="quick-jump-link" data-jump="section-safety">Safety</button>
       <button type="button" class="quick-jump-link" data-jump="section-inspections">Inspections</button>
+      <button type="button" class="quick-jump-link" data-jump="carrier-documents">Documents</button>
       <button type="button" class="quick-jump-link" data-jump="ins-coverages-card">Insurance</button>
     </nav>
   <div class="hero-accent-line"></div>
@@ -461,15 +462,28 @@
       -->
     </section>
 
-      <section id="carrier-ach-documents" class="carrier-agreements glass-card" hidden>
+      <section id="carrier-documents" class="carrier-agreements glass-card" hidden>
       <div class="agreements-left">
-        <div class="agreements-kicker">Payment Documents</div>
-        <div id="ach-docs-status" class="agreements-status">1 ACH Document On File</div>
+        <div class="agreements-kicker">Documents</div>
+        <div id="documents-summary-status" class="agreements-status">No documents on file</div>
       </div>
 
-      <div class="agreements-actions">
-        <a id="ach-docs-pdf" class="agreements-link" href="#" target="_blank" rel="noopener">View ACH Document</a>
-        <a id="ach-docs-cert" class="agreements-link" href="#" target="_blank" rel="noopener">Signature Certificate</a>
+      <div class="agreements-actions docs-actions-grid">
+        <div class="docs-item" id="docs-w9" hidden>
+          <div id="w9-docs-status" class="agreements-status docs-item-status">0 W-9 Documents</div>
+          <a id="w9-docs-pdf" class="agreements-link" href="#" target="_blank" rel="noopener">View W-9</a>
+        </div>
+
+        <div class="docs-item" id="docs-ach" hidden>
+          <div id="ach-docs-status" class="agreements-status docs-item-status">0 ACH Documents</div>
+          <a id="ach-docs-pdf" class="agreements-link" href="#" target="_blank" rel="noopener">View ACH Document</a>
+          <a id="ach-docs-cert" class="agreements-link" href="#" target="_blank" rel="noopener">Signature Certificate</a>
+        </div>
+
+        <div class="docs-item" id="docs-other" hidden>
+          <div id="other-docs-status" class="agreements-status docs-item-status">0 Other Documents</div>
+          <a id="other-docs-pdf" class="agreements-link" href="#" target="_blank" rel="noopener">View Latest Document</a>
+        </div>
       </div>
     </section>
   </div>

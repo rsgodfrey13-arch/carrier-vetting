@@ -464,6 +464,32 @@ router.post("/agreements/default", requireAuth, async (req, res) => {
   }
 });
 
+
+async function loadSessionCompanyId(userId) {
+  const userRes = await pool.query(
+    `
+    SELECT default_company_id company_id
+    FROM public.users
+    WHERE id = $1
+    LIMIT 1
+    `,
+    [userId]
+  );
+
+  return userRes.rows[0]?.company_id || null;
+}
+
+function normalizeCarrierDocumentRow(row, pdfLabel) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    created_at: row.created_at,
+    original_filename: row.original_filename || null,
+    pdf_url: row.pdf_url,
+    pdf_label: pdfLabel,
+  };
+}
+
 router.get("/carrier-agreements/:dot", async (req, res) => {
   try {
     if (!req.session?.userId) {
@@ -478,17 +504,7 @@ router.get("/carrier-agreements/:dot", async (req, res) => {
     const userId = req.session.userId;
 
     // get the caller's company_id
-    const userRes = await pool.query(
-      `
-      SELECT default_company_id company_id
-      FROM public.users
-      WHERE id = $1
-      LIMIT 1
-      `,
-      [userId]
-    );
-
-    const companyId = userRes.rows[0]?.company_id;
+    const companyId = await loadSessionCompanyId(userId);
     if (!companyId) {
       return res.status(403).json({ error: "No company context found" });
     }
@@ -568,17 +584,7 @@ router.get("/carrier-ach-documents/:dot", async (req, res) => {
 
     const userId = req.session.userId;
 
-    const userRes = await pool.query(
-      `
-      SELECT default_company_id company_id
-      FROM public.users
-      WHERE id = $1
-      LIMIT 1
-      `,
-      [userId]
-    );
-
-    const companyId = userRes.rows[0]?.company_id;
+    const companyId = await loadSessionCompanyId(userId);
     if (!companyId) {
       return res.status(403).json({ error: "No company context found" });
     }
@@ -601,6 +607,7 @@ router.get("/carrier-ach-documents/:dot", async (req, res) => {
       SELECT
         cad.id,
         cad.created_at,
+        cad.original_filename,
         c.token
       FROM public.contract_ach_documents cad
       JOIN public.contracts c
@@ -629,6 +636,7 @@ router.get("/carrier-ach-documents/:dot", async (req, res) => {
       latest: {
         id: latest.id,
         created_at: latest.created_at,
+        original_filename: latest.original_filename || null,
         pdf_url: `/contract/${latest.token}/ach`,
         certificate_url: `/contract/${latest.token}/certificate`
       }
@@ -639,5 +647,144 @@ router.get("/carrier-ach-documents/:dot", async (req, res) => {
   }
 });
 
+
+
+router.get("/carrier-w9-documents/:dot", async (req, res) => {
+  try {
+    if (!req.session?.userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const dot = String(req.params.dot || "").replace(/\D/g, "");
+    if (!dot) {
+      return res.status(400).json({ error: "Invalid DOT" });
+    }
+
+    const companyId = await loadSessionCompanyId(req.session.userId);
+    if (!companyId) {
+      return res.status(403).json({ error: "No company context found" });
+    }
+
+    const countRes = await pool.query(
+      `
+      SELECT COUNT(*)::int AS count
+      FROM public.contract_w9_documents cwd
+      JOIN public.contracts c
+        ON c.contract_id = cwd.contract_id
+      WHERE c.company_id = $1
+        AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
+        AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
+      `,
+      [companyId, dot]
+    );
+
+    const latestRes = await pool.query(
+      `
+      SELECT
+        cwd.id,
+        cwd.created_at,
+        cwd.original_filename,
+        c.token
+      FROM public.contract_w9_documents cwd
+      JOIN public.contracts c
+        ON c.contract_id = cwd.contract_id
+      WHERE c.company_id = $1
+        AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
+        AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
+      ORDER BY cwd.created_at DESC
+      LIMIT 1
+      `,
+      [companyId, dot]
+    );
+
+    const count = countRes.rows[0]?.count || 0;
+    const latest = latestRes.rows[0] || null;
+
+    return res.json({
+      count,
+      latest: normalizeCarrierDocumentRow(
+        latest
+          ? {
+              ...latest,
+              pdf_url: `/contract/${latest.token}/w9`,
+            }
+          : null,
+        "View W-9"
+      ),
+    });
+  } catch (err) {
+    console.error("GET /carrier-w9-documents/:dot error:", err?.message, err);
+    return res.status(500).json({ error: "Failed to load carrier W9 documents" });
+  }
+});
+
+router.get("/carrier-other-documents/:dot", async (req, res) => {
+  try {
+    if (!req.session?.userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const dot = String(req.params.dot || "").replace(/\D/g, "");
+    if (!dot) {
+      return res.status(400).json({ error: "Invalid DOT" });
+    }
+
+    const companyId = await loadSessionCompanyId(req.session.userId);
+    if (!companyId) {
+      return res.status(403).json({ error: "No company context found" });
+    }
+
+    const countRes = await pool.query(
+      `
+      SELECT COUNT(*)::int AS count
+      FROM public.contract_other_documents cod
+      JOIN public.contracts c
+        ON c.contract_id = cod.contract_id
+      WHERE c.company_id = $1
+        AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
+        AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
+      `,
+      [companyId, dot]
+    );
+
+    const latestRes = await pool.query(
+      `
+      SELECT
+        cod.id,
+        cod.created_at,
+        cod.original_filename,
+        c.token
+      FROM public.contract_other_documents cod
+      JOIN public.contracts c
+        ON c.contract_id = cod.contract_id
+      WHERE c.company_id = $1
+        AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
+        AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
+      ORDER BY cod.created_at DESC
+      LIMIT 1
+      `,
+      [companyId, dot]
+    );
+
+    const count = countRes.rows[0]?.count || 0;
+    const latest = latestRes.rows[0] || null;
+
+    return res.json({
+      count,
+      latest: normalizeCarrierDocumentRow(
+        latest
+          ? {
+              ...latest,
+              pdf_url: `/contract/${latest.token}/other/${latest.id}`,
+            }
+          : null,
+        "View Document"
+      ),
+    });
+  } catch (err) {
+    console.error("GET /carrier-other-documents/:dot error:", err?.message, err);
+    return res.status(500).json({ error: "Failed to load carrier other documents" });
+  }
+});
 
 module.exports = router;
