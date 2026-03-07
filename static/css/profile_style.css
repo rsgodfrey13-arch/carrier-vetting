@@ -1935,6 +1935,40 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   font-weight:600;
 }
 
+
+.docs-header-right {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-left: auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.docs-upload-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.docs-select {
+  width: 100%;
+}
+
+.docs-file-input {
+  height: auto;
+  padding: 8px 10px;
+}
+
+.docs-cert-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.docs-upload-error {
+  margin-top: 12px;
+  color: #fca5a5;
+}
+
 .docs-summary-meta {
   color: rgba(226,232,240,.78);
   font-size: 13px;

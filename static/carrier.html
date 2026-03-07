@@ -481,7 +481,10 @@
           <div class="agreements-kicker">Documents</div>
           <div id="documents-summary-status" class="agreements-status">No documents on file</div>
         </div>
-        <div id="documents-type-summary" class="docs-summary-meta"></div>
+        <div class="docs-header-right">
+          <div id="documents-type-summary" class="docs-summary-meta"></div>
+          <button id="btn-add-document" type="button" class="cs-btn cs-btn-primary">Add Document</button>
+        </div>
       </div>
 
       <div id="documents-table-wrap" class="docs-table-wrap">
@@ -525,6 +528,44 @@
       </div>
     </div>
 
+  </div>
+</div>
+
+<div id="add-document-modal" class="cs-modal-backdrop" hidden>
+  <div class="cs-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="add-document-title">
+    <div class="cs-modal-header">
+      <div class="cs-modal-headings">
+        <div id="add-document-title" class="cs-modal-title">Upload Document</div>
+        <div class="cs-modal-subtitle">Attach a document to this carrier profile.</div>
+      </div>
+      <button id="add-document-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
+    </div>
+
+    <form id="add-document-form" class="cs-modal-body docs-upload-form">
+      <label class="cs-label" for="document-type">Document Type</label>
+      <select id="document-type" class="cs-input docs-select" required>
+        <option value="w9">W-9</option>
+        <option value="ach">ACH</option>
+        <option value="other">Other</option>
+      </select>
+
+      <label class="cs-label" for="document-file" style="margin-top:12px;">File</label>
+      <input id="document-file" class="cs-input docs-file-input" type="file" accept=".pdf,image/*" required>
+
+      <div id="certificate-wrap" class="docs-cert-wrap" hidden>
+        <label class="cs-label" for="certificate-file" style="margin-top:12px;">Certificate (optional)</label>
+        <input id="certificate-file" class="cs-input docs-file-input" type="file" accept=".pdf,image/*">
+      </div>
+
+      <div id="add-document-error" class="cs-hint docs-upload-error" hidden></div>
+    </form>
+
+    <div class="cs-modal-footer">
+      <div class="cs-footer-right">
+        <button id="add-document-cancel" class="cs-btn cs-btn-ghost" type="button">Cancel</button>
+        <button id="add-document-submit" class="cs-btn cs-btn-primary" type="button">Upload Document</button>
+      </div>
+    </div>
   </div>
 </div>
   

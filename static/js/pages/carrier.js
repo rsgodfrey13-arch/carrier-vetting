@@ -1264,6 +1264,17 @@ if (data && data.source === "cache_stale") {
     }
   }
 
+  function formatUploadedBy(doc) {
+    const role = String(doc?.uploaded_by_role || doc?.source || "carrier").trim().toLowerCase();
+    if (role === "user") {
+      const name = String(doc?.uploaded_by_name || "").trim();
+      const email = String(doc?.uploaded_by_email || "").trim();
+      return name || email || "User";
+    }
+    if (role === "system") return "System";
+    return "Carrier";
+  }
+
   async function loadCarrierDocuments(dot) {
   const wrap = document.getElementById("carrier-documents");
   const summaryEl = document.getElementById("documents-summary-status");
@@ -1280,29 +1291,16 @@ if (data && data.source === "cache_stale") {
   emptyEl.classList.remove("is-visible");
 
   try {
-    const [w9Res, achRes, otherRes] = await Promise.all([
-      fetch(`/api/carrier-w9-documents/${encodeURIComponent(dot)}`, { credentials: "include" }),
-      fetch(`/api/carrier-ach-documents/${encodeURIComponent(dot)}`, { credentials: "include" }),
-      fetch(`/api/carrier-other-documents/${encodeURIComponent(dot)}`, { credentials: "include" }),
-    ]);
+    const res = await fetch(`/api/carrier-documents/${encodeURIComponent(dot)}`, { credentials: "include" });
+    if (!res.ok) throw new Error(`carrier documents request failed (${res.status})`);
 
-    const w9Data = w9Res.ok ? await w9Res.json().catch(() => null) : null;
-    const achData = achRes.ok ? await achRes.json().catch(() => null) : null;
-    const otherData = otherRes.ok ? await otherRes.json().catch(() => null) : null;
-
-    const w9Count = Number(w9Data?.count ?? 0);
-    const achCount = Number(achData?.count ?? 0);
-    const otherCount = Number(otherData?.count ?? 0);
-    const total = w9Count + achCount + otherCount;
-
-    const w9Docs = Array.isArray(w9Data?.documents) ? w9Data.documents : [];
-    const achDocs = Array.isArray(achData?.documents) ? achData.documents : [];
-    const otherDocs = Array.isArray(otherData?.documents) ? otherData.documents : [];
-    const allDocs = [
-      ...w9Docs.map((doc) => ({ ...doc, type: "W-9" })),
-      ...achDocs.map((doc) => ({ ...doc, type: "ACH" })),
-      ...otherDocs.map((doc) => ({ ...doc, type: "Other" })),
-    ].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    const data = await res.json().catch(() => null);
+    const docs = Array.isArray(data?.documents) ? data.documents : [];
+    const counts = data?.counts || {};
+    const w9Count = Number(counts?.w9 ?? docs.filter((d) => d.type === "W-9").length);
+    const achCount = Number(counts?.ach ?? docs.filter((d) => d.type === "ACH").length);
+    const otherCount = Number(counts?.other ?? docs.filter((d) => d.type === "Other").length);
+    const total = Number(data?.count ?? docs.length);
 
     typeSummaryEl.innerHTML = [
       `<span class="docs-summary-chip">W-9: ${w9Count} Document${w9Count === 1 ? "" : "s"} On File</span>`,
@@ -1310,8 +1308,8 @@ if (data && data.source === "cache_stale") {
       `<span class="docs-summary-chip">Other: ${otherCount} Document${otherCount === 1 ? "" : "s"} On File</span>`,
     ].join("");
 
-    if (allDocs.length > 0) {
-      tableBodyEl.innerHTML = allDocs.map((doc) => {
+    if (docs.length > 0) {
+      tableBodyEl.innerHTML = docs.map((doc) => {
         const actions = [
           renderRowActionLink({ href: doc.pdf_url, label: "View" }),
         ];
@@ -1322,8 +1320,8 @@ if (data && data.source === "cache_stale") {
           <tr>
             <td>${safeText(doc.type)}</td>
             <td>${safeText(doc.original_filename)}</td>
-            <td>${fmtDateTime(doc.created_at)}</td>
-            <td>${safeText(doc.source, "Carrier")}</td>
+            <td>${fmtDateTime(doc.uploaded_at || doc.created_at)}</td>
+            <td>${safeText(formatUploadedBy(doc))}</td>
             <td>${safeText(doc.mime_type)}</td>
             <td><div class="docs-row-actions">${actions.join("")}</div></td>
           </tr>
@@ -1343,6 +1341,7 @@ if (data && data.source === "cache_stale") {
     emptyEl.classList.add("is-visible");
   }
 }
+
 
 async function loadCarrierAgreements(dot) {
   const wrap = document.getElementById("carrier-agreements");
@@ -1401,6 +1400,103 @@ async function loadCarrierAgreements(dot) {
   }
 }
   
+function wireAddDocumentModalOnce() {
+  const modal = document.getElementById("add-document-modal");
+  const openBtn = document.getElementById("btn-add-document");
+  const closeBtn = document.getElementById("add-document-close");
+  const cancelBtn = document.getElementById("add-document-cancel");
+  const submitBtn = document.getElementById("add-document-submit");
+  const typeEl = document.getElementById("document-type");
+  const fileEl = document.getElementById("document-file");
+  const certWrap = document.getElementById("certificate-wrap");
+  const certEl = document.getElementById("certificate-file");
+  const errEl = document.getElementById("add-document-error");
+
+  if (!modal || !openBtn || !closeBtn || !cancelBtn || !submitBtn || !typeEl || !fileEl || !certWrap || !certEl || !errEl) {
+    return;
+  }
+
+  function clearError() {
+    errEl.hidden = true;
+    errEl.textContent = "";
+  }
+
+  function setError(message) {
+    errEl.hidden = false;
+    errEl.textContent = message || "Upload failed.";
+  }
+
+  function syncCertificateVisibility() {
+    const isAch = String(typeEl.value || "") === "ach";
+    certWrap.hidden = !isAch;
+    if (!isAch) certEl.value = "";
+  }
+
+  function closeModal() {
+    modal.hidden = true;
+    clearError();
+    submitBtn.disabled = false;
+    fileEl.value = "";
+    certEl.value = "";
+  }
+
+  openBtn.addEventListener("click", () => {
+    syncCertificateVisibility();
+    clearError();
+    modal.hidden = false;
+  });
+
+  typeEl.addEventListener("change", syncCertificateVisibility);
+  closeBtn.addEventListener("click", closeModal);
+  cancelBtn.addEventListener("click", closeModal);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  submitBtn.addEventListener("click", async () => {
+    clearError();
+    if (!fileEl.files?.[0]) {
+      setError("Please select a document to upload.");
+      return;
+    }
+
+    const dot = CURRENT_DOT;
+    if (!dot) {
+      setError("Missing carrier DOT.");
+      return;
+    }
+
+    const fd = new FormData();
+    fd.append("document_type", String(typeEl.value || "other"));
+    fd.append("file", fileEl.files[0]);
+    if (!certWrap.hidden && certEl.files?.[0]) {
+      fd.append("certificate", certEl.files[0]);
+    }
+
+    try {
+      submitBtn.disabled = true;
+      const res = await fetch(`/api/carrier-documents/${encodeURIComponent(dot)}/upload`, {
+        method: "POST",
+        body: fd,
+        credentials: "include",
+      });
+
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(payload?.error || `Upload failed (${res.status})`);
+      }
+
+      closeModal();
+      await loadCarrierDocuments(dot);
+    } catch (err) {
+      console.error("carrier document upload failed", err);
+      setError(err?.message || "Upload failed.");
+      submitBtn.disabled = false;
+    }
+  });
+}
+
+
   async function initCarrierButtons(dot) {
     if (initButtonsRunning) {
       initButtonsRerun = true;   // NEW
@@ -1852,6 +1948,7 @@ if (contractBtn) {
 document.addEventListener("DOMContentLoaded", () => {
   wireEmailModalOnce();
   wireSendContractModalOnce(); 
+  wireAddDocumentModalOnce();
   wireQuickJump();
   wireBackToOverview();
   document.getElementById("btn-refresh-carrier")?.addEventListener("click", () => {
