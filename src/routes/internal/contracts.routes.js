@@ -509,6 +509,8 @@ function normalizeCarrierDocumentRow(row, pdfLabel) {
   if (!row) return null;
   return {
     id: row.id,
+    type: row.type || (row.document_type === 'w9' ? 'W-9' : row.document_type === 'ach' ? 'ACH' : 'Other'),
+    document_type: row.document_type || null,
     created_at: row.created_at,
     uploaded_at: row.created_at,
     original_filename: row.original_filename || null,
@@ -805,7 +807,7 @@ const inserted = await pool.query(
     certificate_original_filename
   )
   VALUES
-    ($1, $2, $3, 'user', $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
   RETURNING id, created_at, document_type, original_filename, mime_type,
             uploaded_by_role, uploaded_by_user_id, uploaded_by_name,
             uploaded_by_email, certificate_storage_key
@@ -814,6 +816,8 @@ const inserted = await pool.query(
     String(companyId),
     contractId,
     dot,
+    docType,
+    'user',
     userId,
     user.name || null,
     user.email || null,
