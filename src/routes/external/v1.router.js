@@ -27,11 +27,12 @@ function normalizeAlertIds(input) {
 function normalizeIdArray(input) {
   if (!input) return [];
   const arr = Array.isArray(input) ? input : [input];
+  const isUuid = (value) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+
   return [...new Set(
     arr
-      .map(x => String(x).trim())
-      .filter(x => /^\d+$/.test(x))
-      .map(x => parseInt(x, 10))
+      .map((x) => String(x).trim())
+      .filter((x) => /^\d+$/.test(x) || isUuid(x))
   )];
 }
 
@@ -1177,7 +1178,7 @@ router.patch('/contracts/processed', async (req, res) => {
 
     const ids = normalizeIdArray(req.body?.contracts);
     if (ids.length === 0) {
-      return res.status(400).json({ error: 'contracts array is required (numeric ids)' });
+      return res.status(400).json({ error: 'contracts array is required (UUID or numeric ids)' });
     }
 
     const updateResult = await pool.query(
@@ -1186,7 +1187,7 @@ router.patch('/contracts/processed', async (req, res) => {
       SET status = 'PROCESSED',
           updated_at = NOW()
       WHERE user_id = $1
-        AND contract_id = ANY($2::bigint[])
+        AND contract_id::text = ANY($2::text[])
         AND status = 'COMPLETED'
       RETURNING contract_id;
       `,
@@ -1225,7 +1226,7 @@ router.patch('/contracts/unprocessed', async (req, res) => {
 
     const ids = normalizeIdArray(req.body?.contracts);
     if (ids.length === 0) {
-      return res.status(400).json({ error: 'contracts array is required (numeric ids)' });
+      return res.status(400).json({ error: 'contracts array is required (UUID or numeric ids)' });
     }
 
     const updateResult = await pool.query(
@@ -1234,7 +1235,7 @@ router.patch('/contracts/unprocessed', async (req, res) => {
       SET status = 'COMPLETED',
           updated_at = NOW()
       WHERE user_id = $1
-        AND contract_id = ANY($2::bigint[])
+        AND contract_id::text = ANY($2::text[])
         AND status = 'PROCESSED'
       RETURNING contract_id;
       `,

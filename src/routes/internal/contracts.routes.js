@@ -593,8 +593,8 @@ router.get('/carrier-documents/:dot', requireAuth, loadCompanyContext, async (re
         `
         SELECT cwd.id, cwd.created_at, cwd.original_filename, cwd.mime_type, c.token
         FROM public.contract_w9_documents cwd
-        JOIN public.contracts c ON c.contract_id = cwd.contract_id
-        WHERE c.company_id = $1
+        JOIN public.contracts c ON c.contract_id::text = cwd.contract_id::text
+        WHERE c.company_id::text = $1::text
           AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
           AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
         `,
@@ -604,8 +604,8 @@ router.get('/carrier-documents/:dot', requireAuth, loadCompanyContext, async (re
         `
         SELECT cad.id, cad.created_at, cad.original_filename, cad.mime_type, c.token
         FROM public.contract_ach_documents cad
-        JOIN public.contracts c ON c.contract_id = cad.contract_id
-        WHERE c.company_id = $1
+        JOIN public.contracts c ON c.contract_id::text = cad.contract_id::text
+        WHERE c.company_id::text = $1::text
           AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
           AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
         `,
@@ -615,8 +615,8 @@ router.get('/carrier-documents/:dot', requireAuth, loadCompanyContext, async (re
         `
         SELECT cod.id, cod.created_at, cod.original_filename, cod.mime_type, c.token
         FROM public.contract_other_documents cod
-        JOIN public.contracts c ON c.contract_id = cod.contract_id
-        WHERE c.company_id = $1
+        JOIN public.contracts c ON c.contract_id::text = cod.contract_id::text
+        WHERE c.company_id::text = $1::text
           AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
           AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
         `,
@@ -990,8 +990,8 @@ router.get("/carrier-ach-documents/:dot", async (req, res) => {
       SELECT COUNT(*)::int AS count
       FROM public.contract_ach_documents cad
       JOIN public.contracts c
-        ON c.contract_id = cad.contract_id
-      WHERE c.company_id = $1
+        ON c.contract_id::text = cad.contract_id::text
+      WHERE c.company_id::text = $1::text
         AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
         AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
       `,
@@ -1008,8 +1008,8 @@ router.get("/carrier-ach-documents/:dot", async (req, res) => {
         c.token
       FROM public.contract_ach_documents cad
       JOIN public.contracts c
-        ON c.contract_id = cad.contract_id
-      WHERE c.company_id = $1
+        ON c.contract_id::text = cad.contract_id::text
+      WHERE c.company_id::text = $1::text
         AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
         AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
       ORDER BY cad.created_at DESC
@@ -1061,8 +1061,8 @@ router.get("/carrier-w9-documents/:dot", async (req, res) => {
       SELECT COUNT(*)::int AS count
       FROM public.contract_w9_documents cwd
       JOIN public.contracts c
-        ON c.contract_id = cwd.contract_id
-      WHERE c.company_id = $1
+        ON c.contract_id::text = cwd.contract_id::text
+      WHERE c.company_id::text = $1::text
         AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
         AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
       `,
@@ -1079,8 +1079,8 @@ router.get("/carrier-w9-documents/:dot", async (req, res) => {
         c.token
       FROM public.contract_w9_documents cwd
       JOIN public.contracts c
-        ON c.contract_id = cwd.contract_id
-      WHERE c.company_id = $1
+        ON c.contract_id::text = cwd.contract_id::text
+      WHERE c.company_id::text = $1::text
         AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
         AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
       ORDER BY cwd.created_at DESC
@@ -1129,8 +1129,8 @@ router.get("/carrier-other-documents/:dot", async (req, res) => {
       SELECT COUNT(*)::int AS count
       FROM public.contract_other_documents cod
       JOIN public.contracts c
-        ON c.contract_id = cod.contract_id
-      WHERE c.company_id = $1
+        ON c.contract_id::text = cod.contract_id::text
+      WHERE c.company_id::text = $1::text
         AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
         AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
       `,
@@ -1147,8 +1147,8 @@ router.get("/carrier-other-documents/:dot", async (req, res) => {
         c.token
       FROM public.contract_other_documents cod
       JOIN public.contracts c
-        ON c.contract_id = cod.contract_id
-      WHERE c.company_id = $1
+        ON c.contract_id::text = cod.contract_id::text
+      WHERE c.company_id::text = $1::text
         AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
         AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
       ORDER BY cod.created_at DESC

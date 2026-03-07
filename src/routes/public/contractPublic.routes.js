@@ -454,7 +454,7 @@ router.get("/contract/:token", async (req, res) => {
         `
         SELECT original_filename
         FROM public.contract_ach_documents
-        WHERE contract_id = $1
+        WHERE contract_id::text = $1::text
         ORDER BY created_at DESC
         LIMIT 1
         `,
@@ -464,7 +464,7 @@ router.get("/contract/:token", async (req, res) => {
         `
         SELECT original_filename
         FROM public.contract_insurance_documents
-        WHERE contract_id = $1
+        WHERE contract_id::text = $1::text
         ORDER BY created_at DESC
         LIMIT 1
         `,
@@ -474,7 +474,7 @@ router.get("/contract/:token", async (req, res) => {
         `
         SELECT original_filename
         FROM public.contract_w9_documents
-        WHERE contract_id = $1
+        WHERE contract_id::text = $1::text
         ORDER BY created_at DESC
         LIMIT 1
         `,
@@ -484,7 +484,7 @@ router.get("/contract/:token", async (req, res) => {
         `
         SELECT original_filename
         FROM public.contract_other_documents
-        WHERE contract_id = $1
+        WHERE contract_id::text = $1::text
         ORDER BY created_at DESC
         LIMIT 1
         `,
@@ -1404,7 +1404,7 @@ router.post("/contract/:token/mfa/start", async (req, res) => {
       `
       SELECT id, otp_verified_at
       FROM public.contract_mfa_events
-      WHERE contract_id = $1
+      WHERE contract_id::text = $1::text
         AND otp_verified_at IS NOT NULL
         AND otp_verified_at > now() - interval '${MFA_VALID_MIN} minutes'
       ORDER BY otp_verified_at DESC
@@ -1425,7 +1425,7 @@ router.post("/contract/:token/mfa/start", async (req, res) => {
       `
       SELECT otp_created_at
       FROM public.contract_mfa_events
-      WHERE contract_id = $1
+      WHERE contract_id::text = $1::text
         AND otp_verified_at IS NULL
         AND expires_at > now()
       ORDER BY otp_created_at DESC
@@ -1446,7 +1446,7 @@ router.post("/contract/:token/mfa/start", async (req, res) => {
       `
       UPDATE public.contract_mfa_events
       SET expires_at = now()
-      WHERE contract_id = $1
+      WHERE contract_id::text = $1::text
         AND otp_verified_at IS NULL
         AND expires_at > now();
       `,
@@ -1643,7 +1643,7 @@ router.get("/contract/:token/ach", async (req, res) => {
         cad.original_filename
       FROM public.contracts c
       JOIN public.contract_ach_documents cad
-        ON cad.contract_id = c.contract_id
+        ON cad.contract_id::text = c.contract_id::text
       WHERE c.token = $1
       ORDER BY cad.created_at DESC
       LIMIT 1
@@ -1669,7 +1669,7 @@ router.get("/contract/:token/w9", async (req, res) => {
         cwd.original_filename
       FROM public.contracts c
       JOIN public.contract_w9_documents cwd
-        ON cwd.contract_id = c.contract_id
+        ON cwd.contract_id::text = c.contract_id::text
       WHERE c.token = $1
       ORDER BY cwd.created_at DESC
       LIMIT 1
@@ -1698,7 +1698,7 @@ router.get("/contract/:token/other/:id", async (req, res) => {
         cod.original_filename
       FROM public.contracts c
       JOIN public.contract_other_documents cod
-        ON cod.contract_id = c.contract_id
+        ON cod.contract_id::text = c.contract_id::text
       WHERE c.token = $1
         AND cod.id = $2
       LIMIT 1
@@ -1778,15 +1778,15 @@ router.post("/contract/:token/ack", async (req, res) => {
 
     const [achDocRes, insDocRes, w9DocRes] = await Promise.all([
       pool.query(
-        `SELECT id FROM public.contract_ach_documents WHERE contract_id = $1 ORDER BY created_at DESC LIMIT 1`,
+        `SELECT id FROM public.contract_ach_documents WHERE contract_id::text = $1::text ORDER BY created_at DESC LIMIT 1`,
         [contract_id]
       ),
       pool.query(
-        `SELECT id FROM public.contract_insurance_documents WHERE contract_id = $1 ORDER BY created_at DESC LIMIT 1`,
+        `SELECT id FROM public.contract_insurance_documents WHERE contract_id::text = $1::text ORDER BY created_at DESC LIMIT 1`,
         [contract_id]
       ),
       pool.query(
-        `SELECT id FROM public.contract_w9_documents WHERE contract_id = $1 ORDER BY created_at DESC LIMIT 1`,
+        `SELECT id FROM public.contract_w9_documents WHERE contract_id::text = $1::text ORDER BY created_at DESC LIMIT 1`,
         [contract_id]
       ),
     ]);
@@ -1883,7 +1883,7 @@ router.post("/contract/:token/ack", async (req, res) => {
       `
       SELECT contract_id, token_expires_at, status
       FROM public.contracts
-      WHERE contract_id = $1
+      WHERE contract_id::text = $1::text
       LIMIT 1;
       `,
       [contract_id]
@@ -1963,7 +1963,7 @@ try {
       `
       SELECT id
       FROM public.contract_mfa_events
-      WHERE contract_id = $1
+      WHERE contract_id::text = $1::text
         AND otp_verified_at IS NOT NULL
         AND otp_verified_at > now() - interval '10 minutes'
       ORDER BY otp_verified_at DESC
@@ -2027,7 +2027,7 @@ try {
       UPDATE public.contracts
       SET status = 'ACKNOWLEDGED',
           signed_at = COALESCE(signed_at, now())
-      WHERE contract_id = $1;
+      WHERE contract_id::text = $1::text;
       `,
       [contract_id]
     );
