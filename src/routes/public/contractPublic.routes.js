@@ -1339,6 +1339,65 @@ router.post("/contract/:token/mfa/verify", async (req, res) => {
   }
 });
 
+router.get("/contract/:token/ach", async (req, res) => {
+  const token = String(req.params.token || "").trim();
+  if (!token) return res.status(400).send("Missing token");
+
+  try {
+    const { rows } = await pool.query(
+      `
+      SELECT
+        c.contract_id,
+        c.token_expires_at,
+        cad.storage_key,
+        cad.created_at
+      FROM public.contracts c
+      JOIN public.contract_ach_documents cad
+        ON cad.contract_id = c.contract_id
+      WHERE c.token = $1
+      ORDER BY cad.created_at DESC
+      LIMIT 1
+      `,
+      [token]
+    );
+
+    if (rows.length === 0) return res.status(404).send("ACH document not found");
+
+    const row = rows[0];
+
+    if (row.token_expires_at && new Date(row.token_expires_at) < new Date()) {
+      return res.status(410).send("This link has expired");
+    }
+
+    if (!row.storage_key) {
+      return res.status(500).send("Missing ACH storage key");
+    }
+
+    const Bucket = process.env.SPACES_BUCKET;
+    const Key = row.storage_key;
+
+    const obj = spaces.getObject({ Bucket, Key }).createReadStream();
+
+    obj.on("error", (err) => {
+      console.error("SPACES getObject ACH error:", err?.code, err?.message, err);
+      if (err?.code === "NoSuchKey") return res.status(404).send("ACH document not found");
+      return res.status(500).send("Failed to load ACH document");
+    });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "inline; filename=\"ach_document.pdf\"");
+    res.setHeader("Cache-Control", "no-store");
+
+    obj.pipe(res);
+  } catch (err) {
+    console.error("GET /contract/:token/ach error:", err?.message, err);
+    return res.status(500).send("Server error");
+  }
+});
+
+
+
+
 
 router.post("/contract/:token/ack", async (req, res) => {
   const token = String(req.params.token || "").trim();
