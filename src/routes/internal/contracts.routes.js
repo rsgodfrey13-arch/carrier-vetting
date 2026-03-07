@@ -692,10 +692,12 @@ router.get('/carrier-documents/:dot', requireAuth, loadCompanyContext, async (re
   }
 });
 
-router.post('/carrier-documents/:dot/upload', requireAuth, loadCompanyContext, carrierDocumentUpload.fields([
-  { name: 'file', maxCount: 1 },
-  { name: 'certificate', maxCount: 1 },
-]), async (req, res) => {
+router.post(
+  '/carrier-documents/:dot/upload',
+  requireAuth,
+  loadCompanyContext,
+  carrierDocumentUpload.single('file'),
+  async (req, res) => {
   try {
     const dot = String(req.params.dot || '').replace(/\D/g, '');
     if (!dot) return res.status(400).json({ error: 'Invalid DOT' });
@@ -707,25 +709,13 @@ router.post('/carrier-documents/:dot/upload', requireAuth, loadCompanyContext, c
       return res.status(400).json({ error: 'document_type must be w9, ach, or other' });
     }
 
-    const file = req.files?.file?.[0];
-    if (!file) return res.status(400).json({ error: 'A file is required' });
+    const file = req.file;
+if (!file) return res.status(400).json({ error: 'A file is required' });
 
-    const mimeType = String(file.mimetype || '').toLowerCase().trim();
-    if (!ALLOWED_DOCUMENT_MIME_TYPES.has(mimeType)) {
-      return res.status(400).json({ error: 'Unsupported file type' });
-    }
-
-    const certFile = req.files?.certificate?.[0] || null;
-    if (docType !== 'ach' && certFile) {
-      return res.status(400).json({ error: 'Certificate upload is only supported for ACH documents' });
-    }
-
-    if (certFile) {
-      const certMime = String(certFile.mimetype || '').toLowerCase().trim();
-      if (!ALLOWED_DOCUMENT_MIME_TYPES.has(certMime)) {
-        return res.status(400).json({ error: 'Unsupported certificate file type' });
-      }
-    }
+const mimeType = String(file.mimetype || '').toLowerCase().trim();
+if (!ALLOWED_DOCUMENT_MIME_TYPES.has(mimeType)) {
+  return res.status(400).json({ error: 'Unsupported file type' });
+}
 
     await ensureCarrierDocumentsTable();
 
@@ -755,36 +745,7 @@ router.post('/carrier-documents/:dot/upload', requireAuth, loadCompanyContext, c
       },
     }).promise();
 
-    let certKey = null;
-    let certMimeType = null;
-    let certOriginalFilename = null;
-
-    if (certFile) {
-      certMimeType = String(certFile.mimetype || '').toLowerCase().trim();
-      certOriginalFilename = certFile.originalname || 'certificate';
-      certKey = buildCarrierDocumentStorageKey({
-        companyId,
-        dot,
-        documentType: `${docType}/certificate`,
-        originalFilename: certOriginalFilename,
-      });
-
-      await spaces.putObject({
-        Bucket: process.env.SPACES_BUCKET,
-        Key: certKey,
-        Body: certFile.buffer,
-        ContentType: certMimeType,
-        ACL: 'private',
-        Metadata: {
-          company_id: String(companyId),
-          dot_number: dot,
-          document_type: docType,
-          uploaded_by_role: 'user',
-          is_certificate: 'true',
-        },
-      }).promise();
-    }
-
+    
     
 const contractId = req.body?.contract_id ? String(req.body.contract_id).trim() : null;
 
@@ -807,7 +768,7 @@ const inserted = await pool.query(
     certificate_original_filename
   )
   VALUES
-    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+    ($1, $2, $3, $4, $5, $6, $7, $8, $9, NULL, $10, NULL, $11, NULL)
   RETURNING id, created_at, document_type, original_filename, mime_type,
             uploaded_by_role, uploaded_by_user_id, uploaded_by_name,
             uploaded_by_email, certificate_storage_key
@@ -822,11 +783,8 @@ const inserted = await pool.query(
     user.name || null,
     user.email || null,
     mainKey,
-    certKey,
     mimeType,
-    certMimeType,
     file.originalname || null,
-    certOriginalFilename,
   ]
 );
 
