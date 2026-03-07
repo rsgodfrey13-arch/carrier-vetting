@@ -944,7 +944,7 @@ if (insBtn) {
 
 
 router.post("/contract/:token/ach-upload", async (req, res) => {
-  const token = req.params.token;
+  const token = String(req.params.token || "").trim();
 
   try {
     const { rows } = await pool.query(
@@ -959,28 +959,54 @@ router.post("/contract/:token/ach-upload", async (req, res) => {
     const contractId = rows[0].contract_id;
 
     const file = req.files?.file;
-    if (!file) return res.status(400).json({ error: "Missing file" });
+    if (!file) {
+      return res.status(400).json({ error: "Missing file" });
+    }
 
-    const key = `ach/${contractId}/${Date.now()}_${file.name}`;
+    const allowed = [
+      "application/pdf",
+      "image/png",
+      "image/jpeg",
+      "image/webp"
+    ];
+
+    const mimeType = String(file.mimetype || "").toLowerCase().trim();
+    if (!allowed.includes(mimeType)) {
+      return res.status(400).json({
+        error: "Only PDF, PNG, JPG, JPEG, and WEBP files are allowed"
+      });
+    }
+
+    // 10 MB max
+    if (Number(file.size || 0) > 10 * 1024 * 1024) {
+      return res.status(400).json({ error: "File too large (10MB max)" });
+    }
+
+    const originalFilename = String(file.name || "upload").trim();
+    const safeName = originalFilename.replace(/[^\w.\-]/g, "_");
+    const key = `ach/${contractId}/${Date.now()}_${safeName}`;
 
     await spaces.putObject({
       Bucket: process.env.SPACES_BUCKET,
       Key: key,
       Body: file.data,
-      ContentType: file.mimetype
+      ContentType: mimeType
     }).promise();
 
     await pool.query(
-      `INSERT INTO contract_ach_documents (contract_id, storage_key)
-       VALUES ($1, $2)`,
-      [contractId, key]
+      `
+      INSERT INTO contract_ach_documents
+        (contract_id, storage_key, mime_type, original_filename)
+      VALUES
+        ($1, $2, $3, $4)
+      `,
+      [contractId, key, mimeType, originalFilename]
     );
 
-    res.json({ ok: true });
-
+    return res.json({ ok: true });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Upload failed" });
+    console.error("POST /contract/:token/ach-upload error:", err?.message, err);
+    return res.status(500).json({ error: "Upload failed" });
   }
 });
 
@@ -1350,7 +1376,9 @@ router.get("/contract/:token/ach", async (req, res) => {
         c.contract_id,
         c.token_expires_at,
         cad.storage_key,
-        cad.created_at
+        cad.created_at,
+        cad.mime_type,
+        cad.original_filename
       FROM public.contracts c
       JOIN public.contract_ach_documents cad
         ON cad.contract_id = c.contract_id
@@ -1376,17 +1404,34 @@ router.get("/contract/:token/ach", async (req, res) => {
     const Bucket = process.env.SPACES_BUCKET;
     const Key = row.storage_key;
 
+    // Prefer stored mime_type, otherwise infer from extension
+    let mime = String(row.mime_type || "").toLowerCase().trim();
+    const filename = String(row.original_filename || "").trim() || Key.split("/").pop() || "ach_document";
+    const lowerKey = Key.toLowerCase();
+
+    if (!mime) {
+      if (lowerKey.endsWith(".pdf")) mime = "application/pdf";
+      else if (lowerKey.endsWith(".png")) mime = "image/png";
+      else if (lowerKey.endsWith(".jpg") || lowerKey.endsWith(".jpeg")) mime = "image/jpeg";
+      else if (lowerKey.endsWith(".webp")) mime = "image/webp";
+      else mime = "application/octet-stream";
+    }
+
     const obj = spaces.getObject({ Bucket, Key }).createReadStream();
 
     obj.on("error", (err) => {
       console.error("SPACES getObject ACH error:", err?.code, err?.message, err);
-      if (err?.code === "NoSuchKey") return res.status(404).send("ACH document not found");
-      return res.status(500).send("Failed to load ACH document");
+      if (err?.code === "NoSuchKey") {
+        if (!res.headersSent) res.status(404).send("ACH document not found");
+        return;
+      }
+      if (!res.headersSent) res.status(500).send("Failed to load ACH document");
     });
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", "inline; filename=\"ach_document.pdf\"");
+    res.setHeader("Content-Type", mime);
+    res.setHeader("Content-Disposition", `inline; filename="${filename.replace(/"/g, "")}"`);
     res.setHeader("Cache-Control", "no-store");
+    res.setHeader("X-Content-Type-Options", "nosniff");
 
     obj.pipe(res);
   } catch (err) {
