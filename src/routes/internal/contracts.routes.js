@@ -488,6 +488,89 @@ router.get("/carrier-agreements/:dot", async (req, res) => {
   }
 });
 
+router.get("/carrier-ach-documents/:dot", async (req, res) => {
+  try {
+    if (!req.session?.userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const dot = String(req.params.dot || "").replace(/\D/g, "");
+    if (!dot) {
+      return res.status(400).json({ error: "Invalid DOT" });
+    }
+
+    const userId = req.session.userId;
+
+    const userRes = await pool.query(
+      `
+      SELECT default_company_id company_id
+      FROM public.users
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [userId]
+    );
+
+    const companyId = userRes.rows[0]?.company_id;
+    if (!companyId) {
+      return res.status(403).json({ error: "No company context found" });
+    }
+
+    const countRes = await pool.query(
+      `
+      SELECT COUNT(*)::int AS count
+      FROM public.contract_ach_documents cad
+      JOIN public.contracts c
+        ON c.contract_id = cad.contract_id
+      WHERE c.company_id = $1
+        AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
+        AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
+      `,
+      [companyId, dot]
+    );
+
+    const latestRes = await pool.query(
+      `
+      SELECT
+        cad.id,
+        cad.created_at,
+        c.token
+      FROM public.contract_ach_documents cad
+      JOIN public.contracts c
+        ON c.contract_id = cad.contract_id
+      WHERE c.company_id = $1
+        AND REGEXP_REPLACE(COALESCE(c.dotnumber::text, ''), '\D', '', 'g') = $2
+        AND c.status IN ('ACKNOWLEDGED', 'SIGNED')
+      ORDER BY cad.created_at DESC
+      LIMIT 1
+      `,
+      [companyId, dot]
+    );
+
+    const count = countRes.rows[0]?.count || 0;
+    const latest = latestRes.rows[0] || null;
+
+    if (!latest) {
+      return res.json({
+        count: 0,
+        latest: null
+      });
+    }
+
+    return res.json({
+      count,
+      latest: {
+        id: latest.id,
+        created_at: latest.created_at,
+        pdf_url: `/contract/${latest.token}/ach`,
+        certificate_url: `/contract/${latest.token}/certificate`
+      }
+    });
+  } catch (err) {
+    console.error("GET /carrier-ach-documents/:dot error:", err?.message, err);
+    return res.status(500).json({ error: "Failed to load carrier ACH documents" });
+  }
+});
 
 
 module.exports = router;
