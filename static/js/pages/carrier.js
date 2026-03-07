@@ -1300,18 +1300,25 @@ if (data && data.source === "cache_stale") {
     if (
       achCount > 0 &&
       achData?.latest?.pdf_url &&
-      achData?.latest?.certificate_url &&
       achRow &&
       achStatusEl &&
-      achPdfEl &&
-      achCertEl
+      achPdfEl
     ) {
       achStatusEl.textContent = `${achCount} ACH Document${achCount === 1 ? "" : "s"} On File`;
       achPdfEl.href = achData.latest.pdf_url;
-      achCertEl.href = achData.latest.certificate_url;
       achPdfEl.style.display = "";
-      achCertEl.style.display = "";
       achRow.hidden = false;
+    
+      if (achCertEl) {
+        const certUrl = achData?.latest?.certificate_url || "";
+        if (certUrl) {
+          achCertEl.href = certUrl;
+          achCertEl.style.display = "";
+        } else {
+          achCertEl.removeAttribute("href");
+          achCertEl.style.display = "none";
+        }
+      }
     }
 
     if (otherCount > 0 && otherData?.latest?.pdf_url && otherRow && otherStatusEl && otherPdfEl) {
