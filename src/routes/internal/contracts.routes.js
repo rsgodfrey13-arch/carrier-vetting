@@ -534,9 +534,12 @@ function normalizeCarrierDocumentRows(rows, pdfLabel) {
 async function ensureCarrierDocumentsTable() {
   await pool.query(
     `
+    CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
     CREATE TABLE IF NOT EXISTS public.carrier_documents (
-      id BIGSERIAL PRIMARY KEY,
-      company_id BIGINT NOT NULL,
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      company_id UUID NOT NULL,
+      contract_id UUID NULL REFERENCES public.contracts(contract_id) ON DELETE CASCADE,
       dot_number TEXT NOT NULL,
       document_type TEXT NOT NULL CHECK (document_type IN ('w9', 'ach', 'other')),
       uploaded_by_role TEXT NOT NULL DEFAULT 'user' CHECK (uploaded_by_role IN ('carrier', 'user', 'system')),
@@ -551,8 +554,15 @@ async function ensureCarrierDocumentsTable() {
       certificate_original_filename TEXT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    ALTER TABLE public.carrier_documents
+      ADD COLUMN IF NOT EXISTS contract_id UUID;
+
     CREATE INDEX IF NOT EXISTS idx_carrier_documents_company_dot_created
       ON public.carrier_documents (company_id, dot_number, created_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_carrier_documents_contract_id
+      ON public.carrier_documents (contract_id);
     `
   );
 }
@@ -773,45 +783,48 @@ router.post('/carrier-documents/:dot/upload', requireAuth, loadCompanyContext, c
       }).promise();
     }
 
-    const inserted = await pool.query(
-      `
-      INSERT INTO public.carrier_documents
-        (
-          company_id,
-          dot_number,
-          document_type,
-          uploaded_by_role,
-          uploaded_by_user_id,
-          uploaded_by_name,
-          uploaded_by_email,
-          storage_key,
-          certificate_storage_key,
-          mime_type,
-          certificate_mime_type,
-          original_filename,
-          certificate_original_filename
-        )
-      VALUES
-        ($1, $2, $3, 'user', $4, $5, $6, $7, $8, $9, $10, $11, $12)
-      RETURNING id, created_at, document_type, original_filename, mime_type,
-                uploaded_by_role, uploaded_by_user_id, uploaded_by_name,
-                uploaded_by_email, certificate_storage_key
-      `,
-      [
-        companyId,
-        dot,
-        docType,
-        userId,
-        user.name || null,
-        user.email || null,
-        mainKey,
-        certKey,
-        mimeType,
-        certMimeType,
-        file.originalname || null,
-        certOriginalFilename,
-      ]
-    );
+    
+const contractId = req.body?.contract_id ? String(req.body.contract_id).trim() : null;
+
+const inserted = await pool.query(
+  `
+  INSERT INTO public.carrier_documents (
+    company_id,
+    contract_id,
+    dot_number,
+    document_type,
+    uploaded_by_role,
+    uploaded_by_user_id,
+    uploaded_by_name,
+    uploaded_by_email,
+    storage_key,
+    certificate_storage_key,
+    mime_type,
+    certificate_mime_type,
+    original_filename,
+    certificate_original_filename
+  )
+  VALUES
+    ($1, $2, $3, 'user', $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+  RETURNING id, created_at, document_type, original_filename, mime_type,
+            uploaded_by_role, uploaded_by_user_id, uploaded_by_name,
+            uploaded_by_email, certificate_storage_key
+  `,
+  [
+    String(companyId),
+    contractId,
+    dot,
+    userId,
+    user.name || null,
+    user.email || null,
+    mainKey,
+    certKey,
+    mimeType,
+    certMimeType,
+    file.originalname || null,
+    certOriginalFilename,
+  ]
+);
 
     const row = inserted.rows[0];
     const document = normalizeCarrierDocumentRow({
@@ -831,8 +844,8 @@ router.post('/carrier-documents/:dot/upload', requireAuth, loadCompanyContext, c
 router.get('/carrier-documents/:dot/platform/:id/file', requireAuth, loadCompanyContext, async (req, res) => {
   try {
     const dot = String(req.params.dot || '').replace(/\D/g, '');
-    const id = Number(req.params.id);
-    if (!dot || !Number.isInteger(id)) return res.status(400).send('Invalid document id');
+    const id = String(req.params.id || '').trim();
+    if (!dot || !id) return res.status(400).send('Invalid document id');
 
     await ensureCarrierDocumentsTable();
 
@@ -845,14 +858,18 @@ router.get('/carrier-documents/:dot/platform/:id/file', requireAuth, loadCompany
         AND REGEXP_REPLACE(COALESCE(dot_number, ''), '\D', '', 'g') = $3
       LIMIT 1
       `,
-      [id, req.companyContext.companyId, dot]
+      [id, String(req.companyContext.companyId), dot]
     );
 
     const row = q.rows[0];
     if (!row?.storage_key) return res.status(404).send('Document not found');
 
     if (row.mime_type) res.setHeader('Content-Type', row.mime_type);
-    return streamSpaceObjectToResponse({ res, key: row.storage_key, fallbackFilename: row.original_filename || `carrier_document_${id}` });
+    return streamSpaceObjectToResponse({
+      res,
+      key: row.storage_key,
+      fallbackFilename: row.original_filename || `carrier_document_${id}`
+    });
   } catch (err) {
     console.error('GET /carrier-documents/:dot/platform/:id/file error:', err?.message, err);
     return res.status(500).send('Failed to load document');
@@ -862,8 +879,8 @@ router.get('/carrier-documents/:dot/platform/:id/file', requireAuth, loadCompany
 router.get('/carrier-documents/:dot/platform/:id/certificate', requireAuth, loadCompanyContext, async (req, res) => {
   try {
     const dot = String(req.params.dot || '').replace(/\D/g, '');
-    const id = Number(req.params.id);
-    if (!dot || !Number.isInteger(id)) return res.status(400).send('Invalid document id');
+    const id = String(req.params.id || '').trim();
+    if (!dot || !id) return res.status(400).send('Invalid document id');
 
     await ensureCarrierDocumentsTable();
 
@@ -876,14 +893,18 @@ router.get('/carrier-documents/:dot/platform/:id/certificate', requireAuth, load
         AND REGEXP_REPLACE(COALESCE(dot_number, ''), '\D', '', 'g') = $3
       LIMIT 1
       `,
-      [id, req.companyContext.companyId, dot]
+      [id, String(req.companyContext.companyId), dot]
     );
 
     const row = q.rows[0];
     if (!row?.certificate_storage_key) return res.status(404).send('Certificate not found');
 
     if (row.certificate_mime_type) res.setHeader('Content-Type', row.certificate_mime_type);
-    return streamSpaceObjectToResponse({ res, key: row.certificate_storage_key, fallbackFilename: row.certificate_original_filename || `carrier_document_certificate_${id}` });
+    return streamSpaceObjectToResponse({
+      res,
+      key: row.certificate_storage_key,
+      fallbackFilename: row.certificate_original_filename || `carrier_document_certificate_${id}`
+    });
   } catch (err) {
     console.error('GET /carrier-documents/:dot/platform/:id/certificate error:', err?.message, err);
     return res.status(500).send('Failed to load certificate');
