@@ -30,7 +30,10 @@ router.get("/user-contracts", requireAuth, loadCompanyContext, async (req, res) 
         version,
         storage_provider,
         storage_key,
-        created_at
+        created_at,
+        COALESCE(insurance_required, FALSE) AS insurance_required,
+        COALESCE(w9_required, TRUE) AS w9_required,
+        COALESCE(ach_required, FALSE) AS ach_required
       FROM public.user_contracts
       WHERE company_id = $1
       ORDER BY created_at DESC;
@@ -135,7 +138,10 @@ const templateRes = await client.query(
   `
   SELECT
     name,
-    display_name
+    display_name,
+    COALESCE(insurance_required, FALSE) AS insurance_required,
+    COALESCE(w9_required, TRUE) AS w9_required,
+    COALESCE(ach_required, FALSE) AS ach_required
   FROM public.user_contracts
   WHERE id = $1
     AND company_id = $2
@@ -154,6 +160,9 @@ if (templateRes.rowCount === 0) {
 
 const agreement_type = templateRes.rows[0].name || "Carrier Agreement";
 const broker_name = templateRes.rows[0].display_name || "Carrier Agreement";
+const insurance_required = templateRes.rows[0].insurance_required;
+const w9_required = templateRes.rows[0].w9_required;
+const ach_required = templateRes.rows[0].ach_required;
 
 
     const insertSql = `
@@ -170,7 +179,10 @@ const broker_name = templateRes.rows[0].display_name || "Carrier Agreement";
           token,
           token_expires_at,
           email_to,
-          user_contract_id
+          user_contract_id,
+          insurance_required,
+          w9_required,
+          ach_required
         )
       VALUES
         (
@@ -185,7 +197,10 @@ const broker_name = templateRes.rows[0].display_name || "Carrier Agreement";
           $5,
           $6,
           $7,
-          $8
+          $8,
+          $9,
+          $10,
+          $11
         )
       RETURNING contract_id;
     `;
@@ -198,7 +213,10 @@ const broker_name = templateRes.rows[0].display_name || "Carrier Agreement";
       token,
       token_expires_at.toISOString(),
       email_to,
-      user_contract_id
+      user_contract_id,
+      insurance_required,
+      w9_required,
+      ach_required
     ]);
 
 
@@ -236,6 +254,55 @@ const broker_name = templateRes.rows[0].display_name || "Carrier Agreement";
     client.release();
   }
 });
+
+router.patch("/user-contracts/:id/requirements", requireAuth, loadCompanyContext, async (req, res) => {
+  const companyId = req.companyContext.companyId;
+  const templateId = String(req.params.id || "").trim();
+
+  if (!templateId) return res.status(400).json({ error: "Missing template id" });
+
+  const insurance_required = req.body?.insurance_required;
+  const w9_required = req.body?.w9_required;
+  const ach_required = req.body?.ach_required;
+
+  if (
+    typeof insurance_required !== "boolean" ||
+    typeof w9_required !== "boolean" ||
+    typeof ach_required !== "boolean"
+  ) {
+    return res.status(400).json({
+      error: "insurance_required, w9_required, and ach_required must be boolean",
+    });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `
+      UPDATE public.user_contracts
+      SET
+        insurance_required = $1,
+        w9_required = $2,
+        ach_required = $3
+      WHERE id = $4
+        AND company_id = $5
+      RETURNING
+        id,
+        insurance_required,
+        w9_required,
+        ach_required
+      `,
+      [insurance_required, w9_required, ach_required, templateId, companyId]
+    );
+
+    if (!rows.length) return res.status(404).json({ error: "Template not found" });
+
+    return res.json({ ok: true, row: rows[0] });
+  } catch (err) {
+    console.error("PATCH /api/user-contracts/:id/requirements error:", err?.message, err);
+    return res.status(500).json({ error: "Failed to update agreement requirements" });
+  }
+});
+
 
 /** ---------- LATEST CONTRACT FOR DOT (broker-side) ---------- **/
 router.get("/contracts/latest/:dot", requireAuth, loadCompanyContext, async (req, res) => {

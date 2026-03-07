@@ -230,6 +230,17 @@ document.getElementById("btn-manage-billing")?.addEventListener("click", async (
     return r.json();
   }
 
+  async function apiPatch(url, body) {
+    const r = await fetch(url, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error(`PATCH ${url} failed: ${r.status}`);
+    return r.json();
+  }
+
 // -----------------------------
 // Team
 // -----------------------------
@@ -420,13 +431,79 @@ function fmtDate(ts) {
 }
 
 let agreementsSelectedId = null;
+let agreementsTemplates = [];
+let agreementRequirementsOriginal = null;
+let agreementRequirementsCurrent = null;
+
+function normalizeAgreementRequirements(tpl) {
+  return {
+    insurance_required: !!tpl?.insurance_required,
+    w9_required: tpl?.w9_required === undefined || tpl?.w9_required === null ? true : !!tpl.w9_required,
+    ach_required: !!tpl?.ach_required,
+  };
+}
+
+function getSelectedTemplate() {
+  return agreementsTemplates.find((t) => String(t.id) === String(agreementsSelectedId)) || null;
+}
+
+function setAgreementRequirementsSaveState() {
+  const btn = document.getElementById("btn-save-agreement-requirements");
+  if (!btn) return;
+  const dirty = JSON.stringify(agreementRequirementsCurrent) !== JSON.stringify(agreementRequirementsOriginal);
+  btn.disabled = !agreementsSelectedId || !dirty;
+}
+
+function renderAgreementRequirements() {
+  const host = document.getElementById("agreement-requirements");
+  if (!host) return;
+
+  const tpl = getSelectedTemplate();
+  if (!tpl) {
+    host.innerHTML = `<div class="muted">Select an agreement to configure supporting document requirements.</div>`;
+    agreementRequirementsOriginal = null;
+    agreementRequirementsCurrent = null;
+    setAgreementRequirementsSaveState();
+    return;
+  }
+
+  agreementRequirementsOriginal = normalizeAgreementRequirements(tpl);
+  agreementRequirementsCurrent = { ...agreementRequirementsOriginal };
+
+  host.innerHTML = `
+    <label class="toggle">
+      <input type="checkbox" data-req-key="w9_required" ${agreementRequirementsCurrent.w9_required ? "checked" : ""}>
+      <span>Require W-9 on signing</span>
+    </label>
+    <label class="toggle">
+      <input type="checkbox" data-req-key="insurance_required" ${agreementRequirementsCurrent.insurance_required ? "checked" : ""}>
+      <span>Require Insurance / COI on signing</span>
+    </label>
+    <label class="toggle">
+      <input type="checkbox" data-req-key="ach_required" ${agreementRequirementsCurrent.ach_required ? "checked" : ""}>
+      <span>Require ACH / Payment Info on signing</span>
+    </label>
+  `;
+
+  host.querySelectorAll("input[type=checkbox][data-req-key]").forEach((cb) => {
+    cb.addEventListener("change", () => {
+      const key = cb.getAttribute("data-req-key");
+      agreementRequirementsCurrent[key] = cb.checked;
+      setAgreementRequirementsSaveState();
+    });
+  });
+
+  setAgreementRequirementsSaveState();
+}
 
 function renderAgreementsTiles({ templates, defaultId }) {
   const grid = document.getElementById("agreements-grid");
   if (!grid) return;
 
   if (!templates?.length) {
+    agreementsSelectedId = null;
     grid.innerHTML = `<div class="muted">No templates yet. Import one to get started.</div>`;
+    setAgreementsDefaultButtonState();
     return;
   }
 
@@ -480,6 +557,7 @@ function renderAgreementsTiles({ templates, defaultId }) {
       grid.querySelectorAll(".agreement-tile").forEach((b) => b.classList.remove("is-selected"));
       btn.classList.add("is-selected");
       setAgreementsDefaultButtonState();
+      renderAgreementRequirements();
     });
   });
 
@@ -515,8 +593,9 @@ grid.querySelectorAll(".agreement-tile").forEach((tile) => {
   const templates = tplRes?.rows || [];
   const defaultId = defRes?.row?.default_user_contract_id || null;
 
-
+  agreementsTemplates = templates;
   renderAgreementsTiles({ templates, defaultId });
+  renderAgreementRequirements();
 }
 
 
@@ -1286,6 +1365,22 @@ document.getElementById("btn-set-default")?.addEventListener("click", async () =
   } catch (err) {
     console.error(err);
     alert("Failed to set default agreement.");
+  }
+});
+
+document.getElementById("btn-save-agreement-requirements")?.addEventListener("click", async () => {
+  if (!agreementsSelectedId || !agreementRequirementsCurrent) return;
+
+  const btn = document.getElementById("btn-save-agreement-requirements");
+  if (btn) btn.disabled = true;
+
+  try {
+    await apiPatch(`/api/user-contracts/${encodeURIComponent(agreementsSelectedId)}/requirements`, agreementRequirementsCurrent);
+    await loadAgreements();
+  } catch (err) {
+    console.error(err);
+    alert("Failed to save agreement requirements.");
+    setAgreementRequirementsSaveState();
   }
 });
 
