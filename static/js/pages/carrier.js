@@ -1408,13 +1408,11 @@ function wireAddDocumentModalOnce() {
   const submitBtn = document.getElementById("add-document-submit");
   const typeEl = document.getElementById("document-type");
   const fileEl = document.getElementById("document-file");
-  const certWrap = document.getElementById("certificate-wrap");
-  const certEl = document.getElementById("certificate-file");
-  const errEl = document.getElementById("add-document-error");
+const errEl = document.getElementById("add-document-error");
 
-  if (!modal || !openBtn || !closeBtn || !cancelBtn || !submitBtn || !typeEl || !fileEl || !certWrap || !certEl || !errEl) {
-    return;
-  }
+if (!modal || !openBtn || !closeBtn || !cancelBtn || !submitBtn || !typeEl || !fileEl || !errEl) {
+  return;
+}
 
   function clearError() {
     errEl.hidden = true;
@@ -1426,27 +1424,20 @@ function wireAddDocumentModalOnce() {
     errEl.textContent = message || "Upload failed.";
   }
 
-  function syncCertificateVisibility() {
-    const isAch = String(typeEl.value || "") === "ach";
-    certWrap.hidden = !isAch;
-    if (!isAch) certEl.value = "";
-  }
 
-  function closeModal() {
-    modal.hidden = true;
-    clearError();
-    submitBtn.disabled = false;
-    fileEl.value = "";
-    certEl.value = "";
-  }
 
-  openBtn.addEventListener("click", () => {
-    syncCertificateVisibility();
-    clearError();
-    modal.hidden = false;
-  });
+function closeModal() {
+  modal.hidden = true;
+  clearError();
+  submitBtn.disabled = false;
+  fileEl.value = "";
+}
 
-  typeEl.addEventListener("change", syncCertificateVisibility);
+openBtn.addEventListener("click", () => {
+  clearError();
+  modal.hidden = false;
+});
+  
   closeBtn.addEventListener("click", closeModal);
   cancelBtn.addEventListener("click", closeModal);
   modal.addEventListener("click", (e) => {
@@ -1466,12 +1457,9 @@ function wireAddDocumentModalOnce() {
       return;
     }
 
-    const fd = new FormData();
-    fd.append("document_type", String(typeEl.value || "other"));
-    fd.append("file", fileEl.files[0]);
-    if (!certWrap.hidden && certEl.files?.[0]) {
-      fd.append("certificate", certEl.files[0]);
-    }
+const fd = new FormData();
+fd.append("document_type", String(typeEl.value || "other"));
+fd.append("file", fileEl.files[0]);
 
     try {
       submitBtn.disabled = true;
