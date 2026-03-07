@@ -1220,7 +1220,9 @@ if (data && data.source === "cache_stale") {
       const wrap = document.getElementById("ins-coverages-body");
       if (wrap) wrap.innerHTML = `<div class="cs-hint">—</div>`;
     }
-await loadCarrierAgreements(dot);
+      
+      await loadCarrierAgreements(dot);
+      await loadCarrierAchDocuments(dot);
       if (opts.manual === true) {
         setRefreshUi("idle", "Updated just now");
         setTimeout(() => setRefreshUi("idle", ""), 2200);
@@ -1240,6 +1242,53 @@ await loadCarrierAgreements(dot);
     }
   }
 
+  async function loadCarrierAchDocuments(dot) {
+  const wrap = document.getElementById("carrier-ach-documents");
+  const statusEl = document.getElementById("ach-docs-status");
+  const pdfEl = document.getElementById("ach-docs-pdf");
+  const certEl = document.getElementById("ach-docs-cert");
+
+  if (!wrap || !statusEl || !pdfEl || !certEl) return;
+
+  wrap.hidden = true;
+  statusEl.textContent = "";
+  pdfEl.removeAttribute("href");
+  certEl.removeAttribute("href");
+  pdfEl.style.display = "none";
+  certEl.style.display = "none";
+
+  try {
+    const res = await fetch(`/api/carrier-ach-documents/${encodeURIComponent(dot)}`, {
+      credentials: "include"
+    });
+
+    if (!res.ok) return;
+
+    const data = await res.json().catch(() => null);
+    if (!data || typeof data !== "object") return;
+
+    const count = Number(data.count ?? 0);
+    const latest = data.latest && typeof data.latest === "object" ? data.latest : null;
+
+    const pdfUrl =
+      latest && typeof latest.pdf_url === "string" ? latest.pdf_url.trim() : "";
+    const certUrl =
+      latest && typeof latest.certificate_url === "string" ? latest.certificate_url.trim() : "";
+
+    if (count < 1 || !pdfUrl || !certUrl) {
+      return;
+    }
+
+    statusEl.textContent = `${count} ACH Document${count === 1 ? "" : "s"} On File`;
+    pdfEl.href = pdfUrl;
+    certEl.href = certUrl;
+    pdfEl.style.display = "";
+    certEl.style.display = "";
+    wrap.hidden = false;
+  } catch (err) {
+    console.error("ach documents load failed", err);
+  }
+}
 
 async function loadCarrierAgreements(dot) {
   const wrap = document.getElementById("carrier-agreements");
