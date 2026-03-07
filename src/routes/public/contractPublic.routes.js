@@ -47,6 +47,59 @@ function maskEmail(email) {
   return `${um}@${dm}.*`;
 }
 
+function normalizeRequiredFlag(v, defaultValue) {
+  if (v === null || v === undefined) return defaultValue;
+  return Boolean(v);
+}
+
+async function loadContractByToken(token) {
+  const { rows } = await pool.query(
+    `
+    SELECT
+      contract_id,
+      company_id,
+      dotnumber,
+      token_expires_at,
+      insurance_required,
+      w9_required,
+      ach_required
+    FROM public.contracts
+    WHERE token = $1
+    LIMIT 1
+    `,
+    [token]
+  );
+
+  return rows[0] || null;
+}
+
+function validateUploadFile(file, { allowedMimes, maxSizeBytes }) {
+  if (!file) return "Missing file";
+
+  const mimeType = String(file.mimetype || "").toLowerCase().trim();
+  if (!allowedMimes.includes(mimeType)) {
+    return "Only PDF, PNG, JPG, JPEG, and WEBP files are allowed";
+  }
+
+  if (Number(file.size || 0) > maxSizeBytes) {
+    return "File too large (10MB max)";
+  }
+
+  return null;
+}
+
+async function uploadFileToSpaces({ file, key, mimeType }) {
+  await spaces
+    .putObject({
+      Bucket: process.env.SPACES_BUCKET,
+      Key: key,
+      Body: file.data,
+      ContentType: mimeType,
+      ACL: "private",
+    })
+    .promise();
+}
+
 
 
 /** ---------- CONTRACT PDF (token-gated) ---------- **/
@@ -291,7 +344,13 @@ router.get("/contract/:token", async (req, res) => {
   try {
     const { rows } = await pool.query(
       `
-      SELECT contract_id, token_expires_at, status
+      SELECT
+        contract_id,
+        token_expires_at,
+        status,
+        insurance_required,
+        w9_required,
+        ach_required
       FROM public.contracts
       WHERE token = $1
       LIMIT 1;
@@ -317,6 +376,50 @@ router.get("/contract/:token", async (req, res) => {
 
     const pdfUrl = `/contract/${encodeURIComponent(token)}/pdf`;
     const alreadyAccepted = (contract.status === "ACKNOWLEDGED" || contract.status === "SIGNED");
+    const requirements = {
+      w9: normalizeRequiredFlag(contract.w9_required, true),
+      insurance: normalizeRequiredFlag(contract.insurance_required, false),
+      ach: normalizeRequiredFlag(contract.ach_required, false),
+    };
+
+    const [achDocRes, insDocRes, w9DocRes] = await Promise.all([
+      pool.query(
+        `
+        SELECT original_filename
+        FROM public.contract_ach_documents
+        WHERE contract_id = $1
+        ORDER BY created_at DESC
+        LIMIT 1
+        `,
+        [contract.contract_id]
+      ),
+      pool.query(
+        `
+        SELECT original_filename
+        FROM public.contract_insurance_documents
+        WHERE contract_id = $1
+        ORDER BY created_at DESC
+        LIMIT 1
+        `,
+        [contract.contract_id]
+      ),
+      pool.query(
+        `
+        SELECT original_filename
+        FROM public.contract_w9_documents
+        WHERE contract_id = $1
+        ORDER BY created_at DESC
+        LIMIT 1
+        `,
+        [contract.contract_id]
+      ),
+    ]);
+
+    const uploadState = {
+      ach: { uploaded: Boolean(achDocRes.rows[0]), filename: achDocRes.rows[0]?.original_filename || null },
+      insurance: { uploaded: Boolean(insDocRes.rows[0]), filename: insDocRes.rows[0]?.original_filename || null },
+      w9: { uploaded: Boolean(w9DocRes.rows[0]), filename: w9DocRes.rows[0]?.original_filename || null },
+    };
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     return res.send(`<!doctype html>
@@ -349,6 +452,29 @@ router.get("/contract/:token", async (req, res) => {
     .msg { font-size: 14px; }
     .ok { color: #86efac; }
     .err { color: #fca5a5; }
+
+    .docsCard { margin-top:14px; }
+    .docsTitle { font-weight:800; margin-bottom:8px; }
+    .docsSub { opacity:0.8; font-size:13px; margin-bottom:10px; }
+    .docRow {
+      display:grid;
+      grid-template-columns: minmax(130px, 1fr) auto minmax(170px, 1.2fr) minmax(150px, 1fr);
+      gap:8px;
+      align-items:center;
+      padding:8px 0;
+      border-top:1px solid rgba(255,255,255,0.1);
+    }
+    .docRow:first-of-type { border-top:0; }
+    .docReq { font-size:12px; font-weight:700; padding:4px 8px; border-radius:999px; display:inline-block; }
+    .docReq.required { background:rgba(239,68,68,0.2); color:#fecaca; border:1px solid rgba(252,165,165,0.4); }
+    .docReq.optional { background:rgba(148,163,184,0.2); color:#cbd5e1; border:1px solid rgba(203,213,225,0.35); }
+    .docStatus { font-size:13px; }
+    .docStatus.ok { color:#86efac; }
+    .docStatus.err { color:#fca5a5; }
+
+    @media (max-width: 720px) {
+      .docRow { grid-template-columns: 1fr; gap:6px; }
+    }
 
 /* modal (same vibe as account modal) */
 .modal-backdrop{
@@ -544,47 +670,36 @@ router.get("/contract/:token", async (req, res) => {
           <input id="email" type="email" placeholder="name@company.com" />
         </div>
 
+<div class="card docsCard">
+  <div class="docsTitle">Supporting Documents</div>
+  <div class="docsSub">Select a file to upload immediately. You can replace an uploaded file at any time.</div>
+
+  <div class="docRow">
+    <div>W-9</div>
+    <div id="w9Required" class="docReq">—</div>
+    <input type="file" id="w9Upload" accept=".pdf,.png,.jpg,.jpeg,.webp" />
+    <div id="w9Msg" class="docStatus">Not uploaded</div>
+  </div>
+
+  <div class="docRow">
+    <div>Insurance / COI</div>
+    <div id="insRequired" class="docReq">—</div>
+    <input type="file" id="insUpload" accept=".pdf,.png,.jpg,.jpeg,.webp" />
+    <div id="insMsg" class="docStatus">Not uploaded</div>
+  </div>
+
+  <div class="docRow">
+    <div>ACH / Payment Info</div>
+    <div id="achRequired" class="docReq">—</div>
+    <input type="file" id="achUpload" accept=".pdf,.png,.jpg,.jpeg,.webp" />
+    <div id="achMsg" class="docStatus">Not uploaded</div>
+  </div>
+</div>
+
         <div class="submitline">
           <button id="submitBtn" class="btn2">Accept Agreement</button>
           <div id="msg" class="msg"></div>
         </div>
-        
-<div class="card" style="margin-top:16px;">
-  <div style="font-weight:700; margin-bottom:8px;">
-    ACH / Payment Information (Optional)
-  </div>
-
-  <div class="muted" style="margin-bottom:10px;">
-    Upload a voided check or ACH form for the broker's accounting team.
-  </div>
-
-  <input type="file" id="achUpload" accept=".pdf,.png,.jpg,.jpeg" />
-
-  <button id="uploadAchBtn" class="btn2" style="margin-top:10px;">
-    Upload ACH Document
-  </button>
-
-  <div id="achMsg" class="msg"></div>
-</div> 
-
-<div class="card" style="margin-top:16px;">
-  <div style="font-weight:700; margin-bottom:8px;">
-    Insurance / COI (Optional)
-  </div>
-
-  <div class="muted" style="margin-bottom:10px;">
-    Upload your Certificate of Insurance (COI) for the broker’s compliance team.
-  </div>
-
-  <input type="file" id="insUpload" accept=".pdf,.png,.jpg,.jpeg" />
-  <div class="muted" style="margin-top:6px;">Accepted: PDF, JPG, PNG (screenshots OK)</div>
-
-  <button id="uploadInsBtn" class="btn2" style="margin-top:10px;">
-    Upload Insurance Document
-  </button>
-
-  <div id="insMsg" class="msg"></div>
-</div>
 `
         }
       </div>
@@ -681,6 +796,8 @@ function waitForOtp() {
       if (alreadyAccepted) return;
 
       const token = ${JSON.stringify(token)};
+      const requiredDocs = ${JSON.stringify(requirements)};
+      const uploadState = ${JSON.stringify(uploadState)};
       const ackEl = document.getElementById("ack");
       const nameEl = document.getElementById("name");
       const titleEl = document.getElementById("title");
@@ -688,10 +805,104 @@ function waitForOtp() {
       const btn = document.getElementById("submitBtn");
       const msg = document.getElementById("msg");
 
+      const docConfig = {
+        w9: {
+          endpoint: "/w9-upload",
+          inputEl: document.getElementById("w9Upload"),
+          statusEl: document.getElementById("w9Msg"),
+          reqEl: document.getElementById("w9Required"),
+          label: "W-9",
+        },
+        insurance: {
+          endpoint: "/insurance-upload",
+          inputEl: document.getElementById("insUpload"),
+          statusEl: document.getElementById("insMsg"),
+          reqEl: document.getElementById("insRequired"),
+          label: "Insurance / COI",
+        },
+        ach: {
+          endpoint: "/ach-upload",
+          inputEl: document.getElementById("achUpload"),
+          statusEl: document.getElementById("achMsg"),
+          reqEl: document.getElementById("achRequired"),
+          label: "ACH / Payment Info",
+        },
+      };
+
+      function markRequirement(el, required) {
+        if (!el) return;
+        el.textContent = required ? "Required" : "Optional";
+        el.className = "docReq " + (required ? "required" : "optional");
+      }
+
+      function setDocStatus(el, text, cls) {
+        if (!el) return;
+        el.className = "docStatus " + (cls || "");
+        el.textContent = text || "";
+      }
+
+      async function uploadDoc(docType, file) {
+        if (!file) return;
+        const cfg = docConfig[docType];
+        if (!cfg) return;
+
+        setDocStatus(cfg.statusEl, "Uploading...", "");
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+          const resp = await fetch("/contract/" + encodeURIComponent(token) + cfg.endpoint, {
+            method: "POST",
+            body: formData,
+          });
+          const data = await resp.json().catch(() => ({}));
+          if (!resp.ok) throw new Error(data.error || "Upload failed.");
+
+          uploadState[docType] = { uploaded: true, filename: data.original_filename || file.name || null };
+          setDocStatus(cfg.statusEl, "Uploaded: " + (uploadState[docType].filename || "file"), "ok");
+        } catch (err) {
+          setDocStatus(cfg.statusEl, err.message || "Upload failed.", "err");
+        }
+
+        updateAcceptButtonState();
+      }
+
+      function missingRequiredDocs() {
+        return Object.keys(requiredDocs).filter((key) => requiredDocs[key] && !uploadState[key]?.uploaded);
+      }
+
+      function updateAcceptButtonState() {
+        const name = (nameEl?.value || "").trim();
+        const title = (titleEl?.value || "").trim();
+        const ready = Boolean(ackEl?.checked) && Boolean(name) && Boolean(title) && missingRequiredDocs().length === 0;
+        btn.disabled = !ready;
+      }
+
+      Object.keys(docConfig).forEach((key) => {
+        const cfg = docConfig[key];
+        markRequirement(cfg.reqEl, Boolean(requiredDocs[key]));
+        if (uploadState[key]?.uploaded) {
+          setDocStatus(cfg.statusEl, "Uploaded: " + (uploadState[key].filename || "file"), "ok");
+        } else {
+          setDocStatus(cfg.statusEl, "Not uploaded", "");
+        }
+
+        cfg.inputEl?.addEventListener("change", () => {
+          const file = cfg.inputEl.files && cfg.inputEl.files[0];
+          uploadDoc(key, file);
+        });
+      });
+
       function setMsg(text, cls) {
         msg.className = "msg " + (cls || "");
         msg.textContent = text || "";
       }
+
+      ackEl?.addEventListener("change", updateAcceptButtonState);
+      nameEl?.addEventListener("input", updateAcceptButtonState);
+      titleEl?.addEventListener("input", updateAcceptButtonState);
+      updateAcceptButtonState();
 
       btn.addEventListener("click", async () => {
         setMsg("");
@@ -704,6 +915,10 @@ function waitForOtp() {
         if (!ack) return setMsg("Please check the acknowledgment box.", "err");
         if (!name) return setMsg("Name is required.", "err");
         if (!title) return setMsg("Title is required.", "err");
+        const missingDocs = missingRequiredDocs();
+        if (missingDocs.length) {
+          return setMsg("Please upload all required supporting documents before accepting.", "err");
+        }
       
         btn.disabled = true;
         btn.textContent = "Verifying...";
@@ -771,99 +986,6 @@ if (startData.status !== "MFA_ALREADY_VALID") {
           btn.textContent = "Accept Agreement";
         }
       });
-
-const achInput = document.getElementById("achUpload");
-const achBtn = document.getElementById("uploadAchBtn");
-const achMsg = document.getElementById("achMsg");
-
-if (achBtn) {
-  achBtn.addEventListener("click", async () => {
-    const file = achInput.files[0];
-
-    if (!file) {
-      achMsg.textContent = "Please choose a file.";
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    achBtn.disabled = true;
-    achBtn.textContent = "Uploading...";
-
-    try {
-      const resp = await fetch("/contract/" + encodeURIComponent(token) + "/ach-upload", {
-        method: "POST",
-        body: formData
-      });
-
-      const data = await resp.json();
-
-      if (!resp.ok) throw new Error(data.error || "Upload failed");
-
-      achMsg.textContent = "ACH document uploaded successfully.";
-    } catch (err) {
-      achMsg.textContent = err.message;
-    }
-
-    achBtn.disabled = false;
-    achBtn.textContent = "Upload ACH Document";
-  });
-}
-
-const insInput = document.getElementById("insUpload");
-const insBtn = document.getElementById("uploadInsBtn");
-const insMsg = document.getElementById("insMsg");
-
-async function uploadInsuranceFile(file) {
-  if (!file) return;
-
-  insMsg.textContent = "";
-  if (insBtn) {
-    insBtn.disabled = true;
-    insBtn.textContent = "Uploading...";
-  }
-
-  const formData = new FormData();
-  formData.append("file", file);
-
-  try {
-    const resp = await fetch("/contract/" + encodeURIComponent(token) + "/insurance-upload", {
-      method: "POST",
-      body: formData
-    });
-
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok) throw new Error(data.error || "Upload failed");
-
-    insMsg.textContent = "Insurance document uploaded successfully.";
-  } catch (err) {
-    insMsg.textContent = err.message || "Upload failed.";
-  } finally {
-    if (insBtn) {
-      insBtn.disabled = false;
-      insBtn.textContent = "Upload Insurance Document";
-    }
-  }
-}
-
-if (insInput) {
-  insInput.addEventListener("change", () => {
-    const file = insInput.files && insInput.files[0];
-    uploadInsuranceFile(file);
-  });
-}
-
-if (insBtn) {
-  insBtn.addEventListener("click", () => {
-    const file = insInput.files && insInput.files[0];
-    if (!file) {
-      insMsg.textContent = "Please choose a file.";
-      return;
-    }
-    uploadInsuranceFile(file);
-  });
-}
 
     })();
 
@@ -943,155 +1065,76 @@ if (insBtn) {
 });
 
 
-router.post("/contract/:token/ach-upload", async (req, res) => {
+async function handleContractDocumentUpload(req, res, config) {
   const token = String(req.params.token || "").trim();
 
   try {
-    const { rows } = await pool.query(
-      `SELECT contract_id FROM contracts WHERE token = $1 LIMIT 1`,
-      [token]
-    );
-
-    if (!rows.length) {
-      return res.status(404).json({ error: "Invalid contract" });
+    const contract = await loadContractByToken(token);
+    if (!contract) return res.status(404).json({ error: "Invalid contract" });
+    if (contract.token_expires_at && new Date(contract.token_expires_at) < new Date()) {
+      return res.status(410).json({ error: "This link has expired" });
     }
-
-    const contractId = rows[0].contract_id;
 
     const file = req.files?.file;
-    if (!file) {
-      return res.status(400).json({ error: "Missing file" });
-    }
-
-    const allowed = [
-      "application/pdf",
-      "image/png",
-      "image/jpeg",
-      "image/webp"
-    ];
-
-    const mimeType = String(file.mimetype || "").toLowerCase().trim();
-    if (!allowed.includes(mimeType)) {
-      return res.status(400).json({
-        error: "Only PDF, PNG, JPG, JPEG, and WEBP files are allowed"
-      });
-    }
-
-    // 10 MB max
-    if (Number(file.size || 0) > 10 * 1024 * 1024) {
-      return res.status(400).json({ error: "File too large (10MB max)" });
-    }
+    const fileErr = validateUploadFile(file, {
+      allowedMimes: ["application/pdf", "image/png", "image/jpeg", "image/webp"],
+      maxSizeBytes: 10 * 1024 * 1024,
+    });
+    if (fileErr) return res.status(400).json({ error: fileErr });
 
     const originalFilename = String(file.name || "upload").trim();
     const safeName = originalFilename.replace(/[^\w.\-]/g, "_");
-    const key = `ach/${contractId}/${Date.now()}_${safeName}`;
+    const mimeType = String(file.mimetype || "").toLowerCase().trim();
+    const key = `${config.storagePrefix}/${contract.contract_id}/${Date.now()}_${safeName}`;
 
-    await spaces.putObject({
-      Bucket: process.env.SPACES_BUCKET,
-      Key: key,
-      Body: file.data,
-      ContentType: mimeType
-    }).promise();
+    await uploadFileToSpaces({ file, key, mimeType });
 
     await pool.query(
       `
-      INSERT INTO contract_ach_documents
+      INSERT INTO ${config.table}
         (contract_id, storage_key, mime_type, original_filename)
       VALUES
         ($1, $2, $3, $4)
       `,
-      [contractId, key, mimeType, originalFilename]
+      [contract.contract_id, key, mimeType, originalFilename]
     );
 
-    return res.json({ ok: true });
+    return res.json({
+      ok: true,
+      document_type: config.documentType,
+      storage_key: key,
+      mime_type: mimeType,
+      original_filename: originalFilename,
+      contract_id: contract.contract_id,
+    });
   } catch (err) {
-    console.error("POST /contract/:token/ach-upload error:", err?.message, err);
+    console.error(`POST /contract/:token/${config.documentType}-upload error:`, err?.message, err);
     return res.status(500).json({ error: "Upload failed" });
   }
+}
+
+router.post("/contract/:token/ach-upload", async (req, res) => {
+  return handleContractDocumentUpload(req, res, {
+    table: "public.contract_ach_documents",
+    storagePrefix: "ach",
+    documentType: "ach",
+  });
 });
 
-
 router.post("/contract/:token/insurance-upload", async (req, res) => {
-  const token = String(req.params.token || "").trim();
+  return handleContractDocumentUpload(req, res, {
+    table: "public.contract_insurance_documents",
+    storagePrefix: "insurance",
+    documentType: "insurance",
+  });
+});
 
-  try {
-    const { rows } = await pool.query(
-      `SELECT contract_id, company_id, dotnumber
-       FROM public.contracts
-       WHERE token = $1
-       LIMIT 1`,
-      [token]
-    );
-
-    if (!rows.length) return res.status(404).json({ error: "Invalid contract" });
-
-    const { contract_id: contractId, company_id: companyId, dotnumber } = rows[0];
-    const dot = String(dotnumber || "").replace(/\D/g, "");
-
-    const file = req.files?.file;
-    if (!file) return res.status(400).json({ error: "Missing file" });
-
-    const mime = String(file.mimetype || "").toLowerCase();
-    const allowed = ["application/pdf", "image/jpeg", "image/png"];
-    if (!allowed.includes(mime)) {
-      return res.status(400).json({ error: "Only PDF, JPG, or PNG allowed." });
-    }
-
-    const ext =
-      mime === "application/pdf" ? "pdf" :
-      mime === "image/png" ? "png" :
-      mime === "image/jpeg" ? "jpg" :
-      "bin";
-
-    const safeBase = String(file.name || "upload")
-      .replace(/\.[^/.]+$/, "")
-      .replace(/[^\w.\-]+/g, "_")
-      .slice(0, 80);
-
-    const key = `insurance/${companyId}/${dot || "unknown_dot"}/${contractId}/${Date.now()}_${safeBase}.${ext}`;
-
-    await spaces.putObject({
-      Bucket: process.env.SPACES_BUCKET,
-      Key: key,
-      Body: file.data,
-      ContentType: mime,
-      ACL: "private",
-    }).promise();
-
-    const fileUrl = `s3://${process.env.SPACES_BUCKET}/${key}`;
-
-    const ins = await pool.query(
-      `
-      INSERT INTO public.insurance_documents
-        (company_id, dot_number, uploaded_by, file_url, file_type, document_type, status, uploaded_at, spaces_key, ocr_provider)
-      VALUES
-        ($1, $2, 'CARRIER', $3, $4, 'COI', 'ON_FILE', NOW(), $5, 'DOCUPIPE')
-      RETURNING id
-      `,
-      [
-        companyId,
-        dot || "0",
-        fileUrl,
-        mime === "application/pdf" ? "PDF" : "PDF",
-        key,
-      ]
-    );
-
-    const documentId = ins.rows[0].id;
-
-    await pool.query(
-      `
-      INSERT INTO public.insurance_ocr_jobs (document_id, provider, status, attempt, dot_number)
-      VALUES ($1, 'DOCUPIPE', 'PENDING', 0, $2)
-      `,
-      [documentId, dot || null]
-    );
-
-    return res.json({ ok: true, document_id: documentId });
-  } catch (err) {
-    console.error("insurance-upload error:", err?.message, err);
-    return res.status(500).json({ error: "Upload failed" });
-  }
+router.post("/contract/:token/w9-upload", async (req, res) => {
+  return handleContractDocumentUpload(req, res, {
+    table: "public.contract_w9_documents",
+    storagePrefix: "w9",
+    documentType: "w9",
+  });
 });
 
 router.post("/contract/:token/mfa/start", async (req, res) => {
@@ -1474,7 +1517,7 @@ router.post("/contract/:token/ack", async (req, res) => {
     // Load contract by token + expiry check
     const contractRes = await client.query(
       `
-      SELECT contract_id, token_expires_at, user_contract_id, status
+      SELECT contract_id, token_expires_at, user_contract_id, status, insurance_required, w9_required, ach_required
       FROM public.contracts
       WHERE token = $1
       LIMIT 1;
@@ -1486,10 +1529,52 @@ router.post("/contract/:token/ack", async (req, res) => {
       return res.status(404).json({ error: "Invalid link" });
     }
 
-    const { contract_id, token_expires_at, status } = contractRes.rows[0];
+    const {
+      contract_id,
+      token_expires_at,
+      status,
+      insurance_required,
+      w9_required,
+      ach_required,
+    } = contractRes.rows[0];
 
     if (token_expires_at && new Date(token_expires_at) < new Date()) {
       return res.status(410).json({ error: "This link has expired" });
+    }
+
+    const requiredDocs = {
+      w9: normalizeRequiredFlag(w9_required, true),
+      insurance: normalizeRequiredFlag(insurance_required, false),
+      ach: normalizeRequiredFlag(ach_required, false),
+    };
+
+    const [achDocRes, insDocRes, w9DocRes] = await Promise.all([
+      pool.query(
+        `SELECT id FROM public.contract_ach_documents WHERE contract_id = $1 ORDER BY created_at DESC LIMIT 1`,
+        [contract_id]
+      ),
+      pool.query(
+        `SELECT id FROM public.contract_insurance_documents WHERE contract_id = $1 ORDER BY created_at DESC LIMIT 1`,
+        [contract_id]
+      ),
+      pool.query(
+        `SELECT id FROM public.contract_w9_documents WHERE contract_id = $1 ORDER BY created_at DESC LIMIT 1`,
+        [contract_id]
+      ),
+    ]);
+
+    const uploadedDocs = {
+      ach: Boolean(achDocRes.rows[0]),
+      insurance: Boolean(insDocRes.rows[0]),
+      w9: Boolean(w9DocRes.rows[0]),
+    };
+
+    const missingRequired = Object.keys(requiredDocs).filter(
+      (key) => requiredDocs[key] && !uploadedDocs[key]
+    );
+
+    if (missingRequired.length) {
+      return res.status(400).json({ error: "Missing required supporting documents" });
     }
 
     // Optional: if you want idempotent “already accepted”
