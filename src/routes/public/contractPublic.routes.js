@@ -1122,11 +1122,133 @@ router.post("/contract/:token/ach-upload", async (req, res) => {
 });
 
 router.post("/contract/:token/insurance-upload", async (req, res) => {
-  return handleContractDocumentUpload(req, res, {
-    table: "public.contract_insurance_documents",
-    storagePrefix: "insurance",
-    documentType: "insurance",
-  });
+  const token = String(req.params.token || "").trim();
+  const client = await pool.connect();
+
+  try {
+    const contract = await loadContractByToken(token);
+    if (!contract) return res.status(404).json({ error: "Invalid contract" });
+
+    if (contract.token_expires_at && new Date(contract.token_expires_at) < new Date()) {
+      return res.status(410).json({ error: "This link has expired" });
+    }
+
+    const file = req.files?.file;
+    if (!file) return res.status(400).json({ error: "Missing file" });
+
+    const mimeType = String(file.mimetype || "").toLowerCase().trim();
+    const allowedMimes = ["application/pdf", "image/png", "image/jpeg"];
+    if (!allowedMimes.includes(mimeType)) {
+      return res.status(400).json({ error: "Only PDF, JPG, or PNG allowed." });
+    }
+
+    const originalFilename = String(file.name || "upload").trim();
+    const safeBase = originalFilename
+      .replace(/\.[^/.]+$/, "")
+      .replace(/[^\w.\-]+/g, "_")
+      .slice(0, 80);
+
+    const ext =
+      mimeType === "application/pdf" ? "pdf" :
+      mimeType === "image/png" ? "png" :
+      mimeType === "image/jpeg" ? "jpg" :
+      "bin";
+
+    const dot = String(contract.dotnumber || "").replace(/\D/g, "");
+    const companyId = contract.company_id;
+    const contractId = contract.contract_id;
+
+    if (!companyId) {
+      return res.status(400).json({ error: "Contract is missing company_id" });
+    }
+
+    const key = `insurance/${companyId}/${dot || "unknown_dot"}/${contractId}/${Date.now()}_${safeBase}.${ext}`;
+
+    await uploadFileToSpaces({ file, key, mimeType });
+
+    await client.query("BEGIN");
+
+    await client.query(
+      `
+      INSERT INTO public.contract_insurance_documents
+        (contract_id, storage_key, mime_type, original_filename)
+      VALUES
+        ($1, $2, $3, $4)
+      `,
+      [contractId, key, mimeType, originalFilename]
+    );
+
+    const fileUrl = `s3://${process.env.SPACES_BUCKET}/${key}`;
+
+    const ins = await client.query(
+      `
+      INSERT INTO public.insurance_documents
+        (
+          company_id,
+          dot_number,
+          uploaded_by,
+          file_url,
+          file_type,
+          document_type,
+          status,
+          uploaded_at,
+          spaces_key,
+          ocr_provider
+        )
+      VALUES
+        (
+          $1,
+          $2,
+          'CARRIER',
+          $3,
+          $4,
+          'COI',
+          'ON_FILE',
+          NOW(),
+          $5,
+          'DOCUPIPE'
+        )
+      RETURNING id
+      `,
+      [
+        companyId,
+        dot || "0",
+        fileUrl,
+        "PDF", // keep this if your downstream expects PDF for both PDFs and images
+        key,
+      ]
+    );
+
+    const documentId = ins.rows[0].id;
+
+    await client.query(
+      `
+      INSERT INTO public.insurance_ocr_jobs
+        (document_id, provider, status, attempt, dot_number)
+      VALUES
+        ($1, 'DOCUPIPE', 'PENDING', 0, $2)
+      `,
+      [documentId, dot || null]
+    );
+
+    await client.query("COMMIT");
+
+    return res.json({
+      ok: true,
+      document_type: "insurance",
+      contract_id: contractId,
+      document_id: documentId,
+      storage_key: key,
+      mime_type: mimeType,
+      original_filename: originalFilename,
+    });
+  } catch (err) {
+    try { await client.query("ROLLBACK"); } catch {}
+    console.error("POST /contract/:token/insurance-upload error:", err?.message, err);
+    return res.status(500).json({ error: "Upload failed" });
+  } finally {
+    client.release();
+  }
 });
 
 router.post("/contract/:token/w9-upload", async (req, res) => {
