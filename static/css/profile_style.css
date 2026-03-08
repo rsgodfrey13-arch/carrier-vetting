@@ -2048,3 +2048,17 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
     overflow-x: auto;
   }
 }
+
+.contract-action-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.contract-sign-status {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.2;
+  color: rgba(114, 247, 160, 0.95);
+  font-weight: 600;
+}
