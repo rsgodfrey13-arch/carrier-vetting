@@ -1,0 +1,508 @@
+diff --git a/src/clients/mailgun.js b/src/clients/mailgun.js
+index 0bd0c4d15f55d915f9b93e82c1c71d890dfc807b..22063e1ad2c09d9f5b96f04edff57379c5bccd20 100644
+--- a/src/clients/mailgun.js
++++ b/src/clients/mailgun.js
+@@ -127,70 +127,83 @@ async function sendCarrierContractAcceptedEmail({
+     subject: `Agreement signed — ${agreement_type} (DOT ${dotnumber})`,
+     template: "carrier_contract_accepted",
+ 
+     "h:X-Mailgun-Variables": JSON.stringify({
+       broker_name: broker_name || "",
+       carrier_name: carrier_name || "",
+       dotnumber: dotnumber || "",
+       agreement_type: agreement_type || "Carrier Agreement",
+       pdf_link: pdf_link || "",
+       cert_link: cert_link || ""
+     })
+   });
+ }
+ 
+ 
+ async function sendBrokerContractAcceptedEmail({
+   to,
+   broker_name,
+   carrier_name,
+   dotnumber,
+   agreement_type,
+   accepted_name,
+   accepted_title,
+   accepted_email,
+   pdf_link,
+-  cert_link
++  cert_link,
++  w9_link,
++  insurance_link,
++  ach_link,
++  has_other_documents,
++  portal_link
+ }) {
+   const domain = process.env.MAILGUN_DOMAIN;
+ 
+   return mg.messages.create(domain, {
+     from: process.env.MAILGUN_FROM,
+     to,
+     subject: `Carrier accepted agreement — DOT ${dotnumber}`,
+     template: "broker_contract_accepted",
+ 
+     "h:X-Mailgun-Variables": JSON.stringify({
+       broker_name: broker_name || "",
+       carrier_name: carrier_name || "",
+       dotnumber: dotnumber || "",
+       agreement_type: agreement_type || "Carrier Agreement",
+       accepted_name: accepted_name || "",
+       accepted_title: accepted_title || "",
+       accepted_email: accepted_email || "",
+       pdf_link: pdf_link || "",
+-      cert_link: cert_link || ""
++      cert_link: cert_link || "",
++      w9_link: w9_link || "",
++      insurance_link: insurance_link || "",
++      ach_link: ach_link || "",
++      has_other_documents: Boolean(has_other_documents),
++      other_documents_note: has_other_documents
++        ? "Additional documents were uploaded and can be viewed in Carrier Shark."
++        : "",
++      portal_link: portal_link || ""
+     })
+   });
+ }
+ 
+ 
+ async function sendPasswordResetEmail({ to, link }) {
+   const domain = process.env.MAILGUN_DOMAIN;
+ 
+   return mg.messages.create(domain, {
+     from: process.env.MAILGUN_FROM,
+     to,
+     template: "password reset",
+     "h:X-Mailgun-Variables": JSON.stringify({ link }),
+     text: [
+       "We received a request to reset your Carrier Shark password.",
+       "",
+       "Reset link:",
+       link,
+       "",
+       "This link expires in 60 minutes.",
+       "",
+       "If you didn’t request this, you can ignore this email."
+     ].join("\n")
+   });
+ }
+diff --git a/src/routes/public/contractPublic.routes.js b/src/routes/public/contractPublic.routes.js
+index 92851e8413fc53749bc37fc29c59cc569b35b657..f66c9dae816f31d3ff65bf91cec2272de5350fe7 100644
+--- a/src/routes/public/contractPublic.routes.js
++++ b/src/routes/public/contractPublic.routes.js
+@@ -145,50 +145,152 @@ async function streamContractDocumentByToken({
+     const Key = row.storage_key;
+     const filename = sanitizeInlineFilename(row.original_filename, fallbackFilename || Key.split("/").pop());
+     const mime = inferMimeType({ mimeType: row.mime_type, storageKey: Key });
+ 
+     const obj = spaces.getObject({ Bucket, Key }).createReadStream();
+     obj.on("error", (err) => {
+       console.error(`SPACES getObject ${logLabel} error:`, err?.code, err?.message, err);
+       if (err?.code === "NoSuchKey") {
+         if (!res.headersSent) res.status(404).send(notFoundMessage);
+         return;
+       }
+       if (!res.headersSent) res.status(500).send(`Failed to load ${logLabel} document`);
+     });
+ 
+     res.setHeader("Content-Type", mime);
+     res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+     res.setHeader("Cache-Control", "no-store");
+     res.setHeader("X-Content-Type-Options", "nosniff");
+     obj.pipe(res);
+   } catch (err) {
+     console.error(`GET /contract/:token/${logLabel} error:`, err?.message, err);
+     return res.status(500).send("Server error");
+   }
+ }
+ 
++async function loadContractAcceptanceEmailLinks({ contractId, token }) {
++  const baseUrl = process.env.APP_BASE_URL || "https://carriershark.com";
++  const encodedToken = encodeURIComponent(String(token || "").trim());
++
++  const [w9Res, insuranceRes, achRes, otherRes] = await Promise.all([
++    pool.query(
++      `
++      SELECT id
++      FROM public.contract_w9_documents
++      WHERE contract_id::text = $1::text
++      ORDER BY created_at DESC
++      LIMIT 1
++      `,
++      [contractId]
++    ),
++    pool.query(
++      `
++      SELECT id
++      FROM public.contract_insurance_documents
++      WHERE contract_id::text = $1::text
++      ORDER BY created_at DESC
++      LIMIT 1
++      `,
++      [contractId]
++    ),
++    pool.query(
++      `
++      SELECT id
++      FROM public.contract_ach_documents
++      WHERE contract_id::text = $1::text
++      ORDER BY created_at DESC
++      LIMIT 1
++      `,
++      [contractId]
++    ),
++    pool.query(
++      `
++      SELECT id
++      FROM public.contract_other_documents
++      WHERE contract_id::text = $1::text
++      ORDER BY created_at DESC
++      LIMIT 1
++      `,
++      [contractId]
++    ),
++  ]);
++
++  return {
++    pdf_link: `${baseUrl}/contract/${encodedToken}/pdf`,
++    cert_link: `${baseUrl}/contract/${encodedToken}/certificate`,
++    w9_link: w9Res.rows[0] ? `${baseUrl}/contract/${encodedToken}/w9` : "",
++    insurance_link: insuranceRes.rows[0] ? `${baseUrl}/contract/${encodedToken}/insurance` : "",
++    ach_link: achRes.rows[0] ? `${baseUrl}/contract/${encodedToken}/ach` : "",
++    has_other_documents: Boolean(otherRes.rows[0]),
++  };
++}
++
++async function sendContractAcceptedEmails({
++  token,
++  contract_id,
++  meta,
++  accepted_name,
++  accepted_title,
++  accepted_email,
++}) {
++  const links = await loadContractAcceptanceEmailLinks({ contractId: contract_id, token });
++
++  const toCarrier = [meta.email_to, accepted_email].filter(Boolean);
++  const uniqueCarrier = [...new Set(toCarrier.map((x) => String(x).trim().toLowerCase()))];
++
++  if (uniqueCarrier.length) {
++    await sendCarrierContractAcceptedEmail({
++      to: uniqueCarrier,
++      broker_name: meta.broker_name || "Carrier Shark Customer",
++      carrier_name: meta.carrier_name || "",
++      dotnumber: meta.dotnumber ? String(meta.dotnumber) : "",
++      agreement_type: meta.agreement_type || "Carrier Agreement",
++      pdf_link: links.pdf_link,
++      cert_link: links.cert_link,
++    });
++  }
++
++  if (meta.broker_email) {
++    await sendBrokerContractAcceptedEmail({
++      to: String(meta.broker_email).trim().toLowerCase(),
++      broker_name: meta.broker_name || "Carrier Shark Customer",
++      carrier_name: meta.carrier_name || "",
++      dotnumber: meta.dotnumber ? String(meta.dotnumber) : "",
++      agreement_type: meta.agreement_type || "Carrier Agreement",
++      accepted_name: accepted_name || "",
++      accepted_title: accepted_title || "",
++      accepted_email: accepted_email ? String(accepted_email).trim().toLowerCase() : "",
++      pdf_link: links.pdf_link,
++      cert_link: links.cert_link,
++      w9_link: links.w9_link,
++      insurance_link: links.insurance_link,
++      ach_link: links.ach_link,
++      has_other_documents: links.has_other_documents,
++    });
++  }
++}
++
+ 
+ 
+ /** ---------- CONTRACT PDF (token-gated) ---------- **/
+ router.get("/contract/:token/pdf", async (req, res) => {
+   const token = String(req.params.token || "").trim();
+   if (!token) return res.status(400).send("Missing token");
+ 
+   try {
+     const sql = `
+       SELECT
+         c.contract_id,
+         c.status,
+         c.token_expires_at,
+         uc.storage_provider,
+         uc.storage_key,
+         uc.name AS contract_name
+       FROM public.contracts c
+       JOIN public.user_contracts uc
+         ON uc.id = c.user_contract_id
+       WHERE c.token = $1
+       LIMIT 1;
+     `;
+ 
+     const { rows } = await pool.query(sql, [token]);
+     if (rows.length === 0) return res.status(404).send("Invalid link");
+@@ -1660,50 +1762,76 @@ router.get("/contract/:token/w9", async (req, res) => {
+   const token = String(req.params.token || "").trim();
+   return streamContractDocumentByToken({
+     req,
+     res,
+     query: `
+       SELECT
+         c.token_expires_at,
+         cwd.storage_key,
+         cwd.mime_type,
+         cwd.original_filename
+       FROM public.contracts c
+       JOIN public.contract_w9_documents cwd
+         ON cwd.contract_id::text = c.contract_id::text
+       WHERE c.token = $1
+       ORDER BY cwd.created_at DESC
+       LIMIT 1
+     `,
+     queryParams: [token],
+     notFoundMessage: "W9 document not found",
+     missingStorageMessage: "Missing W9 storage key",
+     logLabel: "w9",
+     fallbackFilename: "w9_document",
+   });
+ });
+ 
++router.get("/contract/:token/insurance", async (req, res) => {
++  const token = String(req.params.token || "").trim();
++  return streamContractDocumentByToken({
++    req,
++    res,
++    query: `
++      SELECT
++        c.token_expires_at,
++        cid.storage_key,
++        cid.mime_type,
++        cid.original_filename
++      FROM public.contracts c
++      JOIN public.contract_insurance_documents cid
++        ON cid.contract_id::text = c.contract_id::text
++      WHERE c.token = $1
++      ORDER BY cid.created_at DESC
++      LIMIT 1
++    `,
++    queryParams: [token],
++    notFoundMessage: "Insurance document not found",
++    missingStorageMessage: "Missing insurance storage key",
++    logLabel: "insurance",
++    fallbackFilename: "insurance_document",
++  });
++});
++
+ router.get("/contract/:token/other/:id", async (req, res) => {
+   const token = String(req.params.token || "").trim();
+   const documentId = String(req.params.id || "").trim();
+   if (!documentId) return res.status(400).send("Missing other document id");
+ 
+   return streamContractDocumentByToken({
+     req,
+     res,
+     query: `
+       SELECT
+         c.token_expires_at,
+         cod.storage_key,
+         cod.mime_type,
+         cod.original_filename
+       FROM public.contracts c
+       JOIN public.contract_other_documents cod
+         ON cod.contract_id::text = c.contract_id::text
+       WHERE c.token = $1
+         AND cod.id = $2
+       LIMIT 1
+     `,
+     queryParams: [token, documentId],
+     notFoundMessage: "Other document not found",
+     missingStorageMessage: "Missing other document storage key",
+     logLabel: "other",
+@@ -1886,90 +2014,58 @@ router.post("/contract/:token/ack", async (req, res) => {
+       WHERE contract_id::text = $1::text
+       LIMIT 1;
+       `,
+       [contract_id]
+     );
+ 
+     if (!contractRes2.rows.length) {
+       await client.query("ROLLBACK");
+       return res.status(404).json({ error: "Contract not found" });
+     }
+ 
+     const { token_expires_at: token_expires_at2, status: status2 } = contractRes2.rows[0];
+ 
+     if (token_expires_at2 && new Date(token_expires_at2) < new Date()) {
+       await client.query("ROLLBACK");
+       return res.status(410).json({ error: "This link has expired" });
+     }
+ 
+     // If another request acknowledged it between our first check and now:
+     if (status2 === "ACKNOWLEDGED" || status2 === "SIGNED") {
+       
+     await client.query("COMMIT");
+ 
+ // send emails AFTER commit (so acceptance isn't lost if mailgun hiccups)
+ try {
+-  const baseUrl = process.env.APP_BASE_URL || "https://carriershark.com";
+-  const pdf_link = `${baseUrl}/contract/${encodeURIComponent(token)}/pdf`;
+-  const cert_link = `${baseUrl}/contract/${encodeURIComponent(token)}/certificate`;
+-
+-  // Carrier email
+-  const toCarrier = [meta.email_to, accepted_email].filter(Boolean);
+-  const uniqueCarrier = [...new Set(toCarrier.map(x => String(x).trim().toLowerCase()))];
+-
+-  if (uniqueCarrier.length) {
+-    await sendCarrierContractAcceptedEmail({
+-      to: uniqueCarrier,
+-      broker_name: meta.broker_name || "Carrier Shark Customer",
+-      carrier_name: meta.carrier_name || "",
+-      dotnumber: meta.dotnumber ? String(meta.dotnumber) : "",
+-      agreement_type: meta.agreement_type || "Carrier Agreement",
+-      pdf_link, cert_link
+-    });
+-  }
+-
+-  // Broker email
+-  if (meta.broker_email) {
+-    await sendBrokerContractAcceptedEmail({
+-      to: String(meta.broker_email).trim().toLowerCase(),
+-
+-      broker_name: meta.broker_name || "Carrier Shark Customer",
+-      carrier_name: meta.carrier_name || "",
+-
+-      dotnumber: meta.dotnumber ? String(meta.dotnumber) : "",
+-      agreement_type: meta.agreement_type || "Carrier Agreement",
+-
+-      accepted_name: accepted_name || "",
+-      accepted_title: accepted_title || "",
+-      accepted_email: accepted_email
+-        ? String(accepted_email).trim().toLowerCase()
+-        : "",
+-
+-      pdf_link, cert_link
+-    });
+-  }
+-
++  await sendContractAcceptedEmails({
++    token,
++    contract_id,
++    meta,
++    accepted_name,
++    accepted_title,
++    accepted_email,
++  });
+ } catch (e) {
+   console.error("Contract acceptance email failed:", e?.message, e);
+ }
+     
+     return res.json({ ok: true });
+     }
+ 
+     // ============================================================
+     // 3) MFA gate (must be inside transaction for correctness)
+     // ============================================================
+ 
+     const mfaOk = await client.query(
+       `
+       SELECT id
+       FROM public.contract_mfa_events
+       WHERE contract_id::text = $1::text
+         AND otp_verified_at IS NOT NULL
+         AND otp_verified_at > now() - interval '10 minutes'
+       ORDER BY otp_verified_at DESC
+       LIMIT 1;
+       `,
+       [contract_id]
+     );
+ 
+     if (!mfaOk.rows.length) {
+@@ -2012,75 +2108,53 @@ try {
+         accepted_email,
+         accepted_ip,
+         accepted_user_agent,
+         mfa_event_id,
+         document_hash_sha256,
+         storage_key,
+       ]
+     );
+ 
+     // ============================================================
+     // 5) Update contract status/timestamps
+     // ============================================================
+ 
+     await client.query(
+       `
+       UPDATE public.contracts
+       SET status = 'ACKNOWLEDGED',
+           signed_at = COALESCE(signed_at, now())
+       WHERE contract_id::text = $1::text;
+       `,
+       [contract_id]
+     );
+ 
+ await client.query("COMMIT");
+ 
++// send emails AFTER commit (so acceptance isn't lost if mailgun hiccups)
+ try {
+-  const baseUrl = process.env.APP_BASE_URL || "https://carriershark.com";
+-  const pdf_link = `${baseUrl}/contract/${encodeURIComponent(token)}/pdf`;
+-  const cert_link = `${baseUrl}/contract/${encodeURIComponent(token)}/certificate`;
+-
+-  const toCarrier = [meta.email_to, accepted_email].filter(Boolean);
+-  const uniqueCarrier = [...new Set(toCarrier.map(x => String(x).trim().toLowerCase()))];
+-
+-  if (uniqueCarrier.length) {
+-    await sendCarrierContractAcceptedEmail({
+-      to: uniqueCarrier,
+-      broker_name: meta.broker_name || "Carrier Shark Customer",
+-      carrier_name: meta.carrier_name || "",
+-      dotnumber: meta.dotnumber ? String(meta.dotnumber) : "",
+-      agreement_type: meta.agreement_type || "Carrier Agreement",
+-      pdf_link, cert_link
+-    });
+-  }
+-
+-  if (meta.broker_email) {
+-    await sendBrokerContractAcceptedEmail({
+-      to: String(meta.broker_email).trim().toLowerCase(),
+-      broker_name: meta.broker_name || "Carrier Shark Customer",
+-      carrier_name: meta.carrier_name || "",
+-      dotnumber: meta.dotnumber ? String(meta.dotnumber) : "",
+-      agreement_type: meta.agreement_type || "Carrier Agreement",
+-      accepted_name: accepted_name || "",
+-      accepted_title: accepted_title || "",
+-      accepted_email: accepted_email ? String(accepted_email).trim().toLowerCase() : "",
+-      pdf_link, cert_link
+-    });
+-  }
++  await sendContractAcceptedEmails({
++    token,
++    contract_id,
++    meta,
++    accepted_name,
++    accepted_title,
++    accepted_email,
++  });
+ } catch (e) {
+   console.error("Contract acceptance email failed:", e?.message, e);
+ }
+ 
+ return res.json({ ok: true });
+   } catch (err) {
+     try { await client.query("ROLLBACK"); } catch {}
+     console.error("POST /contract/:token/ack error:", err?.message, err);
+     return res.status(500).json({ error: "Failed to accept contract" });
+   } finally {
+     client.release();
+   }
+ });
+ 
+ 
+ 
+ 
+ module.exports = router;

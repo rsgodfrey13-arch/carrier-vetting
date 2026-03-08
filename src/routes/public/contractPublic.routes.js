@@ -167,6 +167,108 @@ async function streamContractDocumentByToken({
   }
 }
 
+async function loadContractAcceptanceEmailLinks({ contractId, token }) {
+  const baseUrl = process.env.APP_BASE_URL || "https://carriershark.com";
+  const encodedToken = encodeURIComponent(String(token || "").trim());
+
+  const [w9Res, insuranceRes, achRes, otherRes] = await Promise.all([
+    pool.query(
+      `
+      SELECT id
+      FROM public.contract_w9_documents
+      WHERE contract_id::text = $1::text
+      ORDER BY created_at DESC
+      LIMIT 1
+      `,
+      [contractId]
+    ),
+    pool.query(
+      `
+      SELECT id
+      FROM public.contract_insurance_documents
+      WHERE contract_id::text = $1::text
+      ORDER BY created_at DESC
+      LIMIT 1
+      `,
+      [contractId]
+    ),
+    pool.query(
+      `
+      SELECT id
+      FROM public.contract_ach_documents
+      WHERE contract_id::text = $1::text
+      ORDER BY created_at DESC
+      LIMIT 1
+      `,
+      [contractId]
+    ),
+    pool.query(
+      `
+      SELECT id
+      FROM public.contract_other_documents
+      WHERE contract_id::text = $1::text
+      ORDER BY created_at DESC
+      LIMIT 1
+      `,
+      [contractId]
+    ),
+  ]);
+
+  return {
+    pdf_link: `${baseUrl}/contract/${encodedToken}/pdf`,
+    cert_link: `${baseUrl}/contract/${encodedToken}/certificate`,
+    w9_link: w9Res.rows[0] ? `${baseUrl}/contract/${encodedToken}/w9` : "",
+    insurance_link: insuranceRes.rows[0] ? `${baseUrl}/contract/${encodedToken}/insurance` : "",
+    ach_link: achRes.rows[0] ? `${baseUrl}/contract/${encodedToken}/ach` : "",
+    has_other_documents: Boolean(otherRes.rows[0]),
+  };
+}
+
+async function sendContractAcceptedEmails({
+  token,
+  contract_id,
+  meta,
+  accepted_name,
+  accepted_title,
+  accepted_email,
+}) {
+  const links = await loadContractAcceptanceEmailLinks({ contractId: contract_id, token });
+
+  const toCarrier = [meta.email_to, accepted_email].filter(Boolean);
+  const uniqueCarrier = [...new Set(toCarrier.map((x) => String(x).trim().toLowerCase()))];
+
+  if (uniqueCarrier.length) {
+    await sendCarrierContractAcceptedEmail({
+      to: uniqueCarrier,
+      broker_name: meta.broker_name || "Carrier Shark Customer",
+      carrier_name: meta.carrier_name || "",
+      dotnumber: meta.dotnumber ? String(meta.dotnumber) : "",
+      agreement_type: meta.agreement_type || "Carrier Agreement",
+      pdf_link: links.pdf_link,
+      cert_link: links.cert_link,
+    });
+  }
+
+  if (meta.broker_email) {
+    await sendBrokerContractAcceptedEmail({
+      to: String(meta.broker_email).trim().toLowerCase(),
+      broker_name: meta.broker_name || "Carrier Shark Customer",
+      carrier_name: meta.carrier_name || "",
+      dotnumber: meta.dotnumber ? String(meta.dotnumber) : "",
+      agreement_type: meta.agreement_type || "Carrier Agreement",
+      accepted_name: accepted_name || "",
+      accepted_title: accepted_title || "",
+      accepted_email: accepted_email ? String(accepted_email).trim().toLowerCase() : "",
+      pdf_link: links.pdf_link,
+      cert_link: links.cert_link,
+      w9_link: links.w9_link,
+      insurance_link: links.insurance_link,
+      ach_link: links.ach_link,
+      has_other_documents: links.has_other_documents,
+    });
+  }
+}
+
 
 
 /** ---------- CONTRACT PDF (token-gated) ---------- **/
@@ -1682,6 +1784,32 @@ router.get("/contract/:token/w9", async (req, res) => {
   });
 });
 
+router.get("/contract/:token/insurance", async (req, res) => {
+  const token = String(req.params.token || "").trim();
+  return streamContractDocumentByToken({
+    req,
+    res,
+    query: `
+      SELECT
+        c.token_expires_at,
+        cid.storage_key,
+        cid.mime_type,
+        cid.original_filename
+      FROM public.contracts c
+      JOIN public.contract_insurance_documents cid
+        ON cid.contract_id::text = c.contract_id::text
+      WHERE c.token = $1
+      ORDER BY cid.created_at DESC
+      LIMIT 1
+    `,
+    queryParams: [token],
+    notFoundMessage: "Insurance document not found",
+    missingStorageMessage: "Missing insurance storage key",
+    logLabel: "insurance",
+    fallbackFilename: "insurance_document",
+  });
+});
+
 router.get("/contract/:token/other/:id", async (req, res) => {
   const token = String(req.params.token || "").trim();
   const documentId = String(req.params.id || "").trim();
@@ -1908,46 +2036,14 @@ router.post("/contract/:token/ack", async (req, res) => {
 
 // send emails AFTER commit (so acceptance isn't lost if mailgun hiccups)
 try {
-  const baseUrl = process.env.APP_BASE_URL || "https://carriershark.com";
-  const pdf_link = `${baseUrl}/contract/${encodeURIComponent(token)}/pdf`;
-  const cert_link = `${baseUrl}/contract/${encodeURIComponent(token)}/certificate`;
-
-  // Carrier email
-  const toCarrier = [meta.email_to, accepted_email].filter(Boolean);
-  const uniqueCarrier = [...new Set(toCarrier.map(x => String(x).trim().toLowerCase()))];
-
-  if (uniqueCarrier.length) {
-    await sendCarrierContractAcceptedEmail({
-      to: uniqueCarrier,
-      broker_name: meta.broker_name || "Carrier Shark Customer",
-      carrier_name: meta.carrier_name || "",
-      dotnumber: meta.dotnumber ? String(meta.dotnumber) : "",
-      agreement_type: meta.agreement_type || "Carrier Agreement",
-      pdf_link, cert_link
-    });
-  }
-
-  // Broker email
-  if (meta.broker_email) {
-    await sendBrokerContractAcceptedEmail({
-      to: String(meta.broker_email).trim().toLowerCase(),
-
-      broker_name: meta.broker_name || "Carrier Shark Customer",
-      carrier_name: meta.carrier_name || "",
-
-      dotnumber: meta.dotnumber ? String(meta.dotnumber) : "",
-      agreement_type: meta.agreement_type || "Carrier Agreement",
-
-      accepted_name: accepted_name || "",
-      accepted_title: accepted_title || "",
-      accepted_email: accepted_email
-        ? String(accepted_email).trim().toLowerCase()
-        : "",
-
-      pdf_link, cert_link
-    });
-  }
-
+  await sendContractAcceptedEmails({
+    token,
+    contract_id,
+    meta,
+    accepted_name,
+    accepted_title,
+    accepted_email,
+  });
 } catch (e) {
   console.error("Contract acceptance email failed:", e?.message, e);
 }
@@ -2034,38 +2130,16 @@ try {
 
 await client.query("COMMIT");
 
+// send emails AFTER commit (so acceptance isn't lost if mailgun hiccups)
 try {
-  const baseUrl = process.env.APP_BASE_URL || "https://carriershark.com";
-  const pdf_link = `${baseUrl}/contract/${encodeURIComponent(token)}/pdf`;
-  const cert_link = `${baseUrl}/contract/${encodeURIComponent(token)}/certificate`;
-
-  const toCarrier = [meta.email_to, accepted_email].filter(Boolean);
-  const uniqueCarrier = [...new Set(toCarrier.map(x => String(x).trim().toLowerCase()))];
-
-  if (uniqueCarrier.length) {
-    await sendCarrierContractAcceptedEmail({
-      to: uniqueCarrier,
-      broker_name: meta.broker_name || "Carrier Shark Customer",
-      carrier_name: meta.carrier_name || "",
-      dotnumber: meta.dotnumber ? String(meta.dotnumber) : "",
-      agreement_type: meta.agreement_type || "Carrier Agreement",
-      pdf_link, cert_link
-    });
-  }
-
-  if (meta.broker_email) {
-    await sendBrokerContractAcceptedEmail({
-      to: String(meta.broker_email).trim().toLowerCase(),
-      broker_name: meta.broker_name || "Carrier Shark Customer",
-      carrier_name: meta.carrier_name || "",
-      dotnumber: meta.dotnumber ? String(meta.dotnumber) : "",
-      agreement_type: meta.agreement_type || "Carrier Agreement",
-      accepted_name: accepted_name || "",
-      accepted_title: accepted_title || "",
-      accepted_email: accepted_email ? String(accepted_email).trim().toLowerCase() : "",
-      pdf_link, cert_link
-    });
-  }
+  await sendContractAcceptedEmails({
+    token,
+    contract_id,
+    meta,
+    accepted_name,
+    accepted_title,
+    accepted_email,
+  });
 } catch (e) {
   console.error("Contract acceptance email failed:", e?.message, e);
 }

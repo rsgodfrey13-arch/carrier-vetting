@@ -149,7 +149,12 @@ async function sendBrokerContractAcceptedEmail({
   accepted_title,
   accepted_email,
   pdf_link,
-  cert_link
+  cert_link,
+  w9_link,
+  insurance_link,
+  ach_link,
+  has_other_documents,
+  portal_link
 }) {
   const domain = process.env.MAILGUN_DOMAIN;
 
@@ -168,7 +173,15 @@ async function sendBrokerContractAcceptedEmail({
       accepted_title: accepted_title || "",
       accepted_email: accepted_email || "",
       pdf_link: pdf_link || "",
-      cert_link: cert_link || ""
+      cert_link: cert_link || "",
+      w9_link: w9_link || "",
+      insurance_link: insurance_link || "",
+      ach_link: ach_link || "",
+      has_other_documents: Boolean(has_other_documents),
+      other_documents_note: has_other_documents
+        ? "Additional documents were uploaded and can be viewed in Carrier Shark."
+        : "",
+      portal_link: portal_link || ""
     })
   });
 }
