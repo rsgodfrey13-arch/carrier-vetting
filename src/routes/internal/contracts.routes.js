@@ -2,7 +2,6 @@
 
 const express = require("express");
 const crypto = require("crypto");
-const multer = require("multer");
 
 const { pool } = require("../../db/pool");
 const { requireAuth } = require("../../middleware/requireAuth");
@@ -13,10 +12,6 @@ const { spaces } = require("../../clients/spacesS3v2");
 
 
 const router = express.Router();
-const carrierDocumentUpload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
-});
 
 const ALLOWED_DOCUMENT_MIME_TYPES = new Set([
   "application/pdf",
@@ -696,7 +691,6 @@ router.post(
   '/carrier-documents/:dot/upload',
   requireAuth,
   loadCompanyContext,
-  carrierDocumentUpload.single('file'),
   async (req, res) => {
   try {
     const dot = String(req.params.dot || '').replace(/\D/g, '');
@@ -709,13 +703,15 @@ router.post(
       return res.status(400).json({ error: 'document_type must be w9, ach, or other' });
     }
 
-    const file = req.file;
-if (!file) return res.status(400).json({ error: 'A file is required' });
+    const file = req.files?.file;
+    if (!file || Array.isArray(file)) {
+      return res.status(400).json({ error: 'A file is required' });
+    }
 
-const mimeType = String(file.mimetype || '').toLowerCase().trim();
-if (!ALLOWED_DOCUMENT_MIME_TYPES.has(mimeType)) {
-  return res.status(400).json({ error: 'Unsupported file type' });
-}
+    const mimeType = String(file.mimetype || '').toLowerCase().trim();
+    if (!ALLOWED_DOCUMENT_MIME_TYPES.has(mimeType)) {
+      return res.status(400).json({ error: 'Unsupported file type' });
+    }
 
     await ensureCarrierDocumentsTable();
 
@@ -728,13 +724,13 @@ if (!ALLOWED_DOCUMENT_MIME_TYPES.has(mimeType)) {
       companyId,
       dot,
       documentType: docType,
-      originalFilename: file.originalname,
+      originalFilename: file.name,
     });
 
     await spaces.putObject({
       Bucket: process.env.SPACES_BUCKET,
       Key: mainKey,
-      Body: file.buffer,
+      Body: file.data,
       ContentType: mimeType,
       ACL: 'private',
       Metadata: {
@@ -784,7 +780,7 @@ const inserted = await pool.query(
     user.email || null,
     mainKey,
     mimeType,
-    file.originalname || null,
+    file.name || null,
   ]
 );
 
