@@ -47,6 +47,18 @@ function showFeatureGate({ title, body, note = "", primaryText = "Continue", onP
   document.addEventListener("keydown", onEsc);
   backdrop.hidden = false;
 }
+
+function fmtSignedDate(d) {
+  if (!d) return "";
+  const parsed = new Date(d);
+  if (Number.isNaN(parsed.getTime())) return "";
+
+  return parsed.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  });
+}
   
   function getDotFromPath() {
     // take first path segment only, ignore trailing slash / extra segments
@@ -1388,15 +1400,15 @@ async function loadCarrierAgreements(dot) {
     const latestSignedAt = data.latest_signed_at;
 
     if (count > 0 && latestSignedAt) {
-      setContractSignStatus(`✓ Signed ${fmtDateTime(latestSignedAt)}`, true);
+      setContractSignStatus(`✓ Signed ${fmtSignedDate(latestSignedAt)}`, true);
     } else if (count > 0 && agreements.length > 0) {
       const fallbackSignedAt =
         agreements[0]?.signed_at || agreements[0]?.sent_at || agreements[0]?.created_at;
 
       setContractSignStatus(
-        fallbackSignedAt ? `✓ Signed ${fmtDateTime(fallbackSignedAt)}` : "✓ Signed",
-        true
-      );
+  fallbackSignedAt ? `✓ Signed ${fmtSignedDate(fallbackSignedAt)}` : "✓ Signed",
+  true
+);
     } else {
       setContractSignStatus("", false);
     }
