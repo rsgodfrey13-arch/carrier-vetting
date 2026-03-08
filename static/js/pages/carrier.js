@@ -180,6 +180,20 @@ function fmtDate(d) {
   return `${m}/${day}/${y}`;
 }
 
+function setContractSignStatus(text = "", show = false) {
+  const el = document.getElementById("contract-sign-status");
+  if (!el) return;
+
+  if (!show || !text) {
+    el.hidden = true;
+    el.textContent = "";
+    return;
+  }
+
+  el.textContent = text;
+  el.hidden = false;
+}
+  
 function fmtDateTime(d) {
   if (!d) return "—";
   const parsed = new Date(d);
@@ -1352,12 +1366,12 @@ async function loadCarrierAgreements(dot) {
 
   if (!wrap || !statusEl || !metaEl || !tableBodyEl || !emptyEl) return;
 
-  // hard reset every time
   wrap.hidden = true;
   statusEl.textContent = "No agreements signed";
   metaEl.innerHTML = "";
   tableBodyEl.innerHTML = "";
   emptyEl.classList.remove("is-visible");
+  setContractSignStatus("", false);
 
   try {
     const res = await fetch(`/api/carrier-agreements/${encodeURIComponent(dot)}`, {
@@ -1372,6 +1386,20 @@ async function loadCarrierAgreements(dot) {
     const count = Number(data.count ?? 0);
     const agreements = Array.isArray(data.agreements) ? data.agreements : [];
     const latestSignedAt = data.latest_signed_at;
+
+    if (count > 0 && latestSignedAt) {
+      setContractSignStatus(`✓ Signed ${fmtDateTime(latestSignedAt)}`, true);
+    } else if (count > 0 && agreements.length > 0) {
+      const fallbackSignedAt =
+        agreements[0]?.signed_at || agreements[0]?.sent_at || agreements[0]?.created_at;
+
+      setContractSignStatus(
+        fallbackSignedAt ? `✓ Signed ${fmtDateTime(fallbackSignedAt)}` : "✓ Signed",
+        true
+      );
+    } else {
+      setContractSignStatus("", false);
+    }
 
     statusEl.textContent = `${count} Agreement${count === 1 ? "" : "s"} Signed`;
 
@@ -1395,6 +1423,7 @@ async function loadCarrierAgreements(dot) {
     wrap.hidden = false;
   } catch (err) {
     console.error("agreements load failed", err);
+    setContractSignStatus("", false);
     wrap.hidden = false;
     emptyEl.classList.add("is-visible");
   }
