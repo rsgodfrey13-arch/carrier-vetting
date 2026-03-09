@@ -18,7 +18,7 @@ function closeContractSuccessModal() {
 document.getElementById("contractSuccessOk")?.addEventListener("click", closeContractSuccessModal);
 document.getElementById("contractSuccessClose")?.addEventListener("click", closeContractSuccessModal);
 
-document.querySelector("#contractSuccessModal .cs-modal-backdrop")?.addEventListener("click", closeContractSuccessModal);
+document.querySelector("#contractSuccessModal .contract-success-backdrop")?.addEventListener("click", closeContractSuccessModal);
 
   
 function showFeatureGate({ title, body, note = "", primaryText = "Continue", onPrimary }) {
