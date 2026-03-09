@@ -1564,6 +1564,12 @@ pwSave?.addEventListener("click", async () => {
 
 
   
-  loadEverything().catch((err) => console.error(err));
+  loadEverything()
+  .then(() => {
+    if (activeTab === "help") {
+      loadTickets().catch(console.error);
+    }
+  })
+  .catch((err) => console.error(err));
 })();
 
