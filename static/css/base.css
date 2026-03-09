@@ -20,15 +20,23 @@
   --cs-space-md: 12px;
   --cs-space-lg: 16px;
   --cs-space-xl: 24px;
+  --cs-space-2xl: 32px;
 
   --cs-radius-sm: 10px;
   --cs-radius-md: 14px;
   --cs-radius-lg: 20px;
+  --cs-radius-xl: 24px;
   --cs-radius-pill: 999px;
 
   --cs-shadow-sm: 0 8px 20px rgba(15, 23, 42, 0.5);
   --cs-shadow-md: 0 14px 32px rgba(15, 23, 42, 0.7);
   --cs-shadow-lg: 0 20px 45px rgba(15, 23, 42, 0.9);
+  --cs-focus-ring: 0 0 0 3px rgba(56,189,248,0.18);
+
+  --cs-font-sans: "Inter", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  --cs-font-heading: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --cs-letter-ui: 0.04em;
+  --cs-letter-title: 0.12em;
 
   --cs-transition-fast: 120ms ease;
   --cs-transition-normal: 200ms ease;
@@ -335,6 +343,18 @@ tbody tr:hover,
 
 html, body { margin: 0; padding: 0; }
 
+body{
+  font-family:var(--cs-font-sans);
+  color:var(--cs-text-main);
+}
+
+h1, h2, h3, h4, h5, h6,
+.section-title,
+.page-title{
+  font-family:var(--cs-font-heading);
+  color:var(--cs-text-strong);
+}
+
 
 /* Make the dropdown button look like your nav links */
 .nav-dropbtn{
@@ -344,6 +364,199 @@ html, body { margin: 0; padding: 0; }
   font:inherit;
   cursor:pointer;
   padding:0;
+}
+
+/* ================================
+   Shared component system (Patch 1)
+   ================================ */
+
+.btn-primary,
+.btn-secondary,
+.btn-danger,
+.btn-ghost,
+.pill-btn,
+.pill-btn-secondary,
+.search-btn,
+.plan-select-btn,
+.cs-btn,
+.link-btn,
+.nav-auth-btn{
+  font-family:var(--cs-font-sans);
+  letter-spacing:var(--cs-letter-ui);
+}
+
+.card,
+.glass-card,
+.list-card,
+.carriers-card,
+.search-shell,
+.account-rail,
+.import-modal-dialog,
+.modal,
+.login-card,
+.cs-modal{
+  background:var(--cs-bg-elevated);
+  border:1px solid var(--cs-border);
+  border-radius:var(--cs-radius-lg);
+  box-shadow:var(--cs-shadow-md);
+  backdrop-filter:blur(12px);
+}
+
+.card h2,
+.modal-head h3,
+.section-h3{
+  letter-spacing:var(--cs-letter-title);
+  text-transform:uppercase;
+}
+
+.field-label,
+.kv-label,
+.meta-label{
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  font-weight:600;
+}
+
+input,
+textarea,
+select,
+.field-input,
+.api-input,
+.f-input,
+.f-select,
+.paste-textarea,
+.help-search-input,
+.search-input,
+#carrier-search-input{
+  border-radius:var(--cs-radius-md);
+  border:1px solid var(--cs-border);
+  background:rgba(15, 23, 42, 0.75);
+  color:var(--cs-text-main);
+}
+
+input:focus,
+textarea:focus,
+select:focus,
+.field-input:focus,
+.api-input:focus,
+.f-input:focus,
+.f-select:focus,
+.paste-textarea:focus,
+.help-search-input:focus,
+.search-input:focus,
+#carrier-search-input:focus{
+  outline:none;
+  border-color:var(--cs-accent);
+  box-shadow:var(--cs-focus-ring);
+}
+
+table,
+.carriers-table,
+.plans-table,
+.import-results-table,
+.docs-table{
+  width:100%;
+  border-collapse:collapse;
+}
+
+thead,
+.carriers-table thead,
+.plans-table thead,
+.import-results-table thead,
+.docs-table thead{
+  background:rgba(15,23,42,.95);
+}
+
+th,
+td,
+.carriers-table th,
+.carriers-table td,
+.plans-table th,
+.plans-table td,
+.import-results-table th,
+.import-results-table td,
+.docs-table th,
+.docs-table td{
+  border-bottom:1px solid rgba(148,163,184,.2);
+}
+
+.badge,
+.status-pill,
+.carrier-pill,
+.plan-badge,
+.pill-badge,
+.my-carrier-pill,
+.status-badge{
+  display:inline-flex;
+  align-items:center;
+  min-height:24px;
+  padding:0 10px;
+  border-radius:var(--cs-radius-pill);
+  border:1px solid rgba(148,163,184,.35);
+  background:rgba(15,23,42,.62);
+  color:var(--cs-text-main);
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  font-size:.72rem;
+  font-weight:700;
+}
+
+.modal-backdrop,
+.import-modal{
+  position:fixed;
+  inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:24px 12px;
+  background:rgba(2,6,23,.66);
+  z-index:9999;
+}
+
+.modal-backdrop.is-open,
+.import-modal.is-open{
+  display:flex;
+}
+
+.modal,
+.import-modal-dialog{
+  width:min(560px, 92vw);
+}
+
+.modal-head,
+.import-modal-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:var(--cs-space-md);
+  padding:16px 16px 8px;
+}
+
+.modal-body,
+.import-modal-body{
+  padding:8px 16px 16px;
+}
+
+.modal-actions,
+.import-modal-footer{
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  padding:0 16px 16px;
+}
+
+.icon-btn,
+.import-modal-close{
+  border:0;
+  background:transparent;
+  color:rgba(241,245,249,.8);
+  border-radius:10px;
+  cursor:pointer;
+}
+
+.icon-btn:hover,
+.import-modal-close:hover{
+  background:rgba(148,163,184,.12);
 }
 
 

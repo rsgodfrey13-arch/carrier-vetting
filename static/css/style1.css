@@ -111,9 +111,9 @@ body{
 .list-card{
   margin-top:18px;
   background:rgba(6,25,30,.88);
-  border-radius:var(--cs-radius-md);
-  border:1px solid var(--border);
-  box-shadow:0 12px 30px rgba(0,0,0,.55);
+  border-radius:var(--cs-radius-lg);
+  border:1px solid var(--cs-border);
+  box-shadow:var(--cs-shadow-md);
   padding:14px 16px 18px;
 }
 
@@ -182,7 +182,7 @@ tr:hover{
 
 .section-title{
   margin:0 0 8px;
-  font-family:"Space Grotesk", system-ui, sans-serif;
+  font-family:var(--cs-font-heading);
   font-size:1rem;
   letter-spacing:0.1em;
   text-transform:uppercase;
@@ -270,7 +270,7 @@ body.carrier-list .page-header{
 
 body.carrier-list .page-title{
   margin:0;
-  font-family:"Space Grotesk", system-ui, sans-serif;
+  font-family:var(--cs-font-heading);
   font-size:clamp(1.8rem, 2.4vw, 2.1rem);
   letter-spacing:.08em;
   text-transform:uppercase;
@@ -312,7 +312,7 @@ body.carrier-list .page-subtitle{
 
 .search-title{
   margin:0;
-  font-family:"Space Grotesk", system-ui, sans-serif;
+  font-family:var(--cs-font-heading);
   font-size:.95rem;
   text-transform:uppercase;
   letter-spacing:.16em;
@@ -461,7 +461,7 @@ body.carrier-list .page-subtitle{
   padding:18px 0 16px;
   overflow:hidden;
   background:var(--cs-bg-elevated);
-  border-radius:var(--cs-radius-md);
+  border-radius:var(--cs-radius-lg);
   border:1px solid var(--cs-border);
   box-shadow:var(--cs-shadow-md);
 }
@@ -469,7 +469,7 @@ body.carrier-list .page-subtitle{
 
 .carriers-title{
   margin:0;
-  font-family:"Space Grotesk", system-ui, sans-serif;
+  font-family:var(--cs-font-heading);
   font-size:1.4rem;
   letter-spacing:.14rem;
   text-transform:uppercase;
@@ -485,7 +485,7 @@ body.carrier-list .page-subtitle{
 
 /* table wrapper */
 .carriers-table-wrap{
-  border-top:1px solid rgba(30,64,175,.7);
+  border-top:1px solid rgba(148,163,184,.22);
   margin-top:4px;
   padding-top:6px;
   padding-inline:4px;
@@ -500,7 +500,7 @@ body.carrier-list .page-subtitle{
 }
 
 .carriers-table thead{
-  background:linear-gradient(90deg, rgba(15,23,42,.96), rgba(15,23,42,.9));
+  background:rgba(15,23,42,.95);
 }
 
 .carriers-table thead th{
@@ -510,23 +510,23 @@ body.carrier-list .page-subtitle{
   letter-spacing:.14em;
   text-transform:uppercase;
   color:rgba(148,163,184,.9);
-  border-bottom:1px solid rgba(30,64,175,.9);
+  border-bottom:1px solid rgba(148,163,184,.24);
 }
 
 .carriers-table tbody tr{
-  background:rgba(15,23,42,0.82);
-  border-bottom:1px solid rgba(15,23,42,0.7);
+  background:rgba(15,23,42,0.72);
+  border-bottom:1px solid rgba(148,163,184,.15);
   transition:background .14s ease, transform .08s ease, box-shadow .18s ease;
 }
 
 .carriers-table tbody tr:nth-child(even){
-  background:rgba(17,24,39,0.86);
+  background:rgba(15,23,42,0.78);
 }
 
 .carriers-table tbody tr:hover{
-  background:radial-gradient(circle at left, rgba(56,189,248,0.20), rgba(15,23,42,0.98));
+  background:rgba(56,189,248,0.08);
   transform:translateY(-1px);
-  box-shadow:0 10px 26px rgba(15,23,42,0.9);
+  box-shadow:0 10px 26px rgba(15,23,42,0.75);
 }
 
 .carriers-table td{
@@ -1518,7 +1518,7 @@ th.sortable.sorted-desc .sort-icon::before{
   margin-bottom:12px;
 }
 .filters-title{
-  font-family:"Space Grotesk", system-ui, sans-serif;
+  font-family:var(--cs-font-heading);
   text-transform:uppercase;
   letter-spacing:.14em;
   font-size:.95rem;
@@ -2393,9 +2393,9 @@ body{
 .list-card{
   margin-top:18px;
   background:rgba(6,25,30,.88);
-  border-radius:var(--cs-radius-md);
-  border:1px solid var(--border);
-  box-shadow:0 12px 30px rgba(0,0,0,.55);
+  border-radius:var(--cs-radius-lg);
+  border:1px solid var(--cs-border);
+  box-shadow:var(--cs-shadow-md);
   padding:14px 16px 18px;
 }
 
@@ -2464,7 +2464,7 @@ tr:hover{
 
 .section-title{
   margin:0 0 8px;
-  font-family:"Space Grotesk", system-ui, sans-serif;
+  font-family:var(--cs-font-heading);
   font-size:1rem;
   letter-spacing:0.1em;
   text-transform:uppercase;
@@ -2552,7 +2552,7 @@ body.carrier-list .page-header{
 
 body.carrier-list .page-title{
   margin:0;
-  font-family:"Space Grotesk", system-ui, sans-serif;
+  font-family:var(--cs-font-heading);
   font-size:clamp(1.8rem, 2.4vw, 2.1rem);
   letter-spacing:.08em;
   text-transform:uppercase;
@@ -2594,7 +2594,7 @@ body.carrier-list .page-subtitle{
 
 .search-title{
   margin:0;
-  font-family:"Space Grotesk", system-ui, sans-serif;
+  font-family:var(--cs-font-heading);
   font-size:.95rem;
   text-transform:uppercase;
   letter-spacing:.16em;
@@ -2743,7 +2743,7 @@ body.carrier-list .page-subtitle{
   padding:18px 0 16px;
   overflow:hidden;
   background:var(--cs-bg-elevated);
-  border-radius:var(--cs-radius-md);
+  border-radius:var(--cs-radius-lg);
   border:1px solid var(--cs-border);
   box-shadow:var(--cs-shadow-md);
 }
@@ -2751,7 +2751,7 @@ body.carrier-list .page-subtitle{
 
 .carriers-title{
   margin:0;
-  font-family:"Space Grotesk", system-ui, sans-serif;
+  font-family:var(--cs-font-heading);
   font-size:1.4rem;
   letter-spacing:.14rem;
   text-transform:uppercase;
@@ -2767,7 +2767,7 @@ body.carrier-list .page-subtitle{
 
 /* table wrapper */
 .carriers-table-wrap{
-  border-top:1px solid rgba(30,64,175,.7);
+  border-top:1px solid rgba(148,163,184,.22);
   margin-top:4px;
   padding-top:6px;
   padding-inline:4px;
@@ -2782,7 +2782,7 @@ body.carrier-list .page-subtitle{
 }
 
 .carriers-table thead{
-  background:linear-gradient(90deg, rgba(15,23,42,.96), rgba(15,23,42,.9));
+  background:rgba(15,23,42,.95);
 }
 
 .carriers-table thead th{
@@ -2792,23 +2792,23 @@ body.carrier-list .page-subtitle{
   letter-spacing:.14em;
   text-transform:uppercase;
   color:rgba(148,163,184,.9);
-  border-bottom:1px solid rgba(30,64,175,.9);
+  border-bottom:1px solid rgba(148,163,184,.24);
 }
 
 .carriers-table tbody tr{
-  background:rgba(15,23,42,0.82);
-  border-bottom:1px solid rgba(15,23,42,0.7);
+  background:rgba(15,23,42,0.72);
+  border-bottom:1px solid rgba(148,163,184,.15);
   transition:background .14s ease, transform .08s ease, box-shadow .18s ease;
 }
 
 .carriers-table tbody tr:nth-child(even){
-  background:rgba(17,24,39,0.86);
+  background:rgba(15,23,42,0.78);
 }
 
 .carriers-table tbody tr:hover{
-  background:radial-gradient(circle at left, rgba(56,189,248,0.20), rgba(15,23,42,0.98));
+  background:rgba(56,189,248,0.08);
   transform:translateY(-1px);
-  box-shadow:0 10px 26px rgba(15,23,42,0.9);
+  box-shadow:0 10px 26px rgba(15,23,42,0.75);
 }
 
 .carriers-table td{
@@ -3800,7 +3800,7 @@ th.sortable.sorted-desc .sort-icon::before{
   margin-bottom:12px;
 }
 .filters-title{
-  font-family:"Space Grotesk", system-ui, sans-serif;
+  font-family:var(--cs-font-heading);
   text-transform:uppercase;
   letter-spacing:.14em;
   font-size:.95rem;
