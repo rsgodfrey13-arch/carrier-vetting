@@ -4,7 +4,7 @@ body.faq-page{
   background:
     radial-gradient(circle at 80% 40%, rgba(56,189,248,0.22), transparent 60%),
     radial-gradient(circle at 10% 0%, rgba(56,189,248,0.12), transparent 55%),
-    linear-gradient(120deg, #0ea5e9 0%, #031728 45%, #020617 100%);
+    linear-gradient(120deg, #0B78CF 0%, #031728 45%, #020617 100%);
   color: var(--text-main);
 }
 

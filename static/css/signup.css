@@ -277,9 +277,9 @@
   text-transform: uppercase;
   padding: 6px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(99,102,241,.35);
+  border: 1px solid rgba(11,120,207,.35);
   color: rgba(224,231,255,.92);
-  background: rgba(99,102,241,.10);
+  background: rgba(11,120,207,.10);
 }
 
 .plan-lines{

@@ -10,7 +10,7 @@
   width: min(980px, calc(100vw - 28px));
   border-radius: 18px;
   background: rgba(10,18,32,.92);
-  border: 1px solid rgba(148,163,184,.18);
+  border: 1px solid rgba(148,163,184,.28);
   box-shadow: 0 30px 120px rgba(0,0,0,.55);
   position: relative;
 }
@@ -241,14 +241,14 @@ html.cs-modal-open{ overflow:hidden; }
   padding: 11px 18px;
   font-size: 14px;
   border-radius: 12px;
-  background: rgba(148,163,184,.12);
+  background: rgba(15,23,42,.72);
   border: 1px solid rgba(148,163,184,.25);
   color: #cbd5e1;
   transition: all .15s ease;
 }
 
 .cs-btn-secondary-muted:hover{
-  background: rgba(148,163,184,.18);
+  background: rgba(148,163,184,.28);
   border-color: rgba(148,163,184,.35);
 }
 

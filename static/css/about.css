@@ -44,7 +44,8 @@
 }
 
 .about-section-muted {
-  background: rgba(255,255,255,0.02);
+  background: rgba(15,23,42,0.45);
+  border: 1px solid var(--cs-border);
   padding: 40px 24px;
   border-radius: var(--radius-lg);
 }

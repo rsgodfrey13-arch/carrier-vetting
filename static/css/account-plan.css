@@ -90,7 +90,7 @@
 }
 
 .account-page #tab-plan .plan-state.current{
-  color: #38bdf8;
+  color: var(--cs-accent);
 }
 
 .account-page #tab-plan .plan-state.current::after{
@@ -107,7 +107,7 @@
   border-radius: 999px;
   background: transparent;
   border: 1px solid rgba(148,163,184,.35);
-  color: #e2e8f0;
+  color: var(--cs-text-main);
   font-size: .72rem;
   letter-spacing: .14em;
   text-transform: uppercase;
