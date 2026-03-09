@@ -384,19 +384,26 @@ router.get("/contract/:token/certificate", async (req, res) => {
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Signature Certificate</title>
   <style>
-    body{ font-family: Arial, sans-serif; margin:24px; color:#111; }
+    body{
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      margin:0;
+      padding:24px;
+      color:#E5E7EB;
+      background: radial-gradient(circle at 12% 0%, rgba(0,183,255,.18), transparent 42%), #020617;
+    }
     .wrap{ max-width:900px; margin:0 auto; }
-    .h{ font-size:22px; font-weight:800; margin-bottom:10px; }
-    .sub{ color:#444; margin-bottom:18px; }
-    .box{ border:1px solid #ddd; border-radius:10px; padding:14px; margin:12px 0; }
+    .h{ font-size:24px; font-weight:800; margin-bottom:10px; letter-spacing:.01em; color:#F1F5F9; }
+    .sub{ color:#cbd5e1; margin-bottom:18px; line-height:1.45; }
+    .box{ border:1px solid rgba(56,189,248,.25); border-radius:14px; padding:16px; margin:12px 0; background:rgba(11,17,32,.82); box-shadow:0 12px 30px rgba(2,6,23,.35); }
     .row{ display:flex; gap:14px; flex-wrap:wrap; }
     .col{ flex:1; min-width:260px; }
-    .k{ font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:#666; }
-    .v{ font-size:15px; margin-top:4px; word-break:break-word; }
-    .badge{ display:inline-block; padding:6px 10px; border-radius:999px; background:#eef6ff; border:1px solid #cfe3ff; font-weight:700; }
-    .muted{ color:#666; font-size:13px; line-height:1.45; }
-    .btn{ display:inline-block; margin-top:10px; padding:10px 12px; border-radius:10px; border:1px solid #ddd; text-decoration:none; color:#111; font-weight:700; }
-    @media print { .noPrint{ display:none; } body{ margin:0.5in; } }
+    .k{ font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:#94a3b8; }
+    .v{ font-size:15px; margin-top:4px; word-break:break-word; color:#F1F5F9; }
+    .badge{ display:inline-block; padding:6px 10px; border-radius:999px; background:rgba(11,120,207,.25); border:1px solid rgba(56,189,248,.45); color:#e0f2fe; font-weight:700; }
+    .muted{ color:#94a3b8; font-size:13px; line-height:1.45; }
+    .btn{ display:inline-block; margin-top:10px; padding:10px 12px; border-radius:10px; border:1px solid rgba(56,189,248,.45); text-decoration:none; color:#e0f2fe; font-weight:700; background:rgba(11,17,32,.88); }
+    .btn:hover{ background:linear-gradient(135deg,#0B78CF,#00B7FF); color:#fff; border-color:transparent; }
+    @media print { .noPrint{ display:none; } body{ margin:0.5in; background:#fff; color:#111; } .box{ border:1px solid #ddd; box-shadow:none; background:#fff; } }
   </style>
 </head>
 <body>
@@ -608,29 +615,37 @@ router.get("/contract/:token", async (req, res) => {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Carrier Agreement</title>
   <style>
-    body { margin:0; font-family: Arial, sans-serif; background:#0b1220; color:#e6eefc; }
+    body {
+      margin:0;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      background:
+        radial-gradient(circle at 0% 0%, rgba(0,183,255,.14), transparent 35%),
+        radial-gradient(circle at 100% 12%, rgba(56,189,248,.08), transparent 32%),
+        #020617;
+      color:#e5e7eb;
+    }
     .wrap { max-width: 980px; margin: 0 auto; padding: 20px; }
     .top { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
-    .brand { font-weight:800; letter-spacing:0.2px; }
-    .btn { display:inline-block; padding:10px 14px; border-radius:10px; background:#2b6cff; color:#fff; text-decoration:none; font-weight:700; }
-    .card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 16px; padding: 12px; }
+    .brand { font-weight:800; letter-spacing:0.2px; color:#f1f5f9; }
+    .btn { display:inline-block; padding:10px 14px; border-radius:10px; background:linear-gradient(135deg,#0B78CF,#00B7FF); color:#fff; text-decoration:none; font-weight:700; border:0; box-shadow:0 10px 24px rgba(11,120,207,.35); }
+    .card { background: rgba(11,17,32,0.82); border: 1px solid rgba(56,189,248,0.24); border-radius: 16px; padding: 12px; box-shadow:0 12px 30px rgba(2,6,23,.45); }
     iframe { width:100%; height: 70vh; border:0; border-radius: 12px; background:#fff; }
-    .muted { opacity:0.85; font-size: 13px; margin-top:10px; }
+    .muted { opacity:0.95; color:#94a3b8; font-size: 13px; margin-top:10px; }
     .form { margin-top: 14px; display:grid; gap:10px; }
     .row { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
     .row > div { display:flex; flex-direction:column; gap:6px; }
     label { font-size: 13px; opacity:0.9; }
     input[type="text"], input[type="email"] {
-      padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.18);
-      background: rgba(255,255,255,0.06); color:#e6eefc; outline:none;
+      padding:10px 12px; border-radius:10px; border:1px solid rgba(56,189,248,.28);
+      background: rgba(2,6,23,0.6); color:#f1f5f9; outline:none;
     }
     input[type="checkbox"] { transform: scale(1.2); }
     .checkline { display:flex; gap:10px; align-items:flex-start; }
     .submitline { display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
-    .btn2 { padding:12px 16px; border-radius:10px; background:#22c55e; color:#06220f; border:0; font-weight:800; cursor:pointer; }
+    .btn2 { padding:12px 16px; border-radius:10px; background:linear-gradient(135deg,#0B78CF,#00B7FF); color:#fff; border:0; font-weight:800; cursor:pointer; box-shadow:0 12px 26px rgba(11,120,207,.35); }
     .btn2[disabled] { opacity:0.6; cursor:not-allowed; }
     .msg { font-size: 14px; }
-    .ok { color: #86efac; }
+    .ok { color: #7dd3fc; }
     .err { color: #fca5a5; }
 
     .docsCard { margin-top:14px; }
@@ -642,14 +657,14 @@ router.get("/contract/:token", async (req, res) => {
       gap:8px;
       align-items:center;
       padding:8px 0;
-      border-top:1px solid rgba(255,255,255,0.1);
+      border-top:1px solid rgba(56,189,248,0.18);
     }
     .docRow:first-of-type { border-top:0; }
     .docReq { font-size:12px; font-weight:700; padding:4px 8px; border-radius:999px; display:inline-block; }
-    .docReq.required { background:rgba(239,68,68,0.2); color:#fecaca; border:1px solid rgba(252,165,165,0.4); }
-    .docReq.optional { background:rgba(148,163,184,0.2); color:#cbd5e1; border:1px solid rgba(203,213,225,0.35); }
+    .docReq.required { background:rgba(11,120,207,.2); color:#dbeafe; border:1px solid rgba(56,189,248,.45); }
+    .docReq.optional { background:rgba(15,23,42,.7); color:#cbd5e1; border:1px solid rgba(148,163,184,.35); }
     .docStatus { font-size:13px; }
-    .docStatus.ok { color:#86efac; }
+    .docStatus.ok { color:#7dd3fc; }
     .docStatus.err { color:#fca5a5; }
 
     @media (max-width: 720px) {
@@ -659,7 +674,7 @@ router.get("/contract/:token", async (req, res) => {
 /* modal (same vibe as account modal) */
 .modal-backdrop{
   position: fixed; inset: 0;
-  background: rgba(0,0,0,0.55);
+  background: rgba(2,6,23,0.72);
   display:none;
   align-items:center;
   justify-content:center;
@@ -669,8 +684,8 @@ router.get("/contract/:token", async (req, res) => {
 .modal-backdrop.is-open{ display:flex; }
 .modal{
   width: min(520px, 100%);
-  background: rgba(15,23,42,0.98);
-  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(11,17,32,0.98);
+  border: 1px solid rgba(56,189,248,.28);
   border-radius: 16px;
   box-shadow: 0 24px 60px rgba(0,0,0,0.45);
   overflow:hidden;
@@ -684,7 +699,7 @@ router.get("/contract/:token", async (req, res) => {
 .icon-btn{
   background: transparent;
   border: 0;
-  color: #e6eefc;
+  color: #e5e7eb;
   font-size: 18px;
   cursor:pointer;
 }
@@ -694,9 +709,9 @@ router.get("/contract/:token", async (req, res) => {
   width:100%;
   padding: 12px 12px;
   border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.18);
-  background: rgba(255,255,255,0.06);
-  color:#e6eefc;
+  border: 1px solid rgba(56,189,248,.3);
+  background: rgba(2,6,23,.6);
+  color:#e5e7eb;
   outline:none;
 }
 .modal-actions{
@@ -707,8 +722,8 @@ router.get("/contract/:token", async (req, res) => {
 .btn-primary{
   padding: 12px 16px;
   border-radius: 10px;
-  background: #22c55e;
-  color:#06220f;
+  background: linear-gradient(135deg,#0B78CF,#00B7FF);
+  color:#fff;
   border:0;
   font-weight: 800;
   cursor:pointer;
@@ -716,9 +731,9 @@ router.get("/contract/:token", async (req, res) => {
 .btn-ghost{
   padding: 12px 16px;
   border-radius: 10px;
-  background: rgba(255,255,255,0.08);
-  color:#e6eefc;
-  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(15,23,42,.85);
+  color:#e5e7eb;
+  border: 1px solid rgba(148,163,184,.28);
   cursor:pointer;
 }
 .form-error{
@@ -732,13 +747,13 @@ router.get("/contract/:token", async (req, res) => {
   display:flex;
   align-items:center;
   justify-content:center;
-  background: #0b1220;
+  background: #020617;
   z-index: 9000;
 }
 .success-card{
   width: min(640px, 92vw);
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(11,17,32,.9);
+  border: 1px solid rgba(56,189,248,.24);
   border-radius: 18px;
   padding: 22px;
   text-align:center;
@@ -759,8 +774,8 @@ router.get("/contract/:token", async (req, res) => {
     display:block;
     padding:14px;
     border-radius:16px;
-    border:1px solid rgba(255,255,255,0.12);
-    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(56,189,248,.24);
+    background:rgba(11,17,32,.88);
     margin-bottom:14px;
   }
   .pdfMobileTitle{ font-weight:900; font-size:18px; }
@@ -770,7 +785,7 @@ router.get("/contract/:token", async (req, res) => {
     margin-top:10px;
     padding:12px 14px;
     border-radius:12px;
-    background:#2b6cff;
+    background:linear-gradient(135deg,#0B78CF,#00B7FF);
     color:#fff;
     font-weight:800;
     text-decoration:none;
