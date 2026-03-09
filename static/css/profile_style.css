@@ -2081,35 +2081,11 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   text-align: center;
 }
 
-.cs-modal.hidden {
-  display: none;
-}
 
-.cs-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-}
 
-.cs-modal-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(4, 10, 20, 0.68);
-  backdrop-filter: blur(8px);
-}
 
-.cs-modal-card {
-  position: relative;
-  width: min(92vw, 460px);
-  margin: 12vh auto 0;
-  background: linear-gradient(180deg, rgba(12,18,30,.96), rgba(8,12,22,.96));
-  border: 1px solid rgba(110, 180, 255, 0.18);
-  border-radius: 20px;
-  box-shadow: 0 30px 80px rgba(0,0,0,.45);
-  padding: 28px 24px 22px;
-  color: #eaf2ff;
-  z-index: 1;
-}
+
+
 
 .cs-modal-card h3 {
   margin: 0 0 10px;
@@ -2158,5 +2134,92 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
 }
 
 .cs-modal-close:hover {
+  background: rgba(255,255,255,.12);
+}
+
+
+.contract-success-modal.hidden {
+  display: none;
+}
+
+.contract-success-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.contract-success-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.58);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.contract-success-card {
+  position: relative;
+  width: min(460px, 92vw);
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow:
+    0 30px 80px rgba(0,0,0,.65),
+    inset 0 1px 0 rgba(255,255,255,.06);
+  background: rgba(2, 6, 23, .86);
+  color: #eaf2ff;
+  padding: 28px 24px 22px;
+  z-index: 1;
+}
+
+.contract-success-card h3 {
+  margin: 0 0 10px;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.contract-success-card p {
+  margin: 0 0 22px;
+  color: rgba(234, 242, 255, 0.78);
+  line-height: 1.5;
+}
+
+.contract-success-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 16px;
+  background: rgba(0, 183, 255, 0.14);
+  border: 1px solid rgba(0, 183, 255, 0.28);
+  color: #67d4ff;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.contract-success-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.contract-success-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255,255,255,.06);
+  color: #dce8ff;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.contract-success-close:hover {
   background: rgba(255,255,255,.12);
 }
