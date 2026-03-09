@@ -1,6 +1,26 @@
 // static/js/pages/carrier.js
 (() => {
 
+function openContractSuccessModal() {
+  const modal = document.getElementById("contractSuccessModal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function closeContractSuccessModal() {
+  const modal = document.getElementById("contractSuccessModal");
+  if (!modal) return;
+  modal.classList.add("hidden");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+document.getElementById("contractSuccessOk")?.addEventListener("click", closeContractSuccessModal);
+document.getElementById("contractSuccessClose")?.addEventListener("click", closeContractSuccessModal);
+
+document.querySelector("#contractSuccessModal .cs-modal-backdrop")?.addEventListener("click", closeContractSuccessModal);
+
+  
 function showFeatureGate({ title, body, note = "", primaryText = "Continue", onPrimary }) {
   const backdrop = document.getElementById("feature-gate-modal");
   const elTitle = document.getElementById("feature-gate-title");
@@ -936,7 +956,7 @@ function wireSendContractModalOnce() {
     }
 
     hideSendContractModal();
-    alert("Contract sent.");
+    openContractSuccessModal();
   });
 }
 
