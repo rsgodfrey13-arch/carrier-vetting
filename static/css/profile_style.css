@@ -2080,3 +2080,83 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   white-space: nowrap;
   text-align: center;
 }
+
+.cs-modal.hidden {
+  display: none;
+}
+
+.cs-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+}
+
+.cs-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 10, 20, 0.68);
+  backdrop-filter: blur(8px);
+}
+
+.cs-modal-card {
+  position: relative;
+  width: min(92vw, 460px);
+  margin: 12vh auto 0;
+  background: linear-gradient(180deg, rgba(12,18,30,.96), rgba(8,12,22,.96));
+  border: 1px solid rgba(110, 180, 255, 0.18);
+  border-radius: 20px;
+  box-shadow: 0 30px 80px rgba(0,0,0,.45);
+  padding: 28px 24px 22px;
+  color: #eaf2ff;
+  z-index: 1;
+}
+
+.cs-modal-card h3 {
+  margin: 0 0 10px;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.cs-modal-card p {
+  margin: 0 0 22px;
+  color: rgba(234, 242, 255, 0.78);
+  line-height: 1.5;
+}
+
+.cs-modal-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 16px;
+  background: rgba(0, 183, 255, 0.14);
+  border: 1px solid rgba(0, 183, 255, 0.28);
+  color: #67d4ff;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.cs-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.cs-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255,255,255,.06);
+  color: #dce8ff;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.cs-modal-close:hover {
+  background: rgba(255,255,255,.12);
+}
