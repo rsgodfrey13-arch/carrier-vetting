@@ -50,13 +50,13 @@
   --border: var(--cs-border);
   --radius: var(--cs-radius-md);
   --accent-1: var(--cs-accent);
-  --accent-2: #22c55e;
+  --accent-2: #0B78CF;
   --accent-warn:#f97316;
   --text-main: var(--cs-text-main);
   --text-muted: var(--cs-text-muted);
   --bg-1: var(--cs-bg-main);
   --bg-2: var(--cs-bg-card);
-  --accent-button: #10b981;
+  --accent-button: #0B78CF;
   --accent-red-button: #e11d48;
   --accent-purp: #7C3AED;
   --border-subtle: var(--cs-border);
