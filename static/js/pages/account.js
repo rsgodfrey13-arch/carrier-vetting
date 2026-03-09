@@ -945,7 +945,8 @@ helpSend?.addEventListener("click", async () => {
     const data = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(data.error || "Failed to send.");
 
-    setHelpMsg("ok", `Sent. Ticket #${data.ticket_id}`);
+    const id = data.public_id || `CS-${String(data.ticket_id).padStart(6, "0")}`;
+    setHelpMsg("ok", `Sent. ${id}`);
     // clear message only (keep contact info)
     helpSubject.value = "";
     helpMessage.value = "";
