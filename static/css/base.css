@@ -70,6 +70,53 @@
 /* helpers */
 .hidden{ display:none; }
 
+/* Shared layout/structure primitives */
+.cs-page-shell{
+  width:min(1200px, calc(100% - 40px));
+  margin:28px auto 80px;
+}
+
+.cs-page-header{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:var(--cs-space-lg);
+  margin-bottom:var(--cs-space-lg);
+}
+
+.cs-page-subtitle{
+  margin:6px 0 0;
+  color:var(--cs-text-muted);
+}
+
+.action-bar{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.field-row,
+.cs-field-row{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:12px;
+}
+
+.field-group,
+.cs-field{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+@media (max-width: 760px){
+  .field-row,
+  .cs-field-row{
+    grid-template-columns:1fr;
+  }
+}
+
 /* Make clickable elements use pointer */
 button,
 a,

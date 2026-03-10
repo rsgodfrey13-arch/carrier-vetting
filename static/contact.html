@@ -20,8 +20,8 @@
   <!-- Header partial (whatever you already use) -->
   <div id="site-header"></div>
 
-  <main class="page contact-page">
-    <header class="contact-hero">
+  <main class="page contact-page cs-page-shell">
+    <header class="contact-hero cs-page-header">
       <div class="contact-hero-left">
         <h1 class="contact-title">Contact</h1>
         <p class="contact-subtitle">
@@ -38,7 +38,7 @@
       <div class="contact-grid">
         <!-- LEFT: Form -->
         <div class="contact-card">
-          <div class="contact-card-head">
+          <div class="contact-card-head card-header">
             <div>
               <div class="contact-kicker">Message</div>
               <div class="contact-headline">Send us a note</div>
@@ -48,22 +48,22 @@
 
           <form id="contact-form" class="contact-form" method="post" action="/api/public/contact">
             <div class="field-row">
-              <div class="field">
+              <div class="field field-group">
                 <label class="field-label" for="name">Full name</label>
                 <input class="field-input" id="name" name="name" autocomplete="name" placeholder="Your name" required />
               </div>
-              <div class="field">
+              <div class="field field-group">
                 <label class="field-label" for="email">Work email</label>
                 <input class="field-input" id="email" name="email" type="email" autocomplete="email" placeholder="you@company.com" required />
               </div>
             </div>
 
             <div class="field-row">
-              <div class="field">
+              <div class="field field-group">
                 <label class="field-label" for="company">Company</label>
                 <input class="field-input" id="company" name="company" autocomplete="organization" placeholder="Company name" />
               </div>
-              <div class="field">
+              <div class="field field-group">
                 <label class="field-label" for="topic">Topic</label>
                 <select class="field-input field-select" id="topic" name="topic">
                   <option value="sales">Sales / Pricing</option>
@@ -81,22 +81,22 @@
               <input class="field-input" id="phone" name="phone" autocomplete="tel" placeholder="(555) 555-5555" />
             </div>
 
-            <div class="field">
+            <div class="field field-group">
               <label class="field-label" for="subject">Subject</label>
               <input class="field-input" id="subject" name="subject" placeholder="What can we help with?" required />
             </div>
 
-            <div class="field">
+            <div class="field field-group">
               <label class="field-label" for="message">Message</label>
               <textarea class="field-input field-textarea" id="message" name="message" rows="8"
                 placeholder="Include any details that help us respond quickly." required></textarea>
             </div>
 
-            <div class="contact-actions">
+            <div class="contact-actions action-bar">
               <div class="contact-note">
                 Already a customer? Use <a class="inline-link" href="/account.html#help">My Account → Help &amp; Support</a>.
               </div>
-              <button class="contact-send" type="submit">Send</button>
+              <button class="contact-send btn-primary" type="submit">Send</button>
             </div>
 
             <div id="contact-status" class="contact-status hidden" role="status" aria-live="polite"></div>

@@ -1,0 +1,1215 @@
+diff --git a/static/about.html b/static/about.html
+index b1c7f34b0b32507798edc62dfb82d82cf2adc620..bea229a69c1a304e4ee54d9033ec860e77acba8a 100644
+--- a/static/about.html
++++ b/static/about.html
+@@ -1,42 +1,42 @@
+ <!DOCTYPE html>
+ <html lang="en">
+ <head>
+   <meta charset="UTF-8" />
+   <title>About – Carrier Shark</title>
+   <link rel="stylesheet" href="/static/css/base.css" />
+   <link rel="stylesheet" href="/static/css/style1.css" />
+   <link rel="stylesheet" href="/static/css/about.css" />
+   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+ </head>
+ <body class="carrier-list">
+   <div class="bg-gradient"></div>
+   <div class="bg-grid"></div>
+   <div id="site-header"></div>
+ 
+ 
+-<main class="page about-page">
++<main class="page about-page cs-page-shell">
+ 
+   <!-- Hero.. -->
+   <section class="about-hero">
+     <h1>Built for Broker Control</h1>
+     <p class="about-lead">
+       Carrier Shark exists to bring structure, visibility, and operational control
+       to carrier relationships inside modern freight brokerages.
+     </p>
+   </section>
+ 
+   <!-- Section 1 -->
+   <section class="about-section">
+     <h2>Why Carrier Shark Exists</h2>
+     <p>
+       Freight brokers operate in an environment where carrier authority status,
+       insurance validity, documentation, and agreements directly impact risk exposure.
+       Yet most workflows rely on scattered spreadsheets, inbox searches, or manual tracking.
+     </p>
+     <p>
+       Carrier Shark centralizes carrier visibility into a single system designed
+       specifically for brokers — not compliance checklists, not onboarding gimmicks,
+       and not generic document storage.
+     </p>
+   </section>
+ 
+diff --git a/static/account.html b/static/account.html
+index fa982ce67cb8cd6bbc6f9c5f8d4d1a8020b56b1d..e44aa42ab96e7dc077c572ad543929482ec49546 100644
+--- a/static/account.html
++++ b/static/account.html
+@@ -1,55 +1,55 @@
+ <!-- /public/account (or /profile) .-->
+ <!DOCTYPE html>
+ <html lang="en">
+ <head>
+   <meta charset="UTF-8">
+     <title>My Account</title>
+ <link rel="stylesheet" href="/static/css/base.css">
+ <link rel="stylesheet" href="/static/css/account.css">
+ <link rel="stylesheet" href="/static/css/style1.css" />
+ <link rel="stylesheet" href="/static/css/plans.css" />
+ <link rel="stylesheet" href="/static/css/activate-plan.css" />
+ <link rel="stylesheet" href="/static/css/account-plan.css" />
+   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+ </head>
+ 
+ 
+   
+ <body class="account-page">
+   <div class="bg-gradient"></div>
+   <div class="bg-grid"></div>
+   <div id="site-header"></div>  
+   <div class="page">
+ 
+-    <header class="account-header">
++    <header class="account-header cs-page-header">
+       <div>
+         <h1 class="page-title">My Account</h1>
+         <p class="page-subtitle">Manage alerts, agreements, API access, and your plan.</p>
+       </div>
+ 
+-      <div class="account-header-actions">
++      <div class="account-header-actions action-bar">
+         <button
+           class="btn-ghost"
+           data-tab-jump="help"
+         >
+           Help
+         </button>
+         <button id="btn-signout" class="btn-ghost">Sign out</button>
+       </div>
+     </header>
+ 
+     <div class="account-shell">
+       <!-- LEFT NAV -->
+       <aside class="account-rail">
+         <button class="rail-item is-active" data-tab="overview">
+           <span class="rail-dot"></span>
+           Overview
+         </button>
+         <button class="rail-item" data-tab="team">
+           <span class="rail-dot"></span>
+           Teammates
+         </button>
+         <button class="rail-item" data-tab="alerts">
+           <span class="rail-dot"></span>
+           Email Alerts
+         </button>
+@@ -62,141 +62,141 @@
+           API
+         </button>
+         <button class="rail-item" data-tab="plan">
+           <span class="rail-dot"></span>
+           Plan
+         </button>
+         <button class="rail-item" data-tab="billing">
+           <span class="rail-dot"></span>
+           Billing
+         </button>
+         <button class="rail-item" data-tab="security">
+           <span class="rail-dot"></span>
+           Security
+         </button>
+                 <button class="rail-item" data-tab="help">
+           <span class="rail-dot"></span>
+           Help & Support
+         </button>
+       </aside>
+ 
+       <!-- RIGHT CONTENT -->
+       <main class="account-panel">
+         <!-- OVERVIEW -->
+         <section class="tab-panel is-active" id="tab-overview">
+           <div class="card">
+-            <div class="card-head">
++            <div class="card-head card-header">
+               <h2>Account Snapshot</h2>
+               <span class="badge" id="plan-badge">—</span>
+             </div>
+ 
+             <div class="kv-grid">
+               <div class="kv">
+                 <div class="kv-label">Name</div>
+                 <div class="kv-value" id="me-name">—</div>
+               </div>
+               <div class="kv">
+                 <div class="kv-label">Email</div>
+                 <div class="kv-value" id="me-email">—</div>
+               </div>
+               <div class="kv">
+                 <div class="kv-label">Company</div>
+                 <div class="kv-value" id="me-company">—</div>
+               </div>
+               <div class="kv">
+                 <div class="kv-label">Alerts</div>
+                 <div class="kv-value">
+                   <div class="pill-row" id="alerts-pills">
+                     <span class="status-pill is-off" id="me-email_alerts">Email</span>
+                     <span class="status-pill is-off" id="me-rest_alerts">REST</span>
+                     <span class="status-pill is-off" id="me-webhook_alerts">Webhook</span>
+                   </div>
+                 </div>
+               </div>
+             <div class="kv">
+               <div class="kv-label">Plan</div>
+               <div class="kv-value kv-inline">
+                 <span id="account-plan">—</span>
+                 <button class="link-btn" type="button" data-tab-jump="plan">
+                   Manage
+                 </button>
+               </div>
+             </div>
+             <div class="kv">
+               <div class="kv-label">Password</div>
+               <div class="kv-value kv-inline">
+                 <span class="kv-mask">••••••••</span>
+                 <button class="link-btn" type="button" data-tab-jump="security">
+                   Manage
+                 </button>
+               </div>
+             </div>
+             </div>
+           </div>
+ 
+           <!-- USAGE -->
+           <div class="card" id="usage-card" style="display:none;">
+-            <div class="card-head">
++            <div class="card-head card-header">
+               <div>
+                 <h2>Usage</h2>
+                 <p class="muted" id="credits-subtext">Carriers monitored.</p>
+               </div>
+           
+               <span class="badge" id="credits-badge">—</span>
+             </div>
+           
+             <div class="usage-grid">
+               <div class="usage-metric">
+                 <div class="kv-label">Carriers monitored</div>
+                 <div class="usage-value">
+                   <span id="credits-used">—</span>
+                   <span class="usage-dim">/</span>
+                   <span id="credits-limit">—</span>
+                 </div>
+               </div>
+           
+             </div>
+           
+             <div class="usage-bar" aria-label="Credits usage">
+               <div class="usage-bar-fill" id="credits-bar" style="width:0%;"></div>
+             </div>
+           
+             <div class="usage-footer">
+               <div class="muted" id="credits-footnote">—</div>
+               <button class="link-btn" type="button" data-tab-jump="plan">
+                 Manage plan
+               </button>
+             </div>
+           </div>
+ 
+ 
+         </section>
+ 
+         <!-- TEAM -->
+         <section class="tab-panel" id="tab-team">
+           <div class="card">
+-            <div class="card-head">
++            <div class="card-head card-header">
+               <h2>Teammates</h2>
+               <p class="muted">Invite teammates to your workspace and manage access.</p>
+             </div>
+         
+             <div class="row" style="align-items:flex-end;">
+               <div style="flex:1; min-width:240px;">
+                 <div class="row-title" style="margin-bottom:6px;">Invite by email</div>
+                 <input id="team-invite-email" class="api-input" type="email" placeholder="name@company.com" />
+               </div>
+         
+               <div style="width:180px;">
+                 <div class="row-title" style="margin-bottom:6px;">Role</div>
+                 <select id="team-invite-role" class="api-input">
+                   <option value="MEMBER">Member</option>
+                   <option value="ADMIN">Admin</option>
+                 </select>
+               </div>
+         
+               <div class="row-actions">
+                 <button class="btn-primary" id="btn-team-invite">Send invite</button>
+               </div>
+             </div>
+         
+             <div class="divider"></div>
+         
+@@ -206,51 +206,51 @@
+                 <div class="row-sub">Active users in this workspace.</div>
+               </div>
+               <button class="btn-ghost" id="btn-team-refresh">Refresh</button>
+             </div>
+         
+             <div id="team-members" class="muted">Loading…</div>
+         
+             <div class="divider"></div>
+         
+             <div class="row" style="justify-content:space-between;">
+               <div>
+                 <div class="row-title">Pending invites</div>
+                 <div class="row-sub">Invites not accepted yet.</div>
+               </div>
+             </div>
+         
+             <div id="team-invites" class="muted">Loading…</div>
+         
+             <div class="muted" id="team-msg" style="margin-top:10px; display:none;"></div>
+           </div>
+         </section>
+ 
+         <!-- ALERTS -->
+         <section class="tab-panel" id="tab-alerts">
+           <div class="card">
+-            <div class="card-head">
++            <div class="card-head card-header">
+               <h2>Email Alerts</h2>
+               <p class="muted">Set global delivery preferences. Carrier-specific alert switches live on the carrier profile.</p>
+             </div>
+             <!-- EMAIL ALERTS LOCK OVERLAY -->
+             <div class="alerts-lock-overlay" id="email-alerts-locked" style="display:none;">
+               <div class="alerts-lock-content">
+                 <div class="alerts-lock-title">Email alerts aren’t enabled</div>
+                 <div class="alerts-lock-sub">
+                   Upgrade your plan to receive carrier alerts by email.
+                 </div>
+                 <button
+                   class="btn-primary"
+                   type="button"
+                   data-tab-jump="plan"
+                 >
+                   Upgrade your plan
+                 </button>
+               </div>
+             </div>
+             <div class="row">
+               <div>
+                 <div class="row-title">Alerts Master Switch</div>
+                 <div class="row-sub">If off, you won’t receive any carrier alerts by email.</div>
+               </div>
+             
+@@ -274,75 +274,75 @@
+ 
+   <button
+     class="btn-primary btn-save-inline"
+     id="btn-save-alert-fields-top"
+     disabled
+   >
+     Save changes
+   </button>
+ </div>
+ 
+ 
+             <div id="email-alert-fields">
+               <!-- JS will render grouped categories + toggles here -->
+             </div>
+             
+             <div class="alerts-save-row">
+               <button class="btn-primary" id="btn-save-alert-fields" disabled>Save changes</button>
+             </div>
+ 
+           </div>
+         </section>
+ 
+         <!-- AGREEMENTS -->
+         <section class="tab-panel" id="tab-agreements">
+           <div class="card">
+-            <div class="card-head">
++            <div class="card-head card-header">
+               <h2>Agreements</h2>
+               <p class="muted">Pick your default agreement and manage templates.</p>
+             </div>
+ 
+             <div class="row" style="display:flex; gap:10px; flex-wrap:wrap;">
+               <button class="btn-primary" id="btn-set-default">Set default</button>
+               <button class="btn-ghost" id="btn-save-agreement-requirements" disabled>Save requirements</button>
+             </div>
+ 
+             <div id="agreement-requirements" class="toggle-grid" style="margin-top:10px; margin-bottom:4px;"></div>
+ 
+             <div class="divider"></div>
+ 
+             <div class="agreements-grid" id="agreements-grid">
+               <div class="muted">Loading…</div>
+             </div>
+             
+           </div>
+         </section>
+ 
+         <!-- API -->
+         <section class="tab-panel" id="tab-api">
+           <div class="card">
+-            <div class="card-head">
++            <div class="card-head card-header">
+               <h2>API</h2>
+               <p class="muted">Everything you need to integrate Carrier Shark into your workflow.</p>
+             </div>
+ 
+             <div class="row lock-wrap" id="api-key-row">
+               <div class="lock-main">
+                 <div class="row-title">API Key</div>
+                 <div class="row-sub" id="api-key-masked">—</div>
+               </div>
+             
+               <div class="row-actions">
+                 <button class="btn-ghost" id="btn-copy-key">Copy</button>
+                 <button class="btn-primary" id="btn-rotate-key">Rotate</button>
+               </div>
+             
+               <div class="lock-footer" id="api-key-locked" style="display:none;">
+                 <span class="lock-dot"></span>
+                 <span>
+                   Upgrade required. API access isn’t enabled on your plan.
+                   <button class="link-btn" type="button" data-tab-jump="plan">
+                     Upgrade your plan
+                   </button>
+                 </span>
+               </div>
+             </div>
+@@ -388,51 +388,51 @@
+               </div>
+             
+               <div class="row-actions">
+                 <button class="btn-primary" id="btn-api-docs">
+                   Open docs
+                 </button>
+               </div>
+             
+               <div class="lock-footer" id="docs-locked" style="display:none;">
+                 <span class="lock-dot"></span>
+                 <span>
+                   Upgrade required. Enable API access to view documentation.
+                   <button class="link-btn" type="button" data-tab-jump="plan">
+                     Upgrade your plan
+                   </button>
+                 </span>
+               </div>
+             </div>
+ 
+             </div> 
+             </section> 
+ 
+         <!-- PLAN -->
+         <section class="tab-panel" id="tab-plan">
+           <div class="card">
+-            <div class="card-head">
++            <div class="card-head card-header">
+               <h2>Plan</h2>
+               <p class="muted">Upgrade when you’re ready. No nonsense.</p>
+             </div>
+ 
+ <form method="get" action="/billing" class="account-plan-form">
+   <input type="hidden" id="selected-plan" name="plan" value="" />
+   <input type="hidden" id="billing-context" name="context" value="upgrade" />
+ 
+   <div class="account-plan-topline">
+     <div class="muted" style="margin:0;">
+       Select a plan. You’ll confirm billing on the next step.
+     </div>
+     <span class="badge" id="current-plan-badge">Current: —</span>
+   </div>
+ 
+ <div class="plans-table-wrap" role="region" aria-label="Plan comparison table" tabindex="0">
+   <table class="plans-table">
+     <thead>
+       <tr>
+         <th scope="col" class="plans-col-feature"></th>
+ 
+         <!-- CORE -->
+         <th scope="col" class="plans-col-plan selectable" data-plan-col="core">
+           <div class="plan-head">
+             <span class="plan-radio" aria-hidden="true"></span>
+@@ -630,69 +630,69 @@
+     <div class="row">
+       <div class="row-main">
+         <div class="row-title">Manage billing in Stripe</div>
+         <div class="row-sub">
+           Update card, download invoices, cancel, or change billing details.
+         </div>
+       </div>
+ 
+       <div class="row-actions">
+         <button class="btn-primary" id="btn-manage-billing">
+           Manage billing
+         </button>
+       </div>
+     </div>
+ 
+     <div class="muted" style="margin-top:12px;">
+       Payments are processed by Stripe. We never store card details.
+     </div>
+   </div>
+ </section>
+ 
+         
+         <!-- SECURITY -->
+         <section class="tab-panel" id="tab-security">
+           <div class="card">
+-            <div class="card-head">
++            <div class="card-head card-header">
+               <h2>Security</h2>
+               <p class="muted">Keep your account tight.</p>
+             </div>
+ 
+             <div class="row">
+               <div>
+                 <div class="row-title">Password</div>
+                 <div class="row-sub">Change your password anytime.</div>
+               </div>
+               <button class="btn-primary" id="btn-change-password">Change</button>
+             </div>
+           </div>
+         </section>
+ 
+         <!-- HELP -->
+         <section class="tab-panel" id="tab-help">
+           <div class="card">
+-            <div class="card-head">
++            <div class="card-head card-header">
+               <h2>Help & Support</h2>
+               <p class="muted">Get help fast. Keep moving.</p>
+             </div>
+         
+             <!-- quick actions row -->
+             <div class="row">
+               <div>
+                 <div class="row-title">Contact Support</div>
+                 <div class="row-sub">Send a message to the team.</div>
+               </div>
+       <!--        <div class="row-actions">
+                 <button class="btn-ghost" id="btn-help-faq" type="button">FAQ</button>
+                 <button class="btn-primary" id="btn-help-contact" type="button">Contact</button>
+               </div> -->
+             </div>
+         
+             <div class="divider"></div>
+         
+             <!-- help shell -->
+ <div class="help-grid">
+   <!-- LEFT: form -->
+   <div class="help-card">
+     <div class="help-card-title">Message</div>
+     <div class="muted" style="margin-top:6px;">We typically reply within 1 business day.</div>
+ 
+diff --git a/static/activate-plan.html b/static/activate-plan.html
+index 767e37db278edeaf8f52c10c2f2a078da903910c..be6da4df69b91cd95e9d855ebaa94715b34d8e71 100644
+--- a/static/activate-plan.html
++++ b/static/activate-plan.html
+@@ -1,50 +1,50 @@
+ <!doctype html>
+ <html lang="en">
+ <head>
+   <meta charset="utf-8" />
+   <meta name="viewport" content="width=device-width, initial-scale=1" />
+   <title>Carrier Shark — Activate Plan</title>
+ 
+   <link rel="stylesheet" href="/static/css/base.css" />
+   <link rel="stylesheet" href="/static/css/style1.css" />
+   <link rel="stylesheet" href="/static/css/signup.css" />
+   <!-- Optional: you can also include plans.css if you want exact typography parity -->
+   <link rel="stylesheet" href="/static/css/plans.css" />
+   
+ <!-- NEW: activation-only overrides -->
+ <link rel="stylesheet" href="/static/css/activate-plan.css" />
+   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+   
+ </head>
+ 
+ <body class="auth-page activate-plan-page">
+     <div class="bg-gradient"></div>
+     <div class="bg-grid"></div>
+     <div id="site-header" data-header="slim"></div>
+ 
+-  <main class="page">
++  <main class="page cs-page-shell">
+     <section class="auth-shell wide">
+       <div class="auth-hero">
+         <span class="auth-eyebrow">Plan activation</span>
+         <h1 class="auth-title">Choose your plan.</h1>
+         <p class="auth-subtitle">
+           Monitoring starts only after billing is complete. No surprises.
+         </p>
+         <p class="auth-subtitle" style="margin-top:8px; opacity:.85;">
+           Click a plan to continue.
+         </p>
+       </div>
+ 
+       <div class="auth-card">
+         <div class="auth-card-inner">
+           <form method="get" action="/billing">
+             <input type="hidden" id="selected-plan" name="plan" value="" />
+ 
+       <div class="plans-table-wrap" role="region" aria-label="Plan comparison table" tabindex="0">
+         <table class="plans-table">
+           <thead>
+             <tr>
+               <th scope="col" class="plans-col-feature"></th>
+           
+               <th scope="col" class="plans-col-plan selectable" data-plan-col="starter">
+                 <div class="plan-head">
+@@ -185,45 +185,45 @@
+               <td class="is-featured" data-plan-col="pro">Standard email support</td>
+               <td data-plan-col="enterprise">Priority support</td>
+             </tr>
+           
+             <tr>
+               <th scope="row">Onboarding</th>
+               <td class="muted" data-plan-col="starter">—</td>
+               <td class="muted" data-plan-col="core">—</td>
+               <td class="is-featured" data-plan-col="pro">Available + onboarding support</td>
+               <td data-plan-col="enterprise">Available + onboarding support</td>
+             </tr>
+           
+             <tr class="bestfor-row">
+               <th scope="row">Best For</th>
+               <td data-plan-col="starter">Exploring the Platform</td>
+               <td data-plan-col="core">Small to growing broker teams</td>
+               <td class="is-featured" data-plan-col="pro">Operationally mature broker teams</td>
+               <td data-plan-col="enterprise">National &amp; multi-branch brokerages</td>
+             </tr>
+           </tbody>
+ 
+         </table>
+       </div>
+ 
+ 
+-            <div class="cs-row cs-row-right" style="margin-top:14px;">
++            <div class="cs-row cs-row-right action-bar" style="margin-top:14px;">
+               <a class="cs-btn cs-btn-ghost" href="/plans">Back</a>
+               <button id="continue-btn" class="cs-btn cs-btn-primary" type="submit" disabled>
+                 Continue to billing
+               </button>
+             </div>
+ 
+             <div class="cs-fineprint" style="margin-top:12px;">
+               <span>Billing comes next.</span>
+               <span><a href="/security">Security</a></span>
+             </div>
+           </form>
+         </div>
+       </div>
+     </section>
+   </main>
+ <script src="/js/shared/shared.js"></script>
+   <script src="/static/js/pages/activate.js"></script>
+ </body>
+ </html>
+diff --git a/static/contact.html b/static/contact.html
+index fb746bf85b18f7fe91082f7a2e5faf45fdd81423..15b42834b792d3d490af467c62131085bf5ce094 100644
+--- a/static/contact.html
++++ b/static/contact.html
+@@ -1,124 +1,124 @@
+ <!doctype html>
+ <html lang="en">
+ <head>
+   <meta charset="utf-8" />
+   <meta name="viewport" content="width=device-width, initial-scale=1" />
+   <title>Carrier Shark — Contact</title>
+ 
+   <!-- Your existing styles -->
+     <link rel="stylesheet" href="/static/css/base.css" />
+ 
+   <link rel="stylesheet" href="/static/css/style1.css" />
+ 
+   <!-- Page-specific add-on -->
+   <link rel="stylesheet" href="/static/css/contact.css" />
+ 
+   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+ </head>
+ 
+ <body class="carrier-list app-page">
+   <!-- Header partial (whatever you already use) -->
+   <div id="site-header"></div>
+ 
+-  <main class="page contact-page">
+-    <header class="contact-hero">
++  <main class="page contact-page cs-page-shell">
++    <header class="contact-hero cs-page-header">
+       <div class="contact-hero-left">
+         <h1 class="contact-title">Contact</h1>
+         <p class="contact-subtitle">
+           Sales questions, partnerships, or general support — send a note and we’ll get back to you.
+         </p>
+       </div>
+ 
+       <div class="contact-hero-right">
+         <a class="nav-link nav-cta contact-cta" href="/demo.html">Get a Demo</a>
+       </div>
+     </header>
+ 
+     <section class="contact-shell glass-card">
+       <div class="contact-grid">
+         <!-- LEFT: Form -->
+         <div class="contact-card">
+-          <div class="contact-card-head">
++          <div class="contact-card-head card-header">
+             <div>
+               <div class="contact-kicker">Message</div>
+               <div class="contact-headline">Send us a note</div>
+               <div class="contact-micro">We typically reply within 1 business day.</div>
+             </div>
+           </div>
+ 
+           <form id="contact-form" class="contact-form" method="post" action="/api/public/contact">
+             <div class="field-row">
+-              <div class="field">
++              <div class="field field-group">
+                 <label class="field-label" for="name">Full name</label>
+                 <input class="field-input" id="name" name="name" autocomplete="name" placeholder="Your name" required />
+               </div>
+-              <div class="field">
++              <div class="field field-group">
+                 <label class="field-label" for="email">Work email</label>
+                 <input class="field-input" id="email" name="email" type="email" autocomplete="email" placeholder="you@company.com" required />
+               </div>
+             </div>
+ 
+             <div class="field-row">
+-              <div class="field">
++              <div class="field field-group">
+                 <label class="field-label" for="company">Company</label>
+                 <input class="field-input" id="company" name="company" autocomplete="organization" placeholder="Company name" />
+               </div>
+-              <div class="field">
++              <div class="field field-group">
+                 <label class="field-label" for="topic">Topic</label>
+                 <select class="field-input field-select" id="topic" name="topic">
+                   <option value="sales">Sales / Pricing</option>
+                   <option value="product">Product question</option>
+                   <option value="partnership">Partnership</option>
+                   <option value="support">General support</option>
+                   <option value="security">Security / Compliance</option>
+                 </select>
+               </div>
+             </div>
+ 
+             <!-- Phone: present but optional + easy to hide -->
+             <div class="field phone-field hidden" id="phone-field">
+               <label class="field-label" for="phone">Phone (optional)</label>
+               <input class="field-input" id="phone" name="phone" autocomplete="tel" placeholder="(555) 555-5555" />
+             </div>
+ 
+-            <div class="field">
++            <div class="field field-group">
+               <label class="field-label" for="subject">Subject</label>
+               <input class="field-input" id="subject" name="subject" placeholder="What can we help with?" required />
+             </div>
+ 
+-            <div class="field">
++            <div class="field field-group">
+               <label class="field-label" for="message">Message</label>
+               <textarea class="field-input field-textarea" id="message" name="message" rows="8"
+                 placeholder="Include any details that help us respond quickly." required></textarea>
+             </div>
+ 
+-            <div class="contact-actions">
++            <div class="contact-actions action-bar">
+               <div class="contact-note">
+                 Already a customer? Use <a class="inline-link" href="/account.html#help">My Account → Help &amp; Support</a>.
+               </div>
+-              <button class="contact-send" type="submit">Send</button>
++              <button class="contact-send btn-primary" type="submit">Send</button>
+             </div>
+ 
+             <div id="contact-status" class="contact-status hidden" role="status" aria-live="polite"></div>
+           </form>
+         </div>
+ 
+         <!-- RIGHT: Quick links / routing -->
+         <aside class="contact-aside">
+           <div class="aside-card">
+             <div class="aside-title">Quick routes</div>
+ 
+             <a class="aside-link" href="/demo.html">
+               <span class="aside-link-title">Schedule a demo</span>
+               <span class="aside-link-sub">See Carrier Shark in 15 minutes.</span>
+             </a>
+ 
+             <a class="aside-link" href="/plans.html">
+               <span class="aside-link-title">Plans &amp; pricing</span>
+               <span class="aside-link-sub">Compare tiers and features.</span>
+             </a>
+ 
+             <a class="aside-link" href="/help.html">
+               <span class="aside-link-title">Help Center</span>
+               <span class="aside-link-sub">Guides, FAQ, and setup steps.</span>
+             </a>
+diff --git a/static/css/base.css b/static/css/base.css
+index 19315a012f9b676a1ee9741619862465330f5c16..c476f00673d0450a7f7311756d024cb428338e60 100644
+--- a/static/css/base.css
++++ b/static/css/base.css
+@@ -48,50 +48,97 @@
+   --muted: #5B6577;
+   --card: #0B1624;
+   --border: var(--cs-border);
+   --radius: var(--cs-radius-md);
+   --accent-1: var(--cs-accent);
+   --accent-2: #0B78CF;
+   --accent-warn:#f97316;
+   --text-main: var(--cs-text-main);
+   --text-muted: var(--cs-text-muted);
+   --bg-1: var(--cs-bg-main);
+   --bg-2: var(--cs-bg-card);
+   --accent-button: #0B78CF;
+   --accent-red-button: #e11d48;
+   --accent-purp: #7C3AED;
+   --border-subtle: var(--cs-border);
+   --card-bg: var(--cs-bg-elevated);
+   --shadow-soft: var(--cs-shadow-lg);
+   --radius-lg: var(--cs-radius-lg);
+   --radius-md: var(--cs-radius-md);
+ }
+ 
+ 
+ /* helpers */
+ .hidden{ display:none; }
+ 
++/* Shared layout/structure primitives */
++.cs-page-shell{
++  width:min(1200px, calc(100% - 40px));
++  margin:28px auto 80px;
++}
++
++.cs-page-header{
++  display:flex;
++  align-items:flex-end;
++  justify-content:space-between;
++  gap:var(--cs-space-lg);
++  margin-bottom:var(--cs-space-lg);
++}
++
++.cs-page-subtitle{
++  margin:6px 0 0;
++  color:var(--cs-text-muted);
++}
++
++.action-bar{
++  display:flex;
++  align-items:center;
++  gap:10px;
++  flex-wrap:wrap;
++}
++
++.field-row,
++.cs-field-row{
++  display:grid;
++  grid-template-columns:repeat(2, minmax(0, 1fr));
++  gap:12px;
++}
++
++.field-group,
++.cs-field{
++  display:flex;
++  flex-direction:column;
++  gap:6px;
++}
++
++@media (max-width: 760px){
++  .field-row,
++  .cs-field-row{
++    grid-template-columns:1fr;
++  }
++}
++
+ /* Make clickable elements use pointer */
+ button,
+ a,
+ .nav-btn{
+   cursor:pointer;
+ }
+ 
+ /* ================================
+    TOP NAV / HEADER (shared)
+    ================================ */
+ .site-header{
+   position:sticky;
+   top:0;
+   z-index:999;
+   padding:14px 0;
+   width:100%;
+ }
+ 
+ .glass-nav{
+   background:rgba(7,14,25,0.75);
+   backdrop-filter:blur(18px);
+   -webkit-backdrop-filter:blur(18px);
+   border-bottom:1px solid rgba(148,163,184,0.20);
+   box-shadow:0 10px 25px rgba(0,0,0,0.45);
+ }
+diff --git a/static/faq.html b/static/faq.html
+index d531f3488ef01a79d4b1b982ea1d19055f1aba3a..659f1236d0e523d372d63e9984ad58074a1fc2e7 100644
+--- a/static/faq.html
++++ b/static/faq.html
+@@ -1,49 +1,49 @@
+ <!doctype html>
+ <html lang="en">
+ <head>
+   <meta charset="utf-8" />
+   <meta name="viewport" content="width=device-width,initial-scale=1" />
+   <title>FAQ • Carrier Shark</title>
+ 
+   <!-- Your existing CSS -->
+   <link rel="stylesheet" href="/static/css/base.css" />
+   <link rel="stylesheet" href="/static/css/style1.css" />
+ 
+   <!-- Optional page-specific polish -->
+   <link rel="stylesheet" href="/static/css/faq.css" />
+   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+ </head>
+ 
+ <body class="app-page faq-page">
+   <!-- If you already inject the header with a partial, keep your existing method.
+        Option A: server-side include / template partial
+        Option B: <div id="site-header"></div> + your shared header loader JS
+   -->
+ <div id="site-header"></div>
+ 
+-  <main class="page" role="main">
++  <main class="page cs-page-shell" role="main">
+     <section class="faq-hero glass-card">
+       <div class="faq-hero-top">
+         <div>
+           <div class="faq-eyebrow">Support</div>
+           <h1 class="faq-title">Frequently Asked Questions</h1>
+           <p class="faq-subtitle">
+             Straight answers about carrier data, agreements, insurance collection, monitoring, and integrations.
+           </p>
+         </div>
+       </div>
+ 
+       <div class="faq-controls">
+         <div class="faq-search-wrap">
+           <label class="faq-search-label" for="faq-search">Search FAQs</label>
+           <input
+             id="faq-search"
+             class="faq-search"
+             type="search"
+             placeholder="Try: insurance, API, cancel, FMCSA, webhooks…"
+             autocomplete="off"
+           />
+           <div class="faq-search-hint" id="faq-search-hint">Showing all questions</div>
+         </div>
+ 
+         <div class="faq-tags" role="tablist" aria-label="FAQ Categories">
+diff --git a/static/help.html b/static/help.html
+index 3a5a6f0906943e15e62023099807c1707d224fec..84b61d880b24584e3143450ffbcecf233cfe1288 100644
+--- a/static/help.html
++++ b/static/help.html
+@@ -1,51 +1,51 @@
+ <!doctype html>
+ <html lang="en">
+ <head>
+   <meta charset="utf-8" />
+   <meta name="viewport" content="width=device-width,initial-scale=1" />
+   <title>Help Center • Carrier Shark</title>
+ 
+   <!-- Your existing CSS -->
+   <link rel="stylesheet" href="/static/css/base.css">
+   <link rel="stylesheet" href="/static/css/style1.css">
+ 
+   <!-- Help-specific CSS -->
+   <link rel="stylesheet" href="/static/css/help.css">
+   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+ </head>
+ <body class="help-page">
+   <div class="bg-gradient"></div>
+   <div class="bg-grid"></div>
+   <div id="site-header" data-header="slim"></div>
+ 
+   <!-- Include your existing header -->
+   <!-- <?php include 'header.html'; ?> -->
+   <!-- or -->
+   <!-- <div id="header-slot"></div> -->
+ 
+-  <main class="help-shell">
++  <main class="help-shell cs-page-shell">
+     <section class="help-hero">
+       <div class="help-hero-inner">
+         <div class="help-eyebrow">HELP CENTER</div>
+         <h1 class="help-title">How can we help?</h1>
+         <p class="help-subtitle">
+           Step-by-step guides for getting started, managing carriers, alerts, integrations, and billing.
+         </p>
+ 
+         <div class="help-search">
+           <input class="help-search-input" type="search" placeholder="Search guides (coming soon)..." disabled>
+           <button class="help-search-btn" type="button" disabled>Search</button>
+         </div>
+ 
+         <div class="help-quick">
+           <a class="help-chip" href="/help-article.html">Getting Started</a>
+           <a class="help-chip" href="/help/managing-carriers.html">Managing Carriers</a>
+           <a class="help-chip" href="/help/alerts.html">Alerts & Monitoring</a>
+           <a class="help-chip" href="/help/billing.html">Billing & Plans</a>
+           <a class="help-chip" href="/help/faq.html">FAQ</a>
+         </div>
+       </div>
+     </section>
+ 
+     <section class="help-grid">
+       <a class="help-card" href="/help/getting-started.html">
+@@ -108,49 +108,49 @@
+           <li>Upgrading</li>
+           <li>API Access</li>
+         </ul>
+       </a>
+ 
+       <a class="help-card help-card-wide" href="/help/faq.html">
+         <div class="help-card-top">
+           <div class="help-card-icon">🧠</div>
+           <div>
+             <h2 class="help-card-title">FAQ</h2>
+             <p class="help-card-desc">Real questions: data accuracy, insurance, contracts, integrations, billing.</p>
+           </div>
+         </div>
+         <div class="help-note">
+           Tip: Keep FAQ short and blunt. Put “how-to” in guides.
+         </div>
+       </a>
+     </section>
+ 
+     <section class="help-footer-cta">
+       <div class="help-cta-card">
+         <div>
+           <h3 class="help-cta-title">Still stuck?</h3>
+           <p class="help-cta-desc">Reach out and we’ll get you pointed in the right direction.</p>
+         </div>
+-        <div class="help-cta-actions">
+-          <a class="help-btn" href="/demo.html">Schedule a demo</a>
+-          <a class="help-btn help-btn-ghost" href="/contact.html">Contact support</a>
++        <div class="help-cta-actions action-bar">
++          <a class="help-btn btn-primary" href="/demo.html">Schedule a demo</a>
++          <a class="help-btn help-btn-ghost btn-ghost" href="/contact.html">Contact support</a>
+         </div>
+       </div>
+     </section>
+   </main>
+   <!-- 1. Load Sentry library -->
+   <script
+     src="https://js.sentry-cdn.com/1df77c56ba17c2098baf02e362c93be2.min.js"
+     crossorigin="anonymous"
+   ></script>
+   
+   <!-- 2. Initialize Sentry with YOUR DSN -->
+   <script src="/js/shared/sentry.js"></script>
+   
+   <!-- 3. Your existing shared code -->
+   <script src="/js/shared/shared.js"></script>
+ 
+ <footer id="site-footer"></footer>
+   
+   
+ </body>
+ </html>
+diff --git a/static/index.html b/static/index.html
+index 2009361b10104cdf5bd48a303fb3b49ced846428..841843e43055bd7aa3b22dfae1b63e5de13d3ff7 100644
+--- a/static/index.html
++++ b/static/index.html
+@@ -1,105 +1,105 @@
+ <!DOCTYPE html>
+ <html lang="en">
+ <head>
+   <meta charset="UTF-8">
+   <title>Carrier Shark – Home</title>
+   <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+ <link rel="stylesheet" href="/static/css/base.css"> 
+ <link rel="stylesheet" href="/static/css/style1.css"> 
+ <link rel="stylesheet" href="/static/css/tour.css"> 
+ <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+   
+ </head>
+ <body class="carrier-list">
+   <div class="bg-gradient"></div>
+   <div class="bg-grid"></div>
+ 
+ <div id="site-header"></div>
+ 
+   
+ 
+-  <div class="page">
+-    <header class="page-header">
++  <div class="page cs-page-shell">
++    <header class="page-header cs-page-header">
+       <div class="page-header-left">
+         <!-- <h1 class="page-title">Carrier Shark</h1> -->
+         <!-- <p class="page-subtitle">Carrier visibility for modern brokers</p> -->
+       </div>
+     </header>
+ 
+     <!-- SEARCH SECTION -->
+     <section id="search" class="glass-card search-shell">
+-      <div class="search-shell-header">
++      <div class="search-shell-header card-header">
+         <div>
+           <h2 class="search-title">Search Carriers</h2>
+           <p class="search-subtitle">Search by DOT number or carrier name</p>
+         </div>
+       </div>
+ 
+ <div class="search-row">
+   <div class="search-input-wrap">
+     <input
+       id="search-input"
+       class="search-input"
+       type="text"
+       placeholder="Start typing a DOT, MC, or Carrier Name..."
+       autocomplete="off"
+     />
+     <ul id="carrier-suggestions" class="carrier-suggestions"></ul>
+   </div>
+ 
+   <button id="open-carrier-btn" class="search-btn">Search</button>
+ </div>
+ 
+ 
+     </section>
+ 
+     <!-- LIST SECTION -->
+     <section id="my-carriers" class="glass-card carriers-card">
+-      <header class="carriers-card-header">
++      <header class="carriers-card-header card-header">
+         <div class="carriers-header-left">
+           <h2 class="carriers-title" id="grid-title">My Carriers</h2>
+         
+           <div class="grid-modebar" id="grid-modebar">
+-            <span class="grid-modepill" id="grid-modepill">Viewing: My Carriers</span>
++            <span class="grid-modepill status-pill" id="grid-modepill">Viewing: My Carriers</span>
+             <span class="grid-query" id="grid-query" hidden></span>
+             <button class="grid-back" id="grid-back-btn" type="button" hidden>
+               Back to My Carriers
+             </button>
+           </div>
+         
+           <p class="carriers-subtitle" id="grid-subtitle">
+             Click a DOT number to open its profile page.
+           </p>
+           <div id="refreshStatus" class="refresh-status" aria-live="polite"></div>
+         </div>
+ 
+       
+ 
+       
+-        <div class="carriers-header-actions">
++        <div class="carriers-header-actions action-bar">
+           <button id="filters-btn" class="filters-btn" type="button">
+             Filters <span id="filters-count" class="filters-count" hidden>0</span>
+           </button>
+         
+           <button id="bulk-import-btn" class="bulk-import-btn">Bulk Import</button>
+           <button id="download-btn" class="download-btn">Download CSV</button>
+         </div>
+ 
+         
+         
+       </header>
+         <!-- Filters popover -->
+         <div id="filters-popover" class="filters-popover hidden" role="dialog" aria-modal="false" aria-label="Filters">
+           <div class="filters-popover-inner">
+             <div class="filters-head">
+               <div>
+                 <div class="filters-title">Filters</div>
+                 <div class="filters-subtitle">Narrow down your carrier list.</div>
+               </div>
+               <button id="filters-close" class="filters-close" type="button" aria-label="Close">✕</button>
+             </div>
+         
+             <div class="filters-grid">
+               <div class="filters-col">
+                 <label class="f-label">DOT</label>
+diff --git a/static/plans.html b/static/plans.html
+index 3a1a8cf8325155467d984a02cec16e8d7a2893dc..172c4c65e42c7280c0dedc9956ff33dd9d85982c 100644
+--- a/static/plans.html
++++ b/static/plans.html
+@@ -1,70 +1,70 @@
+ <!doctype html>
+ <html lang="en">
+ <head>
+   <meta charset="utf-8" />
+   <meta name="viewport" content="width=device-width,initial-scale=1" />
+   <title>Carrier Shark - Plans</title>
+ 
+   <!-- Your existing global styles -->
+   <link rel="stylesheet" href="/static/css/base.css" />
+   <link rel="stylesheet" href="/static/css/style1.css" />
+ 
+   <!-- Page-only polish -->
+   <link rel="stylesheet" href="/static/css/plans.css" />
+   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+ </head>
+ 
+ <body class="carrier-list pricing-page">
+   <!-- Header / Nav -->
+ <div id="site-header"></div>
+ 
+-  <main class="plans-page">
++  <main class="plans-page cs-page-shell">
+     <!-- Hero -->
+     <section class="plans-hero">
+       <div class="plans-hero-inner">
+         <div class="plans-eyebrow">Plans</div>
+         <h1 class="plans-title">Clear pricing. Built to scale.</h1>
+         <p class="plans-subtitle">
+           Monitoring, alerts, contracts, and integrations.
+         </p>
+ 
+-        <div class="plans-hero-actions">
++        <div class="plans-hero-actions action-bar">
+           <a class="btn-primary" href="/create-account">Create account</a>
+           <a class="btn-ghost" href="/demo">Get a demo</a>
+         </div>
+         
+         <div class="plans-hero-subaction">
+           <a href="/contact" class="plans-text-link">Questions? Ask us.</a>
+         </div>
+       </div>
+     </section>
+ 
+     <!-- Comparison Card -->
+     <section class="plans-shell" aria-label="Plan comparison">
+       <div class="plans-shell-inner glass-card">
+-        <div class="plans-shell-head">
++        <div class="plans-shell-head card-header">
+           <h2 class="plans-shell-title">Compare plans</h2>
+         </div>
+ 
+         <!-- Real table (not an image) -->
+         <div class="plans-table-wrap" role="region" aria-label="Plan comparison table" tabindex="0">
+           <table class="plans-table" aria-describedby="plansTableHint">
+             <thead>
+               <tr>
+                 <th scope="col" class="plans-col-feature"></th>
+             
+                 <th scope="col" class="plans-col-plan">
+                   <div class="plan-head">
+                     <div class="plan-name">Starter</div>
+                     <div class="plan-price">$0 <span>/ month</span></div>
+                   </div>
+                 </th>
+             
+                 <th scope="col" class="plans-col-plan">
+                   <div class="plan-head">
+                     <div class="plan-name">Core</div>
+                     <div class="plan-price">$399 <span>/ month</span></div>
+                   </div>
+                 </th>
+             
+                 <th scope="col" class="plans-col-plan is-featured">
