@@ -10,6 +10,7 @@ async function loadHeader() {
 
     // Header is now in the DOM → wire buttons
     await initAuthUI();
+    initMobileHeaderMenu();
 
   } catch (err) {
     console.error("Header load failed:", err);
@@ -414,11 +415,58 @@ if (signInBtn) {
 
 
 
+function initMobileHeaderMenu() {
+  const toggleBtn = document.getElementById("mobile-menu-toggle");
+  const drawer = document.getElementById("mobile-nav-drawer");
+  const backdrop = document.getElementById("mobile-nav-backdrop");
+
+  if (!toggleBtn || !drawer || !backdrop) return;
+
+  const closeMenu = () => {
+    toggleBtn.setAttribute("aria-expanded", "false");
+    drawer.classList.remove("is-open");
+    drawer.hidden = true;
+    backdrop.classList.remove("is-open");
+    backdrop.hidden = true;
+  };
+
+  const openMenu = () => {
+    toggleBtn.setAttribute("aria-expanded", "true");
+    drawer.hidden = false;
+    drawer.classList.add("is-open");
+    backdrop.hidden = false;
+    backdrop.classList.add("is-open");
+  };
+
+  toggleBtn.addEventListener("click", () => {
+    const isOpen = toggleBtn.getAttribute("aria-expanded") === "true";
+    if (isOpen) closeMenu();
+    else openMenu();
+  });
+
+  backdrop.addEventListener("click", closeMenu);
+
+  drawer.querySelectorAll("a, button").forEach((el) => {
+    el.addEventListener("click", closeMenu);
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeMenu();
+  });
+
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 900) closeMenu();
+  });
+}
+
 
 async function initAuthUI() {
+
   const loginBtn = document.getElementById("login-btn");
   const logoutBtn = document.getElementById("logout-btn");
   const accountLink = document.getElementById("account-link");
+  const mobileAccountLink = document.getElementById("mobile-account-link");
+  const mobileLogoutBtn = document.getElementById("mobile-logout-btn");
   const header = document.querySelector(".site-header");
   const tourLink = document.getElementById("tour-link");
 
@@ -444,11 +492,24 @@ async function initAuthUI() {
         accountLink.href = "/account";
       }
 
+      if (mobileAccountLink) {
+        mobileAccountLink.style.display = "flex";
+        mobileAccountLink.textContent = "My Account";
+        mobileAccountLink.href = "/account";
+      }
+
+      const logoutHandler = async () => {
+        await fetch("/api/logout", { method: "POST" });
+        window.location.href = "/";
+      };
+
       if (logoutBtn) {
-        logoutBtn.onclick = async () => {
-          await fetch("/api/logout", { method: "POST" });
-          window.location.href = "/";
-        };
+        logoutBtn.onclick = logoutHandler;
+      }
+
+      if (mobileLogoutBtn) {
+        mobileLogoutBtn.style.display = "flex";
+        mobileLogoutBtn.onclick = logoutHandler;
       }
 
       setHelpMenu(true);
@@ -472,6 +533,16 @@ async function initAuthUI() {
         accountLink.style.display = "none";
         accountLink.textContent = "My Account";
         accountLink.href = "/login";
+      }
+
+      if (mobileAccountLink) {
+        mobileAccountLink.style.display = "flex";
+        mobileAccountLink.textContent = "My Account";
+        mobileAccountLink.href = "/login";
+      }
+
+      if (mobileLogoutBtn) {
+        mobileLogoutBtn.style.display = "none";
       }
 
       setHelpMenu(false);
@@ -503,6 +574,11 @@ async function initAuthUI() {
     if (logoutBtn) logoutBtn.style.display = "none";
     if (tourLink) tourLink.style.display = "inline-block";
     if (accountLink) accountLink.style.display = "none";
+    if (mobileAccountLink) {
+      mobileAccountLink.style.display = "flex";
+      mobileAccountLink.href = "/login";
+    }
+    if (mobileLogoutBtn) mobileLogoutBtn.style.display = "none";
 
     if (loginBtn) {
       loginBtn.onclick = () => (window.location.href = "/login");

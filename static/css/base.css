@@ -858,6 +858,136 @@ border: 1px solid rgba(56, 189, 248, .55);
   color: #7dd3fc;
 }
 
+
+.mobile-menu-toggle,
+.mobile-nav-drawer,
+.mobile-nav-backdrop{
+  display:none;
+}
+
+.mobile-menu-toggle{
+  width:44px;
+  height:44px;
+  border:1px solid rgba(56,189,248,0.38);
+  border-radius:12px;
+  background:rgba(2,6,23,0.88);
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  padding:0;
+}
+
+.mobile-menu-toggle:hover{
+  border-color:rgba(56,189,248,0.65);
+  background:rgba(11,17,32,0.96);
+}
+
+.mobile-menu-toggle:focus-visible{
+  outline:2px solid rgba(56,189,248,0.45);
+  outline-offset:2px;
+}
+
+.mobile-menu-toggle-line{
+  width:18px;
+  height:2px;
+  border-radius:999px;
+  background:#E5E7EB;
+  display:block;
+}
+
+.mobile-nav-backdrop{
+  position:fixed;
+  inset:0;
+  background:rgba(2,6,23,0.58);
+  backdrop-filter:blur(2px);
+  z-index:1001;
+}
+
+.mobile-nav-drawer{
+  position:fixed;
+  top:78px;
+  right:12px;
+  left:12px;
+  border:1px solid rgba(56,189,248,0.2);
+  border-radius:16px;
+  background:linear-gradient(180deg, rgba(11,17,32,0.98), rgba(2,6,23,0.98));
+  box-shadow:0 16px 34px rgba(0,0,0,0.5);
+  z-index:1002;
+  padding:10px;
+}
+
+.mobile-nav-list{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.mobile-nav-link{
+  display:flex;
+  align-items:center;
+  width:100%;
+  box-sizing:border-box;
+  min-height:44px;
+  border-radius:10px;
+  text-decoration:none;
+  border:0;
+  font:inherit;
+  font-size:0.92rem;
+  letter-spacing:0.06em;
+  color:#E5E7EB;
+  padding:0 12px;
+  background:transparent;
+  text-align:left;
+}
+
+.mobile-nav-link:hover{
+  background:rgba(56,189,248,0.12);
+  color:#F1F5F9;
+}
+
+.mobile-nav-signout{
+  cursor:pointer;
+}
+
+.mobile-nav-cta{
+  justify-content:center;
+  margin-top:6px;
+  color:#03121f;
+  font-weight:650;
+  background:linear-gradient(180deg, rgba(56,189,248,.94), rgba(11,120,207,.96));
+  border:1px solid rgba(56,189,248,.55);
+}
+
+.mobile-nav-cta:hover{
+  color:#03121f;
+  background:linear-gradient(180deg, rgba(125,211,252,.98), rgba(14,165,233,.95));
+}
+
+@media (max-width: 900px){
+  .nav-inner{
+    padding:0 16px;
+  }
+
+  .nav-logo-img{
+    width:170px;
+  }
+
+  .nav-center,
+  .nav-right{
+    display:none;
+  }
+
+  .mobile-menu-toggle{
+    display:inline-flex;
+    flex-direction:column;
+  }
+
+  .mobile-nav-backdrop.is-open,
+  .mobile-nav-drawer.is-open{
+    display:block;
+  }
+}
+
 /* Make dropdown triggers feel same size as other links */
 .nav-link.nav-dropbtn{
   padding-left: 10px;          /* slightly tighter */

@@ -9,6 +9,18 @@
       </a>
     </div>
 
+    <button
+      class="mobile-menu-toggle"
+      id="mobile-menu-toggle"
+      type="button"
+      aria-label="Open navigation menu"
+      aria-expanded="false"
+      aria-controls="mobile-nav-drawer">
+      <span class="mobile-menu-toggle-line"></span>
+      <span class="mobile-menu-toggle-line"></span>
+      <span class="mobile-menu-toggle-line"></span>
+    </button>
+
     <nav class="nav-center" aria-label="Primary">
       <a href="/#search" class="nav-link">Search</a>
       <a href="/#my-carriers" class="nav-link">My Carriers</a>
@@ -55,4 +67,19 @@
     </div>
 
   </div>
+
+  <div class="mobile-nav-backdrop" id="mobile-nav-backdrop" hidden></div>
+
+  <aside class="mobile-nav-drawer" id="mobile-nav-drawer" aria-label="Mobile navigation" hidden>
+    <nav class="mobile-nav-list" aria-label="Mobile primary">
+      <a href="/#search" class="mobile-nav-link">Search</a>
+      <a href="/#my-carriers" class="mobile-nav-link">My Carriers</a>
+      <a href="/plans" class="mobile-nav-link">Plans</a>
+      <a href="/help" class="mobile-nav-link">Help</a>
+      <a href="/security" class="mobile-nav-link">Security</a>
+      <a href="/login" id="mobile-account-link" class="mobile-nav-link">My Account</a>
+      <button id="mobile-logout-btn" class="mobile-nav-link mobile-nav-signout" type="button" style="display:none;">Sign Out</button>
+      <a href="/demo" id="mobile-demo-link" class="mobile-nav-link mobile-nav-cta">Get a Demo</a>
+    </nav>
+  </aside>
 </header>
