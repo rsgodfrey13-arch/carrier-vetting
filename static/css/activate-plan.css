@@ -284,7 +284,7 @@
   .activate-plan-page .plans-mobile-track{
     display: grid;
     grid-auto-flow: column;
-    grid-auto-columns: minmax(0, 86%);
+    grid-auto-columns: 84vw;
     gap: 12px;
     overflow-x: auto;
     overscroll-behavior-x: contain;
@@ -404,4 +404,12 @@
     background: linear-gradient(180deg, rgba(0,183,255,.22), rgba(11,120,207,.28));
     border-color: #38BDF8;
   }
+}
+
+
+.plans-mobile-carousel,
+.plans-mobile-track{
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
