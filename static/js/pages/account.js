@@ -18,6 +18,15 @@
     help: $("tab-help"),
   };
 
+  const accountSectionsToggle = $("account-sections-toggle");
+  const accountSectionsPanel = $("account-sections-panel");
+
+  function setAccountSectionsOpen(isOpen) {
+    if (!accountSectionsToggle || !accountSectionsPanel) return;
+    accountSectionsToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    accountSectionsPanel.hidden = !isOpen;
+  }
+
 function applyTabAccessByRole(roleRaw) {
   const role = String(roleRaw || "").trim().toUpperCase();
 
@@ -126,6 +135,10 @@ function setActiveTab(name) {
   });
 
   if (name === "help") loadTickets().catch(console.error);
+
+  if (window.matchMedia("(max-width: 920px)").matches) {
+    setAccountSectionsOpen(false);
+  }
 }
 
 // -----------------------------
@@ -156,6 +169,19 @@ railItems.forEach((btn) => {
       setActiveTab(tab);
     }
   });
+});
+
+accountSectionsToggle?.addEventListener("click", () => {
+  const expanded = accountSectionsToggle.getAttribute("aria-expanded") === "true";
+  setAccountSectionsOpen(!expanded);
+});
+
+document.addEventListener("click", (e) => {
+  if (!accountSectionsToggle || !accountSectionsPanel) return;
+  if (accountSectionsPanel.hidden) return;
+  const t = e.target;
+  if (accountSectionsToggle.contains(t) || accountSectionsPanel.contains(t)) return;
+  setAccountSectionsOpen(false);
 });
 
 document.getElementById("btn-signout")?.addEventListener("click", (e) => {

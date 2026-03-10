@@ -1,0 +1,419 @@
+diff --git a/static/account.html b/static/account.html
+index 4174e69576eeb3e077fc711d54e8081fab665fde..85d32f253f005e4dade12d4fd21593a23e87b75c 100644
+--- a/static/account.html
++++ b/static/account.html
+@@ -17,50 +17,102 @@
+ 
+   
+ <body class="account-page">
+   <div class="bg-gradient"></div>
+   <div class="bg-grid"></div>
+   <div id="site-header"></div>  
+   <div class="page">
+ 
+     <header class="account-header cs-page-header">
+       <div>
+         <h1 class="page-title">My Account</h1>
+         <p class="page-subtitle">Manage alerts, agreements, API access, and your plan.</p>
+       </div>
+ 
+       <div class="account-header-actions action-bar">
+         <button
+           class="btn-ghost"
+           data-tab-jump="help"
+         >
+           Help
+         </button>
+         <button id="btn-signout" class="btn-ghost">Sign out</button>
+       </div>
+     </header>
+ 
++    <div class="account-mobile-nav" aria-label="Account section navigation">
++      <button
++        type="button"
++        class="account-mobile-toggle"
++        id="account-sections-toggle"
++        aria-expanded="false"
++        aria-controls="account-sections-panel"
++      >
++        <span>Account Sections</span>
++        <span class="account-mobile-toggle-icon" aria-hidden="true">▾</span>
++      </button>
++
++      <div class="account-mobile-panel" id="account-sections-panel" hidden>
++        <button class="rail-item is-active" data-tab="overview">
++          <span class="rail-dot"></span>
++          Overview
++        </button>
++        <button class="rail-item" data-tab="team">
++          <span class="rail-dot"></span>
++          Teammates
++        </button>
++        <button class="rail-item" data-tab="alerts">
++          <span class="rail-dot"></span>
++          Email Alerts
++        </button>
++        <button class="rail-item" data-tab="agreements">
++          <span class="rail-dot"></span>
++          Agreements
++        </button>
++        <button class="rail-item" data-tab="api">
++          <span class="rail-dot"></span>
++          API
++        </button>
++        <button class="rail-item" data-tab="plan">
++          <span class="rail-dot"></span>
++          Plan
++        </button>
++        <button class="rail-item" data-tab="billing">
++          <span class="rail-dot"></span>
++          Billing
++        </button>
++        <button class="rail-item" data-tab="security">
++          <span class="rail-dot"></span>
++          Security
++        </button>
++        <button class="rail-item" data-tab="help">
++          <span class="rail-dot"></span>
++          Help & Support
++        </button>
++      </div>
++    </div>
++
+     <div class="account-shell">
+       <!-- LEFT NAV -->
+       <aside class="account-rail">
+         <button class="rail-item is-active" data-tab="overview">
+           <span class="rail-dot"></span>
+           Overview
+         </button>
+         <button class="rail-item" data-tab="team">
+           <span class="rail-dot"></span>
+           Teammates
+         </button>
+         <button class="rail-item" data-tab="alerts">
+           <span class="rail-dot"></span>
+           Email Alerts
+         </button>
+         <button class="rail-item" data-tab="agreements">
+           <span class="rail-dot"></span>
+           Agreements
+         </button>
+         <button class="rail-item" data-tab="api">
+           <span class="rail-dot"></span>
+           API
+         </button>
+         <button class="rail-item" data-tab="plan">
+           <span class="rail-dot"></span>
+diff --git a/static/css/account.css b/static/css/account.css
+index 11a6564068b18b963829605b39b68101e9ae9af2..6436a9eb1ac6362088731be0cedd1662cdd07cdd 100644
+--- a/static/css/account.css
++++ b/static/css/account.css
+@@ -75,50 +75,93 @@ body.account-page{
+ 
+ .rail-dot{
+   width:8px;
+   height:8px;
+   border-radius:999px;
+   background: rgba(148,163,184,.55);
+   box-shadow: 0 0 0 3px rgba(148,163,184,.10);
+ }
+ 
+ .rail-item:hover{
+   background: rgba(56,189,248,.1);
+   transform: translateY(-1px);
+ }
+ 
+ .rail-item.is-active{
+   border-color: rgba(56,189,248,.58);
+   background: linear-gradient(140deg, rgba(56,189,248,.2), rgba(11,17,32,.82));
+   box-shadow: 0 0 0 2px rgba(56,189,248,.14);
+ }
+ 
+ .rail-item.is-active .rail-dot{
+   background: rgba(56,189,248,.95);
+   box-shadow: 0 0 0 3px rgba(56,189,248,.18);
+ }
+ 
++
++.account-mobile-nav{ display:none; }
++
++.account-mobile-toggle{
++  width:100%;
++  display:flex;
++  align-items:center;
++  justify-content:space-between;
++  gap:12px;
++  border-radius:14px;
++  border:1px solid rgba(56,189,248,.5);
++  background: linear-gradient(140deg, rgba(11,120,207,.28), rgba(11,17,32,.9));
++  color:#f1f5f9;
++  padding:11px 14px;
++  font-size:.82rem;
++  font-weight:800;
++  letter-spacing:.08em;
++  text-transform:uppercase;
++  cursor:pointer;
++}
++
++.account-mobile-toggle-icon{
++  font-size:.95rem;
++  color:#38BDF8;
++  transition: transform .15s ease;
++}
++
++.account-mobile-toggle[aria-expanded="true"] .account-mobile-toggle-icon{
++  transform: rotate(180deg);
++}
++
++.account-mobile-panel{
++  margin-top:8px;
++  border-radius:16px;
++  border:1px solid rgba(56,189,248,.32);
++  background: linear-gradient(165deg, rgba(15,23,42,.95), rgba(11,17,32,.94));
++  padding:10px;
++  display:flex;
++  flex-direction:column;
++  gap:6px;
++  box-shadow: 0 16px 40px rgba(2,6,23,.62);
++}
++
+ /* RIGHT PANEL */
+ .account-panel{
+   display:flex;
+   flex-direction:column;
+   gap: 14px;
+ }
+ 
+ .tab-panel{ display:none; }
+ .tab-panel.is-active{ display:block; }
+ 
+ .card{
+   border-radius: var(--cs-radius-lg);
+   background: linear-gradient(165deg, rgba(15,23,42,.94), rgba(11,17,32,.9));
+   border: 1px solid rgba(148,163,184,.24);
+   box-shadow: 0 18px 38px rgba(2,6,23,.64);
+   padding: 18px 18px 16px;
+ }
+ 
+ .card-head{
+   display:flex;
+   align-items:flex-start;
+   justify-content:space-between;
+   gap:12px;
+   margin-bottom: 10px;
+ }
+@@ -349,52 +392,53 @@ body.account-page{
+ .savebar.hidden{ display:none; }
+ 
+ .savebar-left{
+   display:flex;
+   align-items:center;
+   gap:10px;
+   color: rgba(229,231,235,.92);
+   font-weight:700;
+ }
+ 
+ .savebar-dot{
+   width:10px;
+   height:10px;
+   border-radius:999px;
+   background: rgba(56,189,248,.95);
+   box-shadow: 0 0 0 3px rgba(56,189,248,.14);
+ }
+ 
+ .savebar-actions{
+   display:flex;
+   gap:10px;
+ }
+ 
+ /* Responsive */
+ @media (max-width: 920px){
++  .account-mobile-nav{ display:block; margin-bottom:12px; }
+   .account-shell{ grid-template-columns: 1fr; }
+-  .account-rail{ position:relative; top:auto; }
++  .account-rail{ display:none; }
+   .kv-grid{ grid-template-columns: 1fr; }
+   .toggle-grid{ grid-template-columns: 1fr; }
+   .plan-grid{ grid-template-columns: 1fr; }
+ }
+ 
+ html, body { margin: 0; padding: 0; }
+ 
+ body.account-page{
+   display:block;
+   padding:0;
+   min-height:100vh;
+ }
+ body.account-page .page{
+   max-width:1280px;
+   margin:0 auto;
+   padding:28px 18px 52px;
+ }
+ 
+ .status-pill {
+   padding: 4px 10px;
+   border-radius: 999px;
+   font-size: 0.75rem;
+   letter-spacing: .04em;
+   text-transform: uppercase;
+   border: 1px solid rgba(255,255,255,.25);
+diff --git a/static/js/pages/account.js b/static/js/pages/account.js
+index 242ca2794cc441c58be0bfb20776a13d51eb9337..92e44853211638d2d76281454d5fa9e2e44453fb 100644
+--- a/static/js/pages/account.js
++++ b/static/js/pages/account.js
+@@ -1,45 +1,54 @@
+ /* static/js/pages/account.js */
+ (() => {
+   const $ = (id) => document.getElementById(id);
+ 
+   // -----------------------------
+   // Tabs
+   // -----------------------------
+   const railItems = Array.from(document.querySelectorAll(".rail-item"));
+   const panels = {
+     overview: $("tab-overview"),
+     team: $("tab-team"),
+     alerts: $("tab-alerts"),
+     agreements: $("tab-agreements"),
+     api: $("tab-api"),
+     plan: $("tab-plan"),
+     billing: $("tab-billing"),
+     security: $("tab-security"),
+     help: $("tab-help"),
+   };
+ 
++  const accountSectionsToggle = $("account-sections-toggle");
++  const accountSectionsPanel = $("account-sections-panel");
++
++  function setAccountSectionsOpen(isOpen) {
++    if (!accountSectionsToggle || !accountSectionsPanel) return;
++    accountSectionsToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
++    accountSectionsPanel.hidden = !isOpen;
++  }
++
+ function applyTabAccessByRole(roleRaw) {
+   const role = String(roleRaw || "").trim().toUpperCase();
+ 
+   // ✅ what you showed with green checks: only these for non-OWNER
+   const allowedForMember = new Set(["overview", "security"]);
+ 
+   // Owners see everything
+   const allowed = (role === "OWNER")
+     ? new Set(Object.keys(panels))
+     : allowedForMember;
+ 
+   // 1) Hide rail items that aren’t allowed
+   railItems.forEach((btn) => {
+     const tab = btn.dataset.tab;
+     const ok = allowed.has(tab);
+     btn.style.display = ok ? "" : "none";
+   });
+ 
+   // 2) Hide panels that aren’t allowed
+   Object.entries(panels).forEach(([tab, el]) => {
+     if (!el) return;
+     el.style.display = allowed.has(tab) ? "" : "none";
+   });
+ 
+   // 3) Block “jump” buttons to disallowed tabs (Manage links, etc.)
+@@ -104,82 +113,99 @@ function setPlanBadge(planRaw) {
+ }
+ 
+ 
+ let activeTab = "overview";
+ 
+ function setActiveTab(name) {
+   if (!panels[name]) return;
+ 
+   if (name === activeTab) {
+     if (name === "help") loadTickets().catch(console.error);
+     return;
+   }
+ 
+   activeTab = name;
+ 
+   railItems.forEach((b) =>
+     b.classList.toggle("is-active", b.dataset.tab === name)
+   );
+ 
+   Object.entries(panels).forEach(([k, el]) => {
+     if (!el) return;
+     el.classList.toggle("is-active", k === name);
+   });
+ 
+   if (name === "help") loadTickets().catch(console.error);
++
++  if (window.matchMedia("(max-width: 920px)").matches) {
++    setAccountSectionsOpen(false);
++  }
+ }
+ 
+ // -----------------------------
+ // Deep link support: /account?tab=alerts  (or /account#alerts)
+ // -----------------------------
+ (function bootTabFromUrl() {
+   const params = new URLSearchParams(window.location.search);
+   const tabFromQuery = (params.get("tab") || "").trim().toLowerCase();
+   const tabFromHash = (window.location.hash || "").replace("#", "").trim().toLowerCase();
+ 
+   const requested = tabFromQuery || tabFromHash;
+   if (!requested) return;
+ 
+   // only allow tabs you actually support (prevents typos breaking anything)
+   const allowed = new Set(Object.keys(panels)); // overview, alerts, agreements, api, plan, security, help
+   if (!allowed.has(requested)) return;
+ 
+   setActiveTab(requested);
+   window.scrollTo({ top: 0, behavior: "auto" });
+ })();
+ 
+ 
+ railItems.forEach((btn) => {
+   btn.addEventListener("click", () => {
+     const tab = btn.dataset.tab;
+     if (tab) {
+       window.location.hash = tab;   // ← add THIS line
+       setActiveTab(tab);
+     }
+   });
+ });
+ 
++accountSectionsToggle?.addEventListener("click", () => {
++  const expanded = accountSectionsToggle.getAttribute("aria-expanded") === "true";
++  setAccountSectionsOpen(!expanded);
++});
++
++document.addEventListener("click", (e) => {
++  if (!accountSectionsToggle || !accountSectionsPanel) return;
++  if (accountSectionsPanel.hidden) return;
++  const t = e.target;
++  if (accountSectionsToggle.contains(t) || accountSectionsPanel.contains(t)) return;
++  setAccountSectionsOpen(false);
++});
++
+ document.getElementById("btn-signout")?.addEventListener("click", (e) => {
+   e.currentTarget.disabled = true;
+   document.getElementById("logout-btn")?.click();
+ });
+ 
+   
+   document.querySelectorAll("[data-tab-jump]").forEach((btn) => {
+     btn.addEventListener("click", () => setActiveTab(btn.dataset.tabJump));
+   });
+ 
+ document.getElementById("btn-manage-billing")?.addEventListener("click", async () => {
+   const btn = document.getElementById("btn-manage-billing");
+   btn.disabled = true;
+ 
+   try {
+     // This matches your existing pattern: POST -> get URL -> redirect
+     const r = await fetch("/api/billing/portal", {
+       method: "POST",
+       credentials: "include",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify({ returnPath: "/account?tab=billing" }),
+     });
+ 
+     const data = await r.json().catch(() => ({}));
+     if (!r.ok) throw new Error(data?.error || `Portal failed: ${r.status}`);
