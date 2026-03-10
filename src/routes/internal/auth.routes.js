@@ -368,48 +368,75 @@ router.post("/auth/signup", async (req, res) => {
     return res.status(400).send("Password must be at least 8 characters.");
   }
 
+  const client = await pool.connect();
+
   try {
-    // ✅ IMPORTANT: treat email as case-insensitive
-    const existing = await pool.query(
-      `SELECT id FROM users WHERE lower(email) = $1 LIMIT 1`,
+    await client.query("BEGIN");
+
+    // treat email as case-insensitive
+    const existing = await client.query(
+      `SELECT id FROM public.users WHERE lower(email) = $1 LIMIT 1`,
       [emailRaw]
     );
 
+    if (existing.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(409).send("Account already exists. Please log in.");
+    }
 
-if (existing.rows.length) {
-  return res.status(409).send("Account already exists. Please log in.");
-}
-
-
-    // Create new user
     const nextHash = await bcrypt.hash(password, 12);
-      
-      const created = await pool.query(
-        `
-        INSERT INTO users (email, password_hash, company, name)
-        VALUES ($1, $2, $3, $4)
-        RETURNING id
-        `,
-        [
-          emailRaw,
-          nextHash,
-          company,
-          `${firstName} ${lastName}`
-        ]
-      );
+    const fullName = `${firstName} ${lastName}`.trim();
 
+    // 1) create user first
+    const createdUser = await client.query(
+      `
+      INSERT INTO public.users (email, password_hash, company, name)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id
+      `,
+      [emailRaw, nextHash, company, fullName]
+    );
 
-    req.session.userId = created.rows[0].id;
+    const userId = createdUser.rows[0].id;
 
-    // Create + store verification token
-    const userId = created.rows[0].id;
-    
-    const token = makeResetToken();        // random string
-    const tokenHash = hashToken(token);    // SHA256(token)
+    // 2) create company
+    const createdCompany = await client.query(
+      `
+      INSERT INTO public.companies (name)
+      VALUES ($1)
+      RETURNING id
+      `,
+      [company]
+    );
+
+    const companyId = createdCompany.rows[0].id;
+
+    // 3) create OWNER membership
+    await client.query(
+      `
+      INSERT INTO public.company_members (company_id, user_id, role, status)
+      VALUES ($1, $2, 'OWNER', 'ACTIVE')
+      `,
+      [companyId, userId]
+    );
+
+    // 4) set default_company_id on user
+    await client.query(
+      `
+      UPDATE public.users
+      SET default_company_id = $1
+      WHERE id = $2
+      `,
+      [companyId, userId]
+    );
+
+    // 5) create verification token inside same transaction
+    const token = makeResetToken();
+    const tokenHash = hashToken(token);
     const expiresMinutes = 60;
     const expiresAt = new Date(Date.now() + expiresMinutes * 60 * 1000);
-    
-    await pool.query(
+
+    await client.query(
       `
       INSERT INTO public.email_verification_tokens
         (user_id, token_hash, expires_at, request_ip, user_agent)
@@ -424,10 +451,13 @@ if (existing.rows.length) {
         req.get("user-agent") || null
       ]
     );
-    
+
+    await client.query("COMMIT");
+
+    req.session.userId = userId;
+
     const verifyUrl = `https://carriershark.com/verify-email/${token}`;
-    
-    // Send verification email (Mailgun)
+
     try {
       await sendVerificationEmail({
         to: emailRaw,
@@ -437,18 +467,19 @@ if (existing.rows.length) {
       });
     } catch (e) {
       console.error("sendVerificationEmail failed:", e?.message || e);
-      // You can still redirect to verify-email page, and let them hit "Resend"
     }
 
-    // TODO: create email verification token + send verification email
     return res.redirect(303, "/verify-email");
   } catch (err) {
-console.error("SIGNUP FAILED:", err?.message, err);
-return res.status(500).json({
-  error: "signup_failed",
-  message: err?.message || "unknown",
-  code: err?.code || null
-});
+    try { await client.query("ROLLBACK"); } catch {}
+    console.error("SIGNUP FAILED:", err?.message, err);
+    return res.status(500).json({
+      error: "signup_failed",
+      message: err?.message || "unknown",
+      code: err?.code || null
+    });
+  } finally {
+    client.release();
   }
 });
 
