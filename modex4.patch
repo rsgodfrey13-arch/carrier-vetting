@@ -1,0 +1,103 @@
+diff --git a/static/css/style1.css b/static/css/style1.css
+index 3115b28d587abdefa1214a69decc44ebc3a57a98..d22a53e7d0a7eb2d8873fff3622f2b73a2e5f60a 100644
+--- a/static/css/style1.css
++++ b/static/css/style1.css
+@@ -2697,87 +2697,93 @@ body.app-page #site-header .header-container{
+     justify-content: center;
+     align-items: center;
+     gap: 0;
+     padding: 0 14px;
+     border-radius: 12px;
+     border: 1px solid rgba(56,189,248,.45);
+     background: #0b1120;
+     box-shadow: none;
+   }
+ 
+   #filters-btn .filters-count{
+     display: none !important;
+   }
+ 
+   #filters-btn:hover,
+   #filters-btn:active,
+   #filters-btn.is-active{
+     transform: none;
+     background: #0b1120;
+     border-color: rgba(56,189,248,.65);
+     box-shadow: none;
+   }
+ 
+   #filters-popover.filters-popover{
+     position: fixed;
+-    top: 10px !important;
+-    left: 10px !important;
+-    right: 10px;
++    top: 12px !important;
++    left: 12px !important;
++    right: 12px;
+     width: auto;
+-    max-height: calc(100dvh - 20px);
++    max-height: calc(100dvh - 24px);
+     z-index: 9999;
+   }
+ 
+   #filters-popover .filters-popover-inner{
+     width: 100% !important;
+-    max-height: calc(100dvh - 20px) !important;
++    max-height: calc(100dvh - 24px) !important;
+     border-radius: 16px;
+     padding: 14px;
++    box-sizing: border-box;
+   }
+ 
+   .filters-grid{
+     grid-template-columns: 1fr;
+     gap: 10px;
+   }
+ 
+   .filters-col{
+     gap: 6px;
+   }
+ 
+   .filters-footer{
+     position: sticky;
+     bottom: 0;
++    display: flex;
++    align-items: stretch;
++    gap: 10px;
+     background: rgba(11,17,32,0.96);
+     padding-top: 10px;
++    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+     margin-top: 12px;
+     justify-content: space-between;
+   }
+ 
+   .filters-footer .btn-ghost,
+   .filters-footer .btn-primary{
+     min-height: 42px;
+     flex: 1 1 0;
++    min-width: 0;
+   }
+ 
+   .carriers-table-wrap{
+     overflow-x: hidden;
+     margin-top: 0;
+     padding-top: 0;
+     padding-inline: 0;
+     border-top: 0;
+     background: transparent;
+   }
+ 
+   .carriers-table{
+     min-width: 0 !important;
+     width: 100%;
+     table-layout: fixed;
+   }
+ 
+   .carriers-table th:nth-child(5),
+   .carriers-table td:nth-child(5),
+   .carriers-table th:nth-child(6),
+   .carriers-table td:nth-child(6),
+   .carriers-table th:nth-child(7),
+   .carriers-table td:nth-child(7),
+   .carriers-table th:nth-child(8),
+   .carriers-table td:nth-child(8),

@@ -2719,19 +2719,20 @@ body.app-page #site-header .header-container{
 
   #filters-popover.filters-popover{
     position: fixed;
-    top: 10px !important;
-    left: 10px !important;
-    right: 10px;
+    top: 12px !important;
+    left: 12px !important;
+    right: 12px;
     width: auto;
-    max-height: calc(100dvh - 20px);
+    max-height: calc(100dvh - 24px);
     z-index: 9999;
   }
 
   #filters-popover .filters-popover-inner{
     width: 100% !important;
-    max-height: calc(100dvh - 20px) !important;
+    max-height: calc(100dvh - 24px) !important;
     border-radius: 16px;
     padding: 14px;
+    box-sizing: border-box;
   }
 
   .filters-grid{
@@ -2746,8 +2747,12 @@ body.app-page #site-header .header-container{
   .filters-footer{
     position: sticky;
     bottom: 0;
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
     background: rgba(11,17,32,0.96);
     padding-top: 10px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
     margin-top: 12px;
     justify-content: space-between;
   }
@@ -2756,6 +2761,7 @@ body.app-page #site-header .header-container{
   .filters-footer .btn-primary{
     min-height: 42px;
     flex: 1 1 0;
+    min-width: 0;
   }
 
   .carriers-table-wrap{
