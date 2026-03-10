@@ -1,0 +1,240 @@
+diff --git a/static/account.html b/static/account.html
+index e44aa42ab96e7dc077c572ad543929482ec49546..4174e69576eeb3e077fc711d54e8081fab665fde 100644
+--- a/static/account.html
++++ b/static/account.html
+@@ -1,30 +1,31 @@
+ <!-- /public/account (or /profile) .-->
+ <!DOCTYPE html>
+ <html lang="en">
+ <head>
+   <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <title>My Account</title>
+ <link rel="stylesheet" href="/static/css/base.css">
+ <link rel="stylesheet" href="/static/css/account.css">
+ <link rel="stylesheet" href="/static/css/style1.css" />
+ <link rel="stylesheet" href="/static/css/plans.css" />
+ <link rel="stylesheet" href="/static/css/activate-plan.css" />
+ <link rel="stylesheet" href="/static/css/account-plan.css" />
+   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+ </head>
+ 
+ 
+   
+ <body class="account-page">
+   <div class="bg-gradient"></div>
+   <div class="bg-grid"></div>
+   <div id="site-header"></div>  
+   <div class="page">
+ 
+     <header class="account-header cs-page-header">
+       <div>
+         <h1 class="page-title">My Account</h1>
+         <p class="page-subtitle">Manage alerts, agreements, API access, and your plan.</p>
+       </div>
+ 
+       <div class="account-header-actions action-bar">
+diff --git a/static/css/plans.css b/static/css/plans.css
+index 1ef29f20071cfbcd880bf6571767377504d07337..b5499cde34faaec6fe1e347ef24f2eca9f9f275c 100644
+--- a/static/css/plans.css
++++ b/static/css/plans.css
+@@ -137,80 +137,80 @@ plans-chart-wrap{
+   gap: 12px;
+   justify-content:space-between;
+   align-items:center;
+   padding: 0 10px;
+   color: rgba(148,163,184,.92);
+   font-size: .85rem;
+ }
+ 
+ .plans-foot-links{
+   display:flex;
+   gap: 14px;
+   align-items:center;
+ }
+ 
+ .plans-foot-links a{
+   color: rgba(148,163,184,.92);
+   text-decoration:none;
+ }
+ 
+ .plans-foot-links a:hover{
+   color: rgba(226,232,240,.96);
+   text-decoration: underline;
+ }
+ 
+ /* Make dropdown clickable if your base nav uses hover */
+-.nav-dropdown{
++.pricing-page .nav-dropdown{
+   position: relative;
+ }
+-.nav-dropdown-menu{
++.pricing-page .nav-dropdown-menu{
+   display:none;
+   position:absolute;
+   top: calc(100% + 10px);
+   left: 0;
+   min-width: 180px;
+   padding: 10px;
+   border-radius: 14px;
+   border: 1px solid rgba(148,163,184,.18);
+   background: rgba(2,6,23,.92);
+   box-shadow: 0 14px 40px rgba(0,0,0,.35);
+   z-index: 9999;
+ }
+-.nav-dropdown:hover .nav-dropdown-menu{
++.pricing-page .nav-dropdown:hover .nav-dropdown-menu{
+   display:block;
+ }
+-.nav-dd-link{
++.pricing-page .nav-dd-link{
+   display:block;
+   padding: 8px 10px;
+   border-radius: 10px;
+   color: rgba(226,232,240,.92);
+   text-decoration:none;
+ }
+-.nav-dd-link:hover{
++.pricing-page .nav-dd-link:hover{
+   background: rgba(148,163,184,.14);
+ }
+-.nav-dd-sep{
++.pricing-page .nav-dd-sep{
+   height:1px;
+   background: rgba(148,163,184,.12);
+   margin: 6px 0;
+ }
+ 
+ /* Page-only polish. Uses your existing base/style tokens where possible. */
+ 
+ .pricing-page .plans-page{
+   max-width: 1280px;
+   margin: 0 auto;
+   padding: 0 14px 40px;
+ }
+ 
+ /* Hero */
+ .plans-hero{
+   padding: 34px 0 18px;
+ }
+ 
+ .plans-hero-inner{
+   text-align: center;
+   padding: 26px 12px 6px;
+ }
+ 
+ .plans-eyebrow{
+   display:inline-block;
+@@ -447,102 +447,102 @@ thead .is-featured{
+   gap: 10px;
+   justify-content:flex-end;
+   flex-wrap:wrap;
+ }
+ 
+ /* Footer */
+ .plans-footer{
+   padding: 24px 0 30px;
+ }
+ .plans-footer-inner{
+   display:flex;
+   gap: 12px;
+   justify-content:space-between;
+   align-items:center;
+   padding: 0 4px;
+   color: rgba(148,163,184,.92);
+   font-size: .85rem;
+ }
+ .plans-foot-links{
+   display:flex;
+   gap: 14px;
+   align-items:center;
+ }
+ 
+ /* Dropdown (click-to-open; prevents hover flicker) */
+-.nav-dropdown{ position: relative; }
+-.nav-dropdown-menu{
++.pricing-page .nav-dropdown{ position: relative; }
++.pricing-page .nav-dropdown-menu{
+   display:none;
+   position:absolute;
+   top: calc(100% + 10px);
+   left: 0;
+   min-width: 180px;
+   padding: 10px;
+   border-radius: 14px;
+   border: 1px solid rgba(148,163,184,.18);
+   background: rgba(2,6,23,.92);
+   box-shadow: 0 14px 40px rgba(0,0,0,.35);
+   z-index: 9999;
+ }
+-.nav-dropdown.open .nav-dropdown-menu{
++.pricing-page .nav-dropdown.open .nav-dropdown-menu{
+   display:block;
+ }
+-.nav-dd-link{
++.pricing-page .nav-dd-link{
+   display:block;
+   padding: 8px 10px;
+   border-radius: 10px;
+   color: rgba(226,232,240,.92);
+   text-decoration:none;
+ }
+-.nav-dd-link:hover{
++.pricing-page .nav-dd-link:hover{
+   background: rgba(148,163,184,.14);
+ }
+-.nav-dd-sep{
++.pricing-page .nav-dd-sep{
+   height:1px;
+   background: rgba(148,163,184,.12);
+   margin: 6px 0;
+ }
+ 
+ /* Accessibility helper (if you don’t already have it) */
+-.sr-only{
++.pricing-page .sr-only{
+   position:absolute;
+   width:1px;
+   height:1px;
+   padding:0;
+   margin:-1px;
+   overflow:hidden;
+   clip:rect(0,0,0,0);
+   white-space:nowrap;
+   border:0;
+ }
+ 
+ /* Force header to span and center like the rest of the site */
+-#site-header,
+-.site-header {
++.pricing-page #site-header,
++.pricing-page .site-header {
+   width: 100%;
+ }
+ 
+-.site-header .nav-inner {
++.pricing-page .site-header .nav-inner {
+   max-width: 1280px;
+   margin: 0 auto;
+   padding: 0 14px;
+ }
+ 
+ 
+ .plans-hero-subaction{
+   margin-top: 12px;
+   text-align: center;
+ }
+ 
+ .plans-text-link{
+   font-size: 0.9rem;
+   color: rgba(226,232,240,.75);
+   text-decoration: none;
+   border-bottom: 1px solid rgba(226,232,240,.25);
+   padding-bottom: 2px;
+   transition: all .2s ease;
+ }
+ 
+ .plans-text-link:hover{
+   color: rgba(255,255,255,.95);
+   border-bottom-color: rgba(255,255,255,.6);
+ }

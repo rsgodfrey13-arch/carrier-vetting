@@ -159,10 +159,10 @@ plans-chart-wrap{
 }
 
 /* Make dropdown clickable if your base nav uses hover */
-.nav-dropdown{
+.pricing-page .nav-dropdown{
   position: relative;
 }
-.nav-dropdown-menu{
+.pricing-page .nav-dropdown-menu{
   display:none;
   position:absolute;
   top: calc(100% + 10px);
@@ -175,20 +175,20 @@ plans-chart-wrap{
   box-shadow: 0 14px 40px rgba(0,0,0,.35);
   z-index: 9999;
 }
-.nav-dropdown:hover .nav-dropdown-menu{
+.pricing-page .nav-dropdown:hover .nav-dropdown-menu{
   display:block;
 }
-.nav-dd-link{
+.pricing-page .nav-dd-link{
   display:block;
   padding: 8px 10px;
   border-radius: 10px;
   color: rgba(226,232,240,.92);
   text-decoration:none;
 }
-.nav-dd-link:hover{
+.pricing-page .nav-dd-link:hover{
   background: rgba(148,163,184,.14);
 }
-.nav-dd-sep{
+.pricing-page .nav-dd-sep{
   height:1px;
   background: rgba(148,163,184,.12);
   margin: 6px 0;
@@ -469,8 +469,8 @@ thead .is-featured{
 }
 
 /* Dropdown (click-to-open; prevents hover flicker) */
-.nav-dropdown{ position: relative; }
-.nav-dropdown-menu{
+.pricing-page .nav-dropdown{ position: relative; }
+.pricing-page .nav-dropdown-menu{
   display:none;
   position:absolute;
   top: calc(100% + 10px);
@@ -483,27 +483,27 @@ thead .is-featured{
   box-shadow: 0 14px 40px rgba(0,0,0,.35);
   z-index: 9999;
 }
-.nav-dropdown.open .nav-dropdown-menu{
+.pricing-page .nav-dropdown.open .nav-dropdown-menu{
   display:block;
 }
-.nav-dd-link{
+.pricing-page .nav-dd-link{
   display:block;
   padding: 8px 10px;
   border-radius: 10px;
   color: rgba(226,232,240,.92);
   text-decoration:none;
 }
-.nav-dd-link:hover{
+.pricing-page .nav-dd-link:hover{
   background: rgba(148,163,184,.14);
 }
-.nav-dd-sep{
+.pricing-page .nav-dd-sep{
   height:1px;
   background: rgba(148,163,184,.12);
   margin: 6px 0;
 }
 
 /* Accessibility helper (if you don’t already have it) */
-.sr-only{
+.pricing-page .sr-only{
   position:absolute;
   width:1px;
   height:1px;
@@ -516,12 +516,12 @@ thead .is-featured{
 }
 
 /* Force header to span and center like the rest of the site */
-#site-header,
-.site-header {
+.pricing-page #site-header,
+.pricing-page .site-header {
   width: 100%;
 }
 
-.site-header .nav-inner {
+.pricing-page .site-header .nav-inner {
   max-width: 1280px;
   margin: 0 auto;
   padding: 0 14px;
