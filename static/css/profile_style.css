@@ -2052,6 +2052,38 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   max-width: 100%;
 }
 
+.docs-mobile-list {
+  display: none;
+  width: 100%;
+}
+
+.docs-mobile-card {
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(11, 17, 32, 0.96), rgba(2, 6, 23, 0.94));
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.docs-mobile-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.docs-mobile-subtitle,
+.docs-mobile-meta {
+  font-size: 13px;
+  color: rgba(229, 231, 235, 0.88);
+  overflow-wrap: anywhere;
+}
+
+.docs-mobile-actions {
+  margin-top: 2px;
+}
+
 .docs-table {
   width: 100%;
   border-collapse: collapse;
@@ -2086,7 +2118,7 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
 }
 
 .agreements-link {
-  color: rgba(56,189,248,.96);
+  color: #00B7FF;
   font-weight: 600;
   text-decoration: none;
 }
@@ -2110,6 +2142,21 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   .docs-table th,
   .docs-table td {
     white-space: nowrap;
+  }
+}
+
+@media (max-width: 768px) {
+  .docs-table {
+    display: none;
+  }
+
+  .docs-mobile-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .docs-table-wrap {
+    overflow-x: hidden;
   }
 }
 

@@ -1326,14 +1326,16 @@ if (data && data.source === "cache_stale") {
   const summaryEl = document.getElementById("documents-summary-status");
   const typeSummaryEl = document.getElementById("documents-type-summary");
   const tableBodyEl = document.getElementById("documents-table-body");
+  const mobileListEl = document.getElementById("documents-mobile-list");
   const emptyEl = document.getElementById("documents-empty");
 
-  if (!wrap || !summaryEl || !typeSummaryEl || !tableBodyEl || !emptyEl) return;
+  if (!wrap || !summaryEl || !typeSummaryEl || !tableBodyEl || !mobileListEl || !emptyEl) return;
 
   wrap.hidden = true;
   summaryEl.textContent = "No documents on file";
   typeSummaryEl.innerHTML = "";
   tableBodyEl.innerHTML = "";
+  mobileListEl.innerHTML = "";
   emptyEl.classList.remove("is-visible");
 
   try {
@@ -1373,6 +1375,24 @@ if (data && data.source === "cache_stale") {
           </tr>
         `;
       }).join("");
+
+      mobileListEl.innerHTML = docs.map((doc) => {
+        const actions = [
+          renderRowActionLink({ href: doc.pdf_url, label: "View Document" }),
+        ];
+        if (doc.certificate_url) {
+          actions.push(renderRowActionLink({ href: doc.certificate_url, label: "Certificate" }));
+        }
+        return `
+          <article class="docs-mobile-card">
+            <div class="docs-mobile-title">${safeText(doc.type)}</div>
+            <div class="docs-mobile-subtitle">${safeText(doc.original_filename)}</div>
+            <div class="docs-mobile-meta">Uploaded: ${fmtDateTime(doc.uploaded_at || doc.created_at)}</div>
+            <div class="docs-mobile-meta">By: ${safeText(formatUploadedBy(doc))}</div>
+            <div class="docs-row-actions docs-mobile-actions">${actions.join("")}</div>
+          </article>
+        `;
+      }).join("");
     } else {
       emptyEl.classList.add("is-visible");
     }
@@ -1394,14 +1414,16 @@ async function loadCarrierAgreements(dot) {
   const statusEl = document.getElementById("agreements-status");
   const metaEl = document.getElementById("agreements-summary-meta");
   const tableBodyEl = document.getElementById("agreements-table-body");
+  const mobileListEl = document.getElementById("agreements-mobile-list");
   const emptyEl = document.getElementById("agreements-empty");
 
-  if (!wrap || !statusEl || !metaEl || !tableBodyEl || !emptyEl) return;
+  if (!wrap || !statusEl || !metaEl || !tableBodyEl || !mobileListEl || !emptyEl) return;
 
   wrap.hidden = true;
   statusEl.textContent = "No agreements signed";
   metaEl.innerHTML = "";
   tableBodyEl.innerHTML = "";
+  mobileListEl.innerHTML = "";
   emptyEl.classList.remove("is-visible");
   setContractSignStatus("", false);
 
@@ -1447,6 +1469,17 @@ async function loadCarrierAgreements(dot) {
           <td>${renderRowActionLink({ href: agreement.pdf_url, label: "View Agreement" })}</td>
           <td>${renderRowActionLink({ href: agreement.certificate_url, label: "View Certificate" })}</td>
         </tr>
+      `).join("");
+
+      mobileListEl.innerHTML = agreements.map((agreement) => `
+        <article class="docs-mobile-card">
+          <div class="docs-mobile-title">${safeText(agreement.agreement_type, "Carrier Agreement")}</div>
+          <div class="docs-mobile-meta">Signed: ${fmtDateTime(agreement.signed_at || agreement.sent_at || agreement.created_at)}</div>
+          <div class="docs-row-actions docs-mobile-actions">
+            ${renderRowActionLink({ href: agreement.pdf_url, label: "View Agreement" })}
+            ${renderRowActionLink({ href: agreement.certificate_url, label: "View Certificate" })}
+          </div>
+        </article>
       `).join("");
     } else {
       emptyEl.classList.add("is-visible");
