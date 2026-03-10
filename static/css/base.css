@@ -733,21 +733,26 @@ td,
 
 /* ===== Top-nav CTA ===== */
 .nav-cta{
-  padding: 7px 14px;               /* slightly more than nav-link */
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height: 34px;
+  padding: 0 14px;
   border-radius: 999px;
-  font-weight: 700;
-  letter-spacing: .03em;
+  font-weight: 650;
+  letter-spacing: .04em;
+  line-height: 1;
 
-  color: #061018;                  /* deep ink */
+  color: #03121f;
 background: linear-gradient(
   180deg,
-  rgba(147, 197, 253, .92),
-  rgba(96, 165, 250, .88)
+  rgba(56, 189, 248, .94),
+  rgba(11, 120, 207, .96)
 );
-border: 1px solid rgba(147, 197, 253, .45);
+border: 1px solid rgba(56, 189, 248, .55);
   box-shadow:
-    0 10px 26px rgba(56,189,248,.16),
-    inset 0 1px 0 rgba(255,255,255,.28);
+    0 8px 22px rgba(2, 132, 199, .22),
+    inset 0 1px 0 rgba(255,255,255,.22);
 
   transition:
     transform .12s ease,
@@ -758,15 +763,15 @@ border: 1px solid rgba(147, 197, 253, .45);
 
 .nav-cta:hover{
   transform: translateY(-1px);
-  filter: brightness(1.03);
+  filter: brightness(1.05);
   background: linear-gradient(
     180deg,
     rgba(125,211,252,.98),
-    rgba(56,189,248,.95)
+    rgba(14,165,233,.95)
   );
   box-shadow:
-    0 14px 34px rgba(56,189,248,.22),
-    inset 0 1px 0 rgba(255,255,255,.34);
+    0 10px 26px rgba(56,189,248,.28),
+    inset 0 1px 0 rgba(255,255,255,.28);
 }
 
 .nav-cta:active{
@@ -778,11 +783,11 @@ border: 1px solid rgba(147, 197, 253, .45);
   background: linear-gradient(
     180deg,
     rgba(125,211,252,.98),
-    rgba(56,189,248,.95)
+    rgba(14,165,233,.95)
   );
   box-shadow:
-    0 14px 34px rgba(56,189,248,.22),
-    inset 0 1px 0 rgba(255,255,255,.34);
+    0 10px 26px rgba(56,189,248,.28),
+    inset 0 1px 0 rgba(255,255,255,.28);
 }
 
 .nav-links{ gap:20px; }
@@ -790,7 +795,7 @@ border: 1px solid rgba(147, 197, 253, .45);
 /* ===== Right-side auth buttons ===== */
 .nav-auth-btn{
   height: 34px;
-  padding: 0 12px;
+  padding: 0 13px;
   border-radius: 999px;
 
   background: rgba(15, 23, 42, 0.65);
@@ -837,8 +842,20 @@ border: 1px solid rgba(147, 197, 253, .45);
 .nav-right{
   display:flex;
   align-items:center;
-  gap: 12px;
+  gap: 10px;
   justify-content: flex-end;
+}
+
+.nav-right .nav-link{
+  padding: 6px 9px;
+}
+
+.nav-right .nav-link#account-link{
+  color: rgba(226, 232, 240, 0.92);
+}
+
+.nav-right .nav-link#account-link:hover{
+  color: #7dd3fc;
 }
 
 /* Make dropdown triggers feel same size as other links */
