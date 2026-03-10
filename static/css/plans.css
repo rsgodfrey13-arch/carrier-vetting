@@ -546,3 +546,140 @@ thead .is-featured{
   color: rgba(255,255,255,.95);
   border-bottom-color: rgba(255,255,255,.6);
 }
+
+/* Mobile-only premium plan carousel */
+.plans-mobile-carousel{
+  display: none;
+}
+
+@media (max-width: 768px){
+  .pricing-page,
+  .pricing-page body,
+  .pricing-page .plans-page{
+    overflow-x: clip;
+  }
+
+  .plans-table-wrap{
+    display: none;
+  }
+
+  .plans-mobile-carousel{
+    display: block;
+    margin: 4px -6px 0;
+  }
+
+  .plans-mobile-track{
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding: 0 12%;
+    gap: 14px;
+    padding: 2px 12% 10px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .plans-mobile-track::-webkit-scrollbar{
+    display: none;
+  }
+
+  .plans-mobile-card{
+    flex: 0 0 76%;
+    scroll-snap-align: center;
+    border-radius: 18px;
+    border: 1px solid rgba(56,189,248,.34);
+    background: linear-gradient(180deg, rgba(11,17,32,.96), rgba(2,6,23,.96));
+    box-shadow: 0 14px 34px rgba(2,6,23,.45);
+    padding: 16px 14px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+  }
+
+  .plans-mobile-card.is-featured{
+    border-color: rgba(0,183,255,.75);
+    box-shadow: 0 0 0 1px rgba(0,183,255,.3), 0 16px 36px rgba(11,120,207,.35);
+    background: linear-gradient(180deg, rgba(11,120,207,.24), rgba(2,6,23,.96));
+  }
+
+  .plans-mobile-card-head{
+    text-align: center;
+    margin-bottom: 12px;
+  }
+
+  .plans-mobile-plan{
+    margin: 8px 0 0;
+    font-size: 1.06rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    font-family: "Space Grotesk", system-ui, sans-serif;
+    color: #f1f5f9;
+  }
+
+  .plans-mobile-price{
+    margin: 6px 0 0;
+    font-size: .95rem;
+    color: #cbd5e1;
+  }
+
+  .plans-mobile-features{
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid rgba(148,163,184,.18);
+  }
+
+  .plans-mobile-feature{
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 5px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(148,163,184,.12);
+  }
+
+  .plans-mobile-feature-label{
+    font-size: .74rem;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: #94a3b8;
+  }
+
+  .plans-mobile-feature-value{
+    font-size: .9rem;
+    color: #e5e7eb;
+    line-height: 1.4;
+  }
+
+  .plans-mobile-feature .check{
+    color: #38BDF8;
+  }
+
+  .plans-mobile-cta{
+    margin-top: 14px;
+    align-self: stretch;
+    text-align: center;
+  }
+
+  .plans-mobile-dots{
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding: 6px 0 2px;
+  }
+
+  .plans-mobile-dot{
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    border: 0;
+    background: rgba(148,163,184,.45);
+    padding: 0;
+  }
+
+  .plans-mobile-dot.is-active{
+    width: 20px;
+    background: linear-gradient(90deg, #00B7FF, #0B78CF);
+  }
+}

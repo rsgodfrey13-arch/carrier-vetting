@@ -46,6 +46,11 @@
           <h2 class="plans-shell-title">Compare plans</h2>
         </div>
 
+        <div class="plans-mobile-carousel" aria-label="Plan comparison cards" hidden>
+          <div class="plans-mobile-track" id="plansMobileTrack"></div>
+          <div class="plans-mobile-dots" id="plansMobileDots" aria-hidden="true"></div>
+        </div>
+
         <!-- Real table (not an image) -->
         <div class="plans-table-wrap" role="region" aria-label="Plan comparison table" tabindex="0">
           <table class="plans-table" aria-describedby="plansTableHint">
@@ -261,6 +266,129 @@
   
   <!-- 3. Your existing shared code -->
   <script src="/js/shared/shared.js"></script>
+
+  <script>
+    (function () {
+      const mobileMq = window.matchMedia("(max-width: 768px)");
+      const carousel = document.querySelector(".plans-mobile-carousel");
+      const track = document.getElementById("plansMobileTrack");
+      const dots = document.getElementById("plansMobileDots");
+      const table = document.querySelector(".plans-table");
+      if (!carousel || !track || !dots || !table) return;
+
+      const headers = Array.from(table.querySelectorAll("thead th.plans-col-plan"));
+      const featureRows = Array.from(table.querySelectorAll("tbody tr"));
+      const plans = headers.map((th, planIndex) => {
+        const name = th.querySelector(".plan-name")?.textContent?.trim() || "Plan";
+        const price = th.querySelector(".plan-price")?.textContent?.trim() || "";
+        const badge = th.querySelector(".plan-badge")?.textContent?.trim() || "";
+        const isFeatured = th.classList.contains("is-featured");
+        const features = featureRows.map((row) => {
+          const label = row.querySelector("th")?.textContent?.trim() || "";
+          const valueCell = row.querySelectorAll("td")[planIndex];
+          return {
+            label,
+            value: valueCell ? valueCell.innerHTML.trim() : "",
+            isFeatured: valueCell?.classList.contains("is-featured") || false,
+          };
+        });
+        return { name, price, badge, isFeatured, features };
+      });
+
+      const ctaForPlan = (name) => {
+        if (name === "Enterprise") {
+          return { href: "/demo", text: "Talk to sales", className: "btn-ghost" };
+        }
+        if (name === "Pro") {
+          return { href: "/create-account", text: "Start Pro", className: "btn-primary" };
+        }
+        if (name === "Core") {
+          return { href: "/create-account", text: "Start Core", className: "btn-primary" };
+        }
+        return { href: "/create-account", text: "Get started", className: "btn-primary" };
+      };
+
+      plans.forEach((plan) => {
+        const card = document.createElement("article");
+        card.className = `plans-mobile-card${plan.isFeatured ? " is-featured" : ""}`;
+
+        const cta = ctaForPlan(plan.name);
+        const featureMarkup = plan.features
+          .map(
+            (feature) => `
+              <li class="plans-mobile-feature${feature.isFeatured ? " is-featured" : ""}">
+                <span class="plans-mobile-feature-label">${feature.label}</span>
+                <span class="plans-mobile-feature-value">${feature.value}</span>
+              </li>
+            `,
+          )
+          .join("");
+
+        card.innerHTML = `
+          <header class="plans-mobile-card-head">
+            ${plan.badge ? `<div class="plan-badge">${plan.badge}</div>` : ""}
+            <h3 class="plans-mobile-plan">${plan.name}</h3>
+            <p class="plans-mobile-price">${plan.price}</p>
+          </header>
+          <ul class="plans-mobile-features">${featureMarkup}</ul>
+          <a class="${cta.className} plans-mobile-cta" href="${cta.href}">${cta.text}</a>
+        `;
+        track.appendChild(card);
+      });
+
+      plans.forEach((_, index) => {
+        const dot = document.createElement("button");
+        dot.type = "button";
+        dot.className = "plans-mobile-dot";
+        dot.setAttribute("aria-label", `Go to plan ${index + 1}`);
+        dot.addEventListener("click", () => {
+          const card = track.children[index];
+          card?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+        });
+        dots.appendChild(dot);
+      });
+
+      const updateDots = () => {
+        const cards = Array.from(track.children);
+        if (!cards.length) return;
+        const center = track.scrollLeft + track.clientWidth / 2;
+        let active = 0;
+        let minDistance = Infinity;
+        cards.forEach((card, idx) => {
+          const cardCenter = card.offsetLeft + card.clientWidth / 2;
+          const distance = Math.abs(center - cardCenter);
+          if (distance < minDistance) {
+            minDistance = distance;
+            active = idx;
+          }
+        });
+        Array.from(dots.children).forEach((dot, idx) => {
+          dot.classList.toggle("is-active", idx === active);
+        });
+      };
+
+      const setDefaultPlan = () => {
+        const proIndex = plans.findIndex((plan) => plan.name === "Pro");
+        if (proIndex < 0) return;
+        const card = track.children[proIndex];
+        card?.scrollIntoView({ behavior: "auto", block: "nearest", inline: "center" });
+      };
+
+      const syncForViewport = () => {
+        const isMobile = mobileMq.matches;
+        carousel.hidden = !isMobile;
+        if (isMobile) {
+          setDefaultPlan();
+          updateDots();
+        }
+      };
+
+      track.addEventListener("scroll", () => window.requestAnimationFrame(updateDots), { passive: true });
+      mobileMq.addEventListener("change", syncForViewport);
+      window.addEventListener("load", syncForViewport);
+      syncForViewport();
+    })();
+  </script>
   
 </body>
 </html>
