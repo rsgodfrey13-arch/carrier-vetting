@@ -282,30 +282,28 @@
         const name = th.querySelector(".plan-name")?.textContent?.trim() || "Plan";
         const price = th.querySelector(".plan-price")?.textContent?.trim() || "";
         const badge = th.querySelector(".plan-badge")?.textContent?.trim() || "";
-        const isFeatured = th.classList.contains("is-featured");
         const features = featureRows.map((row) => {
           const label = row.querySelector("th")?.textContent?.trim() || "";
           const valueCell = row.querySelectorAll("td")[planIndex];
           return {
             label,
             value: valueCell ? valueCell.innerHTML.trim() : "",
-            isFeatured: valueCell?.classList.contains("is-featured") || false,
           };
         });
-        return { name, price, badge, isFeatured, features };
+        return { name, price, badge, features };
       });
 
       const ctaForPlan = () => ({ href: "/create-account", text: "Create account", className: "btn-primary" });
 
       plans.forEach((plan) => {
         const card = document.createElement("article");
-        card.className = `plans-mobile-card${plan.isFeatured ? " is-featured" : ""}`;
+        card.className = "plans-mobile-card";
 
         const cta = ctaForPlan(plan.name);
         const featureMarkup = plan.features
           .map(
             (feature) => `
-              <li class="plans-mobile-feature${feature.isFeatured ? " is-featured" : ""}">
+              <li class="plans-mobile-feature">
                 <span class="plans-mobile-feature-label">${feature.label}</span>
                 <span class="plans-mobile-feature-value">${feature.value}</span>
               </li>
@@ -331,11 +329,16 @@
         dot.className = "plans-mobile-dot";
         dot.setAttribute("aria-label", `Go to plan ${index + 1}`);
         dot.addEventListener("click", () => {
-          const card = track.children[index];
-          card?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+          centerCardAt(index, "smooth");
         });
         dots.appendChild(dot);
       });
+
+      const centerCardAt = (index, behavior = "smooth") => {
+        const card = track.children[index];
+        if (!card) return;
+        card.scrollIntoView({ behavior, block: "nearest", inline: "center" });
+      };
 
       const updateDots = () => {
         const cards = Array.from(track.children);
@@ -356,11 +359,32 @@
         });
       };
 
+      let hasCenteredDefault = false;
+      let settleTimer = null;
+
       const setDefaultPlan = () => {
+        if (hasCenteredDefault) return;
         const proIndex = plans.findIndex((plan) => plan.name === "Pro");
         if (proIndex < 0) return;
-        const card = track.children[proIndex];
-        card?.scrollIntoView({ behavior: "auto", block: "nearest", inline: "center" });
+        centerCardAt(proIndex, "auto");
+        hasCenteredDefault = true;
+      };
+
+      const settleToNearestCard = () => {
+        const cards = Array.from(track.children);
+        if (!cards.length) return;
+        const center = track.scrollLeft + track.clientWidth / 2;
+        let active = 0;
+        let minDistance = Infinity;
+        cards.forEach((card, idx) => {
+          const cardCenter = card.offsetLeft + card.clientWidth / 2;
+          const distance = Math.abs(center - cardCenter);
+          if (distance < minDistance) {
+            minDistance = distance;
+            active = idx;
+          }
+        });
+        if (minDistance > 2) centerCardAt(active, "smooth");
       };
 
       const syncForViewport = () => {
@@ -372,7 +396,11 @@
         }
       };
 
-      track.addEventListener("scroll", () => window.requestAnimationFrame(updateDots), { passive: true });
+      track.addEventListener("scroll", () => {
+        window.requestAnimationFrame(updateDots);
+        window.clearTimeout(settleTimer);
+        settleTimer = window.setTimeout(settleToNearestCard, 110);
+      }, { passive: true });
       mobileMq.addEventListener("change", syncForViewport);
       window.addEventListener("load", syncForViewport);
       syncForViewport();

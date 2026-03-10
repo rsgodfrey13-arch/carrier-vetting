@@ -1,0 +1,262 @@
+diff --git a/static/css/plans.css b/static/css/plans.css
+index c9592ab002373a2ef15fcf7b0ba50417828ba0c5..7d3121b702361c2fffa788fe050ae06c39c4df1d 100644
+--- a/static/css/plans.css
++++ b/static/css/plans.css
+@@ -550,80 +550,80 @@ thead .is-featured{
+ /* Mobile-only premium plan carousel */
+ .plans-mobile-carousel{
+   display: none;
+ }
+ 
+ @media (max-width: 768px){
+   .pricing-page,
+   .pricing-page body,
+   .pricing-page .plans-page{
+     overflow-x: clip;
+   }
+ 
+   .plans-table-wrap{
+     display: none;
+   }
+ 
+   .plans-mobile-carousel{
+     display: block;
+     margin: 4px -6px 0;
+   }
+ 
+   .plans-mobile-track{
+     display: flex;
+     overflow-x: auto;
+     scroll-snap-type: x mandatory;
+-    scroll-padding: 0 12%;
+-    gap: 14px;
+-    padding: 2px 12% 10px;
++    scroll-padding-inline: 14%;
++    gap: 12px;
++    padding: 4px 14% 14px;
+     -webkit-overflow-scrolling: touch;
++    scroll-behavior: smooth;
++    overscroll-behavior-x: contain;
++    touch-action: pan-x pinch-zoom;
+     scrollbar-width: none;
++    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 8%, #000 92%, transparent 100%);
++    mask-image: linear-gradient(90deg, transparent 0, #000 8%, #000 92%, transparent 100%);
+   }
+ 
+   .plans-mobile-track::-webkit-scrollbar{
+     display: none;
+   }
+ 
+   .plans-mobile-card{
+-    flex: 0 0 76%;
++    flex: 0 0 72%;
+     scroll-snap-align: center;
++    scroll-snap-stop: always;
+     border-radius: 18px;
+     border: 1px solid rgba(56,189,248,.34);
+     background: linear-gradient(180deg, rgba(11,17,32,.96), rgba(2,6,23,.96));
+     box-shadow: 0 14px 34px rgba(2,6,23,.45);
+     padding: 16px 14px;
+     display: flex;
+     flex-direction: column;
+     min-height: 100%;
+   }
+ 
+-  .plans-mobile-card.is-featured{
+-    border-color: rgba(56,189,248,.52);
+-    box-shadow: 0 14px 34px rgba(2,6,23,.45);
+-    background: linear-gradient(180deg, rgba(11,120,207,.14), rgba(2,6,23,.96));
+-  }
+-
+   .plans-mobile-card-head{
+     text-align: center;
+     margin-bottom: 12px;
+   }
+ 
+   .plans-mobile-plan{
+     margin: 8px 0 0;
+     font-size: 1.06rem;
+     letter-spacing: .1em;
+     text-transform: uppercase;
+     font-family: "Space Grotesk", system-ui, sans-serif;
+     color: #f1f5f9;
+   }
+ 
+   .plans-mobile-price{
+     margin: 6px 0 0;
+     font-size: .95rem;
+     color: #cbd5e1;
+   }
+ 
+   .plans-mobile-features{
+     list-style: none;
+     margin: 0;
+     padding: 0;
+     display: flex;
+diff --git a/static/plans.html b/static/plans.html
+index 0ab3410efca81e9d27bbd82a2c81f6845ae8215d..27dbf1fdb45d9d496bda7039a11b6dceb002e750 100644
+--- a/static/plans.html
++++ b/static/plans.html
+@@ -260,124 +260,152 @@
+     src="https://js.sentry-cdn.com/1df77c56ba17c2098baf02e362c93be2.min.js"
+     crossorigin="anonymous"
+   ></script>
+   
+   <!-- 2. Initialize Sentry with YOUR DSN -->
+   <script src="/js/shared/sentry.js"></script>
+   
+   <!-- 3. Your existing shared code -->
+   <script src="/js/shared/shared.js"></script>
+ 
+   <script>
+     (function () {
+       const mobileMq = window.matchMedia("(max-width: 768px)");
+       const carousel = document.querySelector(".plans-mobile-carousel");
+       const track = document.getElementById("plansMobileTrack");
+       const dots = document.getElementById("plansMobileDots");
+       const table = document.querySelector(".plans-table");
+       if (!carousel || !track || !dots || !table) return;
+ 
+       const headers = Array.from(table.querySelectorAll("thead th.plans-col-plan"));
+       const featureRows = Array.from(table.querySelectorAll("tbody tr"));
+       const plans = headers.map((th, planIndex) => {
+         const name = th.querySelector(".plan-name")?.textContent?.trim() || "Plan";
+         const price = th.querySelector(".plan-price")?.textContent?.trim() || "";
+         const badge = th.querySelector(".plan-badge")?.textContent?.trim() || "";
+-        const isFeatured = th.classList.contains("is-featured");
+         const features = featureRows.map((row) => {
+           const label = row.querySelector("th")?.textContent?.trim() || "";
+           const valueCell = row.querySelectorAll("td")[planIndex];
+           return {
+             label,
+             value: valueCell ? valueCell.innerHTML.trim() : "",
+-            isFeatured: valueCell?.classList.contains("is-featured") || false,
+           };
+         });
+-        return { name, price, badge, isFeatured, features };
++        return { name, price, badge, features };
+       });
+ 
+       const ctaForPlan = () => ({ href: "/create-account", text: "Create account", className: "btn-primary" });
+ 
+       plans.forEach((plan) => {
+         const card = document.createElement("article");
+-        card.className = `plans-mobile-card${plan.isFeatured ? " is-featured" : ""}`;
++        card.className = "plans-mobile-card";
+ 
+         const cta = ctaForPlan(plan.name);
+         const featureMarkup = plan.features
+           .map(
+             (feature) => `
+-              <li class="plans-mobile-feature${feature.isFeatured ? " is-featured" : ""}">
++              <li class="plans-mobile-feature">
+                 <span class="plans-mobile-feature-label">${feature.label}</span>
+                 <span class="plans-mobile-feature-value">${feature.value}</span>
+               </li>
+             `,
+           )
+           .join("");
+ 
+         card.innerHTML = `
+           <header class="plans-mobile-card-head">
+             ${plan.badge ? `<div class="plan-badge">${plan.badge}</div>` : ""}
+             <h3 class="plans-mobile-plan">${plan.name}</h3>
+             <p class="plans-mobile-price">${plan.price}</p>
+           </header>
+           <ul class="plans-mobile-features">${featureMarkup}</ul>
+           <a class="${cta.className} plans-mobile-cta" href="${cta.href}">${cta.text}</a>
+         `;
+         track.appendChild(card);
+       });
+ 
+       plans.forEach((_, index) => {
+         const dot = document.createElement("button");
+         dot.type = "button";
+         dot.className = "plans-mobile-dot";
+         dot.setAttribute("aria-label", `Go to plan ${index + 1}`);
+         dot.addEventListener("click", () => {
+-          const card = track.children[index];
+-          card?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
++          centerCardAt(index, "smooth");
+         });
+         dots.appendChild(dot);
+       });
+ 
++      const centerCardAt = (index, behavior = "smooth") => {
++        const card = track.children[index];
++        if (!card) return;
++        card.scrollIntoView({ behavior, block: "nearest", inline: "center" });
++      };
++
+       const updateDots = () => {
+         const cards = Array.from(track.children);
+         if (!cards.length) return;
+         const center = track.scrollLeft + track.clientWidth / 2;
+         let active = 0;
+         let minDistance = Infinity;
+         cards.forEach((card, idx) => {
+           const cardCenter = card.offsetLeft + card.clientWidth / 2;
+           const distance = Math.abs(center - cardCenter);
+           if (distance < minDistance) {
+             minDistance = distance;
+             active = idx;
+           }
+         });
+         Array.from(dots.children).forEach((dot, idx) => {
+           dot.classList.toggle("is-active", idx === active);
+         });
+       };
+ 
++      let hasCenteredDefault = false;
++      let settleTimer = null;
++
+       const setDefaultPlan = () => {
++        if (hasCenteredDefault) return;
+         const proIndex = plans.findIndex((plan) => plan.name === "Pro");
+         if (proIndex < 0) return;
+-        const card = track.children[proIndex];
+-        card?.scrollIntoView({ behavior: "auto", block: "nearest", inline: "center" });
++        centerCardAt(proIndex, "auto");
++        hasCenteredDefault = true;
++      };
++
++      const settleToNearestCard = () => {
++        const cards = Array.from(track.children);
++        if (!cards.length) return;
++        const center = track.scrollLeft + track.clientWidth / 2;
++        let active = 0;
++        let minDistance = Infinity;
++        cards.forEach((card, idx) => {
++          const cardCenter = card.offsetLeft + card.clientWidth / 2;
++          const distance = Math.abs(center - cardCenter);
++          if (distance < minDistance) {
++            minDistance = distance;
++            active = idx;
++          }
++        });
++        if (minDistance > 2) centerCardAt(active, "smooth");
+       };
+ 
+       const syncForViewport = () => {
+         const isMobile = mobileMq.matches;
+         carousel.hidden = !isMobile;
+         if (isMobile) {
+           setDefaultPlan();
+           updateDots();
+         }
+       };
+ 
+-      track.addEventListener("scroll", () => window.requestAnimationFrame(updateDots), { passive: true });
++      track.addEventListener("scroll", () => {
++        window.requestAnimationFrame(updateDots);
++        window.clearTimeout(settleTimer);
++        settleTimer = window.setTimeout(settleToNearestCard, 110);
++      }, { passive: true });
+       mobileMq.addEventListener("change", syncForViewport);
+       window.addEventListener("load", syncForViewport);
+       syncForViewport();
+     })();
+   </script>
+   
+ </body>
+ </html>
