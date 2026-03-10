@@ -2173,3 +2173,101 @@ body.account-page .page{
     letter-spacing: 0;
   }
 }
+
+/* Account mobile containment + section-specific overflow cleanup */
+body.account-page{
+  overflow-x: clip;
+}
+
+body.account-page .page,
+body.account-page .account-shell,
+body.account-page .account-panel,
+body.account-page .card,
+body.account-page .tab-panel,
+body.account-page .row,
+body.account-page .row-actions{
+  min-width: 0;
+}
+
+@media (max-width: 920px){
+  body.account-page .page{
+    width: 100%;
+    max-width: 100%;
+    padding: 18px 12px 44px;
+  }
+
+  body.account-page .account-header{
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  body.account-page .account-header-actions{
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  body.account-page .card{
+    padding: 16px 14px;
+  }
+
+  body.account-page .row{
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 720px){
+  /* Teammates: invite row + members/invites controls */
+  #tab-team .team-invite-row{
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  #tab-team .team-invite-email-col,
+  #tab-team .team-invite-role-col,
+  #tab-team .team-invite-row .row-actions,
+  #tab-team .team-section-head-row > *{
+    width: 100%;
+    min-width: 0;
+  }
+
+  #tab-team .team-invite-role-col .api-input,
+  #tab-team .team-invite-email-col .api-input,
+  #tab-team .team-invite-row .btn-primary,
+  #tab-team .team-section-head-row .btn-ghost{
+    width: 100%;
+  }
+
+  #tab-team .team-section-head-row{
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  /* API: let actions stack and keep webhook input inside viewport */
+  #tab-api .lock-wrap{
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    row-gap: 10px;
+  }
+
+  #tab-api .lock-wrap .lock-main,
+  #tab-api .lock-wrap .row-actions,
+  #tab-api .lock-wrap .lock-footer{
+    grid-column: 1;
+  }
+
+  #tab-api .lock-wrap .row-actions{
+    grid-row: 2;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  #tab-api .lock-wrap .lock-footer{
+    grid-row: 3;
+  }
+
+  #tab-api .api-input{
+    width: 100%;
+    max-width: 100%;
+  }
+}
