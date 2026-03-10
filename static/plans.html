@@ -295,18 +295,7 @@
         return { name, price, badge, isFeatured, features };
       });
 
-      const ctaForPlan = (name) => {
-        if (name === "Enterprise") {
-          return { href: "/demo", text: "Talk to sales", className: "btn-ghost" };
-        }
-        if (name === "Pro") {
-          return { href: "/create-account", text: "Start Pro", className: "btn-primary" };
-        }
-        if (name === "Core") {
-          return { href: "/create-account", text: "Start Core", className: "btn-primary" };
-        }
-        return { href: "/create-account", text: "Get started", className: "btn-primary" };
-      };
+      const ctaForPlan = () => ({ href: "/create-account", text: "Create account", className: "btn-primary" });
 
       plans.forEach((plan) => {
         const card = document.createElement("article");

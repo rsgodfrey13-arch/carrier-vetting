@@ -597,9 +597,9 @@ thead .is-featured{
   }
 
   .plans-mobile-card.is-featured{
-    border-color: rgba(0,183,255,.75);
-    box-shadow: 0 0 0 1px rgba(0,183,255,.3), 0 16px 36px rgba(11,120,207,.35);
-    background: linear-gradient(180deg, rgba(11,120,207,.24), rgba(2,6,23,.96));
+    border-color: rgba(56,189,248,.52);
+    box-shadow: 0 14px 34px rgba(2,6,23,.45);
+    background: linear-gradient(180deg, rgba(11,120,207,.14), rgba(2,6,23,.96));
   }
 
   .plans-mobile-card-head{

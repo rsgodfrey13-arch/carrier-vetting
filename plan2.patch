@@ -1,0 +1,129 @@
+diff --git a/static/css/plans.css b/static/css/plans.css
+index 4165534e2000f70fcd57ea411a06a03a5e02fe14..c9592ab002373a2ef15fcf7b0ba50417828ba0c5 100644
+--- a/static/css/plans.css
++++ b/static/css/plans.css
+@@ -575,53 +575,53 @@ thead .is-featured{
+     scroll-padding: 0 12%;
+     gap: 14px;
+     padding: 2px 12% 10px;
+     -webkit-overflow-scrolling: touch;
+     scrollbar-width: none;
+   }
+ 
+   .plans-mobile-track::-webkit-scrollbar{
+     display: none;
+   }
+ 
+   .plans-mobile-card{
+     flex: 0 0 76%;
+     scroll-snap-align: center;
+     border-radius: 18px;
+     border: 1px solid rgba(56,189,248,.34);
+     background: linear-gradient(180deg, rgba(11,17,32,.96), rgba(2,6,23,.96));
+     box-shadow: 0 14px 34px rgba(2,6,23,.45);
+     padding: 16px 14px;
+     display: flex;
+     flex-direction: column;
+     min-height: 100%;
+   }
+ 
+   .plans-mobile-card.is-featured{
+-    border-color: rgba(0,183,255,.75);
+-    box-shadow: 0 0 0 1px rgba(0,183,255,.3), 0 16px 36px rgba(11,120,207,.35);
+-    background: linear-gradient(180deg, rgba(11,120,207,.24), rgba(2,6,23,.96));
++    border-color: rgba(56,189,248,.52);
++    box-shadow: 0 14px 34px rgba(2,6,23,.45);
++    background: linear-gradient(180deg, rgba(11,120,207,.14), rgba(2,6,23,.96));
+   }
+ 
+   .plans-mobile-card-head{
+     text-align: center;
+     margin-bottom: 12px;
+   }
+ 
+   .plans-mobile-plan{
+     margin: 8px 0 0;
+     font-size: 1.06rem;
+     letter-spacing: .1em;
+     text-transform: uppercase;
+     font-family: "Space Grotesk", system-ui, sans-serif;
+     color: #f1f5f9;
+   }
+ 
+   .plans-mobile-price{
+     margin: 6px 0 0;
+     font-size: .95rem;
+     color: #cbd5e1;
+   }
+ 
+   .plans-mobile-features{
+     list-style: none;
+     margin: 0;
+diff --git a/static/plans.html b/static/plans.html
+index 25655a5454956569fabd597d75fa4f40e12623b7..0ab3410efca81e9d27bbd82a2c81f6845ae8215d 100644
+--- a/static/plans.html
++++ b/static/plans.html
+@@ -273,62 +273,51 @@
+       const carousel = document.querySelector(".plans-mobile-carousel");
+       const track = document.getElementById("plansMobileTrack");
+       const dots = document.getElementById("plansMobileDots");
+       const table = document.querySelector(".plans-table");
+       if (!carousel || !track || !dots || !table) return;
+ 
+       const headers = Array.from(table.querySelectorAll("thead th.plans-col-plan"));
+       const featureRows = Array.from(table.querySelectorAll("tbody tr"));
+       const plans = headers.map((th, planIndex) => {
+         const name = th.querySelector(".plan-name")?.textContent?.trim() || "Plan";
+         const price = th.querySelector(".plan-price")?.textContent?.trim() || "";
+         const badge = th.querySelector(".plan-badge")?.textContent?.trim() || "";
+         const isFeatured = th.classList.contains("is-featured");
+         const features = featureRows.map((row) => {
+           const label = row.querySelector("th")?.textContent?.trim() || "";
+           const valueCell = row.querySelectorAll("td")[planIndex];
+           return {
+             label,
+             value: valueCell ? valueCell.innerHTML.trim() : "",
+             isFeatured: valueCell?.classList.contains("is-featured") || false,
+           };
+         });
+         return { name, price, badge, isFeatured, features };
+       });
+ 
+-      const ctaForPlan = (name) => {
+-        if (name === "Enterprise") {
+-          return { href: "/demo", text: "Talk to sales", className: "btn-ghost" };
+-        }
+-        if (name === "Pro") {
+-          return { href: "/create-account", text: "Start Pro", className: "btn-primary" };
+-        }
+-        if (name === "Core") {
+-          return { href: "/create-account", text: "Start Core", className: "btn-primary" };
+-        }
+-        return { href: "/create-account", text: "Get started", className: "btn-primary" };
+-      };
++      const ctaForPlan = () => ({ href: "/create-account", text: "Create account", className: "btn-primary" });
+ 
+       plans.forEach((plan) => {
+         const card = document.createElement("article");
+         card.className = `plans-mobile-card${plan.isFeatured ? " is-featured" : ""}`;
+ 
+         const cta = ctaForPlan(plan.name);
+         const featureMarkup = plan.features
+           .map(
+             (feature) => `
+               <li class="plans-mobile-feature${feature.isFeatured ? " is-featured" : ""}">
+                 <span class="plans-mobile-feature-label">${feature.label}</span>
+                 <span class="plans-mobile-feature-value">${feature.value}</span>
+               </li>
+             `,
+           )
+           .join("");
+ 
+         card.innerHTML = `
+           <header class="plans-mobile-card-head">
+             ${plan.badge ? `<div class="plan-badge">${plan.badge}</div>` : ""}
+             <h3 class="plans-mobile-plan">${plan.name}</h3>
+             <p class="plans-mobile-price">${plan.price}</p>
+           </header>
+           <ul class="plans-mobile-features">${featureMarkup}</ul>
+           <a class="${cta.className} plans-mobile-cta" href="${cta.href}">${cta.text}</a>
