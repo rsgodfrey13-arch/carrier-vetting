@@ -2832,3 +2832,17 @@ body.app-page #site-header .header-container{
     padding-inline: 12px;
   }
 }
+
+@media (max-width: 768px) {
+  .carriers-table tbody tr {
+    height: auto;
+  }
+
+  .carriers-table td:nth-child(4) {
+    -webkit-line-clamp: 3;
+    line-height: 1.25;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    vertical-align: top;
+  }
+}
