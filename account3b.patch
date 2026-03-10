@@ -1,0 +1,74 @@
+diff --git a/static/css/account.css b/static/css/account.css
+index cec46a1f0369735aa649dbc623b6d194963ebb44..f65213562742c7a876176a66119ceab709f1f54d 100644
+--- a/static/css/account.css
++++ b/static/css/account.css
+@@ -2154,61 +2154,67 @@ body.account-page .page{
+   height: 32px;
+   padding: 0 12px;
+   border-radius: 999px;
+   border: 1px solid rgba(148,163,184,.22);
+   background: rgba(15,23,42,.35);
+ }
+ 
+ /* Responsive: stack columns nicely */
+ @media (max-width: 720px){
+   .team-row{
+     grid-template-columns: 1fr;
+     gap: 8px;
+   }
+   .team-action{
+     justify-content: flex-start;
+   }
+   .team-role,
+   .team-status{
+     text-transform: none;
+     letter-spacing: 0;
+   }
+ }
+ 
+ /* Account mobile containment + section-specific overflow cleanup */
+ body.account-page{
+-  overflow-x: clip;
++  overflow-x: hidden;
+ }
+ 
+ body.account-page .page,
+ body.account-page .account-shell,
+ body.account-page .account-panel,
++body.account-page .account-mobile-nav,
++body.account-page .account-mobile-toggle,
++body.account-page .account-mobile-panel,
+ body.account-page .card,
+ body.account-page .tab-panel,
+ body.account-page .row,
+-body.account-page .row-actions{
++body.account-page .row-actions,
++body.account-page .api-input{
++  box-sizing: border-box;
+   min-width: 0;
++  max-width: 100%;
+ }
+ 
+ @media (max-width: 920px){
+   body.account-page .page{
+     width: 100%;
+     max-width: 100%;
+     padding: 18px 12px 44px;
+   }
+ 
+   body.account-page .account-header{
+     align-items: flex-start;
+     flex-wrap: wrap;
+   }
+ 
+   body.account-page .account-header-actions{
+     width: 100%;
+     flex-wrap: wrap;
+   }
+ 
+   body.account-page .card{
+     padding: 16px 14px;
+   }
+ 
+   body.account-page .row{
+     flex-wrap: wrap;

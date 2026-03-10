@@ -2176,17 +2176,23 @@ body.account-page .page{
 
 /* Account mobile containment + section-specific overflow cleanup */
 body.account-page{
-  overflow-x: clip;
+  overflow-x: hidden;
 }
 
 body.account-page .page,
 body.account-page .account-shell,
 body.account-page .account-panel,
+body.account-page .account-mobile-nav,
+body.account-page .account-mobile-toggle,
+body.account-page .account-mobile-panel,
 body.account-page .card,
 body.account-page .tab-panel,
 body.account-page .row,
-body.account-page .row-actions{
+body.account-page .row-actions,
+body.account-page .api-input{
+  box-sizing: border-box;
   min-width: 0;
+  max-width: 100%;
 }
 
 @media (max-width: 920px){
