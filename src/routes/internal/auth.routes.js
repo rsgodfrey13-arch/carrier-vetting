@@ -484,10 +484,10 @@ router.post("/auth/signup", async (req, res) => {
 });
 
 router.post("/auth/resend-verification", async (req, res) => {
-  const email = String(req.body?.email || "").trim().toLowerCase();
+  const userId = req.session?.userId;
 
-  if (!email) {
-    return res.redirect(302, "/verify-email?status=missing");
+  if (!userId) {
+    return res.redirect(302, "/login");
   }
 
   const client = await pool.connect();
@@ -495,16 +495,16 @@ router.post("/auth/resend-verification", async (req, res) => {
   try {
     const { rows } = await client.query(
       `
-      SELECT id, email, email_verified_at
+      SELECT id, email, email_verified_at, name
       FROM public.users
-      WHERE lower(email) = $1
+      WHERE id = $1
       LIMIT 1
       `,
-      [email]
+      [userId]
     );
 
     if (!rows.length) {
-      return res.redirect(302, "/verify-email?status=sent");
+      return res.redirect(302, "/verify-email?status=error");
     }
 
     const user = rows[0];
@@ -519,27 +519,33 @@ router.post("/auth/resend-verification", async (req, res) => {
     await client.query(
       `
       INSERT INTO public.email_verification_tokens
-        (user_id, token_hash, expires_at)
+        (user_id, token_hash, expires_at, request_ip, user_agent)
       VALUES
-        ($1, $2, now() + interval '24 hours')
+        ($1, $2, now() + interval '24 hours', $3, $4)
       `,
-      [user.id, tokenHash]
+      [
+        user.id,
+        tokenHash,
+        req.ip || null,
+        req.get("user-agent") || null
+      ]
     );
 
-    const verifyUrl = `${req.protocol}://${req.get("host")}/verify-email/${rawToken}`;
+    const verifyUrl = `https://carriershark.com/verify-email/${rawToken}`;
 
     await sendVerificationEmail({
       to: user.email,
-      verify_url: verifyUrl
+      first_name: (user.name || "").split(" ")[0] || "",
+      verify_url: verifyUrl,
+      expires_minutes: "1440",
     });
 
     return res.redirect(302, `/verify-email?status=sent&email=${encodeURIComponent(user.email)}`);
   } catch (err) {
-    console.error("POST /resend-verification failed:", err?.message || err);
+    console.error("POST /auth/resend-verification failed:", err?.message || err);
     return res.redirect(302, "/verify-email?status=error");
   } finally {
     client.release();
   }
 });
-
 module.exports = router;
