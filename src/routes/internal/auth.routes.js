@@ -483,7 +483,7 @@ router.post("/auth/signup", async (req, res) => {
   }
 });
 
-router.post("/resend-verification", async (req, res) => {
+router.post("/auth/resend-verification", async (req, res) => {
   const email = String(req.body?.email || "").trim().toLowerCase();
 
   if (!email) {
