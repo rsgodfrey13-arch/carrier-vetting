@@ -498,9 +498,25 @@ async function initAuthUI() {
   const logoutBtn = document.getElementById("logout-btn");
   const accountLink = document.getElementById("account-link");
   const mobileAccountLink = document.getElementById("mobile-account-link");
+  const mobileMyCarriersLink = document.getElementById("mobile-my-carriers-link");
+  const mobileSecurityLink = document.getElementById("mobile-security-link");
+  const mobileHelpLink = document.getElementById("mobile-help-link");
+  const mobileContactLink = document.getElementById("mobile-contact-link");
+  const mobileDemoLink = document.getElementById("mobile-demo-link");
   const mobileLogoutBtn = document.getElementById("mobile-logout-btn");
   const header = document.querySelector(".site-header");
   const tourLink = document.getElementById("tour-link");
+  const setMobileMenuOrder = (isLoggedIn) => {
+    if (!mobileHelpLink || !mobileSecurityLink) return;
+    const parent = mobileHelpLink.parentElement;
+    if (!parent) return;
+
+    if (isLoggedIn) {
+      parent.insertBefore(mobileHelpLink, mobileSecurityLink);
+    } else {
+      parent.insertBefore(mobileSecurityLink, mobileHelpLink);
+    }
+  };
 
   try {
     const res = await fetch("/api/me", { cache: "no-store" });
@@ -512,6 +528,7 @@ async function initAuthUI() {
       if (logoutBtn) logoutBtn.style.display = "inline-block";
       if (tourLink) tourLink.style.display = "none";
       window.csIsLoggedIn = true;
+      setMobileMenuOrder(true);
       
       if (header) {
         header.classList.remove("is-logged-out");
@@ -524,10 +541,22 @@ async function initAuthUI() {
         accountLink.href = "/account";
       }
 
+      if (mobileMyCarriersLink) {
+        mobileMyCarriersLink.style.display = "flex";
+      }
+
+      if (mobileContactLink) {
+        mobileContactLink.style.display = "none";
+      }
+
       if (mobileAccountLink) {
         mobileAccountLink.style.display = "flex";
         mobileAccountLink.textContent = "My Account";
         mobileAccountLink.href = "/account";
+      }
+
+      if (mobileDemoLink) {
+        mobileDemoLink.style.display = "none";
       }
 
       const logoutHandler = async () => {
@@ -556,6 +585,7 @@ async function initAuthUI() {
       if (logoutBtn) logoutBtn.style.display = "none";
       if (tourLink) tourLink.style.display = "inline-block";
       window.csIsLoggedIn = false;
+      setMobileMenuOrder(false);
 
       if (header) {
         header.classList.remove("is-logged-in");
@@ -568,10 +598,22 @@ async function initAuthUI() {
         accountLink.href = "/login";
       }
 
+      if (mobileMyCarriersLink) {
+        mobileMyCarriersLink.style.display = "none";
+      }
+
+      if (mobileContactLink) {
+        mobileContactLink.style.display = "flex";
+      }
+
       if (mobileAccountLink) {
         mobileAccountLink.style.display = "flex";
-        mobileAccountLink.textContent = "My Account";
+        mobileAccountLink.textContent = "Login";
         mobileAccountLink.href = "/login";
+      }
+
+      if (mobileDemoLink) {
+        mobileDemoLink.style.display = "flex";
       }
 
       if (mobileLogoutBtn) {
@@ -606,12 +648,17 @@ async function initAuthUI() {
 
     if (loginBtn) loginBtn.style.display = "inline-block";
     if (logoutBtn) logoutBtn.style.display = "none";
+    setMobileMenuOrder(false);
     if (tourLink) tourLink.style.display = "inline-block";
     if (accountLink) accountLink.style.display = "none";
+    if (mobileMyCarriersLink) mobileMyCarriersLink.style.display = "none";
+    if (mobileContactLink) mobileContactLink.style.display = "flex";
     if (mobileAccountLink) {
       mobileAccountLink.style.display = "flex";
+      mobileAccountLink.textContent = "Login";
       mobileAccountLink.href = "/login";
     }
+    if (mobileDemoLink) mobileDemoLink.style.display = "flex";
     if (mobileLogoutBtn) mobileLogoutBtn.style.display = "none";
 
     if (loginBtn) {
