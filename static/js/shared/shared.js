@@ -17,6 +17,48 @@ async function loadHeader() {
   }
 }
 
+function hasSelectedPlan(user) {
+  const plan = String(user?.plan || "").trim().toLowerCase();
+  if (!plan) return false;
+  return !["none", "no_plan", "no-plan", "unselected"].includes(plan);
+}
+
+function renderActivationBanner(user) {
+  const host = document.getElementById("site-header");
+  if (!host) return;
+
+  const existing = document.getElementById("cs-activation-banner");
+  if (existing) existing.remove();
+
+  if (!user || !window.csIsLoggedIn || hasSelectedPlan(user)) return;
+  if (["/activate-plan", "/billing"].includes(window.location.pathname)) return;
+
+  const dismissKey = `cs_activation_banner_dismissed_${user.id || "current"}`;
+  if (sessionStorage.getItem(dismissKey) === "1") return;
+
+  const shell = document.createElement("section");
+  shell.id = "cs-activation-banner";
+  shell.className = "cs-activation-banner-shell";
+  shell.innerHTML = `
+    <div class="cs-activation-banner" role="status" aria-live="polite">
+      <button class="cs-activation-dismiss" type="button" aria-label="Dismiss activation banner">✕</button>
+      <div class="cs-activation-copy">
+        <h2>Activate your account to start using Carrier Shark</h2>
+        <p>Choose a plan to add carriers, monitor changes, and manage agreements. Plans start at $0.</p>
+      </div>
+      <a class="cs-activation-cta" href="/activate-plan">Choose Plan</a>
+    </div>
+  `;
+
+  const dismissBtn = shell.querySelector(".cs-activation-dismiss");
+  dismissBtn?.addEventListener("click", () => {
+    sessionStorage.setItem(dismissKey, "1");
+    shell.remove();
+  });
+
+  host.insertAdjacentElement("afterend", shell);
+}
+
 
 async function loadHeaderSlim() {
   const container = document.getElementById("site-header");
@@ -513,6 +555,7 @@ async function initAuthUI() {
       }
 
       setHelpMenu(true);
+      renderActivationBanner(data.user);
 
       // logged in → no tour click handler needed
       if (tourLink) tourLink.onclick = null;
@@ -546,6 +589,7 @@ async function initAuthUI() {
       }
 
       setHelpMenu(false);
+      renderActivationBanner(null);
 
       if (loginBtn) {
         loginBtn.onclick = () => (window.location.href = "/login");
@@ -585,6 +629,7 @@ async function initAuthUI() {
     }
 
     setHelpMenu(false);
+    renderActivationBanner(null);
 
     if (tourLink) {
       tourLink.onclick = (e) => {

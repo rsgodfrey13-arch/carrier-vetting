@@ -125,6 +125,16 @@ async function getMe() {
   }
 }
 
+function hasSelectedPlan(user) {
+  const plan = String(user?.plan || "").trim().toLowerCase();
+  if (!plan) return false;
+  return !["none", "no_plan", "no-plan", "unselected"].includes(plan);
+}
+
+function isNoPlanUser(user) {
+  return !!user && !hasSelectedPlan(user);
+}
+
 function showLoggedInGate({ title, body, primaryText, onPrimary }) {
   const ok = confirm(`${title}\n\n${body}\n\nContinue?`);
   if (ok) onPrimary?.();
@@ -1883,11 +1893,20 @@ if (contractBtn) {
           if (res.status === 409 && body?.code === "CARRIER_LIMIT") {
             const limit = Number(body.carrier_limit ?? me?.carrier_limit ?? 0);
             const count = Number(body.carrier_count ?? me?.carrier_count ?? 0);
+
+            if (isNoPlanUser(me)) {
+              return showFeatureGate({
+                title: "Finish setup to start adding carriers",
+                body: "Your account is ready — you just need to choose a plan to activate Carrier Shark. Plans start at $0 and take less than a minute.",
+                primaryText: "Choose Plan",
+                onPrimary: () => (window.location.href = "/activate-plan"),
+              });
+            }
           
             return showFeatureGate({
               title: "Carrier limit reached",
-              body: `You’ve added ${count} of ${limit} carriers on your current plan.`,
-              note: "Upgrade your plan to add more carriers.",
+              body: "You’ve reached the carrier limit on your current plan. Upgrade to add more carriers.",
+              note: `Current usage: ${count} of ${limit} carriers.`,
               primaryText: "Upgrade Plan",
               onPrimary: () => (window.location.href = "/account?tab=plan"),
             });

@@ -200,6 +200,96 @@ a,
   font-weight:500;
 }
 
+/* Activation banner for logged-in users without a selected plan */
+.cs-activation-banner-shell{
+  width: 100%;
+  padding: 0 22px;
+  margin: 8px 0 0;
+}
+
+.cs-activation-banner{
+  max-width: 1280px;
+  margin: 0 auto;
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(14, 28, 53, 0.88), rgba(7, 18, 38, 0.86));
+  box-shadow: 0 16px 32px rgba(2, 6, 23, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 15px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+}
+
+.cs-activation-copy{
+  min-width: 0;
+}
+
+.cs-activation-copy h2{
+  margin: 0 0 4px;
+  font-size: 1rem;
+  line-height: 1.25;
+  color: rgba(241, 245, 249, 0.96);
+}
+
+.cs-activation-copy p{
+  margin: 0;
+  font-size: .88rem;
+  color: rgba(186, 211, 234, 0.92);
+}
+
+.cs-activation-cta{
+  margin-left: auto;
+  flex-shrink: 0;
+  text-decoration: none;
+  color: #082032;
+  background: linear-gradient(135deg, #22d3ee, #38bdf8);
+  border: 1px solid rgba(125, 211, 252, 0.85);
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-size: .83rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.cs-activation-cta:hover{
+  filter: brightness(1.06);
+}
+
+.cs-activation-dismiss{
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.45);
+  color: rgba(226, 232, 240, 0.88);
+  padding: 0;
+  line-height: 1;
+}
+
+.cs-activation-dismiss:hover{
+  background: rgba(30, 41, 59, 0.7);
+}
+
+@media (max-width: 900px){
+  .cs-activation-banner{
+    flex-direction: column;
+    align-items: flex-start;
+    padding-right: 44px;
+  }
+
+  .cs-activation-cta{
+    margin-left: 0;
+  }
+}
+
 /* Optional shared buttons (used by modal/footer) */
 .btn-primary,
 .btn-secondary,

@@ -8,6 +8,16 @@
   
 let ME = null;
 
+function hasSelectedPlan(user) {
+  const plan = String(user?.plan || "").trim().toLowerCase();
+  if (!plan) return false;
+  return !["none", "no_plan", "no-plan", "unselected"].includes(plan);
+}
+
+function isNoPlanUser(user) {
+  return !!user && !hasSelectedPlan(user);
+}
+
 async function getMeCached() {
   if (ME) return ME;
   try {
@@ -20,15 +30,29 @@ async function getMeCached() {
   }
 }
 
-function showLimitGate({ limit, count }) {
+function showLimitGate({ limit, count, noPlan = false }) {
   if (typeof window.showAccessGate === "function") {
     const loggedIn = !!window.csIsLoggedIn;
 
+    if (noPlan) {
+      window.showAccessGate({
+        title: "Finish setup to start adding carriers",
+        body: "Your account is ready — you just need to choose a plan to activate Carrier Shark. Plans start at $0 and take less than a minute.",
+        note: "Choose a plan to activate your workspace and start adding carriers.",
+        createLabel: loggedIn ? "Choose Plan" : "Create account",
+        signInLabel: "Sign in",
+        createHref: loggedIn ? "/activate-plan" : "/create-account",
+        signInHref: "/login",
+        hideSignIn: loggedIn,
+      });
+      return;
+    }
+
     window.showAccessGate({
       title: "Carrier limit reached",
-      body: `Your plan allows up to ${limit} carriers. You currently have ${count}.`,
-      note: "Upgrade your plan to add more carriers.",
-      createLabel: loggedIn ? "Upgrade plan" : "Create account",
+      body: "You’ve reached the carrier limit on your current plan. Upgrade to add more carriers.",
+      note: `Current usage: ${count} of ${limit} carriers.`,
+      createLabel: loggedIn ? "Upgrade Plan" : "Create account",
       signInLabel: "Sign in",
       createHref: loggedIn ? "/account?tab=plan" : "/create-account",
       signInHref: "/login",
@@ -37,7 +61,9 @@ function showLimitGate({ limit, count }) {
     return;
   }
 
-  alert(`Carrier limit reached (${count}/${limit}). Upgrade to add more.`);
+  alert(noPlan
+    ? "Finish setup to start adding carriers. Choose a plan to activate your account."
+    : `Carrier limit reached (${count}/${limit}). Upgrade to add more.`);
 }
 
   
@@ -1243,7 +1269,7 @@ const ok = await window.showConfirm({
     
     // If already at/over limit, no adds possible (0 means none allowed)
     if (count >= limit) {
-      showLimitGate({ limit, count });
+      showLimitGate({ limit, count, noPlan: isNoPlanUser(me) });
       return;
     }
     // otherwise proceed (partial success is allowed)
@@ -1275,6 +1301,7 @@ const ok = await window.showConfirm({
           showLimitGate({
             limit: Number(body.carrier_limit ?? ME?.carrier_limit ?? 0),
             count: Number(body.carrier_count ?? ME?.carrier_count ?? 0),
+            noPlan: isNoPlanUser(ME),
           });
           return;
         }
@@ -1294,6 +1321,15 @@ const invalid = Number(s.invalid || 0);
 const skipped = Number(s.skipped_limit || 0);
 
 if (skipped > 0) {
+  if (isNoPlanUser(ME)) {
+    showLimitGate({
+      limit: Number(ME?.carrier_limit ?? 0),
+      count: Number(ME?.carrier_count ?? 0),
+      noPlan: true,
+    });
+    return;
+  }
+
   const limitNow = Number(ME?.carrier_limit ?? 0);
   const countNow = Number(ME?.carrier_count ?? 0);
   const loggedIn = !!window.csIsLoggedIn;
@@ -1815,6 +1851,7 @@ function renderPreviewTable(preview) {
             showLimitGate({
               limit: Number(errData.carrier_limit ?? 0),
               count: Number(errData.carrier_count ?? 0),
+              noPlan: isNoPlanUser(await getMeCached()),
             });
         
             // and still take them to Step 3 with zeros (optional but feels clean)
@@ -1844,6 +1881,15 @@ function renderPreviewTable(preview) {
         
         if (skipped > 0) {
           const me = await getMeCached(); // you already have this helper in index.js
+          if (isNoPlanUser(me)) {
+            showLimitGate({
+              limit: Number(me?.carrier_limit ?? 0),
+              count: Number(me?.carrier_count ?? 0),
+              noPlan: true,
+            });
+            return;
+          }
+
           const limitNow = Number(me?.carrier_limit ?? 0);
           const countNow  = Number(me?.carrier_count ?? 0);
           const loggedIn = !!window.csIsLoggedIn;
