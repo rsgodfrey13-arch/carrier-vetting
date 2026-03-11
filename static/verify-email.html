@@ -89,7 +89,7 @@
 
           <div class="cs-row cs-row-center" style="margin-top:14px;">
             <form method="post" action="/api/auth/resend-verification" style="margin:0;">
-              <input type="hidden" name="email" value="" />
+              <input type="hidden" name="email" id="resend-email" value="" />
               <button class="cs-btn cs-btn-primary" type="submit">Resend email</button>
             </form>
 
@@ -108,6 +108,12 @@
 <script>
 (function () {
   const params = new URLSearchParams(window.location.search);
+  const email = params.get("email");
+  const resendEmail = document.getElementById("resend-email");
+  
+  if (email && resendEmail) {
+    resendEmail.value = email;
+  }
   const status = params.get("status");
 const verifyBox = document.getElementById("verify-box");
 
