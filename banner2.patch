@@ -1,0 +1,156 @@
+diff --git a/static/css/base.css b/static/css/base.css
+index f8360069c1669720c7e6908ae91f10c759449727..9046955f15b98486460ae2dc39f86ab18f0b23be 100644
+--- a/static/css/base.css
++++ b/static/css/base.css
+@@ -238,73 +238,54 @@ a,
+ .cs-activation-copy p{
+   margin: 0;
+   font-size: .88rem;
+   color: rgba(186, 211, 234, 0.92);
+ }
+ 
+ .cs-activation-cta{
+   margin-left: auto;
+   flex-shrink: 0;
+   text-decoration: none;
+   color: #082032;
+   background: linear-gradient(135deg, #22d3ee, #38bdf8);
+   border: 1px solid rgba(125, 211, 252, 0.85);
+   border-radius: 999px;
+   padding: 10px 16px;
+   font-size: .83rem;
+   font-weight: 700;
+   letter-spacing: .05em;
+   text-transform: uppercase;
+ }
+ 
+ .cs-activation-cta:hover{
+   filter: brightness(1.06);
+ }
+ 
+-.cs-activation-dismiss{
+-  position: absolute;
+-  top: 8px;
+-  right: 8px;
+-  width: 28px;
+-  height: 28px;
+-  border-radius: 10px;
+-  border: 1px solid rgba(148, 163, 184, 0.28);
+-  background: rgba(15, 23, 42, 0.45);
+-  color: rgba(226, 232, 240, 0.88);
+-  padding: 0;
+-  line-height: 1;
+-}
+-
+-.cs-activation-dismiss:hover{
+-  background: rgba(30, 41, 59, 0.7);
+-}
+-
+ @media (max-width: 900px){
+   .cs-activation-banner{
+     flex-direction: column;
+     align-items: flex-start;
+-    padding-right: 44px;
+   }
+ 
+   .cs-activation-cta{
+     margin-left: 0;
+   }
+ }
+ 
+ /* Optional shared buttons (used by modal/footer) */
+ .btn-primary,
+ .btn-secondary,
+ .btn-danger,
+ .btn-ghost,
+ .pill-btn,
+ .search-btn,
+ .plan-select-btn,
+ .cs-btn{
+   border-radius:var(--cs-radius-pill);
+   border:1px solid transparent;
+   padding:8px 16px;
+   cursor:pointer;
+   font-size:0.85rem;
+   font-weight:600;
+   letter-spacing:0.03em;
+   transition:transform var(--cs-transition-fast), box-shadow var(--cs-transition-normal), background var(--cs-transition-normal), color var(--cs-transition-normal), border-color var(--cs-transition-normal), opacity var(--cs-transition-fast);
+ }
+diff --git a/static/js/shared/shared.js b/static/js/shared/shared.js
+index f8b45c2b387fadede85f19d08f6c11d59a19acc4..21c3742da5bca5024373be3699d739de3dc0e30c 100644
+--- a/static/js/shared/shared.js
++++ b/static/js/shared/shared.js
+@@ -11,73 +11,63 @@ async function loadHeader() {
+     // Header is now in the DOM → wire buttons
+     await initAuthUI();
+     initMobileHeaderMenu();
+ 
+   } catch (err) {
+     console.error("Header load failed:", err);
+   }
+ }
+ 
+ function hasSelectedPlan(user) {
+   const plan = String(user?.plan || "").trim().toLowerCase();
+   if (!plan) return false;
+   return !["none", "no_plan", "no-plan", "unselected"].includes(plan);
+ }
+ 
+ function renderActivationBanner(user) {
+   const host = document.getElementById("site-header");
+   if (!host) return;
+ 
+   const existing = document.getElementById("cs-activation-banner");
+   if (existing) existing.remove();
+ 
+   if (!user || !window.csIsLoggedIn || hasSelectedPlan(user)) return;
+   if (["/activate-plan", "/billing"].includes(window.location.pathname)) return;
+ 
+-  const dismissKey = `cs_activation_banner_dismissed_${user.id || "current"}`;
+-  if (sessionStorage.getItem(dismissKey) === "1") return;
+-
+   const shell = document.createElement("section");
+   shell.id = "cs-activation-banner";
+   shell.className = "cs-activation-banner-shell";
+   shell.innerHTML = `
+     <div class="cs-activation-banner" role="status" aria-live="polite">
+-      <button class="cs-activation-dismiss" type="button" aria-label="Dismiss activation banner">✕</button>
+       <div class="cs-activation-copy">
+         <h2>Activate your account to start using Carrier Shark</h2>
+         <p>Choose a plan to add carriers, monitor changes, and manage agreements. Plans start at $0.</p>
+       </div>
+       <a class="cs-activation-cta" href="/activate-plan">Choose Plan</a>
+     </div>
+   `;
+ 
+-  const dismissBtn = shell.querySelector(".cs-activation-dismiss");
+-  dismissBtn?.addEventListener("click", () => {
+-    sessionStorage.setItem(dismissKey, "1");
+-    shell.remove();
+-  });
+-
+   host.insertAdjacentElement("afterend", shell);
+ }
+ 
+ 
+ async function loadHeaderSlim() {
+   const container = document.getElementById("site-header");
+   if (!container) return;
+ 
+   try {
+     const res = await fetch("/partials/header-slim.html", { cache: "no-store" });
+     if (!res.ok) throw new Error("Failed to load header-slim.html");
+ 
+     container.innerHTML = await res.text();
+ 
+     // Same wiring as full header
+ await initAuthUI();
+   } catch (err) {
+     console.error("Header slim load failed:", err);
+   }
+ }
+ 
+ 
+ async function trackHomepageView() {
+   // only track homepage
+   if (window.location.pathname !== "/") return;
