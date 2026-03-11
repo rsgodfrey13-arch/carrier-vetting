@@ -469,7 +469,7 @@ router.post("/auth/signup", async (req, res) => {
       console.error("sendVerificationEmail failed:", e?.message || e);
     }
 
-    return res.redirect(303, "/verify-email");
+    return res.redirect(303, `/verify-email?email=${encodeURIComponent(emailRaw)}`);
   } catch (err) {
     try { await client.query("ROLLBACK"); } catch {}
     console.error("SIGNUP FAILED:", err?.message, err);
