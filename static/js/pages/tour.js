@@ -38,7 +38,7 @@ const slides = [
   {
     title: "You’re ready.",
     body: "Start by searching a carrier, open the profile, and add it to My Carriers.",
-    img: "/static/images/tour/get_started.png",
+    img: "/static/images/tour/my_account.png",
     cta: { text: "Create account", href: "/signup" }
   }
 ];
