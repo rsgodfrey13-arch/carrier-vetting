@@ -261,3 +261,55 @@ html.cs-modal-open{ overflow:hidden; }
   padding:10px 16px;
   opacity:.85;
 }
+
+/* ===== Carrier Shark Tour Modal Improvements ===== */
+
+/* Right side content container */
+.cs-modal-right,
+.cs-tour-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Title styling */
+#tourTitle {
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1.25;
+  margin-bottom: 14px;
+  max-width: 480px;
+}
+
+/* Body container */
+#tourBody {
+  max-width: 420px;
+}
+
+/* Body text */
+#tourBody p {
+  font-size: 17px;
+  line-height: 1.5;
+  color: rgba(255,255,255,0.85);
+  margin: 0;
+}
+
+/* Kicker ("QUICK TOUR") */
+.cs-tour-kicker {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.45);
+  margin-bottom: 12px;
+}
+
+/* Ensure text block has better spacing inside modal */
+.cs-modal-right {
+  padding-top: 10px;
+}
+
+/* Optional: slightly larger buttons for balance */
+#tourNext,
+#tourPrev {
+  font-size: 14px;
+}
