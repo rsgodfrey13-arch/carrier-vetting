@@ -2,7 +2,7 @@
   const STORAGE_KEY = "cs_tour_seen_v1";
 
   const kickerEl = document.querySelector(".cs-tour-kicker");
-const btnGo = document.getElementById("tourGo");
+  const btnGo = document.getElementById("tourGo");
 
   
 const slides = [
@@ -75,6 +75,7 @@ const slides = [
   const titleEl = document.getElementById("tourTitle");
   const bodyEl  = document.getElementById("tourBody");
   const imgEl   = document.getElementById("tourImg");
+  const mediaEl = document.querySelector(".cs-tour-media");
   const dotsEl  = document.getElementById("tourDots");
 
   const btnPrev = document.getElementById("tourPrev");
@@ -112,9 +113,46 @@ const slides = [
     document.documentElement.classList.remove("cs-modal-open");
   }
 
+  function renderBody(contentHtml) {
+    bodyEl.innerHTML = "";
+
+    const sections = contentHtml
+      .trim()
+      .split(/<br\s*\/?\s*>\s*<br\s*\/?\s*>/i)
+      .map((section) => section.trim())
+      .filter(Boolean);
+
+    sections.forEach((section) => {
+      const lines = section
+        .split(/<br\s*\/?\s*>/i)
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+      const bulletLines = lines.filter((line) => /^•\s+/.test(line));
+      const isBulletSection = bulletLines.length > 0 && bulletLines.length === lines.length;
+
+      if (isBulletSection) {
+        const list = document.createElement("ul");
+        list.className = "cs-tour-list";
+
+        bulletLines.forEach((line) => {
+          const li = document.createElement("li");
+          li.innerHTML = line.replace(/^•\s+/, "");
+          list.appendChild(li);
+        });
+
+        bodyEl.appendChild(list);
+      } else {
+        const p = document.createElement("p");
+        p.innerHTML = section;
+        bodyEl.appendChild(p);
+      }
+    });
+  }
+
 function renderDots() {
-  const stepCount = slides.length - 1;           // exclude slide 0
-  const stepIndex = Math.max(0, idx - 1);        // slide 1 => 0
+  const stepCount = slides.length - 1;
+  const stepIndex = Math.max(0, idx - 1);
 
   dotsEl.innerHTML = Array.from({ length: stepCount }, (_, i) =>
     `<button type="button" class="cs-dot ${i === stepIndex ? "is-active" : ""}"
@@ -142,11 +180,7 @@ function render() {
   modal.classList.toggle("cs-tour-intro", idx === 0);
 
   titleEl.textContent = s.title;
-  bodyEl.innerHTML = "";
-
-  const p = document.createElement("p");
-  p.innerHTML = s.body;
-  bodyEl.appendChild(p);
+  renderBody(s.body);
 
   if (s.cta) {
     const a = document.createElement("a");
@@ -160,9 +194,14 @@ function render() {
   if (s.img) {
     imgEl.style.display = "";
     imgEl.src = s.img;
+    imgEl.alt = `${s.title} screenshot`;
+    imgEl.style.objectPosition = s.imgPosition || "center top";
+    mediaEl?.classList.remove("is-missing");
   } else {
     imgEl.removeAttribute("src");
+    imgEl.alt = "";
     imgEl.style.display = "none";
+    mediaEl?.classList.remove("is-missing");
   }
 
 
@@ -225,6 +264,14 @@ if (idx === 0) {
   skipLink?.addEventListener("click", (e) => {
     e.preventDefault();
     closeTour();
+  });
+
+  imgEl?.addEventListener("error", () => {
+    mediaEl?.classList.add("is-missing");
+  });
+
+  imgEl?.addEventListener("load", () => {
+    mediaEl?.classList.remove("is-missing");
   });
 
   // Auto-show for first-time visitors (you can gate this by logged-in status)
