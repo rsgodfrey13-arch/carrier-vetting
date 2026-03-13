@@ -42,8 +42,12 @@ const slides = [
     img: "/static/images/tour/my_carriers.png"
   },
   {
-    title: "Send agreements and keep docs organized.",
-    body: "Centralize contracts and insurance documents in one place.",
+    title: "Send agreements and collect documents",
+    body: `
+  Send contracts for secure e-signature and receive W-9s, insurance certificates, ACH forms, and more.
+  <br><br>
+  Carrier Shark keeps everything organized automatically.
+  `,
     img: "/static/images/tour/send_contract.png"
   },
   {
