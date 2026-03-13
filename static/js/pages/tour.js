@@ -28,7 +28,7 @@ const slides = [
   {
     title: "Send agreements and keep docs organized.",
     body: "Centralize contracts and insurance documents in one place.",
-    img: "/static/images/tour/contracts_docs.png"
+    img: "/static/images/tour/send_contract.png"
   },
   {
     title: "Get alerts when something changes.",
