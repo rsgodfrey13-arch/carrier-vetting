@@ -16,8 +16,16 @@ const slides = [
     img: "/static/images/tour/search_carrier.png"
   },
   {
-    title: "Open the carrier profile for the full picture.",
-    body: "See authority, operating status, driver and power unit counts, and the details you need before adding a carrier.",
+    title: "Open the carrier profile",
+    body: `
+  The carrier profile contains everything you need to vet a carrier:
+  <br><br>
+  • Authority & operating status<br>
+  • Safety & inspection history<br>
+  • Equipment & operations<br>
+  • Insurance coverage<br>
+  • Agreements & documents
+  `,
     img: "/static/images/tour/carrier_profile.png"
   },
   {
