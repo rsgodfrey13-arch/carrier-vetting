@@ -51,8 +51,12 @@ const slides = [
     img: "/static/images/tour/send_contract.png"
   },
   {
-    title: "Get alerts when something changes.",
-    body: "Stay on top of authority changes, insurance expirations, and safety shifts.",
+    title: "Get alerts when something changes",
+    body: `
+  Carrier Shark monitors your carriers for authority, safety, insurance, and compliance changes.
+  <br><br>
+  Choose exactly what to monitor and receive alerts by email, webhooks, or the REST API.
+  `,
     img: "/static/images/tour/alerts.png"
   },
   {
