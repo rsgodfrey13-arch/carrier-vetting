@@ -13,7 +13,7 @@ const btnGo = document.getElementById("tourGo");
     {
       title: "Search any DOT, MC, or carrier name.",
       body: "Instant authority + safety signals. No digging.",
-      img: "/static/help-art/image.png"
+      img: "static/images/tour/search_carrier.png"
     },
     {
       title: "Build your private carrier list.",
