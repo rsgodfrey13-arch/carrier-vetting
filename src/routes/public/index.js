@@ -22,9 +22,13 @@ const faqRoutes = require("./faq.routes");
 const helpRoutes = require("./help.routes");
 const aboutRoutes = require("./about.routes");
 const invitesRoutes = require("./invites.routes");
-
-// Add New Ones Here
 const contactRoutes = require("./contact.routes");
+// Add New Ones Here
+const helpalertsRoutes = require("./help/alerts.routes");
+const helpbillingRoutes = require("./help/billing.routes");
+const helpstartedRoutes = require("./help/getting-started.routes");
+const helpmanagingRoutes = require("./help/managing-carriers.routes");
+
 
 const privacyRoutes = require("./privacy.routes");
 const securityRoutes = require("./security.routes");
@@ -49,6 +53,11 @@ function publicRoutes() {
   router.use(invitesRoutes);
   
   // Add New Ones Here
+  router.use(helpalertsRoutes);
+  router.use(helpbillingRoutes);
+  router.use(helpstartedRoutes);
+  router.use(helpmanagingRoutes);
+  
   router.use(contactRoutes);
   router.use(billingSuccessRoutes);
   router.use(billingCanceledRoutes);  
