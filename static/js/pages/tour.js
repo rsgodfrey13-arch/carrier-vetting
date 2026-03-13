@@ -125,7 +125,7 @@ function render() {
   bodyEl.innerHTML = "";
 
   const p = document.createElement("p");
-  p.textContent = s.body;
+  p.innerHTML = s.body;
   bodyEl.appendChild(p);
 
   if (s.cta) {
