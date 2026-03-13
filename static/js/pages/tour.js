@@ -60,10 +60,13 @@ const slides = [
     img: "/static/images/tour/alerts.png"
   },
   {
-    title: "You’re ready.",
-    body: "Start by searching a carrier, open the profile, and add it to My Carriers.",
-    img: "/static/images/tour/my_account.png",
-    cta: { text: "Create account", href: "/signup" }
+    title: "You're ready.",
+    body: `
+  Search for a carrier, open the profile, and add it to My Carriers.
+  <br><br>
+  Carrier Shark will monitor the carrier and alert you when something changes.
+  `,
+    img: "/static/images/tour/my_account.png"
   }
 ];
 
