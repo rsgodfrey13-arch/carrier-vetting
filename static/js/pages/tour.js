@@ -29,8 +29,16 @@ const slides = [
     img: "/static/images/tour/carrier_profile.png"
   },
   {
-    title: "Build a private watchlist of the carriers you use.",
-    body: "Save carriers you actually work with so Carrier Shark can help you monitor contracts, insurance, and status changes over time.",
+    title: "Build your carrier watchlist",
+    body: `
+  Add carriers to <strong>My Carriers</strong> so Carrier Shark can monitor authority, safety, and insurance changes automatically.
+  <br><br>
+  Get notified when something changes:
+  <br><br>
+  • Email alerts<br>
+  • Webhooks<br>
+  • REST API
+  `,
     img: "/static/images/tour/my_carriers.png"
   },
   {
