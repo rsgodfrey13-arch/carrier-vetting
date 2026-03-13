@@ -5,38 +5,43 @@
 const btnGo = document.getElementById("tourGo");
 
   
-  const slides = [
-    {
-      title: "One place to verify, document, and monitor carriers.",
-      body: "Carrier Shark is a carrier management platform Structured for onboarding, agreements, insurance, and change alerts. Take the quick tour to learn more."
-    },
-    {
-      title: "Search any DOT, MC, or carrier name.",
-      body: "Instant authority + safety signals. No digging.",
-      img: "static/images/tour/search_carrier.png"
-    },
-    {
-      title: "Build your private carrier list.",
-      body: "Add carriers you actually work with so you can monitor them.",
-      img: "/static/help-art/image.png"
-    },
-    {
-      title: "Send agreements and keep docs organized.",
-      body: "Centralize contracts + insurance docs in one place.",
-      img: "/static/help-art/image.png"
-    },
-    {
-      title: "Get alerts when something changes.",
-      body: "Authority flips, insurance expirations, safety shifts.",
-      img: "/static/help-art/image.png"
-    },
-    {
-      title: "You’re ready.",
-      body: "Start by searching a carrier, then add it to My Carriers.",
-      img: "/static/help-art/image.png",
-      cta: { text: "Create account", href: "/signup" } // optional for logged-out
-    }
-  ];
+const slides = [
+  {
+    title: "One place to verify, document, and monitor carriers.",
+    body: "Carrier Shark is a carrier management platform structured for onboarding, agreements, insurance, and change alerts. Take the quick tour to learn more."
+  },
+  {
+    title: "Search any DOT, MC, or carrier name.",
+    body: "Instant authority + safety signals. No digging.",
+    img: "/static/images/tour/search_carrier.png"
+  },
+  {
+    title: "Open the carrier profile for the full picture.",
+    body: "See authority, operating status, driver and power unit counts, and the details you need before adding a carrier.",
+    img: "/static/images/tour/carrier_profile.png"
+  },
+  {
+    title: "Build a private watchlist of the carriers you use.",
+    body: "Save carriers you actually work with so Carrier Shark can help you monitor contracts, insurance, and status changes over time.",
+    img: "/static/images/tour/my_carriers.png"
+  },
+  {
+    title: "Send agreements and keep docs organized.",
+    body: "Centralize contracts and insurance documents in one place.",
+    img: "/static/images/tour/contracts_docs.png"
+  },
+  {
+    title: "Get alerts when something changes.",
+    body: "Stay on top of authority changes, insurance expirations, and safety shifts.",
+    img: "/static/images/tour/alerts.png"
+  },
+  {
+    title: "You’re ready.",
+    body: "Start by searching a carrier, open the profile, and add it to My Carriers.",
+    img: "/static/images/tour/get_started.png",
+    cta: { text: "Create account", href: "/signup" }
+  }
+];
 
   const overlay = document.getElementById("tourOverlay");
   const titleEl = document.getElementById("tourTitle");
