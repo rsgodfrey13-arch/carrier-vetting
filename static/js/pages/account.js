@@ -1504,7 +1504,7 @@ $("btn-rotate-key")?.addEventListener("click", async () => {
 });
 
 $("btn-api-docs")?.addEventListener("click", () => {
-  window.open("/docs", "_blank", "noopener");
+  window.open("/api-docs", "_blank", "noopener");
 });
 
   
