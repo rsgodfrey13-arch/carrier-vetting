@@ -5,7 +5,7 @@ const path = require("path");
 
 const router = express.Router();
 
-router.get("/alerts", (req, res) => {
+router.get("/help/alerts", (req, res) => {
   res.sendFile(path.join(__dirname, "../../../static/help", "alerts.html"));
 });
 
