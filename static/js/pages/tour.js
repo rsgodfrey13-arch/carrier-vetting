@@ -11,8 +11,8 @@ const slides = [
     body: "Carrier Shark is a carrier management platform structured for onboarding, agreements, insurance, and change alerts. Take the quick tour to learn more."
   },
   {
-    title: "Search any DOT, MC, or carrier name.",
-    body: "Instant authority + safety signals. No digging.",
+    title: "Search any Carrier",
+    body: "Search by DOT, MC, or carrier name across all FMCSA carriers.",
     img: "/static/images/tour/search_carrier.png"
   },
   {
