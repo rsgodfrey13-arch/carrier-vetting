@@ -1,7 +1,7 @@
 /* /static/css/signup.css */
 /* Minimal auth/activation components that extend your existing base/style1 tokens. */
 
-.auth-page .page{
+body.carrier-list .page{
   max-width: 980px;
 }
 
@@ -316,19 +316,19 @@
 }
 
 /* signup.css patch: DO NOT override global layout containers */
-.auth-page {
+body.carrier-list {
   display: block !important;
   place-items: unset !important;
 }
 
-.auth-page .page,
-.auth-page .page-main {
+body.carrier-list .page,
+body.carrier-list .page-main {
   max-width: none !important;
   width: 100% !important;
 }
 
 /* Give breathing room below the fixed/glass header (adjust if your header height differs) */
-.auth-page .page-main {
+body.carrier-list .page-main {
   padding-top: 92px !important;
 }
 
@@ -353,17 +353,17 @@
 }
 
 /* Activate-plan: make the embedded plans table behave inside the auth card */
-.auth-page .plans-table-wrap{
+body.carrier-list .plans-table-wrap{
   overflow:auto;
   -webkit-overflow-scrolling: touch;
 }
 
-.auth-page .plans-table{
+body.carrier-list .plans-table{
   min-width: 860px; /* keep the crisp table; scroll on smaller screens */
 }
 
 /* Make the scroll area feel “intentional” */
-.auth-page .plans-table-wrap{
+body.carrier-list .plans-table-wrap{
   scrollbar-width: thin;
 }
 
@@ -462,4 +462,4 @@
 }
 
 html, body{ margin:0; }
-body.auth-page{ padding:0; margin:0; }
+body.carrier-list{ padding:0; margin:0; }
