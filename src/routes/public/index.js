@@ -2,11 +2,10 @@
 
 const express = require("express");
 
-// These files will be created next (can be placeholders for now).
 const contractPublicRoutes = require("./contractPublic.routes");
 const prettyDotRoutes = require("./prettyDot.routes");
 const accountRoutes = require("./account.routes");
-const healthzRoutes = require("./healthz.routes"); 
+const healthzRoutes = require("./healthz.routes");
 const loginRoutes = require("./login.routes");
 const acceptableRoutes = require("./acceptable-use.routes");
 const activateRoutes = require("./activate-plan.routes");
@@ -20,27 +19,22 @@ const demoRoutes = require("./demo.routes");
 const dpaRoutes = require("./dpa.routes");
 const faqRoutes = require("./faq.routes");
 const helpRoutes = require("./help.routes");
+const helpArticleRoutes = require("./help");
 const aboutRoutes = require("./about.routes");
 const invitesRoutes = require("./invites.routes");
 const contactRoutes = require("./contact.routes");
-// Add New Ones Here
-const helpalertsRoutes = require("./help/alerts.routes");
-const helpbillingRoutes = require("./help/billing.routes");
-const helpstartedRoutes = require("./help/getting-started.routes");
-const helpmanagingRoutes = require("./help/managing-carriers.routes");
-
-
 const privacyRoutes = require("./privacy.routes");
 const securityRoutes = require("./security.routes");
 const termsRoutes = require("./terms.routes");
-const trackRoutes = require("./track"); // adjust name/path if needed
+const trackRoutes = require("./track");
 const resetPasswordRoutes = require("./resetPassword.routes");
 
 function publicRoutes() {
   const router = express.Router();
+
   router.use(contractPublicRoutes);
-  router.use(healthzRoutes); 
-  router.use(trackRoutes);   
+  router.use(healthzRoutes);
+  router.use(trackRoutes);
   router.use(accountRoutes);
   router.use(resetPasswordRoutes);
   router.use(loginRoutes);
@@ -49,18 +43,12 @@ function publicRoutes() {
   router.use(dpaRoutes);
   router.use(faqRoutes);
   router.use(helpRoutes);
+  router.use(helpArticleRoutes);
   router.use(aboutRoutes);
   router.use(invitesRoutes);
-  
-  // Add New Ones Here
-  router.use(helpalertsRoutes);
-  router.use(helpbillingRoutes);
-  router.use(helpstartedRoutes);
-  router.use(helpmanagingRoutes);
-  
   router.use(contactRoutes);
   router.use(billingSuccessRoutes);
-  router.use(billingCanceledRoutes);  
+  router.use(billingCanceledRoutes);
   router.use(activateRoutes);
   router.use(billingRoutes);
   router.use(createRoutes);
@@ -69,7 +57,8 @@ function publicRoutes() {
   router.use(privacyRoutes);
   router.use(securityRoutes);
   router.use(termsRoutes);
-  router.use(prettyDotRoutes);  // 👈 wildcard-ish routes last
+  router.use(prettyDotRoutes); // wildcard-ish routes last
+
   return router;
 }
 
