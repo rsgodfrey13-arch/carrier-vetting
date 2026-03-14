@@ -1,0 +1,678 @@
+diff --git a/src/routes/internal/contracts.routes.js b/src/routes/internal/contracts.routes.js
+index ee84858188e8d8b667191ae13cd2f2bc87018d1b..d94aff7f9820fb4f6cb53aaa86fa5d237122dc3a 100644
+--- a/src/routes/internal/contracts.routes.js
++++ b/src/routes/internal/contracts.routes.js
+@@ -1,51 +1,71 @@
+ "use strict";
+ 
+ const express = require("express");
+ const crypto = require("crypto");
+ 
+ const { pool } = require("../../db/pool");
+ const { requireAuth } = require("../../middleware/requireAuth");
+ const { loadCompanyContext } = require("../../middleware/companyContext");
+ const { sendContractEmail } = require("../../clients/mailgun");
+ 
+ const { spaces } = require("../../clients/spacesS3v2");
+ 
+ 
+ const router = express.Router();
+ 
+ const ALLOWED_DOCUMENT_MIME_TYPES = new Set([
+   "application/pdf",
+   "image/png",
+   "image/jpeg",
+   "image/webp",
+ ]);
++const MASTER_AGREEMENT_LIMIT_PER_COMPANY = 5;
++const MASTER_AGREEMENT_PDF_MIME_TYPES = new Set(["application/pdf"]);
+ 
+ function makeToken() {
+   return crypto.randomBytes(24).toString("hex");
+ }
+ 
++function cleanAgreementNameFromFilename(filename) {
++  const raw = String(filename || "").trim();
++  if (!raw) return "Master Agreement";
++
++  const withoutExt = raw.replace(/\.[^/.]+$/, "");
++  const normalized = withoutExt
++    .replace(/[\-_]+/g, " ")
++    .replace(/\s+/g, " ")
++    .trim();
++
++  return normalized || "Master Agreement";
++}
++
++function buildMasterAgreementStorageKey({ companyId, originalFilename }) {
++  const safeFileName = toSafeStoragePart(originalFilename || "master_agreement.pdf");
++  return `user-contracts/${companyId}/${Date.now()}_${safeFileName}`;
++}
++
+ /** ---------- CONTRACT TEMPLATES (broker-side) ---------- **/
+ router.get("/user-contracts", requireAuth, loadCompanyContext, async (req, res) => {
+   const companyId = req.companyContext.companyId;
+ 
+   try {
+     const { rows } = await pool.query(
+       `
+       SELECT
+         id,
+         name,
+         version,
+         storage_provider,
+         storage_key,
+         created_at,
+         COALESCE(insurance_required, FALSE) AS insurance_required,
+         COALESCE(w9_required, TRUE) AS w9_required,
+         COALESCE(ach_required, FALSE) AS ach_required
+       FROM public.user_contracts
+       WHERE company_id = $1
+       ORDER BY created_at DESC;
+       `,
+       [companyId]
+     );
+ 
+     res.json({ rows });
+@@ -96,50 +116,128 @@ router.get("/user-contracts/:id/pdf", requireAuth, loadCompanyContext, async (re
+     obj.on("error", (err) => {
+       console.error("SPACES getObject error:", err?.code, err?.message, err);
+       if (err?.code === "NoSuchKey") return res.status(404).send("PDF not found");
+       return res.status(500).send("Failed to load PDF");
+     });
+ 
+     const safeName = String(row.name || "contract")
+       .replace(/[^\w\-]+/g, "_")
+       .slice(0, 60);
+ 
+     res.setHeader("Content-Type", "application/pdf");
+     res.setHeader(
+       "Content-Disposition",
+       `inline; filename="${safeName}.pdf"`
+     );
+     // Private caching is fine for broker-side templates
+     res.setHeader("Cache-Control", "private, max-age=300");
+ 
+     obj.pipe(res);
+   } catch (err) {
+     console.error("GET /api/user-contracts/:id/pdf error:", err?.message, err);
+     return res.status(500).send("Server error");
+   }
+ });
+ 
++router.post("/user-contracts/upload", requireAuth, loadCompanyContext, async (req, res) => {
++  const companyId = req.companyContext.companyId;
++  const userId = req.session.userId;
++
++  try {
++    const file = req.files?.file;
++    if (!file || Array.isArray(file)) {
++      return res.status(400).json({ error: "Please select a PDF to upload." });
++    }
++
++    const mimeType = String(file.mimetype || "").toLowerCase().trim();
++    if (!MASTER_AGREEMENT_PDF_MIME_TYPES.has(mimeType)) {
++      return res.status(400).json({ error: "Only PDF files are supported." });
++    }
++
++    const countRes = await pool.query(
++      `
++      SELECT COUNT(*)::int AS total
++      FROM public.user_contracts
++      WHERE company_id = $1
++      `,
++      [companyId]
++    );
++
++    const total = Number(countRes.rows?.[0]?.total || 0);
++    if (total >= MASTER_AGREEMENT_LIMIT_PER_COMPANY) {
++      return res.status(400).json({
++        error: `Agreement limit reached. You can store up to ${MASTER_AGREEMENT_LIMIT_PER_COMPANY} master agreements.`,
++        code: "AGREEMENT_LIMIT_REACHED",
++      });
++    }
++
++    const storageKey = buildMasterAgreementStorageKey({
++      companyId,
++      originalFilename: file.name,
++    });
++
++    await spaces.putObject({
++      Bucket: process.env.SPACES_BUCKET,
++      Key: storageKey,
++      Body: file.data,
++      ContentType: "application/pdf",
++      ACL: "private",
++      Metadata: {
++        company_id: String(companyId),
++        user_id: String(userId),
++        agreement_type: "master_agreement",
++      },
++    }).promise();
++
++    const agreementName = cleanAgreementNameFromFilename(file.name);
++
++    const insertRes = await pool.query(
++      `
++      INSERT INTO public.user_contracts (
++        user_id,
++        company_id,
++        name,
++        version,
++        storage_provider,
++        storage_key
++      )
++      VALUES ($1, $2, $3, $4, 'DO_SPACES', $5)
++      RETURNING id, name, version, storage_provider, storage_key, created_at,
++                COALESCE(insurance_required, FALSE) AS insurance_required,
++                COALESCE(w9_required, TRUE) AS w9_required,
++                COALESCE(ach_required, FALSE) AS ach_required
++      `,
++      [userId, companyId, agreementName, "1.0", storageKey]
++    );
++
++    return res.status(201).json({ ok: true, row: insertRes.rows[0] });
++  } catch (err) {
++    console.error("POST /api/user-contracts/upload error:", err?.message, err);
++    return res.status(500).json({ error: "Failed to upload agreement" });
++  }
++});
++
+ 
+ 
+ /** ---------- CONTRACT SEND ROUTE ---------- **/
+ router.post("/contracts/send/:dot", requireAuth, loadCompanyContext, async (req, res) => {
+   const dotnumber = req.params.dot;
+   const { user_contract_id, email_to,carrier_name } = req.body || {};
+   const user_id = req.session.userId;
+   const companyId = req.companyContext.companyId;
+ 
+   if (!user_contract_id || !email_to) {
+     return res.status(400).json({
+       error: "user_contract_id and email_to are required"
+     });
+   }
+ 
+   const token = makeToken();
+   const token_expires_at = new Date(Date.now() + 72 * 60 * 60 * 1000);
+   const link = `https://carriershark.com/contract/${token}`;
+ 
+   const client = await pool.connect();
+   try {
+     await client.query("BEGIN");
+ 
+ const templateRes = await client.query(
+   `
+diff --git a/static/account.html b/static/account.html
+index a1f581483a01f964d5d25a3a201642c24473a381..c318f2e3c30c43cfe60e94075c8c5ac61d63520e 100644
+--- a/static/account.html
++++ b/static/account.html
+@@ -333,54 +333,57 @@
+     Save changes
+   </button>
+ </div>
+ 
+ 
+             <div id="email-alert-fields">
+               <!-- JS will render grouped categories + toggles here -->
+             </div>
+             
+             <div class="alerts-save-row">
+               <button class="btn-primary" id="btn-save-alert-fields" disabled>Save changes</button>
+             </div>
+ 
+           </div>
+         </section>
+ 
+         <!-- AGREEMENTS -->
+         <section class="tab-panel" id="tab-agreements">
+           <div class="card">
+             <div class="card-head card-header">
+               <h2>Agreements</h2>
+               <p class="muted">Pick your default agreement and manage templates.</p>
+             </div>
+ 
+             <div class="row" style="display:flex; gap:10px; flex-wrap:wrap;">
++              <button class="btn-primary" id="btn-upload-agreement">Upload Agreement</button>
+               <button class="btn-primary" id="btn-set-default">Set default</button>
+               <button class="btn-ghost" id="btn-save-agreement-requirements" disabled>Save requirements</button>
+             </div>
+ 
++            <div class="form-error" id="agreement-upload-inline-error" style="display:none; margin-top:10px;"></div>
++
+             <div id="agreement-requirements" class="toggle-grid" style="margin-top:10px; margin-bottom:4px;"></div>
+ 
+             <div class="divider"></div>
+ 
+             <div class="agreements-grid" id="agreements-grid">
+               <div class="muted">Loading…</div>
+             </div>
+             
+           </div>
+         </section>
+ 
+         <!-- API -->
+         <section class="tab-panel" id="tab-api">
+           <div class="card">
+             <div class="card-head card-header">
+               <h2>API</h2>
+               <p class="muted">Everything you need to integrate Carrier Shark into your workflow.</p>
+             </div>
+ 
+             <div class="row lock-wrap" id="api-key-row">
+               <div class="lock-main">
+                 <div class="row-title">API Key</div>
+                 <div class="row-sub" id="api-key-masked">—</div>
+               </div>
+             
+@@ -785,51 +788,77 @@
+       </div>
+       
+       <div class="form-error" id="help-error" style="display:none;"></div>
+       <div class="form-ok" id="help-ok" style="display:none;"></div>
+     </div>
+   </div>
+ 
+   <!-- RIGHT: what happens next + tickets -->
+   <div class="help-side">
+     <div class="help-card">
+       <div class="help-card-title">Your tickets</div>
+       <div class="muted" style="margin-top:6px;">Recent requests from this account.</div>
+ 
+       <div class="ticket-list" id="ticket-list">
+         <div class="muted">Loading…</div>
+       </div>
+     </div>
+   </div>
+ </div>
+ 
+         </section>
+ 
+ 
+       </main>
+     </div>
++</div>
++
++<div id="agreement-upload-modal" class="cs-modal-backdrop" hidden>
++  <div class="cs-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="agreement-upload-title">
++    <div class="cs-modal-header">
++      <div class="cs-modal-headings">
++        <div id="agreement-upload-title" class="cs-modal-title">Upload Master Agreement</div>
++        <div class="cs-modal-subtitle">Upload a reusable master agreement PDF for your account.</div>
++      </div>
++      <button id="agreement-upload-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
++    </div>
++
++    <form id="agreement-upload-form" class="cs-modal-body docs-upload-form">
++      <label class="cs-label" for="agreement-upload-file">Agreement PDF</label>
++      <input id="agreement-upload-file" class="cs-input docs-file-input" type="file" accept=".pdf,application/pdf" required>
++      <div class="cs-hint" style="margin-top:6px;">PDF only · up to 5 agreements total.</div>
++      <div id="agreement-upload-error" class="cs-hint docs-upload-error" hidden></div>
++    </form>
++
++    <div class="cs-modal-footer">
++      <div class="cs-footer-right">
++        <button id="agreement-upload-cancel" class="cs-btn cs-btn-ghost" type="button">Cancel</button>
++        <button id="agreement-upload-submit" class="cs-btn cs-btn-primary" type="button">Upload Agreement</button>
++      </div>
++    </div>
+   </div>
++</div>
+ 
+ <!-- Change Password Modal -->
+ <div class="modal-backdrop" id="pw-modal" aria-hidden="true">
+   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pw-title">
+     <div class="modal-head">
+       <h3 id="pw-title">Change password</h3>
+       <button class="icon-btn" type="button" id="pw-close" aria-label="Close">✕</button>
+     </div>
+ 
+     <div class="modal-body">
+       <div class="field">
+         <label class="field-label" for="pw-current">Current password</label>
+         <input class="field-input" id="pw-current" type="password" autocomplete="current-password" />
+       </div>
+ 
+       <div class="field">
+         <label class="field-label" for="pw-new">New password</label>
+         <input class="field-input" id="pw-new" type="password" autocomplete="new-password" />
+         <div class="muted" style="margin-top:6px;">Minimum 8 characters.</div>
+       </div>
+ 
+       <div class="field">
+         <label class="field-label" for="pw-confirm">Confirm new password</label>
+         <input class="field-input" id="pw-confirm" type="password" autocomplete="new-password" />
+       </div>
+diff --git a/static/js/pages/account.js b/static/js/pages/account.js
+index ceac217865172546b6539432842ab3cbf6f7df95..19b8cec26ad68eed7b83be9c46167f43821468c6 100644
+--- a/static/js/pages/account.js
++++ b/static/js/pages/account.js
+@@ -438,50 +438,59 @@ setTimeout(() => {
+ 
+   // -----------------------------
+   // Renderers (optional sections)
+   // -----------------------------
+ function escapeHtml(str) {
+   return String(str ?? "")
+     .replaceAll("&", "&amp;")
+     .replaceAll("<", "&lt;")
+     .replaceAll(">", "&gt;")
+     .replaceAll('"', "&quot;")
+     .replaceAll("'", "&#039;");
+ }
+ 
+ function fmtDate(ts) {
+   if (!ts) return "—";
+   const d = new Date(ts);
+   return isNaN(d.getTime())
+     ? "—"
+     : d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "2-digit" });
+ }
+ 
+ let agreementsSelectedId = null;
+ let agreementsTemplates = [];
+ let agreementRequirementsOriginal = null;
+ let agreementRequirementsCurrent = null;
++const AGREEMENT_LIMIT_PER_COMPANY = 5;
++
++function setAgreementUploadInlineError(message) {
++  const el = document.getElementById("agreement-upload-inline-error");
++  if (!el) return;
++  const text = String(message || "").trim();
++  el.textContent = text;
++  el.style.display = text ? "block" : "none";
++}
+ 
+ function normalizeAgreementRequirements(tpl) {
+   return {
+     insurance_required: !!tpl?.insurance_required,
+     w9_required: tpl?.w9_required === undefined || tpl?.w9_required === null ? true : !!tpl.w9_required,
+     ach_required: !!tpl?.ach_required,
+   };
+ }
+ 
+ function getSelectedTemplate() {
+   return agreementsTemplates.find((t) => String(t.id) === String(agreementsSelectedId)) || null;
+ }
+ 
+ function setAgreementRequirementsSaveState() {
+   const btn = document.getElementById("btn-save-agreement-requirements");
+   if (!btn) return;
+   const dirty = JSON.stringify(agreementRequirementsCurrent) !== JSON.stringify(agreementRequirementsOriginal);
+   btn.disabled = !agreementsSelectedId || !dirty;
+ }
+ 
+ function renderAgreementRequirements() {
+   const host = document.getElementById("agreement-requirements");
+   if (!host) return;
+ 
+   const tpl = getSelectedTemplate();
+@@ -500,62 +509,65 @@ function renderAgreementRequirements() {
+     <label class="toggle">
+       <input type="checkbox" data-req-key="w9_required" ${agreementRequirementsCurrent.w9_required ? "checked" : ""}>
+       <span>Require W-9 on signing</span>
+     </label>
+     <label class="toggle">
+       <input type="checkbox" data-req-key="insurance_required" ${agreementRequirementsCurrent.insurance_required ? "checked" : ""}>
+       <span>Require Insurance / COI on signing</span>
+     </label>
+     <label class="toggle">
+       <input type="checkbox" data-req-key="ach_required" ${agreementRequirementsCurrent.ach_required ? "checked" : ""}>
+       <span>Require ACH / Payment Info on signing</span>
+     </label>
+   `;
+ 
+   host.querySelectorAll("input[type=checkbox][data-req-key]").forEach((cb) => {
+     cb.addEventListener("change", () => {
+       const key = cb.getAttribute("data-req-key");
+       agreementRequirementsCurrent[key] = cb.checked;
+       setAgreementRequirementsSaveState();
+     });
+   });
+ 
+   setAgreementRequirementsSaveState();
+ }
+ 
+-function renderAgreementsTiles({ templates, defaultId }) {
++function renderAgreementsTiles({ templates, defaultId, selectedId }) {
+   const grid = document.getElementById("agreements-grid");
+   if (!grid) return;
+ 
++  setAgreementUploadInlineError("");
++
+   if (!templates?.length) {
+     agreementsSelectedId = null;
+     grid.innerHTML = `<div class="muted">No templates yet. Import one to get started.</div>`;
+     setAgreementsDefaultButtonState();
+     return;
+   }
+ 
+-  agreementsSelectedId = defaultId || null;
++  const hasSelected = selectedId && templates.some((t) => String(t.id) === String(selectedId));
++  agreementsSelectedId = hasSelected ? selectedId : (defaultId || String(templates[0]?.id || "") || null);
+   setAgreementsDefaultButtonState();
+ 
+   grid.innerHTML = templates
+     .map((t) => {
+       const isDefault = String(t.id) === String(defaultId);
+       const isSelected = String(t.id) === String(agreementsSelectedId);
+ 
+       const subtitle = ""; // intentionally blank (we're hiding version/provider for clean UI)
+ 
+       return `
+         <div class="agreement-tile ${isDefault ? "is-default" : ""} ${isSelected ? "is-selected" : ""}"
+              role="button"
+              tabindex="0"
+              data-id="${t.id}">
+       
+           <button
+             class="tile-preview tile-preview--clickable"
+             type="button"
+             data-open-pdf="${t.id}"
+             aria-label="Open PDF"
+           >
+ 
+             <div class="paper">
+               <div class="paper-line w90"></div>
+               <div class="paper-line w70"></div>
+@@ -589,63 +601,159 @@ function renderAgreementsTiles({ templates, defaultId }) {
+ 
+ grid.querySelectorAll(".agreement-tile").forEach((tile) => {
+   tile.addEventListener("keydown", (e) => {
+     if (e.key === "Enter" || e.key === " ") {
+       e.preventDefault();
+       tile.click();
+     }
+   });
+ });
+ 
+ 
+   
+   grid.querySelectorAll("[data-open-pdf]").forEach((btn) => {
+     btn.addEventListener("click", (e) => {
+       e.preventDefault();
+       e.stopPropagation(); // IMPORTANT: do not select tile / re-render
+       const id = btn.getAttribute("data-open-pdf");
+       if (!id) return;
+       window.open(`/api/user-contracts/${encodeURIComponent(id)}/pdf`, "_blank", "noopener");
+     });
+   });
+   
+ }
+ 
+   async function loadAgreements() {
++  const previouslySelectedId = agreementsSelectedId;
+   const [tplRes, defRes] = await Promise.all([
+     apiGet("/api/user-contracts"),
+     apiGet("/api/agreements/default"),
+   ]);
+ 
+   const templates = tplRes?.rows || [];
+   const defaultId = defRes?.row?.default_user_contract_id || null;
+ 
+   agreementsTemplates = templates;
+-  renderAgreementsTiles({ templates, defaultId });
++  renderAgreementsTiles({ templates, defaultId, selectedId: previouslySelectedId });
+   renderAgreementRequirements();
+ }
+ 
++function wireAgreementUploadModalOnce() {
++  const modal = document.getElementById("agreement-upload-modal");
++  const openBtn = document.getElementById("btn-upload-agreement");
++  const closeBtn = document.getElementById("agreement-upload-close");
++  const cancelBtn = document.getElementById("agreement-upload-cancel");
++  const submitBtn = document.getElementById("agreement-upload-submit");
++  const fileEl = document.getElementById("agreement-upload-file");
++  const errEl = document.getElementById("agreement-upload-error");
++
++  if (!modal || !openBtn || !closeBtn || !cancelBtn || !submitBtn || !fileEl || !errEl) return;
++  if (modal.dataset.wired === "1") return;
++  modal.dataset.wired = "1";
++
++  function clearError() {
++    errEl.hidden = true;
++    errEl.textContent = "";
++  }
++
++  function setError(message) {
++    errEl.hidden = false;
++    errEl.textContent = message || "Upload failed.";
++  }
++
++  function closeModal() {
++    modal.hidden = true;
++    fileEl.value = "";
++    clearError();
++    submitBtn.disabled = false;
++  }
++
++  openBtn.addEventListener("click", () => {
++    clearError();
++    setAgreementUploadInlineError("");
++
++    if ((agreementsTemplates || []).length >= AGREEMENT_LIMIT_PER_COMPANY) {
++      setAgreementUploadInlineError(`Agreement limit reached. You can store up to ${AGREEMENT_LIMIT_PER_COMPANY} master agreements.`);
++      return;
++    }
++
++    modal.hidden = false;
++  });
++
++  closeBtn.addEventListener("click", closeModal);
++  cancelBtn.addEventListener("click", closeModal);
++  modal.addEventListener("click", (e) => {
++    if (e.target === modal) closeModal();
++  });
++
++  submitBtn.addEventListener("click", async () => {
++    clearError();
++    setAgreementUploadInlineError("");
++
++    const file = fileEl.files?.[0];
++    if (!file) {
++      setError("Please select a PDF to upload.");
++      return;
++    }
++
++    const fileName = String(file.name || "").toLowerCase();
++    const isPdf = file.type === "application/pdf" || fileName.endsWith(".pdf");
++    if (!isPdf) {
++      setError("Only PDF files are supported.");
++      return;
++    }
++
++    const fd = new FormData();
++    fd.append("file", file);
++
++    try {
++      submitBtn.disabled = true;
++      const res = await fetch("/api/user-contracts/upload", {
++        method: "POST",
++        credentials: "include",
++        body: fd,
++      });
++
++      const payload = await res.json().catch(() => ({}));
++      if (!res.ok) {
++        const msg = payload?.error || `Upload failed (${res.status})`;
++        if (payload?.code === "AGREEMENT_LIMIT_REACHED") {
++          setAgreementUploadInlineError(msg);
++        }
++        throw new Error(msg);
++      }
++
++      closeModal();
++      await loadAgreements();
++    } catch (err) {
++      console.error("agreement upload failed", err);
++      setError(err?.message || "Upload failed.");
++      submitBtn.disabled = false;
++    }
++  });
++}
++
+ 
+   function renderPlans(plan) {
+     const el = $("plan-grid");
+     if (!el) return;
+ 
+     const plans = plan?.available || [
+       { id: "starter", name: "Starter", desc: "Lightweight monitoring for small teams." },
+       { id: "pro", name: "Pro", desc: "More watched carriers, faster refresh, richer alerts." },
+       { id: "team", name: "Team", desc: "Multi-user workflows and shared monitoring." },
+     ];
+ 
+     const current = plan?.current_id;
+ 
+     el.innerHTML = plans
+       .map((p) => {
+         const active = p.id === current;
+         return `
+           <div class="card" style="padding:14px;">
+             <div class="card-head">
+               <h2 style="font-size:.95rem;">${p.name}</h2>
+               ${active ? `<span class="badge">Current</span>` : ``}
+             </div>
+             <div class="muted" style="margin-top:0;">${p.desc}</div>
+             <div style="margin-top:12px;">
+               <button class="pill-btn ${active ? "pill-btn-secondary" : ""}" data-select-plan="${p.id}">
+@@ -1567,35 +1675,37 @@ document.addEventListener("keydown", (e) => {
+   if (e.key === "Escape" && pwModal?.classList.contains("is-open")) closePwModal();
+ });
+ 
+ pwSave?.addEventListener("click", async () => {
+   const currentPassword = pwCurrent.value || "";
+   const newPassword = pwNew.value || "";
+   const confirm = pwConfirm.value || "";
+ 
+   if (!currentPassword) return showPwError("Enter your current password.");
+   if (newPassword.length < 8) return showPwError("New password must be at least 8 characters.");
+   if (newPassword !== confirm) return showPwError("New passwords do not match.");
+ 
+   pwSave.disabled = true;
+ 
+   try {
+     await apiPost("/api/change-password", { currentPassword, newPassword });
+     showPwOk("Password updated.");
+     setTimeout(closePwModal, 700);
+   } catch (err) {
+     showPwError("Could not update password. Check your current password and try again.");
+     pwSave.disabled = false;
+   }
+ });
+ 
+ 
+-  
++
+   loadEverything()
++  .then(() => {
++    wireAgreementUploadModalOnce();
++  })
+   .then(() => {
+     if (activeTab === "help") {
+       loadTickets().catch(console.error);
+     }
+   })
+   .catch((err) => console.error(err));
+ })();
+-

@@ -460,6 +460,15 @@ let agreementsSelectedId = null;
 let agreementsTemplates = [];
 let agreementRequirementsOriginal = null;
 let agreementRequirementsCurrent = null;
+const AGREEMENT_LIMIT_PER_COMPANY = 5;
+
+function setAgreementUploadInlineError(message) {
+  const el = document.getElementById("agreement-upload-inline-error");
+  if (!el) return;
+  const text = String(message || "").trim();
+  el.textContent = text;
+  el.style.display = text ? "block" : "none";
+}
 
 function normalizeAgreementRequirements(tpl) {
   return {
@@ -522,9 +531,11 @@ function renderAgreementRequirements() {
   setAgreementRequirementsSaveState();
 }
 
-function renderAgreementsTiles({ templates, defaultId }) {
+function renderAgreementsTiles({ templates, defaultId, selectedId }) {
   const grid = document.getElementById("agreements-grid");
   if (!grid) return;
+
+  setAgreementUploadInlineError("");
 
   if (!templates?.length) {
     agreementsSelectedId = null;
@@ -533,7 +544,8 @@ function renderAgreementsTiles({ templates, defaultId }) {
     return;
   }
 
-  agreementsSelectedId = defaultId || null;
+  const hasSelected = selectedId && templates.some((t) => String(t.id) === String(selectedId));
+  agreementsSelectedId = hasSelected ? selectedId : (defaultId || String(templates[0]?.id || "") || null);
   setAgreementsDefaultButtonState();
 
   grid.innerHTML = templates
@@ -611,6 +623,7 @@ grid.querySelectorAll(".agreement-tile").forEach((tile) => {
 }
 
   async function loadAgreements() {
+  const previouslySelectedId = agreementsSelectedId;
   const [tplRes, defRes] = await Promise.all([
     apiGet("/api/user-contracts"),
     apiGet("/api/agreements/default"),
@@ -620,8 +633,103 @@ grid.querySelectorAll(".agreement-tile").forEach((tile) => {
   const defaultId = defRes?.row?.default_user_contract_id || null;
 
   agreementsTemplates = templates;
-  renderAgreementsTiles({ templates, defaultId });
+  renderAgreementsTiles({ templates, defaultId, selectedId: previouslySelectedId });
   renderAgreementRequirements();
+}
+
+function wireAgreementUploadModalOnce() {
+  const modal = document.getElementById("agreement-upload-modal");
+  const openBtn = document.getElementById("btn-upload-agreement");
+  const closeBtn = document.getElementById("agreement-upload-close");
+  const cancelBtn = document.getElementById("agreement-upload-cancel");
+  const submitBtn = document.getElementById("agreement-upload-submit");
+  const fileEl = document.getElementById("agreement-upload-file");
+  const errEl = document.getElementById("agreement-upload-error");
+
+  if (!modal || !openBtn || !closeBtn || !cancelBtn || !submitBtn || !fileEl || !errEl) return;
+  if (modal.dataset.wired === "1") return;
+  modal.dataset.wired = "1";
+
+  function clearError() {
+    errEl.hidden = true;
+    errEl.textContent = "";
+  }
+
+  function setError(message) {
+    errEl.hidden = false;
+    errEl.textContent = message || "Upload failed.";
+  }
+
+  function closeModal() {
+    modal.hidden = true;
+    fileEl.value = "";
+    clearError();
+    submitBtn.disabled = false;
+  }
+
+  openBtn.addEventListener("click", () => {
+    clearError();
+    setAgreementUploadInlineError("");
+
+    if ((agreementsTemplates || []).length >= AGREEMENT_LIMIT_PER_COMPANY) {
+      setAgreementUploadInlineError(`Agreement limit reached. You can store up to ${AGREEMENT_LIMIT_PER_COMPANY} master agreements.`);
+      return;
+    }
+
+    modal.hidden = false;
+  });
+
+  closeBtn.addEventListener("click", closeModal);
+  cancelBtn.addEventListener("click", closeModal);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  submitBtn.addEventListener("click", async () => {
+    clearError();
+    setAgreementUploadInlineError("");
+
+    const file = fileEl.files?.[0];
+    if (!file) {
+      setError("Please select a PDF to upload.");
+      return;
+    }
+
+    const fileName = String(file.name || "").toLowerCase();
+    const isPdf = file.type === "application/pdf" || fileName.endsWith(".pdf");
+    if (!isPdf) {
+      setError("Only PDF files are supported.");
+      return;
+    }
+
+    const fd = new FormData();
+    fd.append("file", file);
+
+    try {
+      submitBtn.disabled = true;
+      const res = await fetch("/api/user-contracts/upload", {
+        method: "POST",
+        credentials: "include",
+        body: fd,
+      });
+
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = payload?.error || `Upload failed (${res.status})`;
+        if (payload?.code === "AGREEMENT_LIMIT_REACHED") {
+          setAgreementUploadInlineError(msg);
+        }
+        throw new Error(msg);
+      }
+
+      closeModal();
+      await loadAgreements();
+    } catch (err) {
+      console.error("agreement upload failed", err);
+      setError(err?.message || "Upload failed.");
+      submitBtn.disabled = false;
+    }
+  });
 }
 
 
@@ -1589,8 +1697,11 @@ pwSave?.addEventListener("click", async () => {
 });
 
 
-  
+
   loadEverything()
+  .then(() => {
+    wireAgreementUploadModalOnce();
+  })
   .then(() => {
     if (activeTab === "help") {
       loadTickets().catch(console.error);
@@ -1598,4 +1709,3 @@ pwSave?.addEventListener("click", async () => {
   })
   .catch((err) => console.error(err));
 })();
-

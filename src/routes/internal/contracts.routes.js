@@ -19,9 +19,29 @@ const ALLOWED_DOCUMENT_MIME_TYPES = new Set([
   "image/jpeg",
   "image/webp",
 ]);
+const MASTER_AGREEMENT_LIMIT_PER_COMPANY = 5;
+const MASTER_AGREEMENT_PDF_MIME_TYPES = new Set(["application/pdf"]);
 
 function makeToken() {
   return crypto.randomBytes(24).toString("hex");
+}
+
+function cleanAgreementNameFromFilename(filename) {
+  const raw = String(filename || "").trim();
+  if (!raw) return "Master Agreement";
+
+  const withoutExt = raw.replace(/\.[^/.]+$/, "");
+  const normalized = withoutExt
+    .replace(/[\-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return normalized || "Master Agreement";
+}
+
+function buildMasterAgreementStorageKey({ companyId, originalFilename }) {
+  const safeFileName = toSafeStoragePart(originalFilename || "master_agreement.pdf");
+  return `user-contracts/${companyId}/${Date.now()}_${safeFileName}`;
 }
 
 /** ---------- CONTRACT TEMPLATES (broker-side) ---------- **/
@@ -115,6 +135,84 @@ router.get("/user-contracts/:id/pdf", requireAuth, loadCompanyContext, async (re
   } catch (err) {
     console.error("GET /api/user-contracts/:id/pdf error:", err?.message, err);
     return res.status(500).send("Server error");
+  }
+});
+
+router.post("/user-contracts/upload", requireAuth, loadCompanyContext, async (req, res) => {
+  const companyId = req.companyContext.companyId;
+  const userId = req.session.userId;
+
+  try {
+    const file = req.files?.file;
+    if (!file || Array.isArray(file)) {
+      return res.status(400).json({ error: "Please select a PDF to upload." });
+    }
+
+    const mimeType = String(file.mimetype || "").toLowerCase().trim();
+    if (!MASTER_AGREEMENT_PDF_MIME_TYPES.has(mimeType)) {
+      return res.status(400).json({ error: "Only PDF files are supported." });
+    }
+
+    const countRes = await pool.query(
+      `
+      SELECT COUNT(*)::int AS total
+      FROM public.user_contracts
+      WHERE company_id = $1
+      `,
+      [companyId]
+    );
+
+    const total = Number(countRes.rows?.[0]?.total || 0);
+    if (total >= MASTER_AGREEMENT_LIMIT_PER_COMPANY) {
+      return res.status(400).json({
+        error: `Agreement limit reached. You can store up to ${MASTER_AGREEMENT_LIMIT_PER_COMPANY} master agreements.`,
+        code: "AGREEMENT_LIMIT_REACHED",
+      });
+    }
+
+    const storageKey = buildMasterAgreementStorageKey({
+      companyId,
+      originalFilename: file.name,
+    });
+
+    await spaces.putObject({
+      Bucket: process.env.SPACES_BUCKET,
+      Key: storageKey,
+      Body: file.data,
+      ContentType: "application/pdf",
+      ACL: "private",
+      Metadata: {
+        company_id: String(companyId),
+        user_id: String(userId),
+        agreement_type: "master_agreement",
+      },
+    }).promise();
+
+    const agreementName = cleanAgreementNameFromFilename(file.name);
+
+    const insertRes = await pool.query(
+      `
+      INSERT INTO public.user_contracts (
+        user_id,
+        company_id,
+        name,
+        version,
+        storage_provider,
+        storage_key
+      )
+      VALUES ($1, $2, $3, $4, 'DO_SPACES', $5)
+      RETURNING id, name, version, storage_provider, storage_key, created_at,
+                COALESCE(insurance_required, FALSE) AS insurance_required,
+                COALESCE(w9_required, TRUE) AS w9_required,
+                COALESCE(ach_required, FALSE) AS ach_required
+      `,
+      [userId, companyId, agreementName, "1.0", storageKey]
+    );
+
+    return res.status(201).json({ ok: true, row: insertRes.rows[0] });
+  } catch (err) {
+    console.error("POST /api/user-contracts/upload error:", err?.message, err);
+    return res.status(500).json({ error: "Failed to upload agreement" });
   }
 });
 
