@@ -267,6 +267,19 @@ document.getElementById("btn-manage-billing")?.addEventListener("click", async (
     return r.json();
   }
 
+  async function apiDelete(url) {
+    const r = await fetch(url, {
+      method: "DELETE",
+      credentials: "include",
+    });
+
+    const payload = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      throw new Error(payload?.error || `DELETE ${url} failed: ${r.status}`);
+    }
+    return payload;
+  }
+
 // -----------------------------
 // Team
 // -----------------------------
@@ -460,6 +473,7 @@ let agreementsSelectedId = null;
 let agreementsTemplates = [];
 let agreementRequirementsOriginal = null;
 let agreementRequirementsCurrent = null;
+let agreementDeleteTargetId = null;
 const AGREEMENT_LIMIT_PER_COMPANY = 5;
 
 function normalizeAgreementRequirements(tpl) {
@@ -550,6 +564,14 @@ function renderAgreementsTiles({ templates, defaultId, selectedId }) {
              role="button"
              tabindex="0"
              data-id="${t.id}">
+
+          <button
+            class="agreement-delete-trigger"
+            type="button"
+            data-delete-agreement="${t.id}"
+            aria-label="Delete agreement ${escapeHtml(t.display_name || t.name || "Untitled")}">
+            <span aria-hidden="true">✕</span>
+          </button>
       
           <button
             class="tile-preview tile-preview--clickable"
@@ -609,7 +631,39 @@ grid.querySelectorAll(".agreement-tile").forEach((tile) => {
       window.open(`/api/user-contracts/${encodeURIComponent(id)}/pdf`, "_blank", "noopener");
     });
   });
+
+  grid.querySelectorAll("[data-delete-agreement]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = btn.getAttribute("data-delete-agreement");
+      if (!id) return;
+      openAgreementDeleteModal(id);
+    });
+  });
   
+}
+
+function getAgreementDisplayName(id) {
+  const tpl = (agreementsTemplates || []).find((t) => String(t.id) === String(id));
+  return tpl?.display_name || tpl?.name || "Untitled";
+}
+
+async function deleteAgreementById(id) {
+  return apiDelete(`/api/user-contracts/${encodeURIComponent(id)}`);
+}
+
+function openAgreementDeleteModal(id) {
+  const modal = document.getElementById("agreement-delete-modal");
+  const targetEl = document.getElementById("agreement-delete-target");
+  const errEl = document.getElementById("agreement-delete-error");
+  if (!modal || !targetEl || !errEl) return;
+
+  agreementDeleteTargetId = String(id);
+  targetEl.textContent = getAgreementDisplayName(id);
+  errEl.hidden = true;
+  errEl.textContent = "";
+  modal.hidden = false;
 }
 
   async function loadAgreements() {
@@ -636,15 +690,18 @@ function wireAgreementUploadModalOnce() {
   const formEl = document.getElementById("agreement-upload-form");
   const titleEl = document.getElementById("agreement-upload-name");
   const fileEl = document.getElementById("agreement-upload-file");
+  const fileNameEl = document.getElementById("agreement-upload-file-name");
+  const filePickerEl = document.getElementById("agreement-file-picker");
   const errEl = document.getElementById("agreement-upload-error");
 
-  if (!modal || !openBtn || !closeBtn || !cancelBtn || !submitBtn || !formEl || !titleEl || !fileEl || !errEl) return;
+  if (!modal || !openBtn || !closeBtn || !cancelBtn || !submitBtn || !formEl || !titleEl || !fileEl || !errEl || !fileNameEl || !filePickerEl) return;
   if (modal.dataset.wired === "1") return;
   modal.dataset.wired = "1";
 
   function clearError() {
     errEl.hidden = true;
     errEl.textContent = "";
+    filePickerEl.classList.remove("has-error");
   }
 
   function setError(message) {
@@ -654,6 +711,8 @@ function wireAgreementUploadModalOnce() {
 
   function resetModalState() {
     formEl.reset();
+    fileNameEl.textContent = "No file selected";
+    filePickerEl.classList.remove("has-file", "has-error");
     clearError();
     submitBtn.disabled = false;
   }
@@ -670,6 +729,21 @@ function wireAgreementUploadModalOnce() {
     }
     modal.hidden = false;
     setTimeout(() => titleEl.focus(), 0);
+  });
+
+  filePickerEl.addEventListener("click", () => fileEl.click());
+  filePickerEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      fileEl.click();
+    }
+  });
+
+  fileEl.addEventListener("change", () => {
+    const selectedName = fileEl.files?.[0]?.name || "No file selected";
+    fileNameEl.textContent = selectedName;
+    filePickerEl.classList.toggle("has-file", !!fileEl.files?.[0]);
+    filePickerEl.classList.remove("has-error");
   });
 
   closeBtn.addEventListener("click", closeModal);
@@ -693,6 +767,7 @@ function wireAgreementUploadModalOnce() {
     const file = fileEl.files?.[0];
     if (!file) {
       setError("Please select a PDF to upload.");
+      filePickerEl.classList.add("has-error");
       return;
     }
 
@@ -700,6 +775,7 @@ function wireAgreementUploadModalOnce() {
     const isPdf = file.type === "application/pdf" || fileName.endsWith(".pdf");
     if (!isPdf) {
       setError("Only PDF files are supported.");
+      filePickerEl.classList.add("has-error");
       return;
     }
 
@@ -728,6 +804,61 @@ function wireAgreementUploadModalOnce() {
       console.error("agreement upload failed", err);
       setError(err?.message || "Upload failed.");
       submitBtn.disabled = false;
+    }
+  });
+}
+
+function wireAgreementDeleteModalOnce() {
+  const modal = document.getElementById("agreement-delete-modal");
+  const closeBtn = document.getElementById("agreement-delete-close");
+  const cancelBtn = document.getElementById("agreement-delete-cancel");
+  const confirmBtn = document.getElementById("agreement-delete-confirm");
+  const errEl = document.getElementById("agreement-delete-error");
+
+  if (!modal || !closeBtn || !cancelBtn || !confirmBtn || !errEl) return;
+  if (modal.dataset.wired === "1") return;
+  modal.dataset.wired = "1";
+
+  function clearError() {
+    errEl.hidden = true;
+    errEl.textContent = "";
+  }
+
+  function closeModal() {
+    modal.hidden = true;
+    agreementDeleteTargetId = null;
+    clearError();
+    confirmBtn.disabled = false;
+  }
+
+  closeBtn.addEventListener("click", closeModal);
+  cancelBtn.addEventListener("click", closeModal);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !modal.hidden) closeModal();
+  });
+
+  confirmBtn.addEventListener("click", async () => {
+    if (!agreementDeleteTargetId) return;
+    clearError();
+    confirmBtn.disabled = true;
+    try {
+      const deletedId = agreementDeleteTargetId;
+      await deleteAgreementById(deletedId);
+      closeModal();
+
+      if (String(agreementsSelectedId) === String(deletedId)) {
+        agreementsSelectedId = null;
+      }
+
+      await loadAgreements();
+    } catch (err) {
+      errEl.hidden = false;
+      errEl.textContent = err?.message || "Failed to delete agreement.";
+      confirmBtn.disabled = false;
     }
   });
 }
@@ -1702,6 +1833,7 @@ pwSave?.addEventListener("click", async () => {
   loadEverything()
   .then(() => {
     wireAgreementUploadModalOnce();
+    wireAgreementDeleteModalOnce();
   })
   .then(() => {
     if (activeTab === "help") {

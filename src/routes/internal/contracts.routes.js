@@ -288,6 +288,108 @@ router.post("/user-contracts/upload", requireAuth, loadCompanyContext, async (re
   }
 });
 
+router.delete("/user-contracts/:id", requireAuth, loadCompanyContext, async (req, res) => {
+  const userId = req.session.userId;
+  const companyId = req.companyContext.companyId;
+  const templateId = String(req.params.id || "").trim();
+
+  if (!templateId) {
+    return res.status(400).json({ error: "Missing agreement id" });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const tplRes = await client.query(
+      `
+      SELECT id, storage_provider, storage_key
+      FROM public.user_contracts
+      WHERE id = $1
+        AND user_id = $2
+        AND company_id = $3
+      LIMIT 1
+      `,
+      [templateId, userId, companyId]
+    );
+
+    if (tplRes.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Agreement not found" });
+    }
+
+    const defaultRes = await client.query(
+      `
+      SELECT default_user_contract_id
+      FROM public.user_contract_defaults
+      WHERE user_id = $1
+      LIMIT 1
+      `,
+      [userId]
+    );
+
+    const defaultTemplateId = defaultRes.rows[0]?.default_user_contract_id;
+    if (String(defaultTemplateId || "") === String(templateId)) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        error: "This agreement is your default. Set another default agreement before deleting it.",
+        code: "DEFAULT_AGREEMENT_DELETE_BLOCKED",
+      });
+    }
+
+    const contractUseRes = await client.query(
+      `
+      SELECT 1
+      FROM public.contracts
+      WHERE company_id = $1
+        AND user_contract_id = $2
+      LIMIT 1
+      `,
+      [companyId, templateId]
+    );
+
+    if (contractUseRes.rowCount > 0) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        error: "This agreement has already been used in sent/signed contracts and cannot be deleted.",
+        code: "AGREEMENT_IN_USE",
+      });
+    }
+
+    await client.query(
+      `
+      DELETE FROM public.user_contracts
+      WHERE id = $1
+        AND user_id = $2
+        AND company_id = $3
+      `,
+      [templateId, userId, companyId]
+    );
+
+    await client.query("COMMIT");
+
+    const template = tplRes.rows[0];
+    if (template.storage_provider === "DO_SPACES" && template.storage_key) {
+      try {
+        await spaces.deleteObject({
+          Bucket: process.env.SPACES_BUCKET,
+          Key: template.storage_key,
+        }).promise();
+      } catch (storageErr) {
+        console.warn("DELETE /api/user-contracts/:id storage cleanup warning:", storageErr?.message || storageErr);
+      }
+    }
+
+    return res.json({ ok: true, id: templateId });
+  } catch (err) {
+    try { await client.query("ROLLBACK"); } catch {}
+    console.error("DELETE /api/user-contracts/:id error:", err?.message, err);
+    return res.status(500).json({ error: "Failed to delete agreement" });
+  } finally {
+    client.release();
+  }
+});
+
 
 
 /** ---------- CONTRACT SEND ROUTE ---------- **/

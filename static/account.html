@@ -822,7 +822,7 @@
 
     <form id="agreement-upload-form" class="cs-modal-body docs-upload-form">
       <div class="docs-upload-field">
-        <label class="cs-label" for="agreement-upload-name">Agreement Title</label>
+        <label class="cs-label" for="agreement-upload-name">Agreement Name</label>
         <input
           id="agreement-upload-name"
           class="cs-input"
@@ -836,17 +836,48 @@
 
       <div class="docs-upload-field">
         <label class="cs-label" for="agreement-upload-file">Agreement PDF</label>
-        <input id="agreement-upload-file" class="cs-input docs-file-input" type="file" accept=".pdf,application/pdf" required>
-        <div class="cs-hint">PDF only · up to 5 agreements total.</div>
+        <div class="agreement-file-picker" id="agreement-file-picker" role="button" tabindex="0" aria-controls="agreement-upload-file" aria-label="Select agreement PDF">
+          <input id="agreement-upload-file" class="agreement-file-input" type="file" accept=".pdf,application/pdf" required>
+          <div class="agreement-file-picker-main">
+            <span class="agreement-file-pill">Choose PDF</span>
+            <span class="agreement-file-name" id="agreement-upload-file-name">No file selected</span>
+          </div>
+          <div class="cs-hint">PDF only.</div>
+        </div>
       </div>
 
       <div id="agreement-upload-error" class="docs-upload-error" hidden></div>
     </form>
 
     <div class="cs-modal-footer">
+      <div class="cs-hint">PDF only • up to 5 agreements</div>
       <div class="cs-footer-right">
         <button id="agreement-upload-cancel" class="cs-btn cs-btn-ghost" type="button">Cancel</button>
         <button id="agreement-upload-submit" class="cs-btn cs-btn-primary" type="button">Upload Agreement</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="agreement-delete-modal" class="cs-modal-backdrop" hidden>
+  <div class="cs-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="agreement-delete-title">
+    <div class="cs-modal-header">
+      <div class="cs-modal-headings">
+        <div id="agreement-delete-title" class="cs-modal-title">Delete Agreement</div>
+        <div class="cs-modal-subtitle">Are you sure you want to remove this agreement from your template library?<br>Existing signed/sent contracts should not be affected.</div>
+      </div>
+      <button id="agreement-delete-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
+    </div>
+
+    <div class="cs-modal-body">
+      <div id="agreement-delete-target" class="agreement-delete-target"></div>
+      <div id="agreement-delete-error" class="docs-upload-error" hidden></div>
+    </div>
+
+    <div class="cs-modal-footer">
+      <div class="cs-footer-right">
+        <button id="agreement-delete-cancel" class="cs-btn cs-btn-ghost" type="button">Cancel</button>
+        <button id="agreement-delete-confirm" class="cs-btn cs-btn-primary agreement-delete-confirm-btn" type="button">Delete Agreement</button>
       </div>
     </div>
   </div>

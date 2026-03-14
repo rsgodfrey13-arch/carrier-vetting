@@ -2343,3 +2343,135 @@ body.account-page .api-input{
   color: #fecaca;
   font-size: .85rem;
 }
+
+/* Agreements modals + tile actions (Carrier Shark modal parity) */
+#agreement-upload-modal,
+#agreement-delete-modal{
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(2, 6, 23, .68);
+  z-index: 10000;
+}
+
+#agreement-upload-modal[hidden],
+#agreement-delete-modal[hidden]{
+  display: none !important;
+}
+
+#agreement-upload-modal .cs-modal,
+#agreement-delete-modal .cs-modal{
+  width: min(560px, 96vw);
+  max-height: 88vh;
+  overflow: hidden;
+  border-radius: 22px;
+  border: 1px solid rgba(148,163,184,.24);
+  box-shadow: 0 30px 70px rgba(2, 6, 23, .72);
+}
+
+#agreement-upload-modal .cs-modal-body,
+#agreement-delete-modal .cs-modal-body{
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.agreement-file-picker{
+  position: relative;
+  border: 1px dashed rgba(148,163,184,.45);
+  border-radius: 14px;
+  background: rgba(15,23,42,.66);
+  padding: 12px;
+  cursor: pointer;
+}
+
+.agreement-file-picker:hover{ border-color: rgba(56,189,248,.6); }
+.agreement-file-picker.has-file{ border-style: solid; border-color: rgba(45,213,161,.55); }
+.agreement-file-picker.has-error{ border-style: solid; border-color: rgba(248,113,113,.7); }
+
+.agreement-file-input{
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 1px;
+  height: 1px;
+}
+
+.agreement-file-picker-main{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin-bottom: 8px;
+}
+
+.agreement-file-pill{
+  border: 1px solid rgba(148,163,184,.55);
+  border-radius: 999px;
+  padding: 7px 12px;
+  background: rgba(30,41,59,.86);
+  color: rgba(241,245,249,.95);
+  font-weight: 700;
+  font-size: .83rem;
+  white-space: nowrap;
+}
+
+.agreement-file-name{
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(226,232,240,.95);
+  font-size: .9rem;
+}
+
+.agreement-delete-target{
+  border: 1px solid rgba(148,163,184,.3);
+  background: rgba(15,23,42,.55);
+  color: rgba(241,245,249,.96);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-weight: 700;
+}
+
+.agreement-delete-confirm-btn{
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border-color: rgba(248,113,113,.65);
+}
+
+.agreement-delete-confirm-btn:hover{
+  filter: brightness(1.05);
+}
+
+.agreement-tile{
+  position: relative;
+}
+
+.agreement-delete-trigger{
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(148,163,184,.35);
+  background: rgba(15,23,42,.5);
+  color: rgba(203,213,225,.9);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  opacity: .82;
+}
+
+.agreement-delete-trigger:hover{
+  opacity: 1;
+  border-color: rgba(248,113,113,.65);
+  color: #fecaca;
+  background: rgba(127,29,29,.35);
+}
