@@ -690,18 +690,15 @@ function wireAgreementUploadModalOnce() {
   const formEl = document.getElementById("agreement-upload-form");
   const titleEl = document.getElementById("agreement-upload-name");
   const fileEl = document.getElementById("agreement-upload-file");
-  const fileNameEl = document.getElementById("agreement-upload-file-name");
-  const filePickerEl = document.getElementById("agreement-file-picker");
   const errEl = document.getElementById("agreement-upload-error");
 
-  if (!modal || !openBtn || !closeBtn || !cancelBtn || !submitBtn || !formEl || !titleEl || !fileEl || !errEl || !fileNameEl || !filePickerEl) return;
+  if (!modal || !openBtn || !closeBtn || !cancelBtn || !submitBtn || !formEl || !titleEl || !fileEl || !errEl) return;
   if (modal.dataset.wired === "1") return;
   modal.dataset.wired = "1";
 
   function clearError() {
     errEl.hidden = true;
     errEl.textContent = "";
-    filePickerEl.classList.remove("has-error");
   }
 
   function setError(message) {
@@ -711,8 +708,6 @@ function wireAgreementUploadModalOnce() {
 
   function resetModalState() {
     formEl.reset();
-    fileNameEl.textContent = "No file selected";
-    filePickerEl.classList.remove("has-file", "has-error");
     clearError();
     submitBtn.disabled = false;
   }
@@ -729,21 +724,6 @@ function wireAgreementUploadModalOnce() {
     }
     modal.hidden = false;
     setTimeout(() => titleEl.focus(), 0);
-  });
-
-  filePickerEl.addEventListener("click", () => fileEl.click());
-  filePickerEl.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      fileEl.click();
-    }
-  });
-
-  fileEl.addEventListener("change", () => {
-    const selectedName = fileEl.files?.[0]?.name || "No file selected";
-    fileNameEl.textContent = selectedName;
-    filePickerEl.classList.toggle("has-file", !!fileEl.files?.[0]);
-    filePickerEl.classList.remove("has-error");
   });
 
   closeBtn.addEventListener("click", closeModal);
@@ -767,7 +747,6 @@ function wireAgreementUploadModalOnce() {
     const file = fileEl.files?.[0];
     if (!file) {
       setError("Please select a PDF to upload.");
-      filePickerEl.classList.add("has-error");
       return;
     }
 
@@ -775,7 +754,6 @@ function wireAgreementUploadModalOnce() {
     const isPdf = file.type === "application/pdf" || fileName.endsWith(".pdf");
     if (!isPdf) {
       setError("Only PDF files are supported.");
-      filePickerEl.classList.add("has-error");
       return;
     }
 
