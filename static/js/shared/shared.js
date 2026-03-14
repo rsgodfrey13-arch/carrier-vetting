@@ -170,6 +170,8 @@ helpMenu.innerHTML = `
   }
 }
 
+const DESKTOP_AUTH_DISPLAY = "inline-flex";
+
 // Global tour opener so header/footer links can open the modal
 // Open/close the Tour modal (matches tour.js + index.html)
 window.openTour = function (startIndex = 0) {
@@ -525,7 +527,7 @@ async function initAuthUI() {
     if (data.user) {
       // LOGGED IN
       if (loginBtn) loginBtn.style.display = "none";
-      if (logoutBtn) logoutBtn.style.display = "inline-block";
+      if (logoutBtn) logoutBtn.style.display = DESKTOP_AUTH_DISPLAY;
       if (tourLink) tourLink.style.display = "none";
       window.csIsLoggedIn = true;
       setMobileMenuOrder(true);
@@ -536,7 +538,7 @@ async function initAuthUI() {
       }
 
       if (accountLink) {
-        accountLink.style.display = "inline-block";
+        accountLink.style.display = DESKTOP_AUTH_DISPLAY;
         accountLink.textContent = "My Account";
         accountLink.href = "/account";
       }
@@ -581,9 +583,9 @@ async function initAuthUI() {
 
     } else {
       // LOGGED OUT
-      if (loginBtn) loginBtn.style.display = "inline-block";
+      if (loginBtn) loginBtn.style.display = DESKTOP_AUTH_DISPLAY;
       if (logoutBtn) logoutBtn.style.display = "none";
-      if (tourLink) tourLink.style.display = "inline-block";
+      if (tourLink) tourLink.style.display = DESKTOP_AUTH_DISPLAY;
       window.csIsLoggedIn = false;
       setMobileMenuOrder(false);
 
@@ -637,10 +639,10 @@ async function initAuthUI() {
       header.classList.add("is-logged-out");
     }
 
-    if (loginBtn) loginBtn.style.display = "inline-block";
+    if (loginBtn) loginBtn.style.display = DESKTOP_AUTH_DISPLAY;
     if (logoutBtn) logoutBtn.style.display = "none";
     setMobileMenuOrder(false);
-    if (tourLink) tourLink.style.display = "inline-block";
+    if (tourLink) tourLink.style.display = DESKTOP_AUTH_DISPLAY;
     if (accountLink) accountLink.style.display = "none";
     if (mobileMyCarriersLink) mobileMyCarriersLink.style.display = "none";
     if (mobileContactLink) mobileContactLink.style.display = "flex";
