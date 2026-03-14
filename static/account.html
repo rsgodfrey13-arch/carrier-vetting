@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Account</title>
 <link rel="stylesheet" href="/static/css/base.css">
+<link rel="stylesheet" href="/static/css/profile_style.css">
 <link rel="stylesheet" href="/static/css/account.css">
 <link rel="stylesheet" href="/static/css/style1.css" />
 <link rel="stylesheet" href="/static/css/plans.css" />
@@ -838,8 +839,23 @@
 
       <div class="cs-row cs-row-col">
         <label class="cs-label" for="agreement-upload-file">Agreement PDF</label>
-        <input id="agreement-upload-file" class="cs-input" type="file" accept=".pdf,application/pdf" required>
-        <div class="cs-hint">PDF only. Max file size 15MB.</div>
+
+        <label class="agreement-file-picker" id="agreement-file-picker" for="agreement-upload-file">
+          <input
+            id="agreement-upload-file"
+            class="agreement-file-input"
+            type="file"
+            accept=".pdf,application/pdf"
+            required
+          >
+
+          <div class="agreement-file-picker-main">
+            <span class="agreement-file-pill" id="agreement-file-pill">Choose PDF</span>
+            <span class="agreement-file-name" id="agreement-file-name">No file selected</span>
+          </div>
+
+          <div class="cs-hint">PDF only. Max file size 15MB.</div>
+        </label>
       </div>
 
       <div id="agreement-upload-error" class="docs-upload-error" hidden></div>
@@ -870,7 +886,7 @@
     <div class="cs-modal-body">
       <div class="cs-row cs-row-col">
         <div class="cs-label">Agreement Name</div>
-        <div id="agreement-delete-target" class="cs-input" role="status" aria-live="polite"></div>
+        <div id="agreement-delete-target" class="agreement-delete-target" role="status" aria-live="polite"></div>
       </div>
       <div id="agreement-delete-error" class="docs-upload-error" hidden></div>
     </div>

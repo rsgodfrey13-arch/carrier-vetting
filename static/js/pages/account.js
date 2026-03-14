@@ -690,25 +690,47 @@ function wireAgreementUploadModalOnce() {
   const formEl = document.getElementById("agreement-upload-form");
   const titleEl = document.getElementById("agreement-upload-name");
   const fileEl = document.getElementById("agreement-upload-file");
+  const filePickerEl = document.getElementById("agreement-file-picker");
+  const fileNameEl = document.getElementById("agreement-file-name");
+  const filePillEl = document.getElementById("agreement-file-pill");
   const errEl = document.getElementById("agreement-upload-error");
 
-  if (!modal || !openBtn || !closeBtn || !cancelBtn || !submitBtn || !formEl || !titleEl || !fileEl || !errEl) return;
+  if (!modal || !openBtn || !closeBtn || !cancelBtn || !submitBtn || !formEl || !titleEl || !fileEl || !filePickerEl || !fileNameEl || !filePillEl || !errEl) return;
   if (modal.dataset.wired === "1") return;
   modal.dataset.wired = "1";
+
+  function syncFileUi() {
+    const file = fileEl.files?.[0];
+
+    if (!file) {
+      fileNameEl.textContent = "No file selected";
+      filePillEl.textContent = "Choose PDF";
+      filePickerEl.classList.remove("has-file", "has-error");
+      return;
+    }
+
+    fileNameEl.textContent = file.name || "Selected file";
+    filePillEl.textContent = "PDF Selected";
+    filePickerEl.classList.add("has-file");
+    filePickerEl.classList.remove("has-error");
+  }
 
   function clearError() {
     errEl.hidden = true;
     errEl.textContent = "";
+    filePickerEl.classList.remove("has-error");
   }
 
   function setError(message) {
     errEl.hidden = false;
     errEl.textContent = message || "Upload failed.";
+    filePickerEl.classList.add("has-error");
   }
 
   function resetModalState() {
     formEl.reset();
     clearError();
+    syncFileUi();
     submitBtn.disabled = false;
   }
 
@@ -735,6 +757,13 @@ function wireAgreementUploadModalOnce() {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !modal.hidden) closeModal();
   });
+
+  fileEl.addEventListener("change", () => {
+    clearError();
+    syncFileUi();
+  });
+
+  syncFileUi();
 
   submitBtn.addEventListener("click", async () => {
     clearError();

@@ -1,0 +1,545 @@
+diff --git a/static/account.html b/static/account.html
+index 648c298038e4289d58bdf578587508ee144ebad2..4083963693cc2f223c143a9db5f9b3529cdde0e0 100644
+--- a/static/account.html
++++ b/static/account.html
+@@ -1,33 +1,34 @@
+ <!-- /public/account (or /profile) .-->
+ <!DOCTYPE html>
+ <html lang="en">
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <title>My Account</title>
+ <link rel="stylesheet" href="/static/css/base.css">
++<link rel="stylesheet" href="/static/css/profile_style.css">
+ <link rel="stylesheet" href="/static/css/account.css">
+ <link rel="stylesheet" href="/static/css/style1.css" />
+ <link rel="stylesheet" href="/static/css/plans.css" />
+ <link rel="stylesheet" href="/static/css/activate-plan.css" />
+ <link rel="stylesheet" href="/static/css/account-plan.css" />
+   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+ </head>
+ 
+ 
+   
+ <body class="account-page">
+   <div class="bg-gradient"></div>
+   <div class="bg-grid"></div>
+   <div id="site-header"></div>  
+   <div class="page">
+ 
+     <header class="account-header cs-page-header">
+       <div>
+         <h1 class="page-title">My Account</h1>
+         <p class="page-subtitle">Manage alerts, agreements, API access, and your plan.</p>
+       </div>
+ 
+       <div class="account-header-actions action-bar">
+         <button
+           class="btn-ghost"
+@@ -816,83 +817,98 @@
+       <div class="cs-modal-headings">
+         <div id="agreement-upload-title" class="cs-modal-title">Upload Master Agreement</div>
+         <div class="cs-modal-subtitle">Upload a reusable master agreement PDF for your account’s contract workflow.</div>
+       </div>
+       <button id="agreement-upload-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
+     </div>
+ 
+     <form id="agreement-upload-form" class="cs-modal-body docs-upload-form">
+       <div class="cs-row cs-row-col">
+         <label class="cs-label" for="agreement-upload-name">Agreement Name</label>
+         <input
+           id="agreement-upload-name"
+           class="cs-input"
+           type="text"
+           maxlength="120"
+           autocomplete="off"
+           placeholder="e.g., 2026 Master Carrier Agreement"
+         >
+         <div class="cs-hint">Optional · leave blank to use a clean filename-based title.</div>
+       </div>
+ 
+       <div class="cs-divider"></div>
+ 
+       <div class="cs-row cs-row-col">
+         <label class="cs-label" for="agreement-upload-file">Agreement PDF</label>
+-        <input id="agreement-upload-file" class="cs-input" type="file" accept=".pdf,application/pdf" required>
+-        <div class="cs-hint">PDF only. Max file size 15MB.</div>
++
++        <label class="agreement-file-picker" id="agreement-file-picker" for="agreement-upload-file">
++          <input
++            id="agreement-upload-file"
++            class="agreement-file-input"
++            type="file"
++            accept=".pdf,application/pdf"
++            required
++          >
++
++          <div class="agreement-file-picker-main">
++            <span class="agreement-file-pill" id="agreement-file-pill">Choose PDF</span>
++            <span class="agreement-file-name" id="agreement-file-name">No file selected</span>
++          </div>
++
++          <div class="cs-hint">PDF only. Max file size 15MB.</div>
++        </label>
+       </div>
+ 
+       <div id="agreement-upload-error" class="docs-upload-error" hidden></div>
+     </form>
+ 
+     <div class="cs-modal-footer">
+       <div class="cs-footer-left">
+         <div class="cs-hint">PDF only • up to 5 agreements per account</div>
+       </div>
+       <div class="cs-footer-right">
+         <button id="agreement-upload-cancel" class="cs-btn cs-btn-ghost" type="button">Cancel</button>
+         <button id="agreement-upload-submit" class="cs-btn cs-btn-primary" type="button">Upload Agreement</button>
+       </div>
+     </div>
+   </div>
+ </div>
+ 
+ <div id="agreement-delete-modal" class="cs-modal-backdrop" hidden>
+   <div class="cs-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="agreement-delete-title">
+     <div class="cs-modal-header">
+       <div class="cs-modal-headings">
+         <div id="agreement-delete-title" class="cs-modal-title">Delete Agreement</div>
+         <div class="cs-modal-subtitle">Are you sure you want to remove this agreement from your template library?<br>Existing signed/sent contracts will not be affected.</div>
+       </div>
+       <button id="agreement-delete-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
+     </div>
+ 
+     <div class="cs-modal-body">
+       <div class="cs-row cs-row-col">
+         <div class="cs-label">Agreement Name</div>
+-        <div id="agreement-delete-target" class="cs-input" role="status" aria-live="polite"></div>
++        <div id="agreement-delete-target" class="agreement-delete-target" role="status" aria-live="polite"></div>
+       </div>
+       <div id="agreement-delete-error" class="docs-upload-error" hidden></div>
+     </div>
+ 
+     <div class="cs-modal-footer">
+       <div class="cs-footer-right">
+         <button id="agreement-delete-cancel" class="cs-btn cs-btn-ghost" type="button">Cancel</button>
+         <button id="agreement-delete-confirm" class="cs-btn cs-btn-primary agreement-delete-confirm-btn" type="button">Delete Agreement</button>
+       </div>
+     </div>
+   </div>
+ </div>
+ 
+ <!-- Change Password Modal -->
+ <div class="modal-backdrop" id="pw-modal" aria-hidden="true">
+   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pw-title">
+     <div class="modal-head">
+       <h3 id="pw-title">Change password</h3>
+       <button class="icon-btn" type="button" id="pw-close" aria-label="Close">✕</button>
+     </div>
+ 
+     <div class="modal-body">
+       <div class="field">
+         <label class="field-label" for="pw-current">Current password</label>
+         <input class="field-input" id="pw-current" type="password" autocomplete="current-password" />
+diff --git a/static/css/account.css b/static/css/account.css
+index 621dcb925e1f00b1acf6e67b3651887f07e80167..f0a0820d0ea6d43b865c7c48fb6e551a4807c65f 100644
+--- a/static/css/account.css
++++ b/static/css/account.css
+@@ -2256,207 +2256,174 @@ body.account-page .api-input{
+   }
+ 
+   #tab-api .lock-wrap .lock-main,
+   #tab-api .lock-wrap .row-actions,
+   #tab-api .lock-wrap .lock-footer{
+     grid-column: 1;
+   }
+ 
+   #tab-api .lock-wrap .row-actions{
+     grid-row: 2;
+     justify-content: flex-start;
+     flex-wrap: wrap;
+     width: 100%;
+   }
+ 
+   #tab-api .lock-wrap .lock-footer{
+     grid-row: 3;
+   }
+ 
+   #tab-api .api-input{
+     width: 100%;
+     max-width: 100%;
+   }
+ }
+ 
+-/* Agreements upload modal polish */
+-#agreement-upload-modal{
+-  position: fixed;
+-  inset: 0;
+-  display: flex;
+-  align-items: center;
+-  justify-content: center;
+-  padding: 20px;
+-  background: rgba(2, 6, 23, .68);
+-  z-index: 10000;
+-}
+-
+-#agreement-upload-modal[hidden]{
+-  display: none !important;
+-}
+-
+-#agreement-upload-modal .cs-modal{
+-  width: min(560px, 96vw);
+-  max-height: 88vh;
+-  overflow: hidden;
+-  border-radius: 22px;
+-  border: 1px solid rgba(148,163,184,.24);
+-  box-shadow: 0 30px 70px rgba(2, 6, 23, .72);
+-}
+-
+-#agreement-upload-modal .cs-modal-body{
+-  display: flex;
+-  flex-direction: column;
+-  gap: 14px;
+-}
+-
+-.docs-upload-field{
+-  display: flex;
+-  flex-direction: column;
+-  gap: 8px;
+-}
+-
+-#agreement-upload-modal .docs-file-input{
+-  min-height: 44px;
+-  padding: 10px 12px;
+-  border-radius: 12px;
+-  border: 1px dashed rgba(148,163,184,.5);
+-  background: rgba(15,23,42,.72);
+-}
+-
+-#agreement-upload-modal .docs-file-input::file-selector-button{
+-  margin-right: 10px;
+-  border: 1px solid rgba(148,163,184,.55);
+-  border-radius: 999px;
+-  padding: 7px 12px;
+-  background: rgba(30,41,59,.86);
+-  color: rgba(241,245,249,.95);
+-  font-weight: 700;
+-  cursor: pointer;
+-}
+-
+-#agreement-upload-modal .docs-upload-error{
+-  margin-top: 2px;
+-  padding: 10px 12px;
+-  border-radius: 12px;
+-  border: 1px solid rgba(248,113,113,.45);
+-  background: rgba(127,29,29,.24);
+-  color: #fecaca;
+-  font-size: .85rem;
+-}
+-
+ /* Agreements modals + tile actions (Carrier Shark modal parity) */
+ #agreement-upload-modal,
+ #agreement-delete-modal{
+   position: fixed;
+   inset: 0;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   padding: 20px;
+   background: rgba(2, 6, 23, .68);
+   z-index: 10000;
+ }
+ 
+ #agreement-upload-modal[hidden],
+ #agreement-delete-modal[hidden]{
+   display: none !important;
+ }
+ 
+ #agreement-upload-modal .cs-modal,
+ #agreement-delete-modal .cs-modal{
+-  width: min(560px, 96vw);
++  width: min(640px, 94vw);
+   max-height: 88vh;
+   overflow: hidden;
+   border-radius: 22px;
+-  border: 1px solid rgba(148,163,184,.24);
+-  box-shadow: 0 30px 70px rgba(2, 6, 23, .72);
+ }
+ 
+ #agreement-upload-modal .cs-modal-body,
+ #agreement-delete-modal .cs-modal-body{
+   display: flex;
+   flex-direction: column;
+   gap: 14px;
+ }
+ 
++.docs-upload-error{
++  margin-top: 2px;
++  padding: 10px 12px;
++  border-radius: 12px;
++  border: 1px solid rgba(248,113,113,.45);
++  background: rgba(127,29,29,.24);
++  color: #fecaca;
++  font-size: .85rem;
++}
++
+ .agreement-file-picker{
+   position: relative;
+-  border: 1px dashed rgba(148,163,184,.45);
+-  border-radius: 14px;
+-  background: rgba(15,23,42,.66);
+-  padding: 12px;
++  display: flex;
++  flex-direction: column;
++  gap: 10px;
++  padding: 14px 16px;
++  border-radius: 16px;
++  border: 1px solid rgba(148,163,184,.22);
++  background: rgba(9,16,40,.72);
+   cursor: pointer;
++  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+ }
+ 
+-.agreement-file-picker:hover{ border-color: rgba(56,189,248,.6); }
+-.agreement-file-picker.has-file{ border-style: solid; border-color: rgba(45,213,161,.55); }
+-.agreement-file-picker.has-error{ border-style: solid; border-color: rgba(248,113,113,.7); }
++.agreement-file-picker:hover{
++  border-color: rgba(56,189,248,.34);
++  box-shadow: 0 0 0 1px rgba(56,189,248,.08) inset;
++}
+ 
+ .agreement-file-input{
+   position: absolute;
+-  opacity: 0;
+-  pointer-events: none;
+   width: 1px;
+   height: 1px;
++  padding: 0;
++  margin: -1px;
++  overflow: hidden;
++  clip: rect(0,0,0,0);
++  white-space: nowrap;
++  border: 0;
+ }
+ 
+ .agreement-file-picker-main{
+   display: flex;
+   align-items: center;
+-  gap: 10px;
++  gap: 12px;
+   min-width: 0;
+-  margin-bottom: 8px;
+ }
+ 
+ .agreement-file-pill{
+-  border: 1px solid rgba(148,163,184,.55);
++  flex: 0 0 auto;
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  min-height: 34px;
++  padding: 0 14px;
+   border-radius: 999px;
+-  padding: 7px 12px;
+-  background: rgba(30,41,59,.86);
+-  color: rgba(241,245,249,.95);
++  border: 1px solid rgba(148,163,184,.24);
++  background: rgba(15,23,42,.92);
++  color: #e5f3ff;
+   font-weight: 700;
+-  font-size: .83rem;
+-  white-space: nowrap;
++  font-size: .9rem;
++  letter-spacing: .01em;
+ }
+ 
+ .agreement-file-name{
+   min-width: 0;
+   overflow: hidden;
+   text-overflow: ellipsis;
+   white-space: nowrap;
+-  color: rgba(226,232,240,.95);
+-  font-size: .9rem;
++  color: rgba(226,232,240,.88);
++  font-size: .95rem;
++}
++
++.agreement-file-picker.has-file{
++  border-color: rgba(34,197,94,.28);
++  box-shadow: 0 0 0 1px rgba(34,197,94,.08) inset;
++}
++
++.agreement-file-picker.has-error{
++  border-color: rgba(248,113,113,.5);
++  box-shadow: 0 0 0 1px rgba(248,113,113,.12) inset;
+ }
+ 
+ .agreement-delete-target{
+-  border: 1px solid rgba(148,163,184,.3);
+-  background: rgba(15,23,42,.55);
+-  color: rgba(241,245,249,.96);
+-  border-radius: 12px;
+-  padding: 10px 12px;
+-  font-weight: 700;
++  min-height: 48px;
++  display: flex;
++  align-items: center;
++  padding: 12px 14px;
++  border-radius: 14px;
++  border: 1px solid rgba(148,163,184,.18);
++  background: rgba(15,23,42,.72);
++  color: rgba(226,232,240,.92);
+ }
+ 
+ .agreement-delete-confirm-btn{
+   background: linear-gradient(135deg, #ef4444, #dc2626);
+   border-color: rgba(248,113,113,.65);
+ }
+ 
+ .agreement-delete-confirm-btn:hover{
+   filter: brightness(1.05);
+ }
+ 
+ .agreement-tile{
+   position: relative;
+ }
+ 
+ .agreement-delete-trigger{
+   position: absolute;
+   top: 10px;
+   right: 10px;
+   z-index: 3;
+   width: 28px;
+   height: 28px;
+   border-radius: 999px;
+   border: 1px solid rgba(148,163,184,.35);
+   background: rgba(15,23,42,.5);
+diff --git a/static/js/pages/account.js b/static/js/pages/account.js
+index d4489bef8f98257d5df6f8558bdccf4b47817904..65a76fb1f2a80c0197019820b6588f77f16b9335 100644
+--- a/static/js/pages/account.js
++++ b/static/js/pages/account.js
+@@ -668,96 +668,125 @@ function openAgreementDeleteModal(id) {
+ 
+   async function loadAgreements() {
+   const previouslySelectedId = agreementsSelectedId;
+   const [tplRes, defRes] = await Promise.all([
+     apiGet("/api/user-contracts"),
+     apiGet("/api/agreements/default"),
+   ]);
+ 
+   const templates = tplRes?.rows || [];
+   const defaultId = defRes?.row?.default_user_contract_id || null;
+ 
+   agreementsTemplates = templates;
+   renderAgreementsTiles({ templates, defaultId, selectedId: previouslySelectedId });
+   renderAgreementRequirements();
+ }
+ 
+ function wireAgreementUploadModalOnce() {
+   const modal = document.getElementById("agreement-upload-modal");
+   const openBtn = document.getElementById("btn-upload-agreement");
+   const closeBtn = document.getElementById("agreement-upload-close");
+   const cancelBtn = document.getElementById("agreement-upload-cancel");
+   const submitBtn = document.getElementById("agreement-upload-submit");
+   const formEl = document.getElementById("agreement-upload-form");
+   const titleEl = document.getElementById("agreement-upload-name");
+   const fileEl = document.getElementById("agreement-upload-file");
++  const filePickerEl = document.getElementById("agreement-file-picker");
++  const fileNameEl = document.getElementById("agreement-file-name");
++  const filePillEl = document.getElementById("agreement-file-pill");
+   const errEl = document.getElementById("agreement-upload-error");
+ 
+-  if (!modal || !openBtn || !closeBtn || !cancelBtn || !submitBtn || !formEl || !titleEl || !fileEl || !errEl) return;
++  if (!modal || !openBtn || !closeBtn || !cancelBtn || !submitBtn || !formEl || !titleEl || !fileEl || !filePickerEl || !fileNameEl || !filePillEl || !errEl) return;
+   if (modal.dataset.wired === "1") return;
+   modal.dataset.wired = "1";
+ 
++  function syncFileUi() {
++    const file = fileEl.files?.[0];
++
++    if (!file) {
++      fileNameEl.textContent = "No file selected";
++      filePillEl.textContent = "Choose PDF";
++      filePickerEl.classList.remove("has-file", "has-error");
++      return;
++    }
++
++    fileNameEl.textContent = file.name || "Selected file";
++    filePillEl.textContent = "PDF Selected";
++    filePickerEl.classList.add("has-file");
++    filePickerEl.classList.remove("has-error");
++  }
++
+   function clearError() {
+     errEl.hidden = true;
+     errEl.textContent = "";
++    filePickerEl.classList.remove("has-error");
+   }
+ 
+   function setError(message) {
+     errEl.hidden = false;
+     errEl.textContent = message || "Upload failed.";
++    filePickerEl.classList.add("has-error");
+   }
+ 
+   function resetModalState() {
+     formEl.reset();
+     clearError();
++    syncFileUi();
+     submitBtn.disabled = false;
+   }
+ 
+   function closeModal() {
+     modal.hidden = true;
+     resetModalState();
+   }
+ 
+   openBtn.addEventListener("click", () => {
+     resetModalState();
+     if ((agreementsTemplates || []).length >= AGREEMENT_LIMIT_PER_COMPANY) {
+       setError(`Agreement limit reached. You can store up to ${AGREEMENT_LIMIT_PER_COMPANY} master agreements.`);
+     }
+     modal.hidden = false;
+     setTimeout(() => titleEl.focus(), 0);
+   });
+ 
+   closeBtn.addEventListener("click", closeModal);
+   cancelBtn.addEventListener("click", closeModal);
+   modal.addEventListener("click", (e) => {
+     if (e.target === modal) closeModal();
+   });
+ 
+   document.addEventListener("keydown", (e) => {
+     if (e.key === "Escape" && !modal.hidden) closeModal();
+   });
+ 
++  fileEl.addEventListener("change", () => {
++    clearError();
++    syncFileUi();
++  });
++
++  syncFileUi();
++
+   submitBtn.addEventListener("click", async () => {
+     clearError();
+ 
+     if ((agreementsTemplates || []).length >= AGREEMENT_LIMIT_PER_COMPANY) {
+       setError(`Agreement limit reached. You can store up to ${AGREEMENT_LIMIT_PER_COMPANY} master agreements.`);
+       return;
+     }
+ 
+     const file = fileEl.files?.[0];
+     if (!file) {
+       setError("Please select a PDF to upload.");
+       return;
+     }
+ 
+     const fileName = String(file.name || "").toLowerCase();
+     const isPdf = file.type === "application/pdf" || fileName.endsWith(".pdf");
+     if (!isPdf) {
+       setError("Only PDF files are supported.");
+       return;
+     }
+ 
+     const enteredTitle = String(titleEl.value || "").trim();
+     const fd = new FormData();
+     fd.append("file", file);
+     if (enteredTitle) fd.append("title", enteredTitle);
