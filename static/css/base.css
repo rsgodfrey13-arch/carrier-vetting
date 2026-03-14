@@ -1346,3 +1346,18 @@ border: 1px solid rgba(56, 189, 248, .55);
   margin-right: 4px;
   opacity: 0.95;
 }
+
+
+.nav-auth-btn,
+.nav-auth-btn:visited,
+.nav-auth-btn:hover{
+  text-decoration: none;
+}
+
+
+.nav-auth-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  text-decoration:none;
+}
