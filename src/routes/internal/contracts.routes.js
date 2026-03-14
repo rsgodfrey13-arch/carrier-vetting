@@ -39,6 +39,10 @@ function cleanAgreementNameFromFilename(filename) {
   return normalized || "Master Agreement";
 }
 
+function contractsBaseUrl(req) {
+  return process.env.APP_BASE_URL || `${req.protocol}://${req.get("host")}`;
+}
+
 function buildMasterAgreementStorageKey({ companyId, originalFilename }) {
   const safeFileName = toSafeStoragePart(originalFilename || "master_agreement.pdf");
   return `user-contracts/${companyId}/${Date.now()}_${safeFileName}`;
@@ -54,7 +58,9 @@ router.get("/user-contracts", requireAuth, loadCompanyContext, async (req, res) 
       SELECT
         id,
         name,
+        display_name,
         version,
+        file_url,
         storage_provider,
         storage_key,
         created_at,
@@ -175,6 +181,11 @@ router.post("/user-contracts/upload", requireAuth, loadCompanyContext, async (re
       originalFilename: file.name,
     });
 
+    const fileHash = crypto
+      .createHash("sha256")
+      .update(file.data)
+      .digest("hex");
+
     await spaces.putObject({
       Bucket: process.env.SPACES_BUCKET,
       Key: storageKey,
@@ -188,28 +199,78 @@ router.post("/user-contracts/upload", requireAuth, loadCompanyContext, async (re
       },
     }).promise();
 
-    const agreementName = cleanAgreementNameFromFilename(file.name);
+    const agreementDisplayName = cleanAgreementNameFromFilename(file.name);
+    const agreementName = agreementDisplayName;
+    const appBaseUrl = contractsBaseUrl(req);
 
-    const insertRes = await pool.query(
-      `
-      INSERT INTO public.user_contracts (
-        user_id,
-        company_id,
-        name,
-        version,
-        storage_provider,
-        storage_key
-      )
-      VALUES ($1, $2, $3, $4, 'DO_SPACES', $5)
-      RETURNING id, name, version, storage_provider, storage_key, created_at,
-                COALESCE(insurance_required, FALSE) AS insurance_required,
-                COALESCE(w9_required, TRUE) AS w9_required,
-                COALESCE(ach_required, FALSE) AS ach_required
-      `,
-      [userId, companyId, agreementName, "1.0", storageKey]
-    );
+    const provisionalFileUrl = `${appBaseUrl}/api/user-contracts`;
 
-    return res.status(201).json({ ok: true, row: insertRes.rows[0] });
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const insertRes = await client.query(
+        `
+        INSERT INTO public.user_contracts (
+          user_id,
+          company_id,
+          name,
+          display_name,
+          version,
+          file_url,
+          file_hash,
+          storage_provider,
+          storage_key
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, 'DO_SPACES', $8)
+        RETURNING id
+        `,
+        [
+          userId,
+          companyId,
+          agreementName,
+          agreementDisplayName,
+          "1.0",
+          provisionalFileUrl,
+          fileHash,
+          storageKey,
+        ]
+      );
+
+      const templateId = insertRes.rows[0].id;
+      const fileUrl = `${appBaseUrl}/api/user-contracts/${encodeURIComponent(String(templateId))}/pdf`;
+
+      const updateRes = await client.query(
+        `
+        UPDATE public.user_contracts
+        SET file_url = $1
+        WHERE id = $2
+          AND company_id = $3
+        RETURNING
+          id,
+          name,
+          display_name,
+          version,
+          file_url,
+          file_hash,
+          storage_provider,
+          storage_key,
+          created_at,
+          COALESCE(insurance_required, FALSE) AS insurance_required,
+          COALESCE(w9_required, TRUE) AS w9_required,
+          COALESCE(ach_required, FALSE) AS ach_required
+        `,
+        [fileUrl, templateId, companyId]
+      );
+
+      await client.query("COMMIT");
+      return res.status(201).json({ ok: true, row: updateRes.rows[0] });
+    } catch (dbErr) {
+      try { await client.query("ROLLBACK"); } catch {}
+      throw dbErr;
+    } finally {
+      client.release();
+    }
   } catch (err) {
     console.error("POST /api/user-contracts/upload error:", err?.message, err);
     return res.status(500).json({ error: "Failed to upload agreement" });
