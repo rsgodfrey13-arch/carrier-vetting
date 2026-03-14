@@ -256,10 +256,15 @@ if (idx === 0) {
     if (e.key === "ArrowLeft" && overlay.classList.contains("is-open")) prev();
   });
 
-  openLink?.addEventListener("click", (e) => {
+[openLink,
+ document.getElementById("tour-link"),
+ document.getElementById("mobile-tour-link")
+].forEach(el => {
+  el?.addEventListener("click", (e) => {
     e.preventDefault();
     openTour(0);
   });
+});
 
   skipLink?.addEventListener("click", (e) => {
     e.preventDefault();
