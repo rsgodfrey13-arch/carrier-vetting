@@ -1361,3 +1361,25 @@ border: 1px solid rgba(56, 189, 248, .55);
   justify-content:center;
   text-decoration:none;
 }
+
+
+.nav-auth-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height:34px;
+  padding:0 13px;
+  line-height:1;
+  text-decoration:none;
+  white-space:nowrap;
+  appearance:none;
+  -webkit-appearance:none;
+}
+
+a.nav-auth-btn,
+a.nav-auth-btn:visited,
+a.nav-auth-btn:hover,
+a.nav-auth-btn:focus{
+  text-decoration:none;
+  color:rgba(226, 232, 240, 0.92);
+}
