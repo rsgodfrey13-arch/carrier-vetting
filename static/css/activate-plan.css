@@ -2,42 +2,25 @@
    Activate Plan – page-only fixes
    ========================= */
 
-/* Give the activation card enough real width (like your signup) */
+/* Match /plans page footprint for activate-plan */
+.activate-plan-page .activate-plan-shell{
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 14px 40px;
+}
+
+/* Let the activation shell use the same wider layout treatment */
 .activate-plan-page .auth-shell.wide{
-  max-width: 980px; /* you can bump to 1040 if you want */
-}
-
-/* The table is forcing overflow because plans.css sets min-width:860px */
-.activate-plan-page .plans-table{
-  min-width: 0 !important;        /* <-- KEY: removes forced horizontal overflow */
   width: 100%;
-  table-layout: fixed;            /* makes columns behave */
+  max-width: 1280px;
 }
 
-/* Let content wrap instead of pushing width */
-.activate-plan-page .plans-table th,
-.activate-plan-page .plans-table td{
-  white-space: normal;
-  word-break: break-word;
-}
-
-/* Slightly tighten padding so it fits nicer in the auth card */
-.activate-plan-page .plans-table thead th{
-  padding: 12px 12px;
-}
-.activate-plan-page .plans-table tbody th,
-.activate-plan-page .plans-table tbody td{
-  padding: 12px 12px;
-}
-
-/* Make sure the wrapper doesn't show an ugly scrollbar */
+/* Keep plans-table responsive behavior from plans.css (min-width + horizontal scroll) */
 .activate-plan-page .plans-table-wrap{
-  overflow: hidden;               /* no scrollbars */
-}
-
-/* Optional: keep the header row looking crisp inside the card */
-.activate-plan-page .plans-table-wrap{
-  border-radius: 18px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
 /* Default auth pages */
@@ -50,6 +33,10 @@
 .auth-shell.wide{
   width: min(980px, 100%);
   margin: 0 auto;
+}
+
+.activate-plan-page .auth-shell.wide{
+  width: 100%;
 }
 
 
@@ -406,10 +393,3 @@
   }
 }
 
-
-.plans-mobile-carousel,
-.plans-mobile-track{
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-}

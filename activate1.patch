@@ -1,0 +1,191 @@
+diff --git a/static/activate-plan.html b/static/activate-plan.html
+index fb7275dae6732efb6bec1a8ad1ef795a6a32c5e3..9c7894b3c602d3b286f071a952ca408e2eda1e64 100644
+--- a/static/activate-plan.html
++++ b/static/activate-plan.html
+@@ -1,50 +1,50 @@
+ <!doctype html>
+ <html lang="en">
+ <head>
+   <meta charset="utf-8" />
+   <meta name="viewport" content="width=device-width, initial-scale=1" />
+   <title>Carrier Shark — Activate Plan</title>
+ 
+   <link rel="stylesheet" href="/static/css/base.css" />
+   <link rel="stylesheet" href="/static/css/style1.css" />
+   <link rel="stylesheet" href="/static/css/signup.css" />
+   <!-- Optional: you can also include plans.css if you want exact typography parity -->
+   <link rel="stylesheet" href="/static/css/plans.css" />
+   
+ <!-- NEW: activation-only overrides -->
+ <link rel="stylesheet" href="/static/css/activate-plan.css" />
+   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+   
+ </head>
+ 
+-<body class="carrier-list">
++<body class="carrier-list activate-plan-page">
+     <div class="bg-gradient"></div>
+     <div class="bg-grid"></div>
+     <div id="site-header" data-header="slim"></div>
+ 
+-  <main class="page cs-page-shell">
++  <main class="page cs-page-shell activate-plan-shell">
+     <section class="auth-shell wide">
+       <div class="auth-hero">
+         <span class="auth-eyebrow">Plan activation</span>
+         <h1 class="auth-title">Choose your plan.</h1>
+         <p class="auth-subtitle">
+           Monitoring starts only after billing is complete. No surprises.
+         </p>
+         <p class="auth-subtitle" style="margin-top:8px; opacity:.85;">
+           Click a plan to continue.
+         </p>
+       </div>
+ 
+       <div class="auth-card">
+         <div class="auth-card-inner">
+           <form method="get" action="/billing">
+             <input type="hidden" id="selected-plan" name="plan" value="" />
+ 
+       <div class="plans-table-wrap" role="region" aria-label="Plan comparison table" tabindex="0">
+         <table class="plans-table">
+           <thead>
+             <tr>
+               <th scope="col" class="plans-col-feature"></th>
+           
+               <th scope="col" class="plans-col-plan selectable" data-plan-col="starter">
+                 <div class="plan-head">
+diff --git a/static/css/activate-plan.css b/static/css/activate-plan.css
+index 041df4b5907a93cfd17fca8b318c1c0398c1e532..81822379d6ce47b04f9c63d8d2fb6f117f4831d2 100644
+--- a/static/css/activate-plan.css
++++ b/static/css/activate-plan.css
+@@ -1,79 +1,66 @@
+ /* =========================
+    Activate Plan – page-only fixes
+    ========================= */
+ 
+-/* Give the activation card enough real width (like your signup) */
+-.activate-plan-page .auth-shell.wide{
+-  max-width: 980px; /* you can bump to 1040 if you want */
++/* Match /plans page footprint for activate-plan */
++.activate-plan-page .activate-plan-shell{
++  max-width: 1280px;
++  margin: 0 auto;
++  padding: 0 14px 40px;
+ }
+ 
+-/* The table is forcing overflow because plans.css sets min-width:860px */
+-.activate-plan-page .plans-table{
+-  min-width: 0 !important;        /* <-- KEY: removes forced horizontal overflow */
++/* Let the activation shell use the same wider layout treatment */
++.activate-plan-page .auth-shell.wide{
+   width: 100%;
+-  table-layout: fixed;            /* makes columns behave */
+-}
+-
+-/* Let content wrap instead of pushing width */
+-.activate-plan-page .plans-table th,
+-.activate-plan-page .plans-table td{
+-  white-space: normal;
+-  word-break: break-word;
+-}
+-
+-/* Slightly tighten padding so it fits nicer in the auth card */
+-.activate-plan-page .plans-table thead th{
+-  padding: 12px 12px;
+-}
+-.activate-plan-page .plans-table tbody th,
+-.activate-plan-page .plans-table tbody td{
+-  padding: 12px 12px;
+-}
+-
+-/* Make sure the wrapper doesn't show an ugly scrollbar */
+-.activate-plan-page .plans-table-wrap{
+-  overflow: hidden;               /* no scrollbars */
++  max-width: 1280px;
+ }
+ 
+-/* Optional: keep the header row looking crisp inside the card */
++/* Keep plans-table responsive behavior from plans.css (min-width + horizontal scroll) */
+ .activate-plan-page .plans-table-wrap{
+-  border-radius: 18px;
++  overflow-x: auto;
++  overflow-y: hidden;
++  -webkit-overflow-scrolling: touch;
++  scrollbar-width: thin;
+ }
+ 
+ /* Default auth pages */
+ .auth-shell:not(.wide){
+   width: min(560px, 100%);
+   margin: 0 auto;
+ }
+ 
+ /* Pages that need the wider layout (activate-plan, etc.) */
+ .auth-shell.wide{
+   width: min(980px, 100%);
+   margin: 0 auto;
+ }
+ 
++.activate-plan-page .auth-shell.wide{
++  width: 100%;
++}
++
+ 
+ /* make it feel interactive */
+ .activate-plan-page [data-plan-col]{
+   cursor: pointer;
+ }
+ 
+ /* subtle hover: highlight a column BEFORE click */
+ .activate-plan-page [data-plan-col="core"]:hover,
+ .activate-plan-page [data-plan-col="pro"]:hover,
+ .activate-plan-page [data-plan-col="enterprise"]:hover{
+   background: rgba(56,189,248,.08);
+ }
+ 
+ /* better: when any cell in a plan column is hovered, glow the whole column */
+ .activate-plan-page .plans-table:hover [data-plan-col="core"],
+ .activate-plan-page .plans-table:hover [data-plan-col="pro"],
+ .activate-plan-page .plans-table:hover [data-plan-col="enterprise"]{
+   transition: background .18s ease;
+ }
+ 
+ /* keep your selected state stronger */
+ .activate-plan-page .selected-col{
+   background: linear-gradient(180deg, rgba(56,189,248,.18), rgba(2,6,23,.18)) !important;
+   box-shadow: inset 0 0 0 1px rgba(56,189,248,.35);
+ }
+@@ -384,32 +371,25 @@
+   }
+ 
+   .activate-plan-page .plan-mobile-features .check{
+     color: #00B7FF;
+   }
+ 
+   .activate-plan-page .plan-mobile-select{
+     margin-top: 12px;
+     width: 100%;
+     border-radius: 999px;
+     border: 1px solid rgba(56,189,248,.42);
+     background: rgba(2,6,23,.62);
+     color: #e5e7eb;
+     font-size: .72rem;
+     letter-spacing: .14em;
+     text-transform: uppercase;
+     padding: 10px 12px;
+   }
+ 
+   .activate-plan-page .plan-mobile-card.is-selected .plan-mobile-select{
+     background: linear-gradient(180deg, rgba(0,183,255,.22), rgba(11,120,207,.28));
+     border-color: #38BDF8;
+   }
+ }
+ 
+-
+-.plans-mobile-carousel,
+-.plans-mobile-track{
+-  width: 100%;
+-  max-width: 100%;
+-  min-width: 0;
+-}
