@@ -462,14 +462,6 @@ let agreementRequirementsOriginal = null;
 let agreementRequirementsCurrent = null;
 const AGREEMENT_LIMIT_PER_COMPANY = 5;
 
-function setAgreementUploadInlineError(message) {
-  const el = document.getElementById("agreement-upload-inline-error");
-  if (!el) return;
-  const text = String(message || "").trim();
-  el.textContent = text;
-  el.style.display = text ? "block" : "none";
-}
-
 function normalizeAgreementRequirements(tpl) {
   return {
     insurance_required: !!tpl?.insurance_required,
@@ -534,8 +526,6 @@ function renderAgreementRequirements() {
 function renderAgreementsTiles({ templates, defaultId, selectedId }) {
   const grid = document.getElementById("agreements-grid");
   if (!grid) return;
-
-  setAgreementUploadInlineError("");
 
   if (!templates?.length) {
     agreementsSelectedId = null;
@@ -643,10 +633,12 @@ function wireAgreementUploadModalOnce() {
   const closeBtn = document.getElementById("agreement-upload-close");
   const cancelBtn = document.getElementById("agreement-upload-cancel");
   const submitBtn = document.getElementById("agreement-upload-submit");
+  const formEl = document.getElementById("agreement-upload-form");
+  const titleEl = document.getElementById("agreement-upload-name");
   const fileEl = document.getElementById("agreement-upload-file");
   const errEl = document.getElementById("agreement-upload-error");
 
-  if (!modal || !openBtn || !closeBtn || !cancelBtn || !submitBtn || !fileEl || !errEl) return;
+  if (!modal || !openBtn || !closeBtn || !cancelBtn || !submitBtn || !formEl || !titleEl || !fileEl || !errEl) return;
   if (modal.dataset.wired === "1") return;
   modal.dataset.wired = "1";
 
@@ -660,23 +652,24 @@ function wireAgreementUploadModalOnce() {
     errEl.textContent = message || "Upload failed.";
   }
 
-  function closeModal() {
-    modal.hidden = true;
-    fileEl.value = "";
+  function resetModalState() {
+    formEl.reset();
     clearError();
     submitBtn.disabled = false;
   }
 
+  function closeModal() {
+    modal.hidden = true;
+    resetModalState();
+  }
+
   openBtn.addEventListener("click", () => {
-    clearError();
-    setAgreementUploadInlineError("");
-
+    resetModalState();
     if ((agreementsTemplates || []).length >= AGREEMENT_LIMIT_PER_COMPANY) {
-      setAgreementUploadInlineError(`Agreement limit reached. You can store up to ${AGREEMENT_LIMIT_PER_COMPANY} master agreements.`);
-      return;
+      setError(`Agreement limit reached. You can store up to ${AGREEMENT_LIMIT_PER_COMPANY} master agreements.`);
     }
-
     modal.hidden = false;
+    setTimeout(() => titleEl.focus(), 0);
   });
 
   closeBtn.addEventListener("click", closeModal);
@@ -685,9 +678,17 @@ function wireAgreementUploadModalOnce() {
     if (e.target === modal) closeModal();
   });
 
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !modal.hidden) closeModal();
+  });
+
   submitBtn.addEventListener("click", async () => {
     clearError();
-    setAgreementUploadInlineError("");
+
+    if ((agreementsTemplates || []).length >= AGREEMENT_LIMIT_PER_COMPANY) {
+      setError(`Agreement limit reached. You can store up to ${AGREEMENT_LIMIT_PER_COMPANY} master agreements.`);
+      return;
+    }
 
     const file = fileEl.files?.[0];
     if (!file) {
@@ -702,8 +703,10 @@ function wireAgreementUploadModalOnce() {
       return;
     }
 
+    const enteredTitle = String(titleEl.value || "").trim();
     const fd = new FormData();
     fd.append("file", file);
+    if (enteredTitle) fd.append("title", enteredTitle);
 
     try {
       submitBtn.disabled = true;
@@ -716,9 +719,6 @@ function wireAgreementUploadModalOnce() {
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
         const msg = payload?.error || `Upload failed (${res.status})`;
-        if (payload?.code === "AGREEMENT_LIMIT_REACHED") {
-          setAgreementUploadInlineError(msg);
-        }
         throw new Error(msg);
       }
 
@@ -731,6 +731,7 @@ function wireAgreementUploadModalOnce() {
     }
   });
 }
+
 
 
   function renderPlans(plan) {

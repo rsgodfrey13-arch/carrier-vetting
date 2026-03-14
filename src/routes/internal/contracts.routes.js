@@ -39,6 +39,15 @@ function cleanAgreementNameFromFilename(filename) {
   return normalized || "Master Agreement";
 }
 
+function cleanAgreementTitleInput(title) {
+  const normalized = String(title || "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized) return "";
+  return normalized.slice(0, 120);
+}
+
 function contractsBaseUrl(req) {
   return process.env.APP_BASE_URL || `${req.protocol}://${req.get("host")}`;
 }
@@ -150,6 +159,7 @@ router.post("/user-contracts/upload", requireAuth, loadCompanyContext, async (re
 
   try {
     const file = req.files?.file;
+    const providedTitle = cleanAgreementTitleInput(req.body?.title);
     if (!file || Array.isArray(file)) {
       return res.status(400).json({ error: "Please select a PDF to upload." });
     }
@@ -199,7 +209,8 @@ router.post("/user-contracts/upload", requireAuth, loadCompanyContext, async (re
       },
     }).promise();
 
-    const agreementDisplayName = cleanAgreementNameFromFilename(file.name);
+    const fallbackDisplayName = cleanAgreementNameFromFilename(file.name);
+    const agreementDisplayName = providedTitle || fallbackDisplayName;
     const agreementName = agreementDisplayName;
     const appBaseUrl = contractsBaseUrl(req);
 

@@ -2277,3 +2277,69 @@ body.account-page .api-input{
     max-width: 100%;
   }
 }
+
+/* Agreements upload modal polish */
+#agreement-upload-modal{
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(2, 6, 23, .68);
+  z-index: 10000;
+}
+
+#agreement-upload-modal[hidden]{
+  display: none !important;
+}
+
+#agreement-upload-modal .cs-modal{
+  width: min(560px, 96vw);
+  max-height: 88vh;
+  overflow: hidden;
+  border-radius: 22px;
+  border: 1px solid rgba(148,163,184,.24);
+  box-shadow: 0 30px 70px rgba(2, 6, 23, .72);
+}
+
+#agreement-upload-modal .cs-modal-body{
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.docs-upload-field{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#agreement-upload-modal .docs-file-input{
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px dashed rgba(148,163,184,.5);
+  background: rgba(15,23,42,.72);
+}
+
+#agreement-upload-modal .docs-file-input::file-selector-button{
+  margin-right: 10px;
+  border: 1px solid rgba(148,163,184,.55);
+  border-radius: 999px;
+  padding: 7px 12px;
+  background: rgba(30,41,59,.86);
+  color: rgba(241,245,249,.95);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#agreement-upload-modal .docs-upload-error{
+  margin-top: 2px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(248,113,113,.45);
+  background: rgba(127,29,29,.24);
+  color: #fecaca;
+  font-size: .85rem;
+}
