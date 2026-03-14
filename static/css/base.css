@@ -1340,6 +1340,17 @@ border: 1px solid rgba(56, 189, 248, .55);
   text-decoration: none;
 }
 
+
+.site-header.is-logged-out #mobile-tour-link{
+  color:#00B7FF;
+  font-weight:600;
+}
+
+.site-header.is-logged-out #mobile-tour-link:hover{
+  color:#38D3FF;
+  background:rgba(56,189,248,0.14);
+}
+
 /* keep icon aligned + calm */
 .nav-link-tour .tour-icon{
   font-size: 0.9em;

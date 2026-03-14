@@ -82,8 +82,8 @@ const slides = [
   const btnNext = document.getElementById("tourNext");
   const btnClose = document.getElementById("tourClose");
   const dontShowEl = document.getElementById("tourDontShow");
-  const openLink = document.getElementById("openTourLink");
   const skipLink = document.getElementById("tourSkip");
+  const TOUR_TRIGGER_SELECTOR = "#tour-link, #mobile-tour-link, #openTourLink";
 
   let idx = 0;
 
@@ -96,6 +96,7 @@ const slides = [
   }
 
   function openTour(startIndex = 0) {
+    if (!overlay) return;
     idx = Math.max(0, Math.min(slides.length - 1, startIndex));
     overlay.setAttribute("aria-hidden", "false");
     overlay.classList.add("is-open");
@@ -105,12 +106,29 @@ const slides = [
   }
 
   function closeTour() {
+    if (!overlay) return;
     // Persist if checked
     if (dontShowEl.checked) setSeen(true);
 
     overlay.classList.remove("is-open");
     overlay.setAttribute("aria-hidden", "true");
     document.documentElement.classList.remove("cs-modal-open");
+  }
+
+  function closeMobileDrawerIfOpen() {
+    const toggleBtn = document.getElementById("mobile-menu-toggle");
+    const drawer = document.getElementById("mobile-nav-drawer");
+    const backdrop = document.getElementById("mobile-nav-backdrop");
+    if (!toggleBtn || !drawer || !backdrop) return;
+
+    const isOpen = toggleBtn.getAttribute("aria-expanded") === "true";
+    if (!isOpen && !drawer.classList.contains("is-open")) return;
+
+    toggleBtn.setAttribute("aria-expanded", "false");
+    drawer.classList.remove("is-open");
+    drawer.hidden = true;
+    backdrop.classList.remove("is-open");
+    backdrop.hidden = true;
   }
 
   function renderBody(contentHtml) {
@@ -256,15 +274,16 @@ if (idx === 0) {
     if (e.key === "ArrowLeft" && overlay.classList.contains("is-open")) prev();
   });
 
-[openLink,
- document.getElementById("tour-link"),
- document.getElementById("mobile-tour-link")
-].forEach(el => {
-  el?.addEventListener("click", (e) => {
+  document.addEventListener("click", (e) => {
+    const trigger = e.target.closest(TOUR_TRIGGER_SELECTOR);
+    if (!trigger) return;
     e.preventDefault();
+    closeMobileDrawerIfOpen();
     openTour(0);
   });
-});
+
+  window.openTour = openTour;
+  window.closeTour = closeTour;
 
   skipLink?.addEventListener("click", (e) => {
     e.preventDefault();

@@ -626,15 +626,6 @@ async function initAuthUI() {
       if (loginBtn) {
         loginBtn.onclick = () => (window.location.href = "/login");
       }
-
-      // Wire Tour ONLY when logged out
-      if (tourLink) {
-        tourLink.onclick = (e) => {
-          e.preventDefault();
-          localStorage.removeItem("cs_tour_seen_v1");
-          if (typeof window.openTour === "function") window.openTour();
-        };
-      }
     }
 
   } catch (err) {
@@ -667,14 +658,6 @@ async function initAuthUI() {
 
     setHelpMenu(false);
     renderActivationBanner(null);
-
-    if (tourLink) {
-      tourLink.onclick = (e) => {
-        e.preventDefault();
-        localStorage.removeItem("cs_tour_seen_v1");
-        if (typeof window.openTour === "function") window.openTour();
-      };
-    }
   }
 }
 
