@@ -240,8 +240,11 @@ router.get("/carriers/:dot", async (req, res) => {
         (coalesce(profile_fetched_at, updated_at) AT TIME ZONE 'America/New_York'),
         'Mon DD, YYYY HH12:MI AM'
       ) || ' ET' as retrieval_date_formatted,
-      
-            *
+      *,
+      primary_mc_number,
+      mc_numbers,
+      mc_count,
+      COALESCE(primary_mc_number, NULLIF(mc_number::text,'')) AS mc_number
     from carriers
     where dotnumber = $1
     `,
@@ -287,7 +290,11 @@ router.get("/carriers/:dot", async (req, res) => {
           (coalesce(profile_fetched_at, updated_at) AT TIME ZONE 'America/New_York'),
           'Mon DD, YYYY HH12:MI AM'
         ) || ' ET' as retrieval_date_formatted,
-        *
+        *,
+        primary_mc_number,
+        mc_numbers,
+        mc_count,
+        COALESCE(primary_mc_number, NULLIF(mc_number::text,'')) AS mc_number
       from carriers
       where dotnumber = $1
       `,
@@ -328,7 +335,11 @@ router.post("/carriers/:dot/refresh", async (req, res) => {
           (coalesce(profile_fetched_at, updated_at) AT TIME ZONE 'America/New_York'),
           'Mon DD, YYYY HH12:MI AM'
         ) || ' ET' as retrieval_date_formatted,
-        *
+        *,
+        primary_mc_number,
+        mc_numbers,
+        mc_count,
+        COALESCE(primary_mc_number, NULLIF(mc_number::text,'')) AS mc_number
       from carriers
       where dotnumber = $1
       `,

@@ -25,19 +25,24 @@ router.get("/carrier-search", async (req, res) => {
         `
         SELECT
           dotnumber AS dot,
-          mc_number,
+          primary_mc_number,
+          mc_numbers,
+          mc_count,
+          COALESCE(primary_mc_number, NULLIF(mc_number::text,'')) AS mc_number,
           legalname,
           dbaname,
           phycity,
           phystate
         FROM public.carriers
         WHERE (dotnumber BETWEEN $1 AND $2)
+           OR (primary_mc_number::bigint BETWEEN $1 AND $2)
            OR (mc_number BETWEEN $1 AND $2)
         ORDER BY
           CASE
             WHEN dotnumber = $3 THEN 0
-            WHEN mc_number = $3 THEN 1
-            ELSE 2
+            WHEN primary_mc_number::bigint = $3 THEN 1
+            WHEN mc_number = $3 THEN 2
+            ELSE 3
           END,
           dotnumber
         LIMIT 10;
@@ -56,7 +61,10 @@ router.get("/carrier-search", async (req, res) => {
       `
       SELECT
         dotnumber AS dot,
-        mc_number,
+        primary_mc_number,
+        mc_numbers,
+        mc_count,
+        COALESCE(primary_mc_number, NULLIF(mc_number::text,'')) AS mc_number,
         legalname,
         dbaname,
         phycity,

@@ -36,7 +36,10 @@ router.get("/public-carriers", async (req, res) => {
     `
     select
       c.dotnumber,
-      c.mc_number,
+      c.primary_mc_number,
+      c.mc_numbers,
+      c.mc_count,
+      COALESCE(c.primary_mc_number, NULLIF(c.mc_number::text,'')) AS mc_number,
       c.legalname,
       c.dbaname,
       c.phycity,

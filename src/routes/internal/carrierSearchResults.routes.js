@@ -24,7 +24,7 @@ router.get("/search-carriers", async (req, res) => {
 
   const SORTS = {
     dot: "dotnumber",
-    mc: "mc_number",
+    mc: "primary_mc_number",
     carrier: "carrier_name_norm",
     location: "phycity, phystate",
     operating: "allowedtooperate",
@@ -49,7 +49,7 @@ router.get("/search-carriers", async (req, res) => {
       let high = Number(highStr);
       if (!Number.isFinite(high)) high = Number.MAX_SAFE_INTEGER;
     
-      whereSql = `WHERE (dotnumber BETWEEN $1 AND $2) OR (mc_number BETWEEN $1 AND $2)`;
+      whereSql = `WHERE (dotnumber BETWEEN $1 AND $2) OR (primary_mc_number::bigint BETWEEN $1 AND $2) OR (mc_number BETWEEN $1 AND $2)`;
       params = [low, high];
     } else {
       // name search: prefix first, then contains (carrier_name_norm already lower)
@@ -88,7 +88,10 @@ router.get("/search-carriers", async (req, res) => {
         `
         SELECT
           dotnumber AS dot,
-          mc_number,
+          primary_mc_number,
+          mc_numbers,
+          mc_count,
+          COALESCE(primary_mc_number, NULLIF(mc_number::text,'')) AS mc_number,
           legalname,
           dbaname,
           phycity,
@@ -101,11 +104,13 @@ router.get("/search-carriers", async (req, res) => {
           carrier_name_norm,
           CASE
             WHEN dotnumber = $3 THEN 0
-            WHEN mc_number = $3 THEN 1
-            ELSE 2
+            WHEN primary_mc_number::bigint = $3 THEN 1
+            WHEN mc_number = $3 THEN 2
+            ELSE 3
           END AS rank
         FROM public.carriers
         WHERE (dotnumber BETWEEN $1 AND $2)
+           OR (primary_mc_number::bigint BETWEEN $1 AND $2)
            OR (mc_number BETWEEN $1 AND $2)
         ORDER BY rank ASC, ${orderExpr} ${sortDirRaw}
         LIMIT $4
@@ -119,7 +124,10 @@ router.get("/search-carriers", async (req, res) => {
         `
         SELECT
           dotnumber AS dot,
-          mc_number,
+          primary_mc_number,
+          mc_numbers,
+          mc_count,
+          COALESCE(primary_mc_number, NULLIF(mc_number::text,'')) AS mc_number,
           legalname,
           dbaname,
           phycity,

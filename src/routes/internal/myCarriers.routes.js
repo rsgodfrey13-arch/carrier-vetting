@@ -24,7 +24,7 @@ router.get("/my-carriers", requireAuth, loadCompanyContext, async (req, res) => 
 
     const sortMap = {
       dot: "c.dotnumber",
-      mc: "c.mc_number",
+      mc: "c.primary_mc_number",
       carrier: "COALESCE(c.legalname, c.dbaname)",
       location: "COALESCE(c.phycity,'') || ', ' || COALESCE(c.phystate,'')",
       operating: "c.allowedtooperate",
@@ -39,7 +39,11 @@ router.get("/my-carriers", requireAuth, loadCompanyContext, async (req, res) => 
     const dataSql = `
       SELECT
         c.dotnumber AS dot,
-        c.*
+        c.*,
+        c.primary_mc_number,
+        c.mc_numbers,
+        c.mc_count,
+        COALESCE(c.primary_mc_number, NULLIF(c.mc_number::text,'')) AS mc_number
       FROM user_carriers uc
       JOIN carriers c
         ON c.dotnumber = uc.carrier_dot
