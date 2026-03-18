@@ -40,9 +40,6 @@ router.get("/my-carriers", requireAuth, loadCompanyContext, async (req, res) => 
       SELECT
         c.dotnumber AS dot,
         c.*,
-        c.primary_mc_number,
-        c.mc_numbers,
-        c.mc_count,
         COALESCE(c.primary_mc_number, NULLIF(c.mc_number::text,'')) AS mc_number
       FROM user_carriers uc
       JOIN carriers c

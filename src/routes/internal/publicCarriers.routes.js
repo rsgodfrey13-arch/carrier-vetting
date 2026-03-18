@@ -35,7 +35,7 @@ router.get("/public-carriers", async (req, res) => {
   const listResult = await pool.query(
     `
     select
-      c.dotnumber,
+      c.dotnumber AS dot,
       c.primary_mc_number,
       c.mc_numbers,
       c.mc_count,

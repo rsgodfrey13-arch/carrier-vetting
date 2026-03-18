@@ -15,12 +15,11 @@ router.get("/carrier-search", async (req, res) => {
   const isNumericish = qDigits.length >= 2 && /^[\d\s\-().]+$/.test(qRaw);
 
   try {
-    // Numeric-ish: DOT/MC prefix using integer range (index-friendly)
+    // Numeric-ish: DOT/MC prefix using text matching
     if (isNumericish) {
-      const d = qDigits;               // e.g. "123"
-      const low = Number(d);           // 123
-      const high = Number(d + "9".repeat(10)); // 1239999999999 (big range)
-    
+      const prefix = `${qDigits}%`;
+      const exact = qDigits;
+
       const result = await pool.query(
         `
         SELECT
@@ -34,22 +33,22 @@ router.get("/carrier-search", async (req, res) => {
           phycity,
           phystate
         FROM public.carriers
-        WHERE (dotnumber BETWEEN $1 AND $2)
-           OR (primary_mc_number::bigint BETWEEN $1 AND $2)
-           OR (mc_number BETWEEN $1 AND $2)
+        WHERE dotnumber LIKE $1
+           OR primary_mc_number LIKE $1
+           OR mc_number LIKE $1
         ORDER BY
           CASE
-            WHEN dotnumber = $3 THEN 0
-            WHEN primary_mc_number::bigint = $3 THEN 1
-            WHEN mc_number = $3 THEN 2
+            WHEN dotnumber = $2 THEN 0
+            WHEN primary_mc_number = $2 THEN 1
+            WHEN mc_number = $2 THEN 2
             ELSE 3
           END,
           dotnumber
         LIMIT 10;
         `,
-        [low, high, low]
+        [prefix, exact]
       );
-    
+
       return res.json(result.rows);
     }
 

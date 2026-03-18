@@ -41,16 +41,11 @@ router.get("/search-carriers", async (req, res) => {
     let params = [];
 
     if (isNumericish) {
-      // numeric-ish search: DOT/MC prefix using integer range (index-friendly)
-      const low = Number(qDigits);
-      if (!Number.isFinite(low)) return res.json({ rows: [], total: 0 });
-      
-      const highStr = qDigits + "9".repeat(10);
-      let high = Number(highStr);
-      if (!Number.isFinite(high)) high = Number.MAX_SAFE_INTEGER;
-    
-      whereSql = `WHERE (dotnumber BETWEEN $1 AND $2) OR (primary_mc_number::bigint BETWEEN $1 AND $2) OR (mc_number BETWEEN $1 AND $2)`;
-      params = [low, high];
+      const prefix = `${qDigits}%`;
+      const exact = qDigits;
+
+      whereSql = `WHERE dotnumber LIKE $1 OR primary_mc_number LIKE $1 OR mc_number LIKE $1`;
+      params = [prefix, exact];
     } else {
       // name search: prefix first, then contains (carrier_name_norm already lower)
       const prefix = qNorm + "%";
@@ -77,13 +72,6 @@ router.get("/search-carriers", async (req, res) => {
     let rowsResult;
     
     if (isNumericish) {
-      const low = params[0];
-      const high = params[1];
-    
-      // guard exact too (same reason as low/high)
-      let exact = Number(qDigits);
-      if (!Number.isFinite(exact)) exact = -1; // will never match a real DOT/MC
-    
       rowsResult = await pool.query(
         `
         SELECT
@@ -103,20 +91,20 @@ router.get("/search-carriers", async (req, res) => {
           safetyrating,
           carrier_name_norm,
           CASE
-            WHEN dotnumber = $3 THEN 0
-            WHEN primary_mc_number::bigint = $3 THEN 1
-            WHEN mc_number = $3 THEN 2
+            WHEN dotnumber = $2 THEN 0
+            WHEN primary_mc_number = $2 THEN 1
+            WHEN mc_number = $2 THEN 2
             ELSE 3
           END AS rank
         FROM public.carriers
-        WHERE (dotnumber BETWEEN $1 AND $2)
-           OR (primary_mc_number::bigint BETWEEN $1 AND $2)
-           OR (mc_number BETWEEN $1 AND $2)
+        WHERE dotnumber LIKE $1
+           OR primary_mc_number LIKE $1
+           OR mc_number LIKE $1
         ORDER BY rank ASC, ${orderExpr} ${sortDirRaw}
-        LIMIT $4
-        OFFSET $5;
+        LIMIT $3
+        OFFSET $4;
         `,
-        [low, high, exact, pageSize, offset]
+        [params[0], params[1], pageSize, offset]
       );
     }
     else {
