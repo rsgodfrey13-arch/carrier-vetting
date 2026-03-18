@@ -8,7 +8,10 @@
   
   // 🔥 Uncomment to enable frontend performance traces
   
-  window.Sentry.getCurrentHub().getClient()?.getOptions().tracesSampleRate = 0.1;
+const client = window.Sentry.getCurrentHub().getClient();
+if (client) {
+  client.getOptions().tracesSampleRate = 0.1;
+}
   
   // ===============================
   // END FRONTEND TRACES
