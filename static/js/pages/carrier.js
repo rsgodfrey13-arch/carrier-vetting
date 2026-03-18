@@ -102,6 +102,69 @@ function fmtSignedDate(d) {
       value !== null && value !== undefined && value !== "" ? value : "—";
   }
 
+  function getCarrierMcList(c) {
+    if (Array.isArray(c?.mc_numbers)) {
+      return c.mc_numbers
+        .map(v => String(v ?? "").trim())
+        .filter(Boolean);
+    }
+
+    if (typeof c?.mc_numbers === "string") {
+      const raw = c.mc_numbers.trim();
+
+      if (raw.startsWith("{") && raw.endsWith("}")) {
+        return raw
+          .slice(1, -1)
+          .split(",")
+          .map(v => String(v ?? "").replace(/^"|"$/g, "").trim())
+          .filter(Boolean);
+      }
+
+      return raw
+        .split(/[\n,|]/)
+        .map(v => String(v ?? "").trim())
+        .filter(Boolean);
+    }
+
+    const primary = String(c?.primary_mc_number ?? "").trim();
+    if (primary) return [primary];
+
+    const legacy = String(c?.mc_number ?? "").trim();
+    if (legacy) return [legacy];
+
+    return [];
+  }
+
+  function setCarrierMcDisplay(c) {
+    const el = document.getElementById("carrier-mc");
+    if (!el) return;
+
+    const list = getCarrierMcList(c);
+    el.innerHTML = "";
+
+    if (!list.length) {
+      el.textContent = "—";
+      return;
+    }
+
+    if (list.length === 1) {
+      el.textContent = list[0];
+      return;
+    }
+
+    const wrap = document.createElement("div");
+    wrap.className = "mc-stack";
+
+    list.forEach((mc) => {
+      const line = document.createElement("div");
+      line.className = "mc-stack__item";
+      line.textContent = mc;
+      wrap.appendChild(line);
+    });
+
+    el.appendChild(wrap);
+  }
+
   function setLink(id, url) {
     const el = document.getElementById(id);
     if (!el) return;
@@ -1124,7 +1187,7 @@ if (data && data.source === "cache_stale") {
       const name = (c.legalname || c.dbaname || `Carrier ${c.dotnumber || ""}`).trim();
       setText("carrier-name", name);
       setText("carrier-dot", c.dotnumber);
-      setText("carrier-mc", c.mc_number);
+      setCarrierMcDisplay(c);
       setText("carrier-ein", c.ein);
 
       const addr = [c.phystreet].filter(Boolean).join(", ");

@@ -348,6 +348,62 @@ function normDot(val) {
     return String(val ?? "").trim();
   }
 
+  function getCarrierMcList(c) {
+    if (Array.isArray(c?.mc_numbers)) {
+      return c.mc_numbers.map(v => norm(v)).filter(Boolean);
+    }
+
+    if (typeof c?.mc_numbers === "string") {
+      const raw = c.mc_numbers.trim();
+
+      // Handle Postgres array string like "{1073611,462298}"
+      if (raw.startsWith("{") && raw.endsWith("}")) {
+        return raw
+          .slice(1, -1)
+          .split(",")
+          .map(v => norm(v.replace(/^"|"$/g, "")))
+          .filter(Boolean);
+      }
+
+      return raw
+        .split(/[\n,|]/)
+        .map(v => norm(v))
+        .filter(Boolean);
+    }
+
+    const primary = norm(c?.primary_mc_number);
+    if (primary) return [primary];
+
+    const legacy = norm(c?.mc_number);
+    if (legacy) return [legacy];
+
+    return [];
+  }
+
+  function getCarrierMcText(c) {
+    const list = getCarrierMcList(c);
+    return list.length ? list.join(" ") : "";
+  }
+
+  function buildMcCell(mcList) {
+    const wrap = document.createElement("div");
+    wrap.className = "mc-stack";
+
+    if (!mcList.length) {
+      wrap.textContent = "-";
+      return wrap;
+    }
+
+    mcList.forEach((mc) => {
+      const line = document.createElement("div");
+      line.className = "mc-stack__item";
+      line.textContent = mc;
+      wrap.appendChild(line);
+    });
+
+    return wrap;
+  }
+
   function matchesText(hay, needle) {
     const n = norm(needle).toLowerCase();
     if (!n) return true;
@@ -370,7 +426,7 @@ function normDot(val) {
 
   function carrierMatchesPanelFilters(c) {
     const dotVal = norm(c.dot || c.dotnumber || c.id);
-    const mcVal = norm(c.mc_number);
+    const mcVal = getCarrierMcText(c);
     const cityVal = norm(c.city || c.phycity);
     const stateVal = norm(c.state || c.phystate).toUpperCase();
 
@@ -724,7 +780,7 @@ data.forEach((c) => {
 
         // MC
         const mcCell = document.createElement("td");
-        mcCell.textContent = c.mc_number || "-";
+        mcCell.appendChild(buildMcCell(getCarrierMcList(c)));
         row.appendChild(mcCell);
 
         // Carrier name
@@ -927,7 +983,8 @@ async function buildMyCarrierDots() {
         const name = item.legalname || item.dbaname || "(No name)";
         const city = item.phycity || item.city || "";
         const state = item.phystate || item.state || "";
-        const mc = item.mc_number || "-";
+        const mcList = getCarrierMcList(item);
+        const mc = mcList.length ? mcList.join(", ") : "-";
 
         const isMine = myCarrierDots.has(dotKey);
 

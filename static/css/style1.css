@@ -2889,3 +2889,14 @@ body.app-page #site-header .header-container{
     vertical-align: top;
   }
 }
+
+.mc-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.15;
+}
+
+.mc-stack__item {
+  white-space: nowrap;
+}
