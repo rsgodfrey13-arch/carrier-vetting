@@ -41,12 +41,11 @@ router.get("/search-carriers", async (req, res) => {
     let params = [];
 
     if (isNumericish) {
-      const prefix = `${qDigits}%`;
-      const exact = qDigits;
+  const prefix = `${qDigits}%`;
 
-      whereSql = `WHERE dotnumber LIKE $1 OR primary_mc_number LIKE $1 OR mc_number LIKE $1`;
-      params = [prefix, exact];
-    } else {
+  whereSql = `WHERE dotnumber LIKE $1 OR primary_mc_number LIKE $1 OR mc_number LIKE $1`;
+  params = [prefix];
+} else {
       // name search: prefix first, then contains (carrier_name_norm already lower)
       const prefix = qNorm + "%";
       const contains = "%" + qNorm + "%";
@@ -72,41 +71,43 @@ router.get("/search-carriers", async (req, res) => {
     let rowsResult;
     
     if (isNumericish) {
-      rowsResult = await pool.query(
-        `
-        SELECT
-          dotnumber AS dot,
-          primary_mc_number,
-          mc_numbers,
-          mc_count,
-          COALESCE(primary_mc_number, NULLIF(mc_number::text,'')) AS mc_number,
-          legalname,
-          dbaname,
-          phycity,
-          phystate,
-          allowedtooperate,
-          commonauthoritystatus,
-          contractauthoritystatus,
-          brokerauthoritystatus,
-          safetyrating,
-          carrier_name_norm,
-          CASE
-            WHEN dotnumber = $2 THEN 0
-            WHEN primary_mc_number = $2 THEN 1
-            WHEN mc_number = $2 THEN 2
-            ELSE 3
-          END AS rank
-        FROM public.carriers
-        WHERE dotnumber LIKE $1
-           OR primary_mc_number LIKE $1
-           OR mc_number LIKE $1
-        ORDER BY rank ASC, ${orderExpr} ${sortDirRaw}
-        LIMIT $3
-        OFFSET $4;
-        `,
-        [params[0], params[1], pageSize, offset]
-      );
-    }
+  const exact = qDigits;
+
+  rowsResult = await pool.query(
+    `
+    SELECT
+      dotnumber AS dot,
+      primary_mc_number,
+      mc_numbers,
+      mc_count,
+      COALESCE(primary_mc_number, NULLIF(mc_number::text,'')) AS mc_number,
+      legalname,
+      dbaname,
+      phycity,
+      phystate,
+      allowedtooperate,
+      commonauthoritystatus,
+      contractauthoritystatus,
+      brokerauthoritystatus,
+      safetyrating,
+      carrier_name_norm,
+      CASE
+        WHEN dotnumber = $2 THEN 0
+        WHEN primary_mc_number = $2 THEN 1
+        WHEN mc_number = $2 THEN 2
+        ELSE 3
+      END AS rank
+    FROM public.carriers
+    WHERE dotnumber LIKE $1
+       OR primary_mc_number LIKE $1
+       OR mc_number LIKE $1
+    ORDER BY rank ASC, ${orderExpr} ${sortDirRaw}
+    LIMIT $3
+    OFFSET $4;
+    `,
+    [params[0], exact, pageSize, offset]
+  );
+}
     else {
       rowsResult = await pool.query(
         `
