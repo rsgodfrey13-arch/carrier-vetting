@@ -1,3 +1,29 @@
+// ===============================
+// Google Analytics (GA4)
+// ===============================
+(function initGoogleAnalytics() {
+  const GA_ID = "G-8TTZC22P44"; // replace with your real ID
+
+  // Prevent double-loading
+  if (window.__CS_GA_LOADED__) return;
+  window.__CS_GA_LOADED__ = true;
+
+  const script = document.createElement("script");
+  script.async = true;
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_ID}`;
+  document.head.appendChild(script);
+
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = function () {
+    window.dataLayer.push(arguments);
+  };
+
+  window.gtag("js", new Date());
+  window.gtag("config", GA_ID);
+})();
+
+
+
 async function loadHeader() {
   const container = document.getElementById("site-header");
   if (!container) return;
