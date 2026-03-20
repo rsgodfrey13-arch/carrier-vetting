@@ -2,6 +2,46 @@
 const express = require("express");
 const { getPolicyForUser } = require("../../policies/importPolicy");
 
+function getCompanyId(req) {
+  return req.auth?.companyId || req.company?.id || null;
+}
+
+function getCompanyPlan(req) {
+  return req.auth?.plan || "FREE";
+}
+
+
+function getCompanyPolicy(req) {
+  return getPolicyForUser({
+    companyId: getCompanyId(req),
+    plan: getCompanyPlan(req),
+  });
+}
+
+function getApiAuthContext(req, res) {
+  const companyId = getCompanyId(req);
+  if (!companyId) {
+    res.status(401).json({ error: 'Not authorized' });
+    return null;
+  }
+
+  return {
+    companyId,
+    plan: getCompanyPlan(req),
+  };
+}
+
+function appendCompanyScope({ conditions, params, alias, companyId, startIndex }) {
+  conditions.push(`${alias}.company_id = $${startIndex}`);
+  params.push(companyId);
+  return startIndex + 1;
+}
+
+function isValidContractIdentifier(value) {
+  return /^\d+$/.test(value) || /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+
 function createApiV1(pool) {
   const router = express.Router();
 
@@ -80,22 +120,20 @@ function normalizeDotsWithInvalid(input) {
 // ---------------------------------------------
 router.get('/me/carriers/import-limits', async (req, res) => {
   try {
-    const userId = req.user && req.user.id;
-    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+    const companyId = getCompanyId(req);
+    if (!companyId) return res.status(401).json({ error: 'Not authorized' });
 
-    // TODO: replace this with real plan lookup later
-    const user = { id: userId, plan: 'FREE' };
-    const policy = getPolicyForUser(user);
+    const policy = getCompanyPolicy(req);
 
     const countRes = await pool.query(
       `SELECT COUNT(*)::int AS current_total
        FROM user_carriers
-       WHERE user_id = $1;`,
-      [userId]
+       WHERE company_id = $1;`,
+      [companyId]
     );
 
     res.json({
-      plan: user.plan,
+      plan: getCompanyPlan(req),
       max_total: policy.MAX_TOTAL,
       max_per_import: policy.MAX_PER_IMPORT,
       chunk_size: policy.CHUNK_SIZE,
@@ -114,12 +152,10 @@ router.get('/me/carriers/import-limits', async (req, res) => {
 // ---------------------------------------------
 router.post('/me/carriers/import', async (req, res) => {
   try {
-    const userId = req.user && req.user.id;
-    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+    const companyId = getCompanyId(req);
+    if (!companyId) return res.status(401).json({ error: 'Not authorized' });
 
-    // TODO: replace this with real plan lookup later
-    const user = { id: userId, plan: 'FREE' };
-    const policy = getPolicyForUser(user);
+    const policy = getCompanyPolicy(req);
 
     // Client sends { dots: [...] }
     const { unique, invalid } = normalizeDotsWithInvalid(req.body?.dots);
@@ -137,8 +173,8 @@ router.post('/me/carriers/import', async (req, res) => {
     const countRes = await pool.query(
       `SELECT COUNT(*)::int AS current_total
        FROM user_carriers
-       WHERE user_id = $1;`,
-      [userId]
+       WHERE company_id = $1;`,
+      [companyId]
     );
 
     const currentTotal = countRes.rows[0].current_total;
@@ -169,20 +205,20 @@ router.post('/me/carriers/import', async (req, res) => {
     // For "lenient", we will NOT check carriers table here.
     // We'll just insert into user_carriers and let your UI join show what exists.
     //
-    // Ensure you have a UNIQUE constraint on (user_id, carrier_dot)
+    // Ensure you have a UNIQUE constraint on (company_id, carrier_dot)
 
     const insertRes = await pool.query(
       `
       WITH input(d) AS (
         SELECT UNNEST($2::text[])
       )
-      INSERT INTO user_carriers (user_id, carrier_dot, added_at)
+      INSERT INTO user_carriers (company_id, carrier_dot, added_at)
       SELECT $1, d, NOW()
       FROM input
-      ON CONFLICT (user_id, carrier_dot) DO NOTHING
+      ON CONFLICT (company_id, carrier_dot) DO NOTHING
       RETURNING carrier_dot;
       `,
-      [userId, accepted]
+      [companyId, accepted]
     );
 
     const inserted = insertRes.rowCount;
@@ -365,9 +401,8 @@ router.get('/carriers', async (req, res) => {
 // ---------------------------------------------
 router.get('/me/carriers', async (req, res) => {
   try {
-      // API key auth user
-      const userId = req.user && req.user.id;
-      if (!userId) {
+      const companyId = getCompanyId(req);
+      if (!companyId) {
         return res.status(401).json({ error: 'Not authorized' });
       }
 
@@ -385,10 +420,10 @@ router.get('/me/carriers', async (req, res) => {
     const limit = Math.min(parseInt(pageSize, 10) || 25, 100);
     const offset = (parseInt(page, 10) - 1) * limit;
 
-    // Base condition: this user's saved carriers
-    const conditions = ['uc.user_id = $1'];
-    const params = [userId];
-    let i = 2; // start at $2 because $1 is user_id
+    // Base condition: this company's saved carriers
+    const conditions = ['uc.company_id = $1'];
+    const params = [companyId];
+    let i = 2; // start at $2 because $1 is company_id
 
     if (dot) {
       conditions.push(`c.dotnumber = $${i}`);
@@ -467,7 +502,7 @@ router.get('/me/carriers', async (req, res) => {
     });
   } catch (err) {
     console.error('Error in GET /api/v1/me/carriers:', err);
-    res.status(500).json({ error: 'Failed to load user carriers' });
+    res.status(500).json({ error: 'Failed to load company carriers' });
   }
 });
 
@@ -477,8 +512,8 @@ router.get('/me/carriers', async (req, res) => {
 // ---------------------------------------------
 router.post('/me/carriers', async (req, res) => {
   try {
-    const userId = req.user && req.user.id;
-    if (!userId) {
+    const companyId = getCompanyId(req);
+    if (!companyId) {
       return res.status(401).json({ error: 'Not authorized' });
     }
 
@@ -525,11 +560,11 @@ router.post('/me/carriers', async (req, res) => {
       // Insert (idempotent)
       const result = await pool.query(
         `
-        INSERT INTO user_carriers (user_id, carrier_dot)
+        INSERT INTO user_carriers (company_id, carrier_dot)
         VALUES ($1, $2)
-        ON CONFLICT (user_id, carrier_dot) DO NOTHING;
+        ON CONFLICT (company_id, carrier_dot) DO NOTHING;
         `,
-        [userId, d]
+        [companyId, d]
       );
 
       if (result.rowCount === 1) {
@@ -563,8 +598,8 @@ router.post('/me/carriers', async (req, res) => {
 // ---------------------------------------------
 router.delete('/me/carriers', async (req, res) => {
   try {
-    const userId = req.user && req.user.id;
-    if (!userId) {
+    const companyId = getCompanyId(req);
+    if (!companyId) {
       return res.status(401).json({ error: 'Not authorized' });
     }
 
@@ -592,11 +627,11 @@ router.delete('/me/carriers', async (req, res) => {
     const deleteResult = await pool.query(
       `
       DELETE FROM user_carriers
-      WHERE user_id = $1
+      WHERE company_id = $1
         AND carrier_dot = ANY($2::text[])
       RETURNING carrier_dot;
       `,
-      [userId, uniqueDots]
+      [companyId, uniqueDots]
     );
 
     const deletedDots = deleteResult.rows.map(r => r.carrier_dot);
@@ -627,33 +662,39 @@ router.delete('/me/carriers', async (req, res) => {
 // ---------------------------------------------
 // GET /api/v1/carriers/:dot/alerts
 // Returns payload objects (info -> changes -> carrier)
-// Includes ALL statuses except NEW (not ready yet)
+// Includes all statuses except ERROR
 // ---------------------------------------------
 router.get('/carriers/:dot/alerts', async (req, res) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+    const auth = getApiAuthContext(req, res);
+    if (!auth) return;
 
     const dot = String(req.params.dot || '').trim();
-
     const {
-      id,        // alert_id (optional)
-      status,    // optional filter; if provided, applies (except NEW is always excluded)
+      id,
+      status,
       page = 1,
       pageSize = 25
     } = req.query;
 
-    const limit  = Math.min(parseInt(pageSize, 10) || 25, 100);
+    const limit = Math.min(parseInt(pageSize, 10) || 25, 100);
     const offset = (parseInt(page, 10) - 1) * limit;
 
     const conditions = [
-      'ra.user_id = $1',
       "ra.channel = 'API'",
-      'ra.dotnumber = $2',
+      'ra.dotnumber = $1',
       "ra.status <> 'ERROR'"
     ];
-    const params = [userId, dot];
-    let i = 3;
+    const params = [dot];
+    let i = 2;
+
+    i = appendCompanyScope({
+      conditions,
+      params,
+      alias: 'ra',
+      companyId: auth.companyId,
+      startIndex: i,
+    });
 
     if (id) {
       conditions.push(`ra.alert_id = $${i}`);
@@ -661,7 +702,6 @@ router.get('/carriers/:dot/alerts', async (req, res) => {
       i++;
     }
 
-    // optional status filter (still blocks NEW by base condition)
     if (status) {
       conditions.push(`ra.status = $${i}`);
       params.push(status);
@@ -669,7 +709,6 @@ router.get('/carriers/:dot/alerts', async (req, res) => {
     }
 
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
-
     const sql = `
       SELECT ra.alert_id, ra.dotnumber, ra.payload, ra.created_at, ra.status
       FROM rest_alerts ra
@@ -677,7 +716,6 @@ router.get('/carriers/:dot/alerts', async (req, res) => {
       ORDER BY ra.created_at DESC
       LIMIT $${i} OFFSET $${i + 1};
     `;
-
     const countSql = `
       SELECT COUNT(*)::int AS count
       FROM rest_alerts ra
@@ -690,20 +728,20 @@ router.get('/carriers/:dot/alerts', async (req, res) => {
     ]);
 
     const rows = dataResult.rows.map(row => {
-      const p = (typeof row.payload === 'string') ? JSON.parse(row.payload) : row.payload;
+      const payload = (typeof row.payload === 'string') ? JSON.parse(row.payload) : row.payload;
 
       return {
         info: {
           alert_id: row.alert_id,
-          event_id: p.event_id,
-          event_type: p.event_type,
+          event_id: payload.event_id,
+          event_type: payload.event_type,
           dotnumber: row.dotnumber,
-          occurred_at: p.occurred_at,
+          occurred_at: payload.occurred_at,
           status: row.status,
           created_at: row.created_at
         },
-        changes: p.changes,
-        carrier: p.carrier
+        changes: payload.changes,
+        carrier: payload.carrier
       };
     });
 
@@ -719,69 +757,56 @@ router.get('/carriers/:dot/alerts', async (req, res) => {
   }
 });
 
-
 // PATCH /api/v1/alerts/processed
 // Body: { "alerts": ["46","47"] }
-
-  router.patch('/alerts/processed', async (req, res) => {
+router.patch('/alerts/processed', async (req, res) => {
   try {
-    const userId = req.user?.id;
+    const auth = getApiAuthContext(req, res);
+    if (!auth) return;
+
     const alertIds = normalizeAlertIds(req.body?.alerts);
+    if (alertIds.length === 0) {
+      return res.status(400).json({ error: 'alerts array is required (numeric ids)' });
+    }
 
-    // quick debug snapshot
-    console.log('PATCH /api/v1/alerts/processed debug:', {
-      userId,
-      alertIds,
-      authHeader: req.header('Authorization') ? 'present' : 'missing'
-    });
-
-    if (!userId) return res.status(401).json({ error: 'Not authorized', debug: { userId } });
-    if (alertIds.length === 0) return res.status(400).json({ error: 'alerts array required' });
-
-    // 1) show what rows EXIST before update
-    const pre = await pool.query(
-      `
-      SELECT alert_id, user_id, status, channel
-      FROM rest_alerts
-      WHERE alert_id = ANY($1::int[])
-      ORDER BY alert_id;
-      `,
-      [alertIds]
-    );
-
-    // 2) try update with a slightly safer channel compare
     const updateResult = await pool.query(
       `
       UPDATE rest_alerts
       SET status = 'PROCESSED'
-      WHERE user_id = $1
+      WHERE company_id = $1
         AND UPPER(channel) = 'API'
         AND alert_id = ANY($2::int[])
       RETURNING alert_id;
       `,
-      [userId, alertIds]
+      [auth.companyId, alertIds]
     );
 
+    const updatedIds = updateResult.rows.map(r => String(r.alert_id));
+    const updatedSet = new Set(updatedIds);
+
     res.json({
-      debug: {
-        userId,
-        foundBeforeUpdate: pre.rows,          // <-- this tells us if the IDs even exist
-        updatedIds: updateResult.rows
-      }
+      summary: {
+        totalSubmitted: alertIds.length,
+        updated: updatedIds.length,
+        notFound: alertIds.length - updatedIds.length
+      },
+      details: alertIds.map(id => ({
+        id: String(id),
+        status: updatedSet.has(String(id)) ? 'processed' : 'not_found'
+      }))
     });
   } catch (err) {
     console.error('Error in PATCH /api/v1/alerts/processed:', err);
-    res.status(500).json({ error: 'Failed', detail: err.message });
+    res.status(500).json({ error: 'Failed to mark alerts processed' });
   }
 });
 
-  
 // PATCH /api/v1/alerts/unprocessed
 // Body: { "alerts": ["46","47"] }
 router.patch('/alerts/unprocessed', async (req, res) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+    const auth = getApiAuthContext(req, res);
+    if (!auth) return;
 
     const alertIds = normalizeAlertIds(req.body?.alerts);
     if (alertIds.length === 0) {
@@ -792,12 +817,12 @@ router.patch('/alerts/unprocessed', async (req, res) => {
       `
       UPDATE rest_alerts
       SET status = 'NEW'
-      WHERE user_id = $1
+      WHERE company_id = $1
         AND UPPER(channel) = 'API'
         AND alert_id = ANY($2::int[])
       RETURNING alert_id;
       `,
-      [userId, alertIds]
+      [auth.companyId, alertIds]
     );
 
     const updatedIds = updateResult.rows.map(r => String(r.alert_id));
@@ -820,39 +845,42 @@ router.patch('/alerts/unprocessed', async (req, res) => {
   }
 });
 
-
-
-
-
 // ---------------------------------------------
 // GET /api/v1/alerts
 // Returns payload objects (info -> changes -> carrier)
-// Includes ALL statuses except NEW (not ready yet)
+// Includes all statuses except ERROR
 // Filterable by: id, status, dotnumber
 // ---------------------------------------------
 router.get('/alerts', async (req, res) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+    const auth = getApiAuthContext(req, res);
+    if (!auth) return;
 
     const {
-      id,        // alert_id
-      status,    // ALERT / PROCESSED / etc (optional; NEW still excluded)
-      dotnumber, // optional
+      id,
+      status,
+      dotnumber,
       page = 1,
       pageSize = 25
     } = req.query;
 
-    const limit  = Math.min(parseInt(pageSize, 10) || 25, 100);
+    const limit = Math.min(parseInt(pageSize, 10) || 25, 100);
     const offset = (parseInt(page, 10) - 1) * limit;
 
     const conditions = [
-      'ra.user_id = $1',
       "ra.channel = 'API'",
       "ra.status <> 'ERROR'"
     ];
-    const params = [userId];
-    let i = 2;
+    const params = [];
+    let i = 1;
+
+    i = appendCompanyScope({
+      conditions,
+      params,
+      alias: 'ra',
+      companyId: auth.companyId,
+      startIndex: i,
+    });
 
     if (id) {
       conditions.push(`ra.alert_id = $${i}`);
@@ -873,7 +901,6 @@ router.get('/alerts', async (req, res) => {
     }
 
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
-
     const sql = `
       SELECT ra.alert_id, ra.dotnumber, ra.payload, ra.created_at, ra.status
       FROM rest_alerts ra
@@ -881,7 +908,6 @@ router.get('/alerts', async (req, res) => {
       ORDER BY ra.created_at DESC
       LIMIT $${i} OFFSET $${i + 1};
     `;
-
     const countSql = `
       SELECT COUNT(*)::int AS count
       FROM rest_alerts ra
@@ -894,20 +920,20 @@ router.get('/alerts', async (req, res) => {
     ]);
 
     const rows = dataResult.rows.map(row => {
-      const p = (typeof row.payload === 'string') ? JSON.parse(row.payload) : row.payload;
+      const payload = (typeof row.payload === 'string') ? JSON.parse(row.payload) : row.payload;
 
       return {
         info: {
           alert_id: row.alert_id,
-          event_id: p.event_id,
-          event_type: p.event_type,
+          event_id: payload.event_id,
+          event_type: payload.event_type,
           dotnumber: row.dotnumber,
-          occurred_at: p.occurred_at,
+          occurred_at: payload.occurred_at,
           status: row.status,
           created_at: row.created_at
         },
-        changes: p.changes,
-        carrier: p.carrier
+        changes: payload.changes,
+        carrier: payload.carrier
       };
     });
 
@@ -923,16 +949,14 @@ router.get('/alerts', async (req, res) => {
   }
 });
 
-
-
 // ---------------------------------------------
 // GET /api/v1/alerts/new
-// Returns ONLY status = 'ALERT' (ready-to-process items)
+// Returns only status = 'NEW'
 // ---------------------------------------------
 router.get('/alerts/new', async (req, res) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+    const auth = getApiAuthContext(req, res);
+    if (!auth) return;
 
     const {
       id,
@@ -941,16 +965,23 @@ router.get('/alerts/new', async (req, res) => {
       pageSize = 25
     } = req.query;
 
-    const limit  = Math.min(parseInt(pageSize, 10) || 25, 100);
+    const limit = Math.min(parseInt(pageSize, 10) || 25, 100);
     const offset = (parseInt(page, 10) - 1) * limit;
 
     const conditions = [
-      'ra.user_id = $1',
       "ra.channel = 'API'",
       "ra.status = 'NEW'"
     ];
-    const params = [userId];
-    let i = 2;
+    const params = [];
+    let i = 1;
+
+    i = appendCompanyScope({
+      conditions,
+      params,
+      alias: 'ra',
+      companyId: auth.companyId,
+      startIndex: i,
+    });
 
     if (id) {
       conditions.push(`ra.alert_id = $${i}`);
@@ -965,7 +996,6 @@ router.get('/alerts/new', async (req, res) => {
     }
 
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
-
     const sql = `
       SELECT ra.alert_id, ra.dotnumber, ra.payload, ra.created_at, ra.status
       FROM rest_alerts ra
@@ -973,7 +1003,6 @@ router.get('/alerts/new', async (req, res) => {
       ORDER BY ra.created_at DESC
       LIMIT $${i} OFFSET $${i + 1};
     `;
-
     const countSql = `
       SELECT COUNT(*)::int AS count
       FROM rest_alerts ra
@@ -986,20 +1015,20 @@ router.get('/alerts/new', async (req, res) => {
     ]);
 
     const rows = dataResult.rows.map(row => {
-      const p = (typeof row.payload === 'string') ? JSON.parse(row.payload) : row.payload;
+      const payload = (typeof row.payload === 'string') ? JSON.parse(row.payload) : row.payload;
 
       return {
         info: {
           alert_id: row.alert_id,
-          event_id: p.event_id,
-          event_type: p.event_type,
+          event_id: payload.event_id,
+          event_type: payload.event_type,
           dotnumber: row.dotnumber,
-          occurred_at: p.occurred_at,
+          occurred_at: payload.occurred_at,
           status: row.status,
           created_at: row.created_at
         },
-        changes: p.changes,
-        carrier: p.carrier
+        changes: payload.changes,
+        carrier: payload.carrier
       };
     });
 
@@ -1015,8 +1044,6 @@ router.get('/alerts/new', async (req, res) => {
   }
 });
 
-
-
 // =============================
 // CONTRACT ROUTES (v1)
 // Status lifecycle:
@@ -1028,7 +1055,7 @@ function contractSelectSql(whereClause) {
   return `
     SELECT
       c.contract_id,
-      c.user_id,
+      c.company_id,
       c.dotnumber,
       c.status,
       c.created_at,
@@ -1052,22 +1079,30 @@ function contractSelectSql(whereClause) {
 // ---------------------------------------------
 router.get('/contracts/new', async (req, res) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+    const auth = getApiAuthContext(req, res);
+    if (!auth) return;
 
     const page = parseInt(req.query.page, 10) || 1;
     const pageSizeRaw = parseInt(req.query.pageSize, 10) || 25;
     const limit = Math.min(pageSizeRaw, 100);
     const offset = (page - 1) * limit;
 
-    const whereClause = `WHERE c.user_id = $1 AND c.status = 'COMPLETED'`;
+    const conditions = ["c.status = 'COMPLETED'"];
+    const params = [];
+    let i = appendCompanyScope({
+      conditions,
+      params,
+      alias: 'c',
+      companyId: auth.companyId,
+      startIndex: 1,
+    });
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
 
     const sql = `
       ${contractSelectSql(whereClause)}
       ORDER BY c.created_at DESC
-      LIMIT $2 OFFSET $3;
+      LIMIT $${i} OFFSET $${i + 1};
     `;
-
     const countSql = `
       SELECT COUNT(*)::int AS count
       FROM contracts c
@@ -1075,8 +1110,8 @@ router.get('/contracts/new', async (req, res) => {
     `;
 
     const [dataResult, countResult] = await Promise.all([
-      pool.query(sql, [userId, limit, offset]),
-      pool.query(countSql, [userId])
+      pool.query(sql, [...params, limit, offset]),
+      pool.query(countSql, params)
     ]);
 
     res.json({
@@ -1110,8 +1145,8 @@ router.get('/contracts/new', async (req, res) => {
 // ---------------------------------------------
 router.get('/carriers/:dot/contracts', async (req, res) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+    const auth = getApiAuthContext(req, res);
+    if (!auth) return;
 
     const dot = String(req.params.dot || '').trim();
     if (!/^\d+$/.test(dot)) return res.status(400).json({ error: 'Invalid DOT' });
@@ -1121,14 +1156,22 @@ router.get('/carriers/:dot/contracts', async (req, res) => {
     const limit = Math.min(pageSizeRaw, 100);
     const offset = (page - 1) * limit;
 
-    const whereClause = `WHERE c.user_id = $1 AND c.dotnumber = $2`;
+    const conditions = ['c.dotnumber = $1'];
+    const params = [dot];
+    const i = appendCompanyScope({
+      conditions,
+      params,
+      alias: 'c',
+      companyId: auth.companyId,
+      startIndex: 2,
+    });
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
 
     const sql = `
       ${contractSelectSql(whereClause)}
       ORDER BY c.created_at DESC
-      LIMIT $3 OFFSET $4;
+      LIMIT $${i} OFFSET $${i + 1};
     `;
-
     const countSql = `
       SELECT COUNT(*)::int AS count
       FROM contracts c
@@ -1136,8 +1179,8 @@ router.get('/carriers/:dot/contracts', async (req, res) => {
     `;
 
     const [dataResult, countResult] = await Promise.all([
-      pool.query(sql, [userId, dot, limit, offset]),
-      pool.query(countSql, [userId, dot])
+      pool.query(sql, [...params, limit, offset]),
+      pool.query(countSql, params)
     ]);
 
     res.json({
@@ -1173,8 +1216,8 @@ router.get('/carriers/:dot/contracts', async (req, res) => {
 // ---------------------------------------------
 router.patch('/contracts/processed', async (req, res) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+    const auth = getApiAuthContext(req, res);
+    if (!auth) return;
 
     const ids = normalizeIdArray(req.body?.contracts);
     if (ids.length === 0) {
@@ -1186,12 +1229,12 @@ router.patch('/contracts/processed', async (req, res) => {
       UPDATE contracts
       SET status = 'PROCESSED',
           updated_at = NOW()
-      WHERE user_id = $1
+      WHERE company_id = $1
         AND contract_id::text = ANY($2::text[])
         AND status = 'COMPLETED'
       RETURNING contract_id;
       `,
-      [userId, ids]
+      [auth.companyId, ids]
     );
 
     const updated = updateResult.rows.map(r => String(r.contract_id));
@@ -1221,8 +1264,8 @@ router.patch('/contracts/processed', async (req, res) => {
 // ---------------------------------------------
 router.patch('/contracts/unprocessed', async (req, res) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+    const auth = getApiAuthContext(req, res);
+    if (!auth) return;
 
     const ids = normalizeIdArray(req.body?.contracts);
     if (ids.length === 0) {
@@ -1234,12 +1277,12 @@ router.patch('/contracts/unprocessed', async (req, res) => {
       UPDATE contracts
       SET status = 'COMPLETED',
           updated_at = NOW()
-      WHERE user_id = $1
+      WHERE company_id = $1
         AND contract_id::text = ANY($2::text[])
         AND status = 'PROCESSED'
       RETURNING contract_id;
       `,
-      [userId, ids]
+      [auth.companyId, ids]
     );
 
     const updated = updateResult.rows.map(r => String(r.contract_id));
@@ -1269,15 +1312,14 @@ router.patch('/contracts/unprocessed', async (req, res) => {
 // ---------------------------------------------
 router.post('/contracts/send', async (req, res) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+    const auth = getApiAuthContext(req, res);
+    if (!auth) return;
 
     const dots = normalizeDotArray(req.body?.dot);
     if (dots.length === 0) {
       return res.status(400).json({ error: 'dot is required (numeric DOT or array of DOTs)' });
     }
 
-    // validate DOTs exist
     const carriersRes = await pool.query(
       `SELECT dotnumber FROM carriers WHERE dotnumber = ANY($1::text[])`,
       [dots]
@@ -1292,11 +1334,11 @@ router.post('/contracts/send', async (req, res) => {
 
     const insertRes = await pool.query(
       `
-      INSERT INTO contracts (user_id, dotnumber, status, payload, sent_at)
+      INSERT INTO contracts (company_id, dotnumber, status, payload, sent_at)
       SELECT $1, unnest($2::text[]), 'SENT', '{}'::jsonb, NOW()
       RETURNING contract_id, dotnumber, status, created_at, sent_at;
       `,
-      [userId, validDots]
+      [auth.companyId, validDots]
     );
 
     res.json({
@@ -1320,8 +1362,8 @@ router.post('/contracts/send', async (req, res) => {
 // ---------------------------------------------
 router.get('/contracts', async (req, res) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+    const auth = getApiAuthContext(req, res);
+    if (!auth) return;
 
     const {
       status,
@@ -1336,12 +1378,18 @@ router.get('/contracts', async (req, res) => {
     const limit = Math.min(parseInt(pageSize, 10) || 25, 100);
     const offset = (parseInt(page, 10) - 1) * limit;
 
-    const conditions = ['c.user_id = $1'];
-    const params = [userId];
-    let i = 2;
+    const conditions = [];
+    const params = [];
+    let i = appendCompanyScope({
+      conditions,
+      params,
+      alias: 'c',
+      companyId: auth.companyId,
+      startIndex: 1,
+    });
 
-    if (contract_id && /^\d+$/.test(String(contract_id))) {
-      conditions.push(`c.contract_id = $${i}`);
+    if (contract_id && isValidContractIdentifier(String(contract_id))) {
+      conditions.push(`c.contract_id::text = $${i}`);
       params.push(String(contract_id));
       i++;
     }
@@ -1371,13 +1419,11 @@ router.get('/contracts', async (req, res) => {
     }
 
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
-
     const sql = `
       ${contractSelectSql(whereClause)}
       ORDER BY c.created_at DESC
       LIMIT $${i} OFFSET $${i + 1};
     `;
-
     const countSql = `
       SELECT COUNT(*)::int AS count
       FROM contracts c
@@ -1420,22 +1466,31 @@ router.get('/contracts', async (req, res) => {
 // ---------------------------------------------
 router.get('/contracts/:contract_id', async (req, res) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: 'Not authorized' });
+    const auth = getApiAuthContext(req, res);
+    if (!auth) return;
 
     const contractId = String(req.params.contract_id || '').trim();
-    if (!/^\d+$/.test(contractId)) {
+    if (!isValidContractIdentifier(contractId)) {
       return res.status(400).json({ error: 'Invalid contract_id' });
     }
 
-    const whereClause = `WHERE c.user_id = $1 AND c.contract_id = $2`;
+    const conditions = ['c.contract_id::text = $1'];
+    const params = [contractId];
+    appendCompanyScope({
+      conditions,
+      params,
+      alias: 'c',
+      companyId: auth.companyId,
+      startIndex: 2,
+    });
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
 
     const sql = `
       ${contractSelectSql(whereClause)}
       LIMIT 1;
     `;
 
-    const result = await pool.query(sql, [userId, contractId]);
+    const result = await pool.query(sql, params);
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Contract not found' });
     }
@@ -1463,9 +1518,6 @@ router.get('/contracts/:contract_id', async (req, res) => {
   }
 });
 
-  
-
-  
   // Add more v1 routes above this line
   return router;
 }
