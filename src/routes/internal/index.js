@@ -20,6 +20,7 @@ const healthInternalRoutes = require("./healthInternal.routes"); // router expor
 const { healthRoutes } = require("./health.routes"); // factory export
 
 const publicCarriersRoutes = require("./publicCarriers.routes");
+const { globalApiLimiter } = require("../../middleware/rateLimit");
 
 function internalRoutes({ pool } = {}) {
   if (!pool || typeof pool.query !== "function") {
@@ -37,6 +38,10 @@ function internalRoutes({ pool } = {}) {
   // Health first (no auth/session dependency)
   router.use(healthRoutes({ pool })); // GET /api/health
   router.use(healthInternalRoutes);   // GET /api/health-internal
+
+  // Apply a light shared limit to public API traffic only. Authenticated
+  // internal/admin requests are skipped in the middleware itself.
+  router.use(globalApiLimiter);
 
   // Existing internal routers
   router.use(authRoutes);

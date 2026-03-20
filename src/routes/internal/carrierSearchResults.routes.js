@@ -2,11 +2,12 @@
 
 const express = require("express");
 const { pool } = require("../../db/pool");
+const { searchLimiter } = require("../../middleware/rateLimit");
 
 const router = express.Router();
 
 // GET /api/search-carriers?q=...&page=1&pageSize=25&sortBy=carrier&sortDir=asc
-router.get("/search-carriers", async (req, res) => {
+router.get("/search-carriers", searchLimiter, async (req, res) => {
   const qRaw = String(req.query.q || "").trim();
   if (qRaw.length < 2) return res.json({ rows: [], total: 0 });
 

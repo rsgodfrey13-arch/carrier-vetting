@@ -8,6 +8,7 @@ const router = express.Router();
 
 const crypto = require("crypto");
 const { sendPasswordResetEmail, sendVerificationEmail } = require("../../clients/mailgun");
+const { authLimiter } = require("../../middleware/rateLimit");
 
 // who am I? (used by UI + Postman to check login)
 router.get("/me", async (req, res) => {
@@ -107,7 +108,7 @@ router.get("/me", async (req, res) => {
 });
 
 // login: expects { "email": "x", "password": "y" }
-router.post("/login", async (req, res) => {
+router.post("/login", authLimiter, async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) {
     return res.status(400).json({ error: "email and password required" });
@@ -211,7 +212,7 @@ function hashToken(token) {
 
 // POST /api/forgot-password  { email }
 // Always returns ok:true to prevent account enumeration.
-router.post("/forgot-password", async (req, res) => {
+router.post("/forgot-password", authLimiter, async (req, res) => {
   const emailRaw = String(req.body?.email || "").trim().toLowerCase();
   if (!emailRaw) return res.json({ ok: true });
 
@@ -267,7 +268,7 @@ router.post("/forgot-password", async (req, res) => {
 
 // POST /api/reset-password  { token, newPassword }
 // On success: updates hash, marks token used, logs user in (session), returns ok:true
-router.post("/reset-password", async (req, res) => {
+router.post("/reset-password", authLimiter, async (req, res) => {
   const token = String(req.body?.token || "").trim();
   const newPassword = String(req.body?.newPassword || "");
 
@@ -350,7 +351,7 @@ router.post("/logout", (req, res) => {
 
 // signup: expects form POST from create-account.html
 // fields: first_name, last_name, email, company, password, password_confirm
-router.post("/auth/signup", async (req, res) => {
+router.post("/auth/signup", authLimiter, async (req, res) => {
   const firstName = String(req.body?.first_name || "").trim();
   const lastName  = String(req.body?.last_name || "").trim();
   const company   = String(req.body?.company || "").trim();
