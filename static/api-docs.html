@@ -348,12 +348,6 @@
     }
 
 
-    #redoc-container,
-    #redoc-container .redoc-wrap,
-    #redoc-container .api-content,
-    #redoc-container [data-section-id] {
-      scroll-behavior: smooth;
-    }
 
     #redoc-container .redoc-wrap,
     #redoc-container .api-content {
@@ -685,28 +679,8 @@
           activeTextColor: '#f6fbff'
         }
       }
-    }, document.getElementById('redoc-container'), function () {
-      const siteHeader = document.getElementById('site-header');
-      const getOffset = () => (siteHeader ? Math.round(siteHeader.getBoundingClientRect().height) + 16 : 16);
-      const scrollToHash = (hash) => {
-        if (!hash) return false;
-        const target = document.getElementById(hash) || document.querySelector(`[data-section-id="${hash}"]`) || document.querySelector(`[id="${hash}"]`);
-        if (!target) return false;
-        const targetTop = window.scrollY + target.getBoundingClientRect().top - getOffset();
-        window.scrollTo({ top: Math.max(targetTop, 0), behavior: 'smooth' });
-        return true;
-      };
-
-      requestAnimationFrame(() => {
-        if (window.location.hash) {
-          scrollToHash(decodeURIComponent(window.location.hash.slice(1)));
-        }
-      });
-
-      window.addEventListener('hashchange', () => {
-        const hash = decodeURIComponent(window.location.hash.replace(/^#/, ''));
-        if (hash) scrollToHash(hash);
-      });
+    }, document.getElementById('redoc-container'));
+    
     });
   </script>
 </body>
