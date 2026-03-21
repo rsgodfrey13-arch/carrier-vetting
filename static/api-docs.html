@@ -354,11 +354,6 @@
       pointer-events: auto;
     }
 
-    #redoc-container .menu-content {
-      overflow-y: auto !important;
-      overflow-x: hidden !important;
-      pointer-events: auto;
-    }
 
     #redoc-container .api-content [class*="httpVerb"],
     #redoc-container .api-content [data-http-verb],
@@ -450,7 +445,9 @@
         font-size: 16px;
       }
     }
-
+#redoc-container .menu-content {
+  pointer-events: auto;
+}
 /* =========================================
    REAL FIXES FOR REDOC RESPONSE UI
    ========================================= */
@@ -538,6 +535,28 @@
 #redoc-container .menu-content [role="search"] {
   padding: 8px 10px 0 10px;
 }
+
+#redoc-container .menu-content a,
+#redoc-container .menu-content label,
+#redoc-container .menu-content span,
+#redoc-container .menu-content [role="link"] {
+  cursor: pointer;
+  pointer-events: auto;
+  border-radius: 12px;
+}
+
+#redoc-container .menu-content a:hover,
+#redoc-container .menu-content label:hover,
+#redoc-container .menu-content span:hover,
+#redoc-container .menu-content [role="link"]:hover {
+  color: var(--docs-text-primary) !important;
+}
+
+#redoc-container .menu-content form,
+#redoc-container .menu-content [role="search"] {
+  padding: 8px 10px 0 10px;
+}
+    
   </style>
 </head>
 <body class="carrier-list">
@@ -577,7 +596,7 @@
       expandResponses: '200,201',
       hideDownloadButton: false,
       hideHostname: true,
-      nativeScrollbars: true,
+      nativeScrollbars: false,
       pathInMiddlePanel: true,
       scrollYOffset: '#site-header',
       requiredPropsFirst: true,
