@@ -367,54 +367,21 @@
 
     #redoc-container,
     #redoc-container .redoc-wrap,
-    #redoc-container .menu-content,
     #redoc-container .api-content,
     #redoc-container [data-section-id] {
       scroll-behavior: smooth;
     }
 
     #redoc-container .redoc-wrap,
-    #redoc-container .api-content,
-    #redoc-container .menu-content {
+    #redoc-container .api-content {
       overflow: visible !important;
       pointer-events: auto;
     }
 
-    #redoc-container .api-content [type="button"],
-    #redoc-container .api-content button[aria-expanded],
-    #redoc-container .api-content [role="tab"],
-    #redoc-container .api-content [aria-controls],
-    #redoc-container .api-content [class*="tab"],
-    #redoc-container .api-content [class*="Tab"],
-    #redoc-container .api-content [class*="response"][class*="button"],
-    #redoc-container .api-content [class*="Response"][class*="Button"] {
-      color: var(--docs-text-primary) !important;
-      background: rgba(9, 24, 49, 0.94) !important;
-      border: 1px solid rgba(73, 161, 236, 0.22) !important;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-    }
-
-    #redoc-container .api-content [role="tab"]:hover,
-    #redoc-container .api-content [class*="tab"]:hover,
-    #redoc-container .api-content [class*="Tab"]:hover,
-    #redoc-container .api-content button[aria-expanded]:hover,
-    #redoc-container .api-content [aria-controls]:hover {
-      background: rgba(12, 30, 59, 0.98) !important;
-      border-color: rgba(97, 193, 255, 0.34) !important;
-    }
-
-    #redoc-container .api-content [aria-selected="true"],
-    #redoc-container .api-content [aria-expanded="true"],
-    #redoc-container .api-content [data-active="true"],
-    #redoc-container .api-content .active[role="tab"],
-    #redoc-container .api-content .active[class*="tab"],
-    #redoc-container .api-content .active[class*="Tab"] {
-      background: linear-gradient(180deg, rgba(11, 43, 82, 0.98), rgba(8, 31, 63, 0.98)) !important;
-      color: #f8fcff !important;
-      border-color: rgba(33, 199, 255, 0.42) !important;
-      box-shadow:
-        0 0 0 1px rgba(33, 199, 255, 0.10),
-        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    #redoc-container .menu-content {
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      pointer-events: auto;
     }
 
     #redoc-container .api-content [class*="httpVerb"],
@@ -468,52 +435,45 @@
       color: var(--docs-text-secondary) !important;
     }
 
-    #redoc-container .api-content [class*="response"] > div,
-    #redoc-container .api-content [class*="Response"] > div,
+    #redoc-container .api-content [class*="response"],
+    #redoc-container .api-content [class*="Response"],
     #redoc-container .api-content [data-section-id*="response"],
     #redoc-container .api-content [aria-label*="response" i] {
+      color: var(--docs-text-secondary) !important;
+    }
+
+    #redoc-container .api-content :is([class*="response"], [class*="Response"], [data-section-id*="response"], [aria-label*="response" i]) > div {
       background: rgba(6, 17, 36, 0.82) !important;
       border-color: rgba(96, 163, 255, 0.16) !important;
       color: var(--docs-text-primary) !important;
     }
 
-    #redoc-container .api-content details,
-    #redoc-container .api-content summary,
-    #redoc-container .api-content [class*="accordion"],
-    #redoc-container .api-content [class*="Accordion"],
-    #redoc-container .api-content [class*="collapsible"],
-    #redoc-container .api-content [class*="Collapsible"] {
-      background: rgba(7, 19, 40, 0.92) !important;
+    #redoc-container .api-content :is([class*="response"], [class*="Response"], [data-section-id*="response"], [aria-label*="response" i]) :is(summary, button[aria-expanded], [role="button"][aria-expanded]) {
       color: var(--docs-text-primary) !important;
-      border-color: rgba(96, 163, 255, 0.16) !important;
+      background: linear-gradient(180deg, rgba(8, 20, 41, 0.98), rgba(6, 16, 34, 0.98)) !important;
+      border: 1px solid rgba(96, 163, 255, 0.18) !important;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
     }
 
-    #redoc-container .api-content summary:hover,
-    #redoc-container .api-content details[open] > summary,
-    #redoc-container .api-content [class*="accordion"]:hover,
-    #redoc-container .api-content [class*="Accordion"]:hover,
-    #redoc-container .api-content [class*="accordion"][aria-expanded="true"],
-    #redoc-container .api-content [class*="Accordion"][aria-expanded="true"] {
-      background: rgba(10, 26, 52, 0.96) !important;
+    #redoc-container .api-content :is([class*="response"], [class*="Response"], [data-section-id*="response"], [aria-label*="response" i]) :is(summary, button[aria-expanded], [role="button"][aria-expanded]):hover {
+      background: linear-gradient(180deg, rgba(10, 27, 54, 0.99), rgba(8, 21, 43, 0.99)) !important;
+      border-color: rgba(120, 226, 255, 0.32) !important;
       color: #f9fcff !important;
     }
 
-    #redoc-container .api-content [class*="response"] summary,
-    #redoc-container .api-content [class*="Response"] summary,
-    #redoc-container .api-content [class*="response"] button,
-    #redoc-container .api-content [class*="Response"] button,
-    #redoc-container .api-content [class*="response"] [role="button"],
-    #redoc-container .api-content [class*="Response"] [role="button"] {
-      background: rgba(8, 20, 41, 0.96) !important;
-      color: var(--docs-text-primary) !important;
-      border-color: rgba(96, 163, 255, 0.18) !important;
+    #redoc-container .api-content :is([class*="response"], [class*="Response"], [data-section-id*="response"], [aria-label*="response" i]) :is(summary, button[aria-expanded], [role="button"][aria-expanded])[aria-expanded="true"],
+    #redoc-container .api-content :is([class*="response"], [class*="Response"], [data-section-id*="response"], [aria-label*="response" i]) details[open] > summary {
+      background: linear-gradient(180deg, rgba(11, 43, 82, 0.98), rgba(8, 31, 63, 0.98)) !important;
+      border-color: rgba(33, 199, 255, 0.42) !important;
+      color: #f8fcff !important;
+      box-shadow:
+        0 0 0 1px rgba(33, 199, 255, 0.10),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
     }
 
-    #redoc-container .api-content [class*="response"] summary:hover,
-    #redoc-container .api-content [class*="Response"] summary:hover,
-    #redoc-container .api-content [class*="response"] button:hover,
-    #redoc-container .api-content [class*="Response"] button:hover {
-      background: rgba(10, 27, 54, 0.98) !important;
+    #redoc-container .api-content :is(details, [class*="accordion"], [class*="Accordion"], [class*="collapsible"], [class*="Collapsible"]) {
+      color: var(--docs-text-primary) !important;
+      border-color: rgba(96, 163, 255, 0.16) !important;
     }
 
     #redoc-container .api-content [class*="response"] pre,
@@ -719,9 +679,18 @@
       document.getElementById('redoc-container')?.addEventListener('click', (event) => {
         const link = event.target.closest('.menu-content a[href*="#"], .menu-content [role="link"][href*="#"]');
         if (!link) return;
+        const toggleControl = event.target.closest('[aria-expanded]');
+        if (toggleControl && toggleControl === link) return;
+        const parentItem = link.closest('li');
+        const nestedMenu = parentItem?.querySelector(':scope > ul, :scope > div > ul');
+        if (nestedMenu) return;
         const url = new URL(link.href, window.location.href);
         const hash = decodeURIComponent(url.hash.replace(/^#/, ''));
         if (!hash) return;
+        const targetExists = document.getElementById(hash)
+          || document.querySelector(`[data-section-id="${hash}"]`)
+          || document.querySelector(`[id="${hash}"]`);
+        if (!targetExists) return;
         event.preventDefault();
         history.replaceState(null, '', `#${encodeURIComponent(hash)}`);
         scrollToHash(hash);
