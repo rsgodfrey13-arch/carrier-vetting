@@ -193,8 +193,6 @@
       box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.03);
     }
 
-    #redoc-container .menu-content > div,
-    #redoc-container .menu-content section,
     #redoc-container .menu-content ul,
     #redoc-container .menu-content li {
       background: transparent !important;
@@ -411,13 +409,6 @@
 
 
 
-    #redoc-container .menu-content a,
-    #redoc-container .menu-content label,
-    #redoc-container .menu-content [role="link"] {
-      cursor: pointer;
-      pointer-events: auto;
-    }
-
     @media (max-width: 900px) {
       .docs-shell {
         padding: 28px 16px 72px;
@@ -531,32 +522,11 @@
   color: var(--docs-text-primary) !important;
 }
 
-    #redoc-container .menu-content form,
-#redoc-container .menu-content [role="search"] {
-  padding: 8px 10px 0 10px;
-}
-
-#redoc-container .menu-content a,
-#redoc-container .menu-content label,
-#redoc-container .menu-content span,
-#redoc-container .menu-content [role="link"] {
-  cursor: pointer;
-  pointer-events: auto;
-  border-radius: 12px;
-}
-
-#redoc-container .menu-content a:hover,
-#redoc-container .menu-content label:hover,
-#redoc-container .menu-content span:hover,
-#redoc-container .menu-content [role="link"]:hover {
-  color: var(--docs-text-primary) !important;
-}
-
 #redoc-container .menu-content form,
 #redoc-container .menu-content [role="search"] {
   padding: 8px 10px 0 10px;
 }
-    
+
   </style>
 </head>
 <body class="carrier-list">
@@ -596,7 +566,7 @@
       expandResponses: '200,201',
       hideDownloadButton: false,
       hideHostname: true,
-      nativeScrollbars: false,
+      nativeScrollbars: true,
       pathInMiddlePanel: true,
       scrollYOffset: '#site-header',
       requiredPropsFirst: true,
