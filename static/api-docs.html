@@ -10,6 +10,24 @@
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 
   <style>
+    :root {
+      --docs-bg-deep: #040b18;
+      --docs-bg-panel: rgba(6, 18, 39, 0.88);
+      --docs-bg-panel-strong: rgba(7, 20, 43, 0.96);
+      --docs-bg-elevated: rgba(10, 28, 58, 0.94);
+      --docs-bg-nav: rgba(8, 21, 45, 0.96);
+      --docs-border: rgba(129, 188, 255, 0.14);
+      --docs-border-strong: rgba(66, 198, 255, 0.24);
+      --docs-text-primary: #f6fbff;
+      --docs-text-secondary: rgba(228, 239, 255, 0.88);
+      --docs-text-muted: rgba(185, 205, 233, 0.82);
+      --docs-text-soft: rgba(152, 179, 215, 0.78);
+      --docs-accent: #21c7ff;
+      --docs-accent-strong: #78e2ff;
+      --docs-code-bg: rgba(5, 15, 32, 0.96);
+      --docs-shadow: 0 22px 60px rgba(0, 0, 0, 0.26);
+    }
+
     .docs-shell {
       position: relative;
       z-index: 1;
@@ -104,30 +122,246 @@
       padding: 22px;
       border-radius: 28px;
       border: 1px solid rgba(255, 255, 255, 0.10);
-      background: linear-gradient(180deg, rgba(7, 18, 39, 0.94), rgba(5, 12, 27, 0.98));
+      background:
+        radial-gradient(circle at top left, rgba(0, 183, 255, 0.08), transparent 36%),
+        linear-gradient(180deg, rgba(7, 18, 39, 0.94), rgba(5, 12, 27, 0.98));
       box-shadow:
-        0 22px 60px rgba(0, 0, 0, 0.26),
+        var(--docs-shadow),
         inset 0 1px 0 rgba(255, 255, 255, 0.03);
       overflow: hidden;
+      backdrop-filter: blur(18px);
     }
 
     .docs-card-inner {
-      border-radius: 20px;
+      border-radius: 22px;
       overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      background: rgba(3, 10, 24, 0.72);
+      border: 1px solid var(--docs-border);
+      background:
+        linear-gradient(180deg, rgba(3, 10, 24, 0.86), rgba(2, 8, 20, 0.94));
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.04),
+        inset 0 0 0 1px rgba(7, 187, 255, 0.03);
     }
 
-    .docs-card redoc {
-      display: block;
+    #redoc-container,
+    #redoc-container .redoc-wrap {
+      background: transparent !important;
     }
 
-    .docs-card ::part(redoc-container) {
-      background: transparent;
+    #redoc-container .redoc-wrap {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+      color: var(--docs-text-secondary);
     }
 
-    .docs-card :where(.redoc-wrap, .menu-content, .api-content, .redoc-json) {
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    #redoc-container .api-content,
+    #redoc-container .api-content p,
+    #redoc-container .api-content li,
+    #redoc-container .api-content span,
+    #redoc-container .api-content div,
+    #redoc-container .api-content td,
+    #redoc-container .api-content label,
+    #redoc-container .api-content section,
+    #redoc-container .api-content small,
+    #redoc-container .api-content [data-section-id] {
+      color: var(--docs-text-secondary);
+    }
+
+    #redoc-container .api-content h1,
+    #redoc-container .api-content h2,
+    #redoc-container .api-content h3,
+    #redoc-container .api-content h4,
+    #redoc-container .api-content h5,
+    #redoc-container .api-content strong,
+    #redoc-container .api-content b,
+    #redoc-container .api-content [role="heading"] {
+      color: var(--docs-text-primary) !important;
+    }
+
+    #redoc-container .api-content a,
+    #redoc-container .menu-content a,
+    #redoc-container .api-content button,
+    #redoc-container .menu-content button,
+    #redoc-container .api-content svg,
+    #redoc-container .menu-content svg {
+      color: var(--docs-accent);
+    }
+
+    #redoc-container .menu-content {
+      background:
+        linear-gradient(180deg, rgba(10, 25, 52, 0.98), rgba(6, 18, 38, 0.98)) !important;
+      border-right: 1px solid var(--docs-border) !important;
+      box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.03);
+    }
+
+    #redoc-container .menu-content > div,
+    #redoc-container .menu-content section,
+    #redoc-container .menu-content ul,
+    #redoc-container .menu-content li {
+      background: transparent !important;
+    }
+
+    #redoc-container .menu-content,
+    #redoc-container .menu-content div,
+    #redoc-container .menu-content span,
+    #redoc-container .menu-content label,
+    #redoc-container .menu-content a {
+      color: var(--docs-text-muted) !important;
+    }
+
+    #redoc-container .menu-content a:hover,
+    #redoc-container .menu-content a:focus,
+    #redoc-container .menu-content li.active > label,
+    #redoc-container .menu-content li.active > span,
+    #redoc-container .menu-content [aria-current="true"],
+    #redoc-container .menu-content [data-item-id].active {
+      color: var(--docs-text-primary) !important;
+    }
+
+    #redoc-container .menu-content label,
+    #redoc-container .menu-content a,
+    #redoc-container .menu-content span {
+      transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
+    }
+
+    #redoc-container .menu-content li {
+      border-radius: 14px;
+    }
+
+    #redoc-container .menu-content li > label,
+    #redoc-container .menu-content li > a,
+    #redoc-container .menu-content li > span {
+      border-radius: 12px;
+      margin: 2px 10px;
+      padding-left: 12px !important;
+      padding-right: 12px !important;
+    }
+
+    #redoc-container .menu-content li > label:hover,
+    #redoc-container .menu-content li > a:hover,
+    #redoc-container .menu-content li > span:hover,
+    #redoc-container .menu-content li.active > label,
+    #redoc-container .menu-content li.active > a,
+    #redoc-container .menu-content li.active > span {
+      background: rgba(31, 199, 255, 0.10) !important;
+      box-shadow: inset 0 0 0 1px rgba(33, 199, 255, 0.10);
+    }
+
+    #redoc-container .menu-content input,
+    #redoc-container .menu-content [role="search"] input,
+    #redoc-container .menu-content input[type="text"],
+    #redoc-container .menu-content input[type="search"] {
+      background: rgba(7, 19, 41, 0.98) !important;
+      color: var(--docs-text-primary) !important;
+      border: 1px solid var(--docs-border-strong) !important;
+      border-radius: 14px !important;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.04),
+        0 0 0 1px rgba(10, 26, 50, 0.35);
+    }
+
+    #redoc-container .menu-content input::placeholder,
+    #redoc-container .menu-content [role="search"] input::placeholder {
+      color: rgba(168, 194, 228, 0.68) !important;
+    }
+
+    #redoc-container .menu-content input:focus,
+    #redoc-container .menu-content [role="search"] input:focus {
+      outline: none;
+      border-color: rgba(120, 226, 255, 0.58) !important;
+      box-shadow:
+        0 0 0 4px rgba(33, 199, 255, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    #redoc-container .api-content {
+      background: transparent !important;
+    }
+
+    #redoc-container .api-content > div,
+    #redoc-container .api-content section,
+    #redoc-container .api-content article,
+    #redoc-container .api-content [data-section-id],
+    #redoc-container .api-content table,
+    #redoc-container .api-content tbody,
+    #redoc-container .api-content thead,
+    #redoc-container .api-content tr,
+    #redoc-container .api-content td,
+    #redoc-container .api-content th {
+      border-color: var(--docs-border) !important;
+    }
+
+    #redoc-container .api-content table,
+    #redoc-container .api-content div[role="table"] {
+      background: rgba(6, 17, 36, 0.55) !important;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    #redoc-container .api-content th {
+      background: rgba(9, 25, 50, 0.9) !important;
+      color: var(--docs-text-primary) !important;
+    }
+
+    #redoc-container .api-content td {
+      background: rgba(4, 13, 28, 0.72) !important;
+      color: var(--docs-text-secondary) !important;
+    }
+
+    #redoc-container .api-content code,
+    #redoc-container .api-content pre,
+    #redoc-container .api-content samp,
+    #redoc-container .api-content .redoc-json,
+    #redoc-container .api-content [class*="token"],
+    #redoc-container .api-content [class*="code"],
+    #redoc-container .api-content [class*="sample"] {
+      color: #eaf6ff !important;
+    }
+
+    #redoc-container .api-content pre,
+    #redoc-container .api-content code,
+    #redoc-container .api-content .redoc-json,
+    #redoc-container .api-content [class*="codeBlock"],
+    #redoc-container .api-content [class*="CodeBlock"],
+    #redoc-container .api-content [class*="sample"] > div,
+    #redoc-container .api-content [class*="sample"] pre {
+      background: var(--docs-code-bg) !important;
+      border: 1px solid rgba(96, 163, 255, 0.16) !important;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    }
+
+    #redoc-container .api-content pre {
+      border-radius: 18px !important;
+      padding: 18px !important;
+    }
+
+    #redoc-container .api-content code {
+      border-radius: 10px;
+    }
+
+    #redoc-container .api-content [class*="httpVerb"],
+    #redoc-container .api-content [data-http-verb] {
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
+    }
+
+    #redoc-container .api-content blockquote {
+      background: rgba(17, 35, 68, 0.68) !important;
+      border-left: 3px solid rgba(33, 199, 255, 0.72) !important;
+      color: var(--docs-text-secondary) !important;
+      border-radius: 0 14px 14px 0;
+    }
+
+    #redoc-container .api-content hr {
+      border-color: rgba(120, 188, 255, 0.12) !important;
+    }
+
+    #redoc-container .api-content button,
+    #redoc-container .api-content [role="button"] {
+      border-radius: 12px;
+    }
+
+    #redoc-container .api-content [class*="badge"],
+    #redoc-container .api-content [class*="tag"] {
+      border-radius: 999px;
     }
 
     @media (max-width: 900px) {
@@ -143,6 +377,10 @@
       .docs-card {
         padding: 14px;
         border-radius: 22px;
+      }
+
+      .docs-card-inner {
+        border-radius: 18px;
       }
 
       .docs-title {
@@ -177,7 +415,7 @@
 
     <section class="docs-card" aria-label="OpenAPI documentation">
       <div class="docs-card-inner">
-        <redoc spec-url="/openapi.yaml"></redoc>
+        <div id="redoc-container"></div>
       </div>
     </section>
   </main>
@@ -186,5 +424,114 @@
 
   <script src="/js/shared/shared.js"></script>
   <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
+  <script>
+    Redoc.init('/openapi.yaml', {
+      disableSearch: false,
+      expandResponses: '200,201',
+      hideDownloadButton: false,
+      hideHostname: true,
+      nativeScrollbars: true,
+      pathInMiddlePanel: true,
+      requiredPropsFirst: true,
+      sortPropsAlphabetically: false,
+      theme: {
+        colors: {
+          primary: {
+            main: '#21c7ff',
+            light: '#78e2ff',
+            dark: '#0a8dc8',
+            contrastText: '#04111d'
+          },
+          success: {
+            main: '#37d67a'
+          },
+          text: {
+            primary: '#f6fbff',
+            secondary: '#d7e7fa'
+          },
+          http: {
+            get: '#22c55e',
+            post: '#21c7ff',
+            put: '#f59e0b',
+            options: '#8b5cf6',
+            patch: '#06b6d4',
+            delete: '#f05f7a',
+            basic: '#94a3b8',
+            link: '#21c7ff',
+            head: '#38bdf8'
+          },
+          responses: {
+            success: '#22c55e',
+            error: '#f05f7a',
+            redirect: '#f59e0b',
+            info: '#38bdf8'
+          },
+          tonalOffset: 0.25
+        },
+        schema: {
+          linesColor: 'rgba(129, 188, 255, 0.12)',
+          defaultDetailsWidth: '55%'
+        },
+        typography: {
+          fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+          fontSize: '15px',
+          lineHeight: '1.7',
+          code: {
+            fontFamily: 'ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+            fontSize: '14px',
+            fontWeight: '500',
+            color: '#f2f8ff',
+            backgroundColor: 'rgba(8, 19, 38, 0.92)'
+          },
+          headings: {
+            fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+            fontWeight: '700',
+            lineHeight: '1.2',
+            color: '#f8fbff'
+          },
+          links: {
+            color: '#21c7ff',
+            hover: '#78e2ff',
+            visited: '#8fdcff'
+          }
+        },
+        spacing: {
+          unit: 5,
+          sectionHorizontal: 32,
+          sectionVertical: 28
+        },
+        breakpoints: {
+          small: '50rem',
+          medium: '85rem',
+          large: '105rem'
+        },
+        menu: {
+          backgroundColor: '#08152d',
+          textColor: '#b9cde9',
+          activeTextColor: '#f6fbff',
+          groupItems: {
+            textTransform: 'none'
+          },
+          level1Items: {
+            textTransform: 'none'
+          }
+        },
+        logo: {
+          maxHeight: '0',
+          maxWidth: '0',
+          gutter: '0'
+        },
+        rightPanel: {
+          backgroundColor: '#05101f',
+          textColor: '#ebf5ff'
+        },
+        sidebar: {
+          backgroundColor: '#08152d',
+          textColor: '#b9cde9',
+          activeTextColor: '#f6fbff'
+        }
+      }
+    }, document.getElementById('redoc-container'));
+  </script>
 </body>
 </html>
