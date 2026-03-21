@@ -57,7 +57,7 @@ const slides = [
   <br><br>
   Choose exactly what to monitor and receive alerts by email, webhooks, or the REST API.
   `,
-    img: "/static/images/tour/alerts.png"
+    img: "/static/images/tour/email_alert.png"
   },
   {
     title: "You’re ready.",
