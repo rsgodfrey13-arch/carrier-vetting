@@ -786,6 +786,16 @@ html {
   border: 1px solid rgba(129, 188, 255, 0.22) !important;
   box-shadow: none !important;
 }
+
+#redoc-container .menu-content li:has(ul) > a,
+#redoc-container .menu-content li:has(ul) > div a {
+  cursor: pointer !important;
+}
+
+#redoc-container .menu-content li:has(ul) > a:hover,
+#redoc-container .menu-content li:has(ul) > div a:hover {
+  text-decoration: none !important;
+}
     
   </style>
 </head>
@@ -930,17 +940,145 @@ html {
       }
     }, document.getElementById('redoc-container'));
 
-setTimeout(() => {
-  const menu = document.querySelector('#redoc-container .menu-content');
-  if (!menu) return;
-
-  const expandButtons = menu.querySelectorAll('button[aria-label*="expand" i], button[aria-expanded]');
-  expandButtons.forEach((btn) => {
-    if (btn.getAttribute('aria-expanded') === 'false') {
-      btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+<script>
+  Redoc.init('/openapi.yaml', {
+    disableSearch: false,
+    expandResponses: '200,201',
+    hideDownloadButton: false,
+    hideHostname: true,
+    nativeScrollbars: false,
+    pathInMiddlePanel: false,
+    scrollYOffset: 0,
+    requiredPropsFirst: true,
+    sortPropsAlphabetically: false,
+    theme: {
+      colors: {
+        primary: {
+          main: '#21c7ff',
+          light: '#78e2ff',
+          dark: '#0a8dc8',
+          contrastText: '#04111d'
+        },
+        success: { main: '#37d67a' },
+        text: {
+          primary: '#f6fbff',
+          secondary: '#d7e7fa'
+        },
+        http: {
+          get: '#166534',
+          post: '#075985',
+          put: '#b45309',
+          options: '#4338ca',
+          patch: '#0f766e',
+          delete: '#be123c',
+          basic: '#334155',
+          link: '#075985',
+          head: '#1d4ed8'
+        },
+        responses: {
+          success: '#166534',
+          error: '#9f1239',
+          redirect: '#92400e',
+          info: '#1d4ed8'
+        },
+        tonalOffset: 0.25
+      },
+      schema: {
+        linesColor: 'rgba(129, 188, 255, 0.12)',
+        defaultDetailsWidth: '55%'
+      },
+      typography: {
+        fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        fontSize: '15px',
+        lineHeight: '1.7',
+        code: {
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+          fontSize: '14px',
+          fontWeight: '500',
+          color: '#f2f8ff',
+          backgroundColor: 'rgba(8, 19, 38, 0.92)'
+        },
+        headings: {
+          fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+          fontWeight: '700',
+          lineHeight: '1.2',
+          color: '#f8fbff'
+        },
+        links: {
+          color: '#21c7ff',
+          hover: '#78e2ff',
+          visited: '#8fdcff'
+        }
+      },
+      spacing: {
+        unit: 5,
+        sectionHorizontal: 32,
+        sectionVertical: 28
+      },
+      breakpoints: {
+        small: '50rem',
+        medium: '85rem',
+        large: '105rem'
+      },
+      menu: {
+        backgroundColor: '#08152d',
+        textColor: '#b9cde9',
+        activeTextColor: '#f6fbff',
+        groupItems: { textTransform: 'none' },
+        level1Items: { textTransform: 'none' }
+      },
+      logo: {
+        maxHeight: '0',
+        maxWidth: '0',
+        gutter: '0'
+      },
+      rightPanel: {
+        backgroundColor: '#05101f',
+        textColor: '#ebf5ff'
+      },
+      sidebar: {
+        backgroundColor: '#08152d',
+        textColor: '#b9cde9',
+        activeTextColor: '#f6fbff'
+      }
     }
+  }, document.getElementById('redoc-container'));
+
+  function wireRedocMenu() {
+    const menu = document.querySelector('#redoc-container .menu-content');
+    if (!menu || menu.dataset.csMenuWired === 'true') return;
+
+    menu.dataset.csMenuWired = 'true';
+
+    menu.addEventListener('click', function (e) {
+      const link = e.target.closest('a');
+      if (!link) return;
+
+      const li = link.closest('li');
+      if (!li) return;
+
+      const toggleBtn = li.querySelector('button[aria-expanded]');
+      const hasChildren = !!li.querySelector('ul');
+
+      if (toggleBtn && hasChildren) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleBtn.click();
+      }
+    }, true);
+  }
+
+  const redocObserver = new MutationObserver(() => {
+    wireRedocMenu();
   });
-}, 800);
+
+  redocObserver.observe(document.getElementById('redoc-container'), {
+    childList: true,
+    subtree: true
+  });
+
+  wireRedocMenu();
+</script>
 
   </script>
 </body>
