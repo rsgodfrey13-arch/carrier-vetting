@@ -198,13 +198,12 @@
       background: transparent !important;
     }
 
-    #redoc-container .menu-content,
-    #redoc-container .menu-content div,
-    #redoc-container .menu-content span,
-    #redoc-container .menu-content label,
-    #redoc-container .menu-content a {
-      color: var(--docs-text-muted) !important;
-    }
+#redoc-container .menu-content,
+#redoc-container .menu-content div,
+#redoc-container .menu-content label,
+#redoc-container .menu-content a {
+  color: var(--docs-text-muted) !important;
+}
 
     #redoc-container .menu-content a:hover,
     #redoc-container .menu-content a:focus,
@@ -505,13 +504,16 @@
 }
 
 #redoc-container .menu-content a,
-#redoc-container .menu-content button {
+#redoc-container .menu-content button,
+#redoc-container .menu-content label {
   cursor: pointer;
+  pointer-events: auto;
   border-radius: 12px;
 }
 
 #redoc-container .menu-content a:hover,
-#redoc-container .menu-content button:hover {
+#redoc-container .menu-content button:hover,
+#redoc-container .menu-content label:hover {
   color: var(--docs-text-primary) !important;
 }
 
