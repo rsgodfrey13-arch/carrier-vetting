@@ -436,9 +436,7 @@
         font-size: 16px;
       }
     }
-#redoc-container .menu-content {
-  pointer-events: auto;
-}
+
 /* =========================================
    REAL FIXES FOR REDOC RESPONSE UI
    ========================================= */
@@ -507,18 +505,13 @@
 }
 
 #redoc-container .menu-content a,
-#redoc-container .menu-content label,
-#redoc-container .menu-content span,
-#redoc-container .menu-content [role="link"] {
+#redoc-container .menu-content button {
   cursor: pointer;
-  pointer-events: auto;
   border-radius: 12px;
 }
 
 #redoc-container .menu-content a:hover,
-#redoc-container .menu-content label:hover,
-#redoc-container .menu-content span:hover,
-#redoc-container .menu-content [role="link"]:hover {
+#redoc-container .menu-content button:hover {
   color: var(--docs-text-primary) !important;
 }
 
@@ -527,6 +520,20 @@
   padding: 8px 10px 0 10px;
 }
 
+html {
+  scroll-behavior: auto;
+}
+
+#site-header {
+  position: relative;
+  z-index: 50;
+}
+
+.docs-shell {
+  position: relative;
+  z-index: 1;
+}
+    
   </style>
 </head>
 <body class="carrier-list">
@@ -566,9 +573,9 @@
       expandResponses: '200,201',
       hideDownloadButton: false,
       hideHostname: true,
-      nativeScrollbars: true,
-      pathInMiddlePanel: true,
-      scrollYOffset: '#site-header',
+      nativeScrollbars: false,
+      pathInMiddlePanel: false,
+      scrollYOffset: 0,
       requiredPropsFirst: true,
       sortPropsAlphabetically: false,
       theme: {
