@@ -855,6 +855,16 @@ html {
 /* placeholder dim */
 .api-dropdown input::placeholder { color: rgba(255,255,255,0.18) !important; }
 </style>
+
+<style>
+.left-nav{width:260px;padding:12px}
+.left-nav .nav-toggle{display:block;width:100%;text-align:left;background:#06232e;color:#e6f6fb;border:0;padding:10px;border-radius:8px;cursor:pointer}
+.left-nav .nav-submenu{display:none;margin:8px 0;padding:8px;background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.01));border-radius:6px}
+.left-nav .nav-group.open .nav-submenu{display:block}
+.left-nav .nav-submenu a{display:block;color:#d6eef4;padding:8px;text-decoration:none;border-radius:4px}
+.swagger-ui .servers, .swagger-ui .servers select, .swagger-ui .scheme-container,
+.api-dropdown, .api-dropdown input {background:#07151a!important;color:#cfeff4!important;border:1px solid rgba(255,255,255,.06)!important;border-radius:6px!important}
+</style>
   
 </head>
 <body class="carrier-list">
@@ -1074,5 +1084,15 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 });
 </script>
+
+<script>
+document.addEventListener('click', e=>{
+  const btn=e.target.closest('.nav-toggle'); if(!btn) return;
+  const g=btn.closest('.nav-group'); const open=g.classList.toggle('open');
+  btn.setAttribute('aria-expanded', String(open));
+  g.parentElement.querySelectorAll('.nav-group').forEach(h=>{ if(h!==g){ h.classList.remove('open'); h.querySelector('.nav-toggle').setAttribute('aria-expanded','false'); }});
+});
+</script>
+  
 </body>
 </html>
