@@ -640,7 +640,24 @@ html {
   background: transparent !important;
 }
 
-    
+ #redoc-container .api-content * {
+  background-color: transparent;
+}
+
+#redoc-container .api-content pre,
+#redoc-container .api-content code,
+#redoc-container .api-content table,
+#redoc-container .api-content td,
+#redoc-container .api-content th,
+#redoc-container .api-content [role="tablist"],
+#redoc-container .api-content li[data-rttab="true"],
+#redoc-container .api-content button,
+#redoc-container .api-content button > div,
+#redoc-container .api-content [class*="server"] > div,
+#redoc-container .api-content [class*="endpoint"] > div,
+#redoc-container .api-content [class*="url"] > div {
+  background-color: rgba(7, 19, 41, 0.98) !important;
+}   
   </style>
 </head>
 <body class="carrier-list">
@@ -784,50 +801,17 @@ html {
       }
     }, document.getElementById('redoc-container'));
 
+setTimeout(() => {
+  const menu = document.querySelector('#redoc-container .menu-content');
+  if (!menu) return;
 
-        function expandAllRedocGroups() {
-      const menu = document.querySelector('#redoc-container .menu-content');
-      if (!menu) return;
-
-      const buttons = Array.from(
-        menu.querySelectorAll('button[aria-expanded], svg')
-      )
-        .map(el => el.closest('button'))
-        .filter(Boolean);
-
-      const uniqueButtons = [...new Set(buttons)];
-
-      uniqueButtons.forEach((btn) => {
-        const expanded = btn.getAttribute('aria-expanded');
-        if (expanded === 'false') {
-          btn.click();
-        }
-      });
+  const expandButtons = menu.querySelectorAll('button[aria-label*="expand" i], button[aria-expanded]');
+  expandButtons.forEach((btn) => {
+    if (btn.getAttribute('aria-expanded') === 'false') {
+      btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     }
-
-    function tryExpandRedocGroups(attempt = 0) {
-      const menu = document.querySelector('#redoc-container .menu-content');
-      if (!menu) {
-        if (attempt < 20) {
-          setTimeout(() => tryExpandRedocGroups(attempt + 1), 250);
-        }
-        return;
-      }
-
-      expandAllRedocGroups();
-
-      const observer = new MutationObserver(() => {
-        expandAllRedocGroups();
-      });
-
-      observer.observe(menu, {
-        childList: true,
-        subtree: true
-      });
-    }
-
-    tryExpandRedocGroups();
-    
+  });
+}, 800);
 
   </script>
 </body>
