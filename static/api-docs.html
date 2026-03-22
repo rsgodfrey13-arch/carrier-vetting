@@ -298,17 +298,15 @@
   color: #eaf6ff !important;
 }
 
-    #redoc-container .api-content pre,
-    #redoc-container .api-content code,
-    #redoc-container .api-content .redoc-json,
-    #redoc-container .api-content [class*="codeBlock"],
-    #redoc-container .api-content [class*="CodeBlock"],
-    #redoc-container .api-content [class*="sample"] > div,
-    #redoc-container .api-content [class*="sample"] pre {
-      background: var(--docs-code-bg) !important;
-      border: 1px solid rgba(96, 163, 255, 0.16) !important;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-    }
+#redoc-container .api-content pre,
+#redoc-container .api-content code,
+#redoc-container .api-content .redoc-json,
+#redoc-container .api-content [class*="codeBlock"],
+#redoc-container .api-content [class*="CodeBlock"] {
+  background: var(--docs-code-bg) !important;
+  border: 1px solid rgba(96, 163, 255, 0.16) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
 
     #redoc-container .api-content pre {
       border-radius: 18px !important;
@@ -751,6 +749,42 @@ html {
   background: rgba(10, 35, 75, 0.96) !important;
   color: #f6fbff !important;
   border: 1px solid rgba(129, 188, 255, 0.18) !important;
+}
+
+/* fix only the request samples server/url area */
+#redoc-container .api-content input[type="text"],
+#redoc-container .api-content input[readonly],
+#redoc-container .api-content textarea[readonly],
+#redoc-container .api-content select,
+#redoc-container .api-content div[class*="server"] input,
+#redoc-container .api-content div[class*="Server"] input,
+#redoc-container .api-content div[class*="url"] input,
+#redoc-container .api-content div[class*="Url"] input {
+  background: rgba(8, 19, 38, 0.96) !important;
+  color: #f6fbff !important;
+  -webkit-text-fill-color: #f6fbff !important;
+  border: 1px solid rgba(129, 188, 255, 0.22) !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+/* label above the path field */
+#redoc-container .api-content div[class*="server"],
+#redoc-container .api-content div[class*="Server"],
+#redoc-container .api-content div[class*="url"],
+#redoc-container .api-content div[class*="Url"] {
+  background: transparent !important;
+  color: #eaf6ff !important;
+}
+
+/* catch the light wrapper around the readonly path field */
+#redoc-container .api-content div[class*="server"] > div,
+#redoc-container .api-content div[class*="Server"] > div,
+#redoc-container .api-content div[class*="url"] > div,
+#redoc-container .api-content div[class*="Url"] > div {
+  background: rgba(8, 19, 38, 0.96) !important;
+  border: 1px solid rgba(129, 188, 255, 0.22) !important;
+  box-shadow: none !important;
 }
     
   </style>
