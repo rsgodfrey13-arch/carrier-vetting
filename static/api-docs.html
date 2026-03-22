@@ -205,20 +205,20 @@
   color: var(--docs-text-muted) !important;
 }
 
-    #redoc-container .menu-content a:hover,
-    #redoc-container .menu-content a:focus,
-    #redoc-container .menu-content li.active > label,
-    #redoc-container .menu-content li.active > span,
-    #redoc-container .menu-content [aria-current="true"],
-    #redoc-container .menu-content [data-item-id].active {
-      color: var(--docs-text-primary) !important;
-    }
+#redoc-container .menu-content a:hover,
+#redoc-container .menu-content a:focus,
+#redoc-container .menu-content li.active > label,
+#redoc-container .menu-content li.active > a,
+#redoc-container .menu-content [aria-current="true"],
+#redoc-container .menu-content [data-item-id].active {
+  color: var(--docs-text-primary) !important;
+}
 
-    #redoc-container .menu-content label,
-    #redoc-container .menu-content a,
-    #redoc-container .menu-content span {
-      transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
-    }
+#redoc-container .menu-content label,
+#redoc-container .menu-content a,
+#redoc-container .menu-content button {
+  transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
+}
 
     #redoc-container .menu-content li {
       border-radius: 14px;
