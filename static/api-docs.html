@@ -798,6 +798,64 @@ html {
 }
     
   </style>
+
+<!-- Dark-theme nav + dropdown styles -->
+<style>
+/* Left nav container */
+.left-nav { width: 260px; font-family: inherit; padding: 12px; }
+
+/* Top-level toggle button */
+.left-nav .nav-toggle {
+  display:block;
+  width:100%;
+  text-align:left;
+  background: linear-gradient(180deg,#06232e,#0b3140);
+  color:#e6f6fb;
+  border:0;
+  padding:10px 14px;
+  border-radius:8px;
+  cursor:pointer;
+  font-weight:600;
+}
+
+/* Submenu hidden by default */
+.left-nav .nav-submenu {
+  margin:8px 0 16px 6px;
+  padding:8px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border-radius:6px;
+  list-style:none;
+  display:none;
+}
+
+/* Show submenu when parent has .open */
+.left-nav .nav-group.open .nav-submenu { display:block; }
+
+.left-nav .nav-submenu li a {
+  display:block;
+  color:#d6eef4;
+  padding:8px;
+  text-decoration:none;
+  border-radius:4px;
+}
+.left-nav .nav-submenu li a:hover {
+  background: rgba(255,255,255,0.03);
+}
+
+/* Force dark background for generated dropdowns (override library defaults) */
+.api-dropdown, .api-dropdown input, .api-dropdown .select,
+.swagger-ui .servers, .swagger-ui .servers select,
+.swagger-ui .scheme-container {
+  background: #07151a !important;
+  color: #cfeff4 !important;
+  border: 1px solid rgba(255,255,255,0.06) !important;
+  border-radius:6px !important;
+}
+
+/* placeholder dim */
+.api-dropdown input::placeholder { color: rgba(255,255,255,0.18) !important; }
+</style>
+  
 </head>
 <body class="carrier-list">
 
@@ -970,5 +1028,31 @@ html {
 
     wireRedocMenu();
   </script>
+
+  <script>
+/* Simple toggle to open/close submenus without navigating away */
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.nav-toggle').forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      var group = btn.closest('.nav-group');
+      var isOpen = group.classList.contains('open');
+      // close any sibling group (optional - keep only one open)
+      group.parentElement.querySelectorAll('.nav-group').forEach(function(g){ if(g!==group) { g.classList.remove('open'); g.querySelector('.nav-toggle').setAttribute('aria-expanded','false'); } });
+      if(isOpen) {
+        group.classList.remove('open');
+        btn.setAttribute('aria-expanded','false');
+      } else {
+        group.classList.add('open');
+        btn.setAttribute('aria-expanded','true');
+      }
+    });
+
+    // keyboard access
+    btn.addEventListener('keydown', function(e){
+      if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.click(); }
+    });
+  });
+});
+</script>
 </body>
 </html>
