@@ -854,6 +854,50 @@ html {
 
 /* placeholder dim */
 .api-dropdown input::placeholder { color: rgba(255,255,255,0.18) !important; }
+
+
+/* Final endpoint detail overrides to eliminate lingering white panels */
+#redoc-container .api-content button[aria-expanded="true"] + div,
+#redoc-container .api-content button[aria-expanded="true"] + div > div,
+#redoc-container .api-content button[aria-expanded="true"] + div section,
+#redoc-container .api-content button[aria-expanded="true"] + div article,
+#redoc-container .api-content button[aria-expanded="true"] + div div:not([role="tablist"]),
+#redoc-container .api-content button[aria-expanded="true"] + div label {
+  background-color: transparent !important;
+  color: #dcecff !important;
+}
+
+#redoc-container .api-content button[aria-expanded="true"] + div [class*="sample"] > div,
+#redoc-container .api-content button[aria-expanded="true"] + div [class*="Sample"] > div,
+#redoc-container .api-content button[aria-expanded="true"] + div [class*="server"] > div,
+#redoc-container .api-content button[aria-expanded="true"] + div [class*="Server"] > div,
+#redoc-container .api-content button[aria-expanded="true"] + div [class*="url"] > div,
+#redoc-container .api-content button[aria-expanded="true"] + div [class*="Url"] > div,
+#redoc-container .api-content button[aria-expanded="true"] + div input[readonly],
+#redoc-container .api-content button[aria-expanded="true"] + div input[type="text"],
+#redoc-container .api-content button[aria-expanded="true"] + div textarea[readonly],
+#redoc-container .api-content button[aria-expanded="true"] + div select {
+  background: linear-gradient(180deg, rgba(11, 24, 46, 0.98), rgba(6, 16, 32, 0.98)) !important;
+  color: #f5fbff !important;
+  -webkit-text-fill-color: #f5fbff !important;
+  border: 1px solid rgba(120, 190, 255, 0.28) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    0 10px 24px rgba(0, 7, 20, 0.24) !important;
+}
+
+#redoc-container .api-content button[aria-expanded="true"] + div p,
+#redoc-container .api-content button[aria-expanded="true"] + div span,
+#redoc-container .api-content button[aria-expanded="true"] + div small {
+  color: #dcecff !important;
+}
+
+#redoc-container .api-content button[aria-expanded="true"] + div input::placeholder,
+#redoc-container .api-content button[aria-expanded="true"] + div textarea::placeholder {
+  color: rgba(188, 214, 244, 0.72) !important;
+}
+
+
 </style>
   
 </head>
