@@ -682,11 +682,11 @@ html {
 
 <script>
 (function () {
-  function bindRedocCategoryClickBlock() {
+  function bindRedocCategoryToggleOnly() {
     const menu = document.querySelector('#redoc-container .menu-content');
-    if (!menu || menu.dataset.csCategoryBlockBound === 'true') return;
+    if (!menu || menu.dataset.csCategoryToggleBound === 'true') return;
 
-    menu.dataset.csCategoryBlockBound = 'true';
+    menu.dataset.csCategoryToggleBound = 'true';
 
     menu.addEventListener('click', function (e) {
       const anchor = e.target.closest('a');
@@ -695,11 +695,39 @@ html {
       const li = anchor.closest('li');
       if (!li) return;
 
-      const hasChildren = !!li.querySelector(':scope > ul');
-      if (!hasChildren) return; // real endpoint item, allow normal nav
+      const childList = li.querySelector(':scope > ul');
+      if (!childList) return; // real endpoint item, let it navigate normally
 
-      // category row: block only navigation, let ReDoc keep its own expand behavior
+      // Category row clicked: block ReDoc jump behavior completely
       e.preventDefault();
+      e.stopPropagation();
+      if (typeof e.stopImmediatePropagation === 'function') {
+        e.stopImmediatePropagation();
+      }
+
+      // Try to find a separate expand/collapse control in the same row
+      const toggle =
+        li.querySelector(':scope > button[aria-expanded]') ||
+        li.querySelector(':scope > label') ||
+        li.querySelector(':scope > span[role="button"]') ||
+        li.querySelector(':scope > div[role="button"]') ||
+        li.querySelector(':scope > button') ||
+        li.querySelector('svg')?.parentElement;
+
+      if (toggle && toggle !== anchor) {
+        toggle.click();
+        return;
+      }
+
+      // Fallback: manually toggle the child list
+      const isOpen =
+        !childList.hidden &&
+        getComputedStyle(childList).display !== 'none';
+
+      childList.hidden = isOpen;
+      childList.style.display = isOpen ? 'none' : '';
+      li.setAttribute('aria-expanded', String(!isOpen));
+      li.classList.toggle('open', !isOpen);
     }, true);
   }
 
@@ -709,7 +737,7 @@ html {
       const menu = document.querySelector('#redoc-container .menu-content');
       if (menu) {
         clearInterval(timer);
-        bindRedocCategoryClickBlock();
+        bindRedocCategoryToggleOnly();
       }
       tries += 1;
       if (tries > 40) clearInterval(timer);
