@@ -112,6 +112,16 @@ function normalizeDotsWithInvalid(input) {
   return { unique, invalid };
 }
 
+function carrierSelectColumns(alias = 'c', { includeCompatibilityAliases = true } = {}) {
+  const columns = [`${alias}.*`];
+
+  if (includeCompatibilityAliases) {
+    columns.unshift(`${alias}.dotnumber AS dot`);
+  }
+
+  return columns.join(',\n        ');
+}
+
 ;
 
 // ---------------------------------------------
@@ -252,18 +262,18 @@ router.post('/me/carriers/import', async (req, res) => {
     const dot = req.params.dot;
 
     try {
+      const carrierColumns = carrierSelectColumns('c');
       const carrierResult = await pool.query(`
         SELECT
-          dotnumber AS dot,
-          phystreet as address1,
-          null as address2,
-          phycity as city,
-          phystate as state,
-          phyzipcode as zip,
-          TO_CHAR(retrieval_date::timestamp, 'Mon DD, YYYY HH12:MI AM EST') AS retrieval_date_formatted,
-          *
-        FROM public.carriers
-        WHERE dotnumber = $1;
+          ${carrierColumns},
+          c.phystreet AS address1,
+          NULL AS address2,
+          c.phycity AS city,
+          c.phystate AS state,
+          c.phyzipcode AS zip,
+          TO_CHAR(c.retrieval_date::timestamp, 'Mon DD, YYYY HH12:MI AM EST') AS retrieval_date_formatted
+        FROM public.carriers c
+        WHERE c.dotnumber = $1;
       `, [dot]);
 
       if (carrierResult.rows.length === 0) {
@@ -321,61 +331,56 @@ router.get('/carriers', async (req, res) => {
     let i = 1;
 
     if (dot) {
-      conditions.push(`dotnumber = $${i}`);
+      conditions.push(`c.dotnumber = $${i}`);
       params.push(dot);
       i++;
     }
 
     if (mc) {
-      conditions.push(`mc_number = $${i}`);
+      conditions.push(`c.mc_number = $${i}`);
       params.push(mc);
       i++;
     }
 
     if (legalname) {
-      conditions.push(`legalname ILIKE $${i}`);
+      conditions.push(`c.legalname ILIKE $${i}`);
       params.push(`%${legalname}%`);
       i++;
     }
 
     if (dbaname) {
-      conditions.push(`dbaname ILIKE $${i}`);
+      conditions.push(`c.dbaname ILIKE $${i}`);
       params.push(`%${dbaname}%`);
       i++;
     }
 
     if (city) {
-      conditions.push(`phycity ILIKE $${i}`);
+      conditions.push(`c.phycity ILIKE $${i}`);
       params.push(`%${city}%`);
       i++;
     }
 
     if (state) {
-      conditions.push(`phystate ILIKE $${i}`);
+      conditions.push(`c.phystate ILIKE $${i}`);
       params.push(`%${state}%`);
       i++;
     }
 
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
+    const carrierColumns = carrierSelectColumns('c');
 
     const sql = `
       SELECT
-        dotnumber AS dot,
-        legalname,
-        dbaname,
-        phycity AS city,
-        phystate AS state,
-        allowedtooperate,
-        safetyrating
-      FROM carriers
+        ${carrierColumns}
+      FROM carriers c
       ${whereClause}
-      ORDER BY legalname
+      ORDER BY c.legalname
       LIMIT ${limit} OFFSET ${offset};
     `;
 
     const countSql = `
       SELECT COUNT(*)::int AS count
-      FROM carriers
+      FROM carriers c
       ${whereClause};
     `;
 
@@ -462,16 +467,11 @@ router.get('/me/carriers', async (req, res) => {
     }
 
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
+    const carrierColumns = carrierSelectColumns('c');
 
     const sql = `
       SELECT
-        c.dotnumber AS dot,
-        c.legalname,
-        c.dbaname,
-        c.phycity  AS city,
-        c.phystate AS state,
-        c.allowedtooperate,
-        c.safetyrating,
+        ${carrierColumns},
         uc.added_at
       FROM user_carriers uc
       JOIN carriers c
