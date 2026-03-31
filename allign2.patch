@@ -1,0 +1,713 @@
+diff --git a/src/routes/public/contractPublic.routes.js b/src/routes/public/contractPublic.routes.js
+index 19877c690f8f9a0e9b733697cd2bbea5b534a0bc..4e3431628285ed96b9fbb6a26904ab7434cc2ae8 100644
+--- a/src/routes/public/contractPublic.routes.js
++++ b/src/routes/public/contractPublic.routes.js
+@@ -349,51 +349,51 @@ router.get("/contract/:token/certificate", async (req, res) => {
+         uc.display_name AS broker_name,
+         ca.accepted_at,
+         ca.accepted_name,
+         ca.accepted_title,
+         ca.accepted_email,
+         ca.accepted_ip,
+         ca.accepted_user_agent,
+         ca.document_hash_sha256,
+         ca.document_storage_key
+       FROM public.contracts c
+       JOIN public.user_contracts uc ON uc.id = c.user_contract_id
+       LEFT JOIN public.contract_acceptances ca ON ca.contract_id = c.contract_id
+       WHERE c.token = $1
+       LIMIT 1;
+       `,
+       [token]
+     );
+ 
+     if (!rows.length) return res.status(404).send("Invalid link");
+ 
+     const r = rows[0];
+     if (r.token_expires_at && new Date(r.token_expires_at) < new Date()) {
+       return res.status(410).send("This link has expired");
+     }
+ 
+-    const accepted = (r.status === "ACKNOWLEDGED" || r.status === "SIGNED");
++    const accepted = (r.status === "SIGNED" || r.status === "ACKNOWLEDGED");
+     const acceptedAt = r.accepted_at ? new Date(r.accepted_at).toISOString() : "";
+     const signedAt = r.signed_at ? new Date(r.signed_at).toISOString() : "";
+ 
+     res.setHeader("Content-Type", "text/html; charset=utf-8");
+     res.setHeader("Cache-Control", "no-store");
+ 
+     return res.send(`<!doctype html>
+ <html>
+ <head>
+   <meta name="viewport" content="width=device-width, initial-scale=1"/>
+   <title>Signature Certificate</title>
+   <style>
+     body{
+       font-family: Inter, "Segoe UI", Arial, sans-serif;
+       margin:0;
+       padding:24px;
+       color:#E5E7EB;
+       background: radial-gradient(circle at 12% 0%, rgba(0,183,255,.18), transparent 42%), #020617;
+     }
+     .wrap{ max-width:900px; margin:0 auto; }
+     .h{ font-size:24px; font-weight:800; margin-bottom:10px; letter-spacing:.01em; color:#F1F5F9; }
+     .sub{ color:#cbd5e1; margin-bottom:18px; line-height:1.45; }
+     .box{ border:1px solid rgba(56,189,248,.25); border-radius:14px; padding:16px; margin:12px 0; background:rgba(11,17,32,.82); box-shadow:0 12px 30px rgba(2,6,23,.35); }
+     .row{ display:flex; gap:14px; flex-wrap:wrap; }
+     .col{ flex:1; min-width:260px; }
+@@ -490,90 +490,90 @@ router.get("/contract/:token/certificate", async (req, res) => {
+       <a class="btn" href="#" onclick="window.print(); return false;">Print / Save as PDF</a>
+     </div>
+   </div>
+ 
+   <script>
+     function escapeHtmlServer(str){
+       return String(str||"")
+         .replaceAll("&","&amp;")
+         .replaceAll("<","&lt;")
+         .replaceAll(">","&gt;")
+         .replaceAll('"',"&quot;")
+         .replaceAll("'","&#039;");
+     }
+   </script>
+ </body>
+ </html>`);
+   } catch (err) {
+     console.error("GET /contract/:token/certificate error:", err?.message, err);
+     return res.status(500).send("Server error");
+   }
+ });
+ 
+ 
+ 
+ 
+-/** ---------- CONTRACT LANDING PAGE (token + ACK UI) ---------- **/
++/** ---------- CONTRACT LANDING PAGE (token + acceptance UI) ---------- **/
+ router.get("/contract/:token", async (req, res) => {
+   const token = String(req.params.token || "").trim();
+   if (!token) return res.status(400).send("Missing token");
+ 
+   try {
+     const { rows } = await pool.query(
+       `
+       SELECT
+         contract_id,
+         token_expires_at,
+         status,
+         insurance_required,
+         w9_required,
+         ach_required
+       FROM public.contracts
+       WHERE token = $1
+       LIMIT 1;
+       `,
+       [token]
+     );
+ 
+     if (rows.length === 0) return res.status(404).send("Invalid link");
+ 
+     const contract = rows[0];
+     if (contract.token_expires_at && new Date(contract.token_expires_at) < new Date()) {
+       return res.status(410).send("This link has expired");
+     }
+ 
+     await pool.query(
+       `
+       UPDATE public.contracts
+       SET status = 'VIEWED', updated_at = NOW()
+       WHERE token = $1 AND status NOT IN ('VIEWED','ACKNOWLEDGED','SIGNED');
+       `,
+       [token]
+     );
+ 
+     const pdfUrl = `/contract/${encodeURIComponent(token)}/pdf`;
+-    const alreadyAccepted = (contract.status === "ACKNOWLEDGED" || contract.status === "SIGNED");
++    const alreadyAccepted = (contract.status === "SIGNED" || contract.status === "ACKNOWLEDGED");
+     const requirements = {
+       w9: normalizeRequiredFlag(contract.w9_required, true),
+       insurance: normalizeRequiredFlag(contract.insurance_required, false),
+       ach: normalizeRequiredFlag(contract.ach_required, false),
+     };
+ 
+     const [achDocRes, insDocRes, w9DocRes, otherDocRes] = await Promise.all([
+       pool.query(
+         `
+         SELECT original_filename
+         FROM public.contract_ach_documents
+         WHERE contract_id::text = $1::text
+         ORDER BY created_at DESC
+         LIMIT 1
+         `,
+         [contract.contract_id]
+       ),
+       pool.query(
+         `
+         SELECT original_filename
+         FROM public.contract_insurance_documents
+         WHERE contract_id::text = $1::text
+         ORDER BY created_at DESC
+         LIMIT 1
+         `,
+@@ -802,67 +802,67 @@ router.get("/contract/:token", async (req, res) => {
+ </head>
+ <body>
+   <div class="wrap">
+     <div class="top">
+       <div class="brand">Carrier Shark — Carrier Agreement</div>
+       <a class="btn" href="${pdfUrl}" target="_blank" rel="noopener">Open PDF</a>
+     </div>
+ 
+     <div class="card">
+       <div class="pdfWrap">
+         <iframe src="${pdfUrl}"></iframe>
+         <div class="muted">If the PDF doesn’t display on your device, tap “Open PDF”.</div>
+       </div>
+       
+       <div class="pdfMobileCard">
+         <div class="pdfMobileTitle">Carrier Agreement</div>
+         <div class="pdfMobileSub">
+           Tap below to review the agreement in a clean PDF viewer.
+         </div>
+         <a class="pdfMobileBtn" href="${pdfUrl}" target="_blank" rel="noopener">Open PDF</a>
+       </div>
+ 
+       <div class="form" id="ackWrap">
+         ${
+           alreadyAccepted
+-            ? `<div class="msg ok"><strong>Accepted.</strong> This agreement has already been acknowledged.</div>`
++            ? `<div class="msg ok"><strong>Signed.</strong> This agreement has already been signed.</div>`
+             : `
+ <div class="card" style="margin-top:14px; background: rgba(255,255,255,0.04);">
+   <div style="font-size:13px; line-height:1.5;">
+     <strong>Platform Notice:</strong><br/>
+     Carrier Shark provides technology for document delivery and electronic acceptance.
+     Carrier Shark is <strong>not a party</strong> to this agreement and assumes no obligations under it.
+     Carrier Shark does not verify identity, authority, insurance coverage, or regulatory status of any party.
+     Users are responsible for independent verification.
+   </div>
+ </div>
+ 
+ <div class="checkline" style="margin-top:14px;">
+   <input id="ack" type="checkbox" />
+   <div>
+     <div style="font-weight:700;">
+-      I acknowledge and accept this agreement.
++      I accept and electronically sign this agreement.
+     </div>
+     <div class="muted">
+       By submitting, you represent that you are authorized to accept on behalf of the carrier.
+     </div>
+   </div>
+ </div>
+ 
+ 
+         <div class="row">
+           <div>
+             <label for="name">Name</label>
+             <input id="name" type="text" placeholder="Full name" />
+           </div>
+           <div>
+             <label for="title">Title</label>
+             <input id="title" type="text" placeholder="Owner / Dispatcher / Safety" />
+           </div>
+         </div>
+ 
+         <div>
+           <label for="email">Email (optional)</label>
+           <input id="email" type="email" placeholder="name@company.com" />
+         </div>
+ 
+ <div class="card docsCard">
+@@ -1099,100 +1099,100 @@ function waitForOtp() {
+ 
+         cfg.inputEl?.addEventListener("change", () => {
+           const file = cfg.inputEl.files && cfg.inputEl.files[0];
+           uploadDoc(key, file);
+         });
+       });
+ 
+       function setMsg(text, cls) {
+         msg.className = "msg " + (cls || "");
+         msg.textContent = text || "";
+       }
+ 
+       ackEl?.addEventListener("change", updateAcceptButtonState);
+       nameEl?.addEventListener("input", updateAcceptButtonState);
+       titleEl?.addEventListener("input", updateAcceptButtonState);
+       updateAcceptButtonState();
+ 
+       btn.addEventListener("click", async () => {
+         setMsg("");
+       
+         const ack = ackEl.checked;
+         const name = (nameEl.value || "").trim();
+         const title = (titleEl.value || "").trim();
+         const email = (emailEl.value || "").trim();
+       
+-        if (!ack) return setMsg("Please check the acknowledgment box.", "err");
++        if (!ack) return setMsg("Please confirm acceptance of the agreement.", "err");
+         if (!name) return setMsg("Name is required.", "err");
+         if (!title) return setMsg("Title is required.", "err");
+         const missingDocs = missingRequiredDocs();
+         if (missingDocs.length) {
+           return setMsg("Please upload all required supporting documents before accepting.", "err");
+         }
+       
+         btn.disabled = true;
+         btn.textContent = "Verifying...";
+       
+         try {
+           // 1️⃣ Start MFA
+           const startResp = await fetch("/contract/" + encodeURIComponent(token) + "/mfa/start", {
+             method: "POST",
+             headers: { "Content-Type": "application/json" },
+             body: JSON.stringify({})
+           });
+       
+           const startData = await startResp.json().catch(() => ({}));
+           if (!startResp.ok) {
+             throw new Error(startData.error || "Failed to send authentication code.");
+           }
+       
+ // 2️⃣ If not already validated, prompt for OTP
+ if (startData.status !== "MFA_ALREADY_VALID") {
+   const deliveryTarget = startData.deliveryTarget || "your email";
+ 
+   openOtpModal(deliveryTarget);
+   const code = await waitForOtp();
+ 
+   const verifyResp = await fetch(
+     "/contract/" + encodeURIComponent(token) + "/mfa/verify",
+     {
+       method: "POST",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify({
+         mfa_event_id: startData.mfa_event_id,
+         otp: code
+       })
+     }
+   );
+ 
+   const verifyData = await verifyResp.json().catch(() => ({}));
+   if (!verifyResp.ok) {
+     throw new Error(verifyData.error || "Invalid authentication code.");
+   }
+ }
+       
+-          // 3️⃣ Now submit ACK
++          // 3️⃣ Now submit acceptance
+           btn.textContent = "Submitting...";
+       
+           const resp = await fetch("/contract/" + encodeURIComponent(token) + "/ack", {
+             method: "POST",
+             headers: { "Content-Type": "application/json" },
+             body: JSON.stringify({ ack: true, name, title, email: email || null })
+           });
+       
+           const data = await resp.json().catch(() => ({}));
+       
+           if (!resp.ok) {
+             setMsg(data.error || "Failed to submit.", "err");
+             btn.disabled = false;
+             btn.textContent = "Accept Agreement";
+           } else {
+             document.getElementById("accepted-screen").style.display = "flex";
+             document.querySelector(".wrap").style.display = "none";
+           }
+         } catch (e) {
+           setMsg(e.message || "Network error. Please try again.", "err");
+           btn.disabled = false;
+           btn.textContent = "Accept Agreement";
+         }
+       });
+ 
+@@ -1927,51 +1927,51 @@ router.post("/contract/:token/ack", async (req, res) => {
+       pool.query(
+         `SELECT id FROM public.contract_insurance_documents WHERE contract_id::text = $1::text ORDER BY created_at DESC LIMIT 1`,
+         [contract_id]
+       ),
+       pool.query(
+         `SELECT id FROM public.contract_w9_documents WHERE contract_id::text = $1::text ORDER BY created_at DESC LIMIT 1`,
+         [contract_id]
+       ),
+     ]);
+ 
+     const uploadedDocs = {
+       ach: Boolean(achDocRes.rows[0]),
+       insurance: Boolean(insDocRes.rows[0]),
+       w9: Boolean(w9DocRes.rows[0]),
+     };
+ 
+     const missingRequired = Object.keys(requiredDocs).filter(
+       (key) => requiredDocs[key] && !uploadedDocs[key]
+     );
+ 
+     if (missingRequired.length) {
+       return res.status(400).json({ error: "Missing required supporting documents" });
+     }
+ 
+     // Optional: if you want idempotent “already accepted”
+-    if (status === "ACKNOWLEDGED" || status === "SIGNED") {
++    if (status === "SIGNED" || status === "ACKNOWLEDGED") {
+       return res.json({ ok: true, status });
+     }
+ 
+     // Load PDF storage metadata (same relationship you use in /pdf)
+     const pdfMetaRes = await client.query(
+       `
+       SELECT uc.storage_provider, uc.storage_key
+       FROM public.contracts c
+       JOIN public.user_contracts uc
+         ON uc.id = c.user_contract_id
+       WHERE c.contract_id = $1
+       LIMIT 1;
+       `,
+       [contract_id]
+     );
+ 
+     if (!pdfMetaRes.rows.length) {
+       return res.status(500).json({ error: "Missing contract storage metadata" });
+     }
+ 
+     const { storage_provider, storage_key } = pdfMetaRes.rows[0];
+ 
+     if (storage_provider !== "DO_SPACES" || !storage_key) {
+       return res.status(500).json({ error: "Storage provider not configured" });
+     }
+@@ -2022,52 +2022,52 @@ router.post("/contract/:token/ack", async (req, res) => {
+     await client.query("BEGIN");
+ 
+     // (Optional but clean) Re-check token is still valid inside transaction
+     const contractRes2 = await client.query(
+       `
+       SELECT contract_id, token_expires_at, status
+       FROM public.contracts
+       WHERE contract_id::text = $1::text
+       LIMIT 1;
+       `,
+       [contract_id]
+     );
+ 
+     if (!contractRes2.rows.length) {
+       await client.query("ROLLBACK");
+       return res.status(404).json({ error: "Contract not found" });
+     }
+ 
+     const { token_expires_at: token_expires_at2, status: status2 } = contractRes2.rows[0];
+ 
+     if (token_expires_at2 && new Date(token_expires_at2) < new Date()) {
+       await client.query("ROLLBACK");
+       return res.status(410).json({ error: "This link has expired" });
+     }
+ 
+-    // If another request acknowledged it between our first check and now:
+-    if (status2 === "ACKNOWLEDGED" || status2 === "SIGNED") {
++    // If another request signed it between our first check and now:
++    if (status2 === "SIGNED" || status2 === "ACKNOWLEDGED") {
+       
+     await client.query("COMMIT");
+ 
+ // send emails AFTER commit (so acceptance isn't lost if mailgun hiccups)
+ try {
+   await sendContractAcceptedEmails({
+     token,
+     contract_id,
+     meta,
+     accepted_name,
+     accepted_title,
+     accepted_email,
+   });
+ } catch (e) {
+   console.error("Contract acceptance email failed:", e?.message, e);
+ }
+     
+     return res.json({ ok: true });
+     }
+ 
+     // ============================================================
+     // 3) MFA gate (must be inside transaction for correctness)
+     // ============================================================
+ 
+     const mfaOk = await client.query(
+@@ -2079,86 +2079,86 @@ try {
+         AND otp_verified_at > now() - interval '10 minutes'
+       ORDER BY otp_verified_at DESC
+       LIMIT 1;
+       `,
+       [contract_id]
+     );
+ 
+     if (!mfaOk.rows.length) {
+       await client.query("ROLLBACK");
+       return res.status(403).json({ error: "MFA_REQUIRED" });
+     }
+ 
+     const mfa_event_id = mfaOk.rows[0].id;
+ 
+     // ============================================================
+     // 4) Insert acceptance (store hash + storage_key, never overwrite)
+     // ============================================================
+ 
+     await client.query(
+       `
+       INSERT INTO public.contract_acceptances
+         (contract_id, method, accepted_name, accepted_title, accepted_email,
+          accepted_ip, accepted_user_agent, mfa_event_id,
+          document_hash_sha256, document_storage_key)
+       VALUES
+-        ($1, 'ACK', $2, $3, $4, $5, $6, $7, $8, $9)
++        ($1, 'SIGNED', $2, $3, $4, $5, $6, $7, $8, $9)
+       ON CONFLICT (contract_id) DO UPDATE
+         SET method = EXCLUDED.method,
+             accepted_name = EXCLUDED.accepted_name,
+             accepted_title = EXCLUDED.accepted_title,
+             accepted_email = EXCLUDED.accepted_email,
+             accepted_at = NOW(),
+             accepted_ip = EXCLUDED.accepted_ip,
+             accepted_user_agent = EXCLUDED.accepted_user_agent,
+             mfa_event_id = EXCLUDED.mfa_event_id,
+ 
+             -- prevent accidental future changes
+             document_hash_sha256 = COALESCE(contract_acceptances.document_hash_sha256, EXCLUDED.document_hash_sha256),
+             document_storage_key  = COALESCE(contract_acceptances.document_storage_key,  EXCLUDED.document_storage_key);
+       `,
+       [
+         contract_id,
+         accepted_name,
+         accepted_title,
+         accepted_email,
+         accepted_ip,
+         accepted_user_agent,
+         mfa_event_id,
+         document_hash_sha256,
+         storage_key,
+       ]
+     );
+ 
+     // ============================================================
+     // 5) Update contract status/timestamps
+     // ============================================================
+ 
+     await client.query(
+       `
+       UPDATE public.contracts
+-      SET status = 'ACKNOWLEDGED',
++      SET status = 'SIGNED',
+           signed_at = COALESCE(signed_at, now())
+       WHERE contract_id::text = $1::text;
+       `,
+       [contract_id]
+     );
+ 
+ await client.query("COMMIT");
+ 
+ // send emails AFTER commit (so acceptance isn't lost if mailgun hiccups)
+ try {
+   await sendContractAcceptedEmails({
+     token,
+     contract_id,
+     meta,
+     accepted_name,
+     accepted_title,
+     accepted_email,
+   });
+ } catch (e) {
+   console.error("Contract acceptance email failed:", e?.message, e);
+ }
+ 
+ return res.json({ ok: true });
+   } catch (err) {
+     try { await client.query("ROLLBACK"); } catch {}
+diff --git a/static/carrier.html b/static/carrier.html
+index 0b9c77ed573b4602fad81c806da7278402ea9bd3..7656166ca8a86ce229a9ba33960dcf5be3585b07 100644
+--- a/static/carrier.html
++++ b/static/carrier.html
+@@ -139,69 +139,69 @@
+           </button>
+           <div id="contract-sign-status" class="contract-sign-status" hidden></div>
+         </div>
+         
+         <button id="btn-add-carrier" class="pill-btn pill-add">+ Add Carrier</button>
+         <button id="btn-remove-carrier" class="pill-btn pill-remove pill-disabled">Remove Carrier</button>
+       </div>
+     </div> <!-- end .carrier-right -->
+   </div> <!-- end .carrier-header-top -->
+     <!-- Quick Jump (subtle) -->
+     <nav class="quick-jump" aria-label="Quick jump">
+       <span class="quick-jump-label">Jump to</span>
+   
+       <button type="button" class="quick-jump-link is-active" data-jump="carrier-header">Summary</button>
+       <button type="button" class="quick-jump-link" data-jump="section-safety">Safety</button>
+       <button type="button" class="quick-jump-link" data-jump="section-inspections">Inspections</button>
+       <button type="button" class="quick-jump-link" data-jump="ins-coverages-card">Insurance</button>
+       <button type="button" class="quick-jump-link" data-jump="carrier-documents">Documents</button>
+     </nav>
+   <div class="hero-accent-line"></div>
+ 
+   <section id="carrier-agreements" class="carrier-agreements glass-card" hidden>
+     <div class="carrier-docs-header">
+       <div class="agreements-left">
+         <div class="agreements-kicker">Agreements</div>
+-        <div id="agreements-status" class="agreements-status">No agreements accepted</div>
++        <div id="agreements-status" class="agreements-status">No signed agreements yet</div>
+       </div>
+       <div id="agreements-summary-meta" class="docs-summary-meta"></div>
+     </div>
+ 
+     <div id="agreements-table-wrap" class="docs-table-wrap">
+       <table class="docs-table" aria-label="Carrier agreements">
+         <thead>
+           <tr>
+             <th>Agreement</th>
+-            <th>Accepted Date</th>
++            <th>Signed Date</th>
+             <th>Document</th>
+             <th>Certificate</th>
+           </tr>
+         </thead>
+         <tbody id="agreements-table-body"></tbody>
+       </table>
+       <div id="agreements-mobile-list" class="docs-mobile-list" aria-label="Carrier agreements mobile"></div>
+-      <div id="agreements-empty" class="docs-empty">No agreements accepted yet.</div>
++      <div id="agreements-empty" class="docs-empty">No signed agreements yet.</div>
+     </div>
+   </section>
+   
+ </section>
+ 
+ 
+     <!-- MAIN GRID -->
+     <section class="card-grid">
+ 
+       <!-- Equipment Summary -->
+       <article id="section-equipment" class="info-card glass-card">
+         <div class="card-header">
+           <h2>Equipment Summary</h2>
+           <span class="card-tag">Assets</span>
+         </div>
+         <dl>
+           <div class="row">
+             <dt>Total Drivers</dt>
+             <dd id="field-totaldrivers">—</dd>
+           </div>
+           <div class="row">
+             <dt>Total Power Units</dt>
+             <dd id="field-totalpowerunits">—</dd>
+           </div>
+         </dl>
+diff --git a/static/js/pages/carrier.js b/static/js/pages/carrier.js
+index fed9f1a0cc72977b893cac0dac2d48ddfc1aca18..4debcf9e6168f57963ca319699aba0dc990dce36 100644
+--- a/static/js/pages/carrier.js
++++ b/static/js/pages/carrier.js
+@@ -1471,105 +1471,105 @@ if (data && data.source === "cache_stale") {
+     }
+ 
+     summaryEl.textContent = total > 0
+       ? `${total} Document${total === 1 ? "" : "s"} On File`
+       : "No documents on file";
+     wrap.hidden = false;
+   } catch (err) {
+     console.error("carrier documents load failed", err);
+     wrap.hidden = false;
+     emptyEl.classList.add("is-visible");
+   }
+ }
+ 
+ 
+ async function loadCarrierAgreements(dot) {
+   const wrap = document.getElementById("carrier-agreements");
+   const statusEl = document.getElementById("agreements-status");
+   const metaEl = document.getElementById("agreements-summary-meta");
+   const tableBodyEl = document.getElementById("agreements-table-body");
+   const mobileListEl = document.getElementById("agreements-mobile-list");
+   const emptyEl = document.getElementById("agreements-empty");
+ 
+   if (!wrap || !statusEl || !metaEl || !tableBodyEl || !mobileListEl || !emptyEl) return;
+ 
+   wrap.hidden = true;
+-  statusEl.textContent = "No agreements accepted";
++  statusEl.textContent = "No signed agreements yet";
+   metaEl.innerHTML = "";
+   tableBodyEl.innerHTML = "";
+   mobileListEl.innerHTML = "";
+   emptyEl.classList.remove("is-visible");
+   setContractSignStatus("", false);
+ 
+   try {
+     const res = await fetch(`/api/carrier-agreements/${encodeURIComponent(dot)}`, {
+       credentials: "include"
+     });
+ 
+     if (!res.ok) return;
+ 
+     const data = await res.json().catch(() => null);
+     if (!data || typeof data !== "object") return;
+ 
+     const count = Number(data.count ?? 0);
+     const agreements = Array.isArray(data.agreements) ? data.agreements : [];
+     const latestSignedAt = data.latest_signed_at;
+ 
+     if (count > 0 && latestSignedAt) {
+-      setContractSignStatus(`✓ Accepted ${fmtSignedDate(latestSignedAt)}`, true);
++      setContractSignStatus(`✓ Signed ${fmtSignedDate(latestSignedAt)}`, true);
+     } else if (count > 0 && agreements.length > 0) {
+       const fallbackSignedAt =
+         agreements[0]?.signed_at || agreements[0]?.sent_at || agreements[0]?.created_at;
+ 
+       setContractSignStatus(
+-  fallbackSignedAt ? `✓ Accepted ${fmtSignedDate(fallbackSignedAt)}` : "✓ Accepted",
++  fallbackSignedAt ? `✓ Signed ${fmtSignedDate(fallbackSignedAt)}` : "✓ Signed",
+   true
+ );
+     } else {
+       setContractSignStatus("", false);
+     }
+ 
+-    statusEl.textContent = `${count} Agreement${count === 1 ? "" : "s"} Accepted`;
++    statusEl.textContent = `${count} Agreement${count === 1 ? "" : "s"} Signed`;
+ 
+     if (latestSignedAt) {
+-      metaEl.innerHTML = `<span class="docs-summary-chip">Latest Accepted: ${fmtDateTime(latestSignedAt)}</span>`;
++      metaEl.innerHTML = `<span class="docs-summary-chip">Latest Signed: ${fmtDateTime(latestSignedAt)}</span>`;
+     }
+ 
+     if (agreements.length > 0) {
+       tableBodyEl.innerHTML = agreements.map((agreement) => `
+         <tr>
+           <td>${safeText(agreement.agreement_type, "Carrier Agreement")}</td>
+           <td>${fmtDateTime(agreement.signed_at || agreement.sent_at || agreement.created_at)}</td>
+           <td>${renderRowActionLink({ href: agreement.pdf_url, label: "View Agreement" })}</td>
+           <td>${renderRowActionLink({ href: agreement.certificate_url, label: "View Certificate" })}</td>
+         </tr>
+       `).join("");
+ 
+       mobileListEl.innerHTML = agreements.map((agreement) => `
+         <article class="docs-mobile-card">
+           <div class="docs-mobile-title">${safeText(agreement.agreement_type, "Carrier Agreement")}</div>
+-          <div class="docs-mobile-meta">Accepted: ${fmtDateTime(agreement.signed_at || agreement.sent_at || agreement.created_at)}</div>
++          <div class="docs-mobile-meta">Signed: ${fmtDateTime(agreement.signed_at || agreement.sent_at || agreement.created_at)}</div>
+           <div class="docs-row-actions docs-mobile-actions">
+             ${renderRowActionLink({ href: agreement.pdf_url, label: "View Agreement" })}
+             ${renderRowActionLink({ href: agreement.certificate_url, label: "View Certificate" })}
+           </div>
+         </article>
+       `).join("");
+     } else {
+       emptyEl.classList.add("is-visible");
+     }
+ 
+     wrap.hidden = false;
+   } catch (err) {
+     console.error("agreements load failed", err);
+     setContractSignStatus("", false);
+     wrap.hidden = false;
+     emptyEl.classList.add("is-visible");
+   }
+ }
+   
+ function wireAddDocumentModalOnce() {
+   const modal = document.getElementById("add-document-modal");
+   const openBtn = document.getElementById("btn-add-document");
+   const closeBtn = document.getElementById("add-document-close");
+   const cancelBtn = document.getElementById("add-document-cancel");
+   const submitBtn = document.getElementById("add-document-submit");

@@ -371,7 +371,7 @@ router.get("/contract/:token/certificate", async (req, res) => {
       return res.status(410).send("This link has expired");
     }
 
-    const accepted = (r.status === "ACKNOWLEDGED" || r.status === "SIGNED");
+    const accepted = (r.status === "SIGNED" || r.status === "ACKNOWLEDGED");
     const acceptedAt = r.accepted_at ? new Date(r.accepted_at).toISOString() : "";
     const signedAt = r.signed_at ? new Date(r.signed_at).toISOString() : "";
 
@@ -512,7 +512,7 @@ router.get("/contract/:token/certificate", async (req, res) => {
 
 
 
-/** ---------- CONTRACT LANDING PAGE (token + ACK UI) ---------- **/
+/** ---------- CONTRACT LANDING PAGE (token + acceptance UI) ---------- **/
 router.get("/contract/:token", async (req, res) => {
   const token = String(req.params.token || "").trim();
   if (!token) return res.status(400).send("Missing token");
@@ -551,7 +551,7 @@ router.get("/contract/:token", async (req, res) => {
     );
 
     const pdfUrl = `/contract/${encodeURIComponent(token)}/pdf`;
-    const alreadyAccepted = (contract.status === "ACKNOWLEDGED" || contract.status === "SIGNED");
+    const alreadyAccepted = (contract.status === "SIGNED" || contract.status === "ACKNOWLEDGED");
     const requirements = {
       w9: normalizeRequiredFlag(contract.w9_required, true),
       insurance: normalizeRequiredFlag(contract.insurance_required, false),
@@ -824,7 +824,7 @@ router.get("/contract/:token", async (req, res) => {
       <div class="form" id="ackWrap">
         ${
           alreadyAccepted
-            ? `<div class="msg ok"><strong>Accepted.</strong> This agreement has already been acknowledged.</div>`
+            ? `<div class="msg ok"><strong>Signed.</strong> This agreement has already been signed.</div>`
             : `
 <div class="card" style="margin-top:14px; background: rgba(255,255,255,0.04);">
   <div style="font-size:13px; line-height:1.5;">
@@ -840,7 +840,7 @@ router.get("/contract/:token", async (req, res) => {
   <input id="ack" type="checkbox" />
   <div>
     <div style="font-weight:700;">
-      I acknowledge and accept this agreement.
+      I accept and electronically sign this agreement.
     </div>
     <div class="muted">
       By submitting, you represent that you are authorized to accept on behalf of the carrier.
@@ -1121,7 +1121,7 @@ function waitForOtp() {
         const title = (titleEl.value || "").trim();
         const email = (emailEl.value || "").trim();
       
-        if (!ack) return setMsg("Please check the acknowledgment box.", "err");
+        if (!ack) return setMsg("Please confirm acceptance of the agreement.", "err");
         if (!name) return setMsg("Name is required.", "err");
         if (!title) return setMsg("Title is required.", "err");
         const missingDocs = missingRequiredDocs();
@@ -1170,7 +1170,7 @@ if (startData.status !== "MFA_ALREADY_VALID") {
   }
 }
       
-          // 3️⃣ Now submit ACK
+          // 3️⃣ Now submit acceptance
           btn.textContent = "Submitting...";
       
           const resp = await fetch("/contract/" + encodeURIComponent(token) + "/ack", {
@@ -1949,7 +1949,7 @@ router.post("/contract/:token/ack", async (req, res) => {
     }
 
     // Optional: if you want idempotent “already accepted”
-    if (status === "ACKNOWLEDGED" || status === "SIGNED") {
+    if (status === "SIGNED" || status === "ACKNOWLEDGED") {
       return res.json({ ok: true, status });
     }
 
@@ -2044,8 +2044,8 @@ router.post("/contract/:token/ack", async (req, res) => {
       return res.status(410).json({ error: "This link has expired" });
     }
 
-    // If another request acknowledged it between our first check and now:
-    if (status2 === "ACKNOWLEDGED" || status2 === "SIGNED") {
+    // If another request signed it between our first check and now:
+    if (status2 === "SIGNED" || status2 === "ACKNOWLEDGED") {
       
     await client.query("COMMIT");
 
@@ -2101,7 +2101,7 @@ try {
          accepted_ip, accepted_user_agent, mfa_event_id,
          document_hash_sha256, document_storage_key)
       VALUES
-        ($1, 'ACK', $2, $3, $4, $5, $6, $7, $8, $9)
+        ($1, 'SIGNED', $2, $3, $4, $5, $6, $7, $8, $9)
       ON CONFLICT (contract_id) DO UPDATE
         SET method = EXCLUDED.method,
             accepted_name = EXCLUDED.accepted_name,
@@ -2136,7 +2136,7 @@ try {
     await client.query(
       `
       UPDATE public.contracts
-      SET status = 'ACKNOWLEDGED',
+      SET status = 'SIGNED',
           signed_at = COALESCE(signed_at, now())
       WHERE contract_id::text = $1::text;
       `,
