@@ -30,21 +30,21 @@ security:
   - bearerAuth: []
 tags:
   - name: Carriers
-    description: Carrier lookup and company carrier management endpoints.
+    description: Search carriers and manage saved carriers.
   - name: Alerts
-    description: Alert retrieval and alert state mutation endpoints.
+    description: Retrieve alerts and manage alert status.
   - name: Contracts
-    description: Contract retrieval and contract state mutation endpoints.
+    description: Retrieve contracts and manage contract status.
   - name: Imports
-    description: Carrier import limit and bulk import endpoints.
+    description: Check import limits and import carriers in bulk.
 paths:
   /me/carriers/import-limits:
     get:
       tags: [Imports]
-      summary: Get import limits and current usage
+      summary: Get import limits
       description: |
-        Returns the authenticated company's carrier import plan limits and current saved-carrier usage.
-        Use this endpoint before bulk imports to understand total capacity and per-import caps.
+        Returns your plan's carrier import limits and current usage.
+        Use this before bulk imports to confirm total capacity and per-import caps.
       operationId: getCarrierImportLimits
       responses:
         '200':
@@ -94,10 +94,10 @@ paths:
   /me/carriers/import:
     post:
       tags: [Imports]
-      summary: Bulk import carriers into the authenticated company account
+      summary: Import carriers
       description: |
-        Imports multiple carrier DOT numbers into the authenticated company's saved carrier list.
-        The API normalizes DOT values, enforces per-import and plan-level limits, and reports invalid or skipped entries.
+        Imports multiple carrier DOT numbers into your saved carriers.
+        DOT values are normalized, limits are enforced, and invalid or skipped entries are returned.
       operationId: importCarriers
       requestBody:
         required: true
@@ -183,10 +183,10 @@ paths:
   /carriers:
     get:
       tags: [Carriers]
-      summary: Search carriers
+      summary: Search carrier database
       description: |
-        Search the carrier database using DOT, MC, legal name, DBA name, or location filters.
-        At least one search parameter must be provided.
+        Search carriers by DOT, MC, legal name, DBA name, or location.
+        At least one filter is required.
       operationId: searchCarriers
       parameters:
         - $ref: '#/components/parameters/DotQuery'
@@ -276,10 +276,10 @@ paths:
   /carriers/{dot}:
     get:
       tags: [Carriers]
-      summary: Get a carrier by DOT number
+      summary: Get carrier
       description: |
         Returns a single carrier record for the provided USDOT number.
-        The response includes carrier table fields plus a derived `cargo_carried` array when cargo data exists.
+        Includes standard carrier fields plus `cargo_carried` when available.
       operationId: getCarrierByDot
       parameters:
         - $ref: '#/components/parameters/DotPath'
@@ -352,10 +352,10 @@ paths:
   /me/carriers:
     get:
       tags: [Carriers]
-      summary: List carriers saved by the authenticated company
+      summary: List saved carriers
       description: |
-        Lists the carriers already saved for the authenticated company.
-        Supports the same filtering and pagination pattern as the public carrier search endpoint.
+        Returns the carriers saved to your account.
+        Supports the same filters and pagination as carrier search.
       operationId: listMyCarriers
       parameters:
         - $ref: '#/components/parameters/DotQuery'
@@ -438,10 +438,10 @@ paths:
                 error: Failed to load company carriers
     post:
       tags: [Carriers]
-      summary: Save one or more carriers for the authenticated company
+      summary: Save carriers
       description: |
-        Saves one or more carrier DOT numbers for the authenticated company.
-        DOT values are normalized, checked against the carriers table, and reported as inserted, already saved, or invalid.
+        Saves one or more carrier DOT numbers to your account.
+        DOT values are normalized and reported as inserted, already saved, or invalid.
       operationId: addMyCarriers
       requestBody:
         required: true
@@ -511,10 +511,10 @@ paths:
                 error: Failed to add carriers
     delete:
       tags: [Carriers]
-      summary: Remove one or more saved carriers for the authenticated company
+      summary: Remove saved carriers
       description: |
-        Removes one or more saved carriers from the authenticated company's list.
-        Each submitted DOT is reported individually as deleted or not found.
+        Removes one or more saved carriers from your account.
+        Each submitted DOT is reported as deleted or not found.
       operationId: deleteMyCarriers
       requestBody:
         required: true
@@ -586,10 +586,10 @@ paths:
   /carriers/{dot}/alerts:
     get:
       tags: [Alerts]
-      summary: List alerts for a specific carrier
+      summary: List carrier alerts
       description: |
-        Returns API-channel alerts for a specific carrier DOT belonging to the authenticated company.
-        Error-state alerts are excluded, and results can be filtered by alert ID and status.
+        Returns alerts for a tracked carrier.
+        Filter by alert ID or status. Error-state alerts are excluded.
       operationId: listCarrierAlerts
       parameters:
         - $ref: '#/components/parameters/DotPath'
@@ -643,8 +643,8 @@ paths:
       tags: [Alerts]
       summary: List alerts
       description: |
-        Returns API-channel alerts for the authenticated company across all tracked carriers.
-        Error-state alerts are excluded, and results can be filtered by alert ID, status, and DOT number.
+        Returns alerts across all tracked carriers in your account.
+        Filter by alert ID, status, or DOT number. Error-state alerts are excluded.
       operationId: listAlerts
       parameters:
         - name: id
@@ -717,9 +717,9 @@ paths:
   /alerts/new:
     get:
       tags: [Alerts]
-      summary: List new alerts only
+      summary: List new alerts
       description: |
-        Returns only alerts in `NEW` status for the authenticated company.
+        Returns alerts in `NEW` status only.
         Use this endpoint to poll for unprocessed alert activity.
       operationId: listNewAlerts
       parameters:
@@ -769,10 +769,10 @@ paths:
   /alerts/processed:
     patch:
       tags: [Alerts]
-      summary: Mark alerts as processed
+      summary: Mark alerts processed
       description: |
-        Marks one or more API-channel alerts as `PROCESSED` for the authenticated company.
-        Only matching alert IDs owned by the company are updated.
+        Marks one or more alerts as `PROCESSED`.
+        Only matching alert IDs in your account are updated.
       operationId: markAlertsProcessed
       requestBody:
         required: true
@@ -833,10 +833,10 @@ paths:
   /alerts/unprocessed:
     patch:
       tags: [Alerts]
-      summary: Mark alerts as unprocessed
+      summary: Mark alerts new
       description: |
-        Reverts one or more API-channel alerts back to `NEW` status for the authenticated company.
-        Only matching alert IDs owned by the company are updated.
+        Marks one or more alerts back to `NEW`.
+        Only matching alert IDs in your account are updated.
       operationId: markAlertsUnprocessed
       requestBody:
         required: true
@@ -899,8 +899,8 @@ paths:
       tags: [Contracts]
       summary: List contracts
       description: |
-        Returns contracts for the authenticated company with optional filters for status, DOT number, contract ID, and creation timestamps.
-        Results are ordered by newest created contract first.
+        Returns contracts in your account.
+        Filter by status, DOT number, contract ID, or created timestamp.
       operationId: listContracts
       parameters:
         - name: status
@@ -983,10 +983,10 @@ paths:
   /contracts/new:
     get:
       tags: [Contracts]
-      summary: List completed contracts that are ready for broker processing
+      summary: List ready contracts
       description: |
-        Returns contracts in `COMPLETED` status for the authenticated company.
-        This route is intended for downstream systems that need contracts ready for broker-side processing.
+        Returns contracts in `COMPLETED` status.
+        Use this for contracts ready for broker-side processing.
       operationId: listNewContracts
       parameters:
         - $ref: '#/components/parameters/PageQuery'
@@ -1027,10 +1027,10 @@ paths:
   /contracts/send:
     post:
       tags: [Contracts]
-      summary: Create sent contracts for one or more carriers
+      summary: Send contracts
       description: |
-        Creates new contracts in `SENT` status for one or more carrier DOT numbers.
-        Submitted DOT values are normalized, validated against the carriers table, and invalid values are returned separately.
+        Creates contracts in `SENT` status for one or more carriers.
+        Submitted DOT values are normalized and invalid values are returned separately.
       operationId: sendContracts
       requestBody:
         required: true
@@ -1150,10 +1150,10 @@ paths:
   /contracts/processed:
     patch:
       tags: [Contracts]
-      summary: Mark completed contracts as processed
+      summary: Mark contracts processed
       description: |
-        Marks one or more `COMPLETED` contracts as `PROCESSED` for the authenticated company.
-        Contract IDs that do not belong to the company or are not currently completed are reported as not updated.
+        Marks one or more `COMPLETED` contracts as `PROCESSED`.
+        IDs not found in your account or not currently completed are reported as not updated.
       operationId: markContractsProcessed
       requestBody:
         required: true
@@ -1214,10 +1214,10 @@ paths:
   /contracts/unprocessed:
     patch:
       tags: [Contracts]
-      summary: Revert processed contracts back to completed
+      summary: Mark contracts completed
       description: |
-        Reverts one or more `PROCESSED` contracts back to `COMPLETED` for the authenticated company.
-        Contract IDs that do not belong to the company or are not currently processed are reported as not updated.
+        Marks one or more `PROCESSED` contracts back to `COMPLETED`.
+        IDs not found in your account or not currently processed are reported as not updated.
       operationId: markContractsUnprocessed
       requestBody:
         required: true
@@ -1278,10 +1278,10 @@ paths:
   /contracts/{contract_id}:
     get:
       tags: [Contracts]
-      summary: Get a contract by ID
+      summary: Get contract
       description: |
-        Returns a single contract and its associated carrier record for the authenticated company.
-        The `contract_id` path parameter accepts either a numeric identifier or a UUID.
+        Returns a single contract and its associated carrier record.
+        `contract_id` accepts either a numeric identifier or a UUID.
       operationId: getContractById
       parameters:
         - name: contract_id
@@ -1342,9 +1342,9 @@ paths:
   /carriers/{dot}/contracts:
     get:
       tags: [Contracts]
-      summary: List contracts for a carrier
+      summary: List carrier contracts
       description: |
-        Lists contracts for a specific carrier DOT within the authenticated company's account.
+        Lists contracts for a specific carrier in your account.
         The DOT path parameter must contain digits only.
       operationId: listCarrierContracts
       parameters:
