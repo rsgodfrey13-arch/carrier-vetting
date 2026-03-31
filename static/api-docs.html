@@ -569,7 +569,7 @@ html {
   <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
 
 
-  <script>
+<script>
   Redoc.init('/openapi.yaml', {
     disableSearch: false,
     expandResponses: '200,201',
@@ -588,7 +588,9 @@ html {
           dark: '#0a8dc8',
           contrastText: '#04111d'
         },
-        success: { main: '#37d67a' },
+        success: {
+          main: '#37d67a'
+        },
         text: {
           primary: '#f6fbff',
           secondary: '#d7e7fa'
@@ -653,8 +655,12 @@ html {
         backgroundColor: '#08152d',
         textColor: '#b9cde9',
         activeTextColor: '#f6fbff',
-        groupItems: { textTransform: 'none' },
-        level1Items: { textTransform: 'none' }
+        groupItems: {
+          textTransform: 'none'
+        },
+        level1Items: {
+          textTransform: 'none'
+        }
       },
       logo: {
         maxHeight: '0',
@@ -672,50 +678,7 @@ html {
       }
     }
   }, document.getElementById('redoc-container'));
-
-  function wireRedocMenuToggles() {
-    const menu = document.querySelector('#redoc-container .menu-content');
-    if (!menu) return;
-
-    const items = menu.querySelectorAll('li');
-
-    items.forEach((li) => {
-      const childList = li.querySelector(':scope > ul');
-      if (!childList) return;
-
-      const trigger =
-        li.querySelector(':scope > label') ||
-        li.querySelector(':scope > a') ||
-        li.querySelector(':scope > div');
-
-      if (!trigger || trigger.dataset.csToggleBound === 'true') return;
-      trigger.dataset.csToggleBound = 'true';
-
-      trigger.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const isOpen = li.classList.contains('open') || li.getAttribute('aria-expanded') === 'true';
-
-        li.classList.toggle('open', !isOpen);
-        li.setAttribute('aria-expanded', String(!isOpen));
-
-        childList.style.display = isOpen ? 'none' : '';
-      });
-    });
-  }
-
-  const redocObserver = new MutationObserver(() => {
-    wireRedocMenuToggles();
-  });
-
-  redocObserver.observe(document.getElementById('redoc-container'), {
-    childList: true,
-    subtree: true
-  });
-
-  window.addEventListener('load', wireRedocMenuToggles);
-  setTimeout(wireRedocMenuToggles, 500);
 </script>
+  
 </body>
 </html>
