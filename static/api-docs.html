@@ -569,6 +569,31 @@ html {
   padding-left: 12px !important;
 }
 
+ /* fix white background */
+
+#redoc-container .api-content select,
+#redoc-container .api-content option,
+#redoc-container .api-content input,
+#redoc-container .api-content textarea,
+#redoc-container .api-content div[role="combobox"],
+#redoc-container .api-content [class*="server"],
+#redoc-container .api-content [class*="Server"] {
+  background: rgba(7, 19, 41, 0.98) !important;
+  color: #eaf4ff !important;
+  border: 1px solid rgba(96, 163, 255, 0.18) !important;
+}
+
+#redoc-container .api-content select,
+#redoc-container .api-content input,
+#redoc-container .api-content textarea {
+  border-radius: 10px !important;
+  box-shadow: none !important;
+}
+
+#redoc-container .api-content option {
+  background: #071329 !important;
+  color: #eaf4ff !important;
+}
     
   </style>
 </head>
