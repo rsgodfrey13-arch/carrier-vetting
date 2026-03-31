@@ -1031,6 +1031,7 @@ paths:
       description: |
         Sends a contract email to a carrier and creates a contract record in `SENT` status.
         This endpoint generates a signing token, stores the contract, and emails the carrier a signing link.
+        This is the canonical send endpoint for v1 integrations (replaces legacy create-only send behavior).
       operationId: sendContract
       parameters:
         - $ref: '#/components/parameters/DotPath'

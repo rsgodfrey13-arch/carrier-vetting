@@ -1,6 +1,8 @@
 // api-v1.js
 const express = require("express");
+const crypto = require("crypto");
 const { getPolicyForUser } = require("../../policies/importPolicy");
+const { sendContractEmail } = require("../../clients/mailgun");
 
 function getCompanyId(req) {
   return req.auth?.companyId || req.company?.id || null;
@@ -39,6 +41,10 @@ function appendCompanyScope({ conditions, params, alias, companyId, startIndex }
 
 function isValidContractIdentifier(value) {
   return /^\d+$/.test(value) || /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function makeToken() {
+  return crypto.randomBytes(24).toString("hex");
 }
 
 
@@ -1307,8 +1313,8 @@ router.patch('/contracts/unprocessed', async (req, res) => {
 
 // ---------------------------------------------
 // POST /api/v1/contracts/send
-// Body: { "dot": ["336075","123456"] }  (array or single)
-// creates contract records in SENT (no email dispatch in this endpoint)
+// DEPRECATED: legacy create-only endpoint retained for backward compatibility.
+// Use POST /api/v1/contracts/send/:dot for real send flow + email dispatch.
 // ---------------------------------------------
 router.post('/contracts/send', async (req, res) => {
   try {
@@ -1353,6 +1359,182 @@ router.post('/contracts/send', async (req, res) => {
   } catch (err) {
     console.error('Error in POST /api/v1/contracts/send:', err);
     res.status(500).json({ error: 'Failed to create contracts' });
+  }
+});
+
+// ---------------------------------------------
+// POST /api/v1/contracts/send/:dot
+// Body: { user_contract_id, email_to, carrier_name? }
+// Mirrors broker send flow but uses v1 API auth context.
+// ---------------------------------------------
+router.post('/contracts/send/:dot', async (req, res) => {
+  const dotnumber = String(req.params.dot || '').trim();
+  const { user_contract_id, email_to, carrier_name } = req.body || {};
+
+  if (!dotnumber || !/^\d+$/.test(dotnumber)) {
+    return res.status(400).json({ error: 'dot must be a numeric USDOT value' });
+  }
+
+  if (!user_contract_id || !email_to) {
+    return res.status(400).json({ error: 'user_contract_id and email_to are required' });
+  }
+
+  try {
+    const auth = getApiAuthContext(req, res);
+    if (!auth) return;
+
+    const token = makeToken();
+    const token_expires_at = new Date(Date.now() + 72 * 60 * 60 * 1000);
+    const link = `https://carriershark.com/contract/${token}`;
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const actorRes = await client.query(
+        `
+        SELECT cm.user_id
+        FROM public.company_members cm
+        JOIN public.users u
+          ON u.id = cm.user_id
+        WHERE cm.company_id = $1
+          AND cm.status = 'ACTIVE'
+        ORDER BY
+          CASE
+            WHEN cm.role = 'OWNER' THEN 0
+            WHEN cm.role = 'ADMIN' THEN 1
+            ELSE 2
+          END,
+          cm.created_at ASC
+        LIMIT 1;
+        `,
+        [auth.companyId]
+      );
+
+      if (actorRes.rowCount === 0) {
+        throw Object.assign(
+          new Error('No active company user available to attribute contract'),
+          { statusCode: 400 }
+        );
+      }
+      const userId = actorRes.rows[0].user_id;
+
+      const templateRes = await client.query(
+        `
+        SELECT
+          name,
+          display_name,
+          COALESCE(insurance_required, FALSE) AS insurance_required,
+          COALESCE(w9_required, TRUE) AS w9_required,
+          COALESCE(ach_required, FALSE) AS ach_required
+        FROM public.user_contracts
+        WHERE id = $1
+          AND company_id = $2
+          AND storage_provider = 'DO_SPACES'
+          AND storage_key IS NOT NULL
+        LIMIT 1;
+        `,
+        [user_contract_id, auth.companyId]
+      );
+
+      if (templateRes.rowCount === 0) {
+        throw Object.assign(new Error('Invalid or unauthorized contract template'), {
+          statusCode: 400,
+        });
+      }
+
+      const agreement_type = templateRes.rows[0].name || 'Carrier Agreement';
+      const broker_name = templateRes.rows[0].display_name || 'Carrier Agreement';
+      const insurance_required = templateRes.rows[0].insurance_required;
+      const w9_required = templateRes.rows[0].w9_required;
+      const ach_required = templateRes.rows[0].ach_required;
+
+      const insertRes = await client.query(
+        `
+        INSERT INTO public.contracts (
+          user_id,
+          company_id,
+          dotnumber,
+          status,
+          channel,
+          provider,
+          payload,
+          sent_at,
+          token,
+          token_expires_at,
+          email_to,
+          user_contract_id,
+          insurance_required,
+          w9_required,
+          ach_required
+        )
+        VALUES (
+          $1,
+          $2,
+          $3,
+          'SENT',
+          'EMAIL',
+          'MAILGUN',
+          $4::jsonb,
+          NOW(),
+          $5,
+          $6,
+          $7,
+          $8,
+          $9,
+          $10,
+          $11
+        )
+        RETURNING contract_id;
+        `,
+        [
+          userId,
+          auth.companyId,
+          dotnumber,
+          JSON.stringify({ broker_name, agreement_type }),
+          token,
+          token_expires_at.toISOString(),
+          email_to,
+          user_contract_id,
+          insurance_required,
+          w9_required,
+          ach_required,
+        ]
+      );
+
+      const contract_id = insertRes.rows[0]?.contract_id;
+      if (!contract_id) throw new Error('Failed to create contract');
+
+      await sendContractEmail({
+        to: email_to,
+        broker_name,
+        carrier_name: carrier_name || '',
+        dotnumber,
+        agreement_type,
+        link,
+      });
+
+      await client.query('COMMIT');
+
+      return res.json({
+        ok: true,
+        contract_id,
+        status: 'SENT',
+        link,
+      });
+    } catch (err) {
+      try {
+        await client.query('ROLLBACK');
+      } catch {}
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error('Error in POST /api/v1/contracts/send/:dot:', err);
+    return res.status(err.statusCode || 500).json({
+      error: err.message || 'Failed to send contract',
+    });
   }
 });
 
