@@ -533,6 +533,30 @@ html {
   position: relative;
   z-index: 1;
 }
+
+
+/* Fix Magnifying Glass */
+
+  #redoc-container .menu-content [role="search"] {
+  position: relative;
+}
+
+#redoc-container .menu-content [role="search"] svg {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+  opacity: 0.75;
+}
+
+#redoc-container .menu-content [role="search"] input,
+#redoc-container .menu-content input[type="search"],
+#redoc-container .menu-content input[type="text"] {
+  padding-left: 38px !important;
+}  
     
   </style>
 </head>
