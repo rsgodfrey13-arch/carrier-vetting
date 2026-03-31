@@ -679,6 +679,59 @@ html {
     }
   }, document.getElementById('redoc-container'));
 </script>
+
+<script>
+  (function () {
+    function bindRedocGroupToggleOnly() {
+      const menu = document.querySelector('#redoc-container .menu-content');
+      if (!menu || menu.dataset.csGroupToggleBound === 'true') return;
+
+      menu.dataset.csGroupToggleBound = 'true';
+
+      menu.addEventListener('click', function (e) {
+        const link = e.target.closest('a');
+        if (!link || !menu.contains(link)) return;
+
+        const li = link.closest('li');
+        if (!li) return;
+
+        const childList = li.querySelector(':scope > ul');
+        if (!childList) return; // real endpoint item, let it navigate normally
+
+        // If they clicked a nested item inside the open dropdown, let it navigate
+        const nestedLi = e.target.closest('ul ul li');
+        if (nestedLi) return;
+
+        // Category click: toggle only, do not navigate
+        e.preventDefault();
+        e.stopPropagation();
+
+        const isHidden =
+          childList.hidden ||
+          getComputedStyle(childList).display === 'none';
+
+        childList.hidden = !isHidden;
+
+        li.setAttribute('aria-expanded', String(isHidden));
+        li.classList.toggle('open', isHidden);
+      }, true);
+    }
+
+    function waitForRedocMenu() {
+      let tries = 0;
+      const timer = setInterval(() => {
+        bindRedocGroupToggleOnly();
+        tries += 1;
+
+        const menu = document.querySelector('#redoc-container .menu-content');
+        if (menu || tries > 40) clearInterval(timer);
+      }, 250);
+    }
+
+    window.addEventListener('load', waitForRedocMenu);
+  })();
+</script>
+
   
 </body>
 </html>
