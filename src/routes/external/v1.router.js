@@ -1087,7 +1087,7 @@ router.get('/contracts/new', async (req, res) => {
     const limit = Math.min(pageSizeRaw, 100);
     const offset = (page - 1) * limit;
 
-    const conditions = ["c.status = 'COMPLETED'"];
+    const conditions = ["c.status = 'SIGNED'"];
     const params = [];
     let i = appendCompanyScope({
       conditions,
