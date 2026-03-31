@@ -682,46 +682,25 @@ html {
 
 <script>
 (function () {
-  function bindRedocGroupToggleOnly() {
+  function bindRedocCategoryClickBlock() {
     const menu = document.querySelector('#redoc-container .menu-content');
-    if (!menu || menu.dataset.csGroupToggleBound === 'true') return;
+    if (!menu || menu.dataset.csCategoryBlockBound === 'true') return;
 
-    menu.dataset.csGroupToggleBound = 'true';
+    menu.dataset.csCategoryBlockBound = 'true';
 
-    function handleGroupClick(e) {
-      const row = e.target.closest('li');
-      if (!row || !menu.contains(row)) return;
+    menu.addEventListener('click', function (e) {
+      const anchor = e.target.closest('a');
+      if (!anchor || !menu.contains(anchor)) return;
 
-      const directChildList = row.querySelector(':scope > ul');
-      if (!directChildList) return; // endpoint item, let it navigate
+      const li = anchor.closest('li');
+      if (!li) return;
 
-      const clickedAnchor = e.target.closest('a');
-      const clickedButton = e.target.closest('button');
-      const clickedLabel = e.target.closest('label');
-      const clickedSpan = e.target.closest('span');
-      const clickedDiv = e.target.closest('div');
+      const hasChildren = !!li.querySelector(':scope > ul');
+      if (!hasChildren) return; // real endpoint item, allow normal nav
 
-      if (!clickedAnchor && !clickedButton && !clickedLabel && !clickedSpan && !clickedDiv) return;
-
+      // category row: block only navigation, let ReDoc keep its own expand behavior
       e.preventDefault();
-      e.stopPropagation();
-      if (typeof e.stopImmediatePropagation === 'function') {
-        e.stopImmediatePropagation();
-      }
-
-      const isClosed =
-        directChildList.hidden ||
-        getComputedStyle(directChildList).display === 'none';
-
-      directChildList.hidden = !isClosed;
-      directChildList.style.display = isClosed ? '' : 'none';
-
-      row.classList.toggle('open', isClosed);
-      row.setAttribute('aria-expanded', String(isClosed));
-    }
-
-    menu.addEventListener('pointerdown', handleGroupClick, true);
-    menu.addEventListener('click', handleGroupClick, true);
+    }, true);
   }
 
   function waitForRedocMenu() {
@@ -730,7 +709,7 @@ html {
       const menu = document.querySelector('#redoc-container .menu-content');
       if (menu) {
         clearInterval(timer);
-        bindRedocGroupToggleOnly();
+        bindRedocCategoryClickBlock();
       }
       tries += 1;
       if (tries > 40) clearInterval(timer);
