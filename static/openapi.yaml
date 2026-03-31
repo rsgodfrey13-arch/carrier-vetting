@@ -225,16 +225,26 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CarrierSearchResponse'
+                $ref: '#/components/schemas/CarrierListResponse'
               example:
                 rows:
                   - dot: "336075"
+                    dotnumber: "336075"
                     legalname: ACME TRANSPORT LLC
                     dbaname: ACME LOGISTICS
-                    city: DALLAS
-                    state: TX
+                    mc_number: "MC-654321"
+                    phystreet: 123 MAIN ST
+                    phycity: DALLAS
+                    phystate: TX
+                    phyzipcode: "75201"
+                    phycountry: US
                     allowedtooperate: AUTHORIZED
                     safetyrating: SATISFACTORY
+                    statuscode: A
+                    totaldrivers: 12
+                    totalpowerunits: 10
+                    retrieval_date: '2026-03-15T00:00:00.000Z'
+                    last_polled_at: '2026-03-30T18:42:31.000Z'
                 total: 1
                 page: 1
                 pageSize: 25
@@ -287,6 +297,33 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CarrierDetail'
+              example:
+                dot: "336075"
+                dotnumber: "336075"
+                legalname: ACME TRANSPORT LLC
+                dbaname: ACME LOGISTICS
+                mc_number: "MC-654321"
+                phystreet: 123 MAIN ST
+                phycity: DALLAS
+                phystate: TX
+                phyzipcode: "75201"
+                phycountry: US
+                allowedtooperate: AUTHORIZED
+                safetyrating: SATISFACTORY
+                statuscode: A
+                totaldrivers: 12
+                totalpowerunits: 10
+                retrieval_date: '2026-03-15T00:00:00.000Z'
+                last_polled_at: '2026-03-30T18:42:31.000Z'
+                address1: 123 MAIN ST
+                address2: null
+                city: DALLAS
+                state: TX
+                zip: "75201"
+                retrieval_date_formatted: Mar 15, 2026 12:00 AM EST
+                cargo_carried:
+                  - General Freight
+                  - Machinery
         '404':
           description: Carrier not found.
           content:
@@ -357,16 +394,26 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MyCarrierListResponse'
+                $ref: '#/components/schemas/SavedCarrierListResponse'
               example:
                 rows:
                   - dot: "336075"
+                    dotnumber: "336075"
                     legalname: ACME TRANSPORT LLC
                     dbaname: ACME LOGISTICS
-                    city: DALLAS
-                    state: TX
+                    mc_number: "MC-654321"
+                    phystreet: 123 MAIN ST
+                    phycity: DALLAS
+                    phystate: TX
+                    phyzipcode: "75201"
+                    phycountry: US
                     allowedtooperate: AUTHORIZED
                     safetyrating: SATISFACTORY
+                    statuscode: A
+                    totaldrivers: 12
+                    totalpowerunits: 10
+                    retrieval_date: '2026-03-15T00:00:00.000Z'
+                    last_polled_at: '2026-03-30T18:42:31.000Z'
                     added_at: '2026-03-01T14:25:00Z'
                 total: 1
                 page: 1
@@ -1420,54 +1467,94 @@ components:
       properties:
         error:
           type: string
-    CarrierSearchRow:
+    Carrier:
       type: object
+      description: |
+        Carrier row selected from `carriers` as `c.*` plus a compatibility alias `dot`.
+        Fields listed below are the stable/common fields documented by the API.
       properties:
         dot:
           type: string
+        dotnumber:
+          type: string
         legalname:
           type: string
+          nullable: true
         dbaname:
           type: string
-        city:
+          nullable: true
+        mc_number:
           type: string
-        state:
+          nullable: true
+        phystreet:
           type: string
+          nullable: true
+        phycity:
+          type: string
+          nullable: true
+        phystate:
+          type: string
+          nullable: true
+        phyzipcode:
+          type: string
+          nullable: true
+        phycountry:
+          type: string
+          nullable: true
         allowedtooperate:
           type: string
+          nullable: true
         safetyrating:
           type: string
+          nullable: true
+        statuscode:
+          type: string
+          nullable: true
+        totaldrivers:
+          type: integer
+          nullable: true
+        totalpowerunits:
+          type: integer
+          nullable: true
+        retrieval_date:
+          type: string
+          format: date-time
+          nullable: true
+        last_polled_at:
+          type: string
+          format: date-time
+          nullable: true
       additionalProperties: true
-    CarrierSearchResponse:
+    CarrierListResponse:
       type: object
       required: [rows, total, page, pageSize]
       properties:
         rows:
           type: array
           items:
-            $ref: '#/components/schemas/CarrierSearchRow'
+            $ref: '#/components/schemas/Carrier'
         total:
           type: integer
         page:
           type: integer
         pageSize:
           type: integer
-    MyCarrierRow:
+    SavedCarrier:
       allOf:
-        - $ref: '#/components/schemas/CarrierSearchRow'
+        - $ref: '#/components/schemas/Carrier'
         - type: object
           properties:
             added_at:
               type: string
               format: date-time
-    MyCarrierListResponse:
+    SavedCarrierListResponse:
       type: object
       required: [rows, total, page, pageSize]
       properties:
         rows:
           type: array
           items:
-            $ref: '#/components/schemas/MyCarrierRow'
+            $ref: '#/components/schemas/SavedCarrier'
         total:
           type: integer
         page:
@@ -1476,29 +1563,34 @@ components:
           type: integer
     CarrierDetail:
       type: object
-      description: Carrier row selected with `*` from the carriers table plus normalized aliases and `cargo_carried`.
-      properties:
-        dot:
-          type: string
-        address1:
-          type: string
-          nullable: true
-        address2:
-          type: string
-          nullable: true
-        city:
-          type: string
-        state:
-          type: string
-        zip:
-          type: string
-        retrieval_date_formatted:
-          type: string
-        cargo_carried:
-          type: array
-          items:
-            type: string
-      additionalProperties: true
+      description: Carrier detail row from `/carriers/{dot}` including derived cargo and compatibility fields.
+      allOf:
+        - $ref: '#/components/schemas/Carrier'
+        - type: object
+          properties:
+            address1:
+              type: string
+              nullable: true
+            address2:
+              type: string
+              nullable: true
+            city:
+              type: string
+              nullable: true
+            state:
+              type: string
+              nullable: true
+            zip:
+              type: string
+              nullable: true
+            retrieval_date_formatted:
+              type: string
+              nullable: true
+            cargo_carried:
+              type: array
+              items:
+                type: string
+          additionalProperties: true
     CarrierMutationSummary:
       type: object
       required: [totalSubmitted, inserted, duplicates, invalid]
