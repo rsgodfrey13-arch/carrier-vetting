@@ -198,28 +198,28 @@
       background: transparent !important;
     }
 
-#redoc-container .menu-content,
-#redoc-container .menu-content div,
-#redoc-container .menu-content label,
-#redoc-container .menu-content a,
-#redoc-container .menu-content button {
-  color: var(--docs-text-muted) !important;
-}
+    #redoc-container .menu-content,
+    #redoc-container .menu-content div,
+    #redoc-container .menu-content span,
+    #redoc-container .menu-content label,
+    #redoc-container .menu-content a {
+      color: var(--docs-text-muted) !important;
+    }
 
-#redoc-container .menu-content a:hover,
-#redoc-container .menu-content a:focus,
-#redoc-container .menu-content button:hover,
-#redoc-container .menu-content button:focus,
-#redoc-container .menu-content [aria-current="true"],
-#redoc-container .menu-content [data-item-id].active {
-  color: var(--docs-text-primary) !important;
-}
+    #redoc-container .menu-content a:hover,
+    #redoc-container .menu-content a:focus,
+    #redoc-container .menu-content li.active > label,
+    #redoc-container .menu-content li.active > span,
+    #redoc-container .menu-content [aria-current="true"],
+    #redoc-container .menu-content [data-item-id].active {
+      color: var(--docs-text-primary) !important;
+    }
 
-#redoc-container .menu-content label,
-#redoc-container .menu-content a,
-#redoc-container .menu-content button {
-  transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
-}
+    #redoc-container .menu-content label,
+    #redoc-container .menu-content a,
+    #redoc-container .menu-content span {
+      transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
+    }
 
     #redoc-container .menu-content li {
       border-radius: 14px;
@@ -288,25 +288,27 @@
       color: var(--docs-text-secondary) !important;
     }
 
-#redoc-container .api-content code,
-#redoc-container .api-content pre,
-#redoc-container .api-content samp,
-#redoc-container .api-content .redoc-json,
-#redoc-container .api-content [class*="token"],
-#redoc-container .api-content [class*="codeBlock"],
-#redoc-container .api-content [class*="CodeBlock"] {
-  color: #eaf6ff !important;
-}
+    #redoc-container .api-content code,
+    #redoc-container .api-content pre,
+    #redoc-container .api-content samp,
+    #redoc-container .api-content .redoc-json,
+    #redoc-container .api-content [class*="token"],
+    #redoc-container .api-content [class*="code"],
+    #redoc-container .api-content [class*="sample"] {
+      color: #eaf6ff !important;
+    }
 
-#redoc-container .api-content pre,
-#redoc-container .api-content code,
-#redoc-container .api-content .redoc-json,
-#redoc-container .api-content [class*="codeBlock"],
-#redoc-container .api-content [class*="CodeBlock"] {
-  background: var(--docs-code-bg) !important;
-  border: 1px solid rgba(96, 163, 255, 0.16) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-}
+    #redoc-container .api-content pre,
+    #redoc-container .api-content code,
+    #redoc-container .api-content .redoc-json,
+    #redoc-container .api-content [class*="codeBlock"],
+    #redoc-container .api-content [class*="CodeBlock"],
+    #redoc-container .api-content [class*="sample"] > div,
+    #redoc-container .api-content [class*="sample"] pre {
+      background: var(--docs-code-bg) !important;
+      border: 1px solid rgba(96, 163, 255, 0.16) !important;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    }
 
     #redoc-container .api-content pre {
       border-radius: 18px !important;
@@ -501,6 +503,7 @@
   background: transparent !important;
   color: #eaf4ff !important;
 }
+
 #redoc-container .menu-content a,
 #redoc-container .menu-content button {
   cursor: pointer;
@@ -510,10 +513,6 @@
 #redoc-container .menu-content a:hover,
 #redoc-container .menu-content button:hover {
   color: var(--docs-text-primary) !important;
-}
-
-#redoc-container .menu-content label {
-  border-radius: 12px;
 }
 
 #redoc-container .menu-content form,
@@ -534,372 +533,8 @@ html {
   position: relative;
   z-index: 1;
 }
-
-/* Fix white boxes inside expanded endpoint panels */
-#redoc-container .api-content input,
-#redoc-container .api-content textarea,
-#redoc-container .api-content select,
-#redoc-container .api-content [role="textbox"],
-#redoc-container .api-content [contenteditable="true"] {
-  background: rgba(7, 19, 41, 0.98) !important;
-  color: #f6fbff !important;
-  border: 1px solid rgba(96, 163, 255, 0.18) !important;
-  border-radius: 12px !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 0 0 1px rgba(10, 26, 50, 0.35);
-}
-
-#redoc-container .api-content input::placeholder,
-#redoc-container .api-content textarea::placeholder {
-  color: rgba(168, 194, 228, 0.68) !important;
-}
-
-#redoc-container .api-content input:focus,
-#redoc-container .api-content textarea:focus,
-#redoc-container .api-content select:focus {
-  outline: none !important;
-  border-color: rgba(120, 226, 255, 0.58) !important;
-  box-shadow:
-    0 0 0 4px rgba(33, 199, 255, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-}
-
-/* Catch light panels ReDoc injects around those fields */
-#redoc-container .api-content form,
-#redoc-container .api-content fieldset,
-#redoc-container .api-content label,
-#redoc-container .api-content div[class*="field"],
-#redoc-container .api-content div[class*="Field"],
-#redoc-container .api-content div[class*="input"],
-#redoc-container .api-content div[class*="Input"] {
-  background: transparent !important;
-  color: var(--docs-text-secondary) !important;
-}
-
-/* ===== FIX: server/url box under endpoint header ===== */
-
-#redoc-container .api-content [class*="server"],
-#redoc-container .api-content [class*="Server"],
-#redoc-container .api-content [class*="endpoint"],
-#redoc-container .api-content [class*="Endpoint"],
-#redoc-container .api-content [class*="url"],
-#redoc-container .api-content [class*="Url"],
-#redoc-container .api-content [class*="field"],
-#redoc-container .api-content [class*="Field"] {
-  background: transparent !important;
-}
-
-/* actual visible box */
-#redoc-container .api-content [class*="server"] > div,
-#redoc-container .api-content [class*="Server"] > div,
-#redoc-container .api-content [class*="endpoint"] > div,
-#redoc-container .api-content [class*="Endpoint"] > div,
-#redoc-container .api-content [class*="url"] > div,
-#redoc-container .api-content [class*="Url"] > div {
-  background: rgba(7, 19, 41, 0.98) !important;
-  color: #f6fbff !important;
-  border: 1px solid rgba(96, 163, 255, 0.18) !important;
-  border-radius: 12px !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 0 0 1px rgba(10, 26, 50, 0.35) !important;
-}
-
-/* text inside that box */
-#redoc-container .api-content [class*="server"] span,
-#redoc-container .api-content [class*="Server"] span,
-#redoc-container .api-content [class*="endpoint"] span,
-#redoc-container .api-content [class*="Endpoint"] span,
-#redoc-container .api-content [class*="url"] span,
-#redoc-container .api-content [class*="Url"] span,
-#redoc-container .api-content [class*="server"] p,
-#redoc-container .api-content [class*="Server"] p,
-#redoc-container .api-content [class*="endpoint"] p,
-#redoc-container .api-content [class*="Endpoint"] p,
-#redoc-container .api-content [class*="url"] p,
-#redoc-container .api-content [class*="Url"] p {
-  color: #eaf4ff !important;
-}
-
-/* if ReDoc renders it as a disabled input-looking control */
-#redoc-container .api-content input[readonly],
-#redoc-container .api-content input[disabled],
-#redoc-container .api-content select[disabled] {
-  background: rgba(7, 19, 41, 0.98) !important;
-  color: #f6fbff !important;
-  -webkit-text-fill-color: #f6fbff !important;
-  opacity: 1 !important;
-  border: 1px solid rgba(96, 163, 255, 0.18) !important;
-}
-
-
-
-
-#redoc-container .api-content pre,
-#redoc-container .api-content code,
-#redoc-container .api-content table,
-#redoc-container .api-content td,
-#redoc-container .api-content th,
-#redoc-container .api-content [role="tablist"],
-#redoc-container .api-content li[data-rttab="true"],
-#redoc-container .api-content button,
-#redoc-container .api-content button > div,
-#redoc-container .api-content [class*="server"] > div,
-#redoc-container .api-content [class*="endpoint"] > div,
-#redoc-container .api-content [class*="url"] > div {
-  background-color: rgba(7, 19, 41, 0.98) !important;
-} 
-
-
-    /* ===== FIX REQUEST SAMPLES / SERVER URL BLOCK ===== */
-
-/* outer wrapper around the request sample section */
-#redoc-container .api-content [class*="sample"],
-#redoc-container .api-content [class*="Sample"],
-#redoc-container .api-content [class*="server"],
-#redoc-container .api-content [class*="Server"] {
-  background: transparent !important;
-  border-radius: 14px !important;
-}
-
-/* the actual light box that holds Production v1 API + /api/... */
-#redoc-container .api-content [class*="sample"] > div,
-#redoc-container .api-content [class*="Sample"] > div,
-#redoc-container .api-content [class*="server"] > div,
-#redoc-container .api-content [class*="Server"] > div {
-  background: rgba(6, 18, 39, 0.96) !important;
-  border: 1px solid rgba(129, 188, 255, 0.18) !important;
-  border-radius: 14px !important;
-  color: #f6fbff !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.03),
-    0 8px 22px rgba(0,0,0,0.18) !important;
-}
-
-/* text labels inside that block */
-#redoc-container .api-content [class*="sample"] label,
-#redoc-container .api-content [class*="Sample"] label,
-#redoc-container .api-content [class*="sample"] span,
-#redoc-container .api-content [class*="Sample"] span,
-#redoc-container .api-content [class*="sample"] p,
-#redoc-container .api-content [class*="Sample"] p,
-#redoc-container .api-content [class*="server"] label,
-#redoc-container .api-content [class*="Server"] label,
-#redoc-container .api-content [class*="server"] span,
-#redoc-container .api-content [class*="Server"] span,
-#redoc-container .api-content [class*="server"] p,
-#redoc-container .api-content [class*="Server"] p {
-  color: #f6fbff !important;
-  line-height: 1.35 !important;
-}
-
-/* the path/input-looking row */
-#redoc-container .api-content input,
-#redoc-container .api-content textarea,
-#redoc-container .api-content select,
-#redoc-container .api-content [role="textbox"],
-#redoc-container .api-content [contenteditable="true"] {
-  background: rgba(3, 12, 28, 0.98) !important;
-  color: #f6fbff !important;
-  border: 1px solid rgba(129, 188, 255, 0.26) !important;
-  border-radius: 0 !important;
-  min-height: 42px !important;
-  padding: 10px 12px !important;
-  box-shadow: none !important;
-}
-
-/* if ReDoc renders the url row as a div instead of an input */
-#redoc-container .api-content [class*="server"] input,
-#redoc-container .api-content [class*="Server"] input,
-#redoc-container .api-content [class*="url"] input,
-#redoc-container .api-content [class*="Url"] input,
-#redoc-container .api-content [class*="server"] > div > div,
-#redoc-container .api-content [class*="Server"] > div > div,
-#redoc-container .api-content [class*="url"] > div > div,
-#redoc-container .api-content [class*="Url"] > div > div {
-  background: rgba(3, 12, 28, 0.98) !important;
-  color: #f6fbff !important;
-  border: 1px solid rgba(129, 188, 255, 0.26) !important;
-  border-radius: 0 !important;
-  min-height: 42px !important;
-  padding: 10px 12px !important;
-}
-
-/* keep headings from collapsing into the box */
-#redoc-container .api-content h3,
-#redoc-container .api-content h4,
-#redoc-container .api-content h5,
-#redoc-container .api-content [role="heading"] {
-  margin-bottom: 10px !important;
-}
-
-/* give breathing room above payload tab / below labels */
-#redoc-container .api-content [class*="sample"] > div,
-#redoc-container .api-content [class*="Sample"] > div,
-#redoc-container .api-content [class*="server"] > div,
-#redoc-container .api-content [class*="Server"] > div {
-  padding: 12px 14px !important;
-}
-
-/* keep tabs/buttons styled normally */
-#redoc-container .api-content button,
-#redoc-container .api-content [role="tab"],
-#redoc-container .api-content [role="button"] {
-  background: rgba(10, 35, 75, 0.96) !important;
-  color: #f6fbff !important;
-  border: 1px solid rgba(129, 188, 255, 0.18) !important;
-}
-
-/* fix only the request samples server/url area */
-#redoc-container .api-content input[type="text"],
-#redoc-container .api-content input[readonly],
-#redoc-container .api-content textarea[readonly],
-#redoc-container .api-content select,
-#redoc-container .api-content div[class*="server"] input,
-#redoc-container .api-content div[class*="Server"] input,
-#redoc-container .api-content div[class*="url"] input,
-#redoc-container .api-content div[class*="Url"] input {
-  background: rgba(8, 19, 38, 0.96) !important;
-  color: #f6fbff !important;
-  -webkit-text-fill-color: #f6fbff !important;
-  border: 1px solid rgba(129, 188, 255, 0.22) !important;
-  box-shadow: none !important;
-  border-radius: 0 !important;
-}
-
-/* label above the path field */
-#redoc-container .api-content div[class*="server"],
-#redoc-container .api-content div[class*="Server"],
-#redoc-container .api-content div[class*="url"],
-#redoc-container .api-content div[class*="Url"] {
-  background: transparent !important;
-  color: #eaf6ff !important;
-}
-
-/* catch the light wrapper around the readonly path field */
-#redoc-container .api-content div[class*="server"] > div,
-#redoc-container .api-content div[class*="Server"] > div,
-#redoc-container .api-content div[class*="url"] > div,
-#redoc-container .api-content div[class*="Url"] > div {
-  background: rgba(8, 19, 38, 0.96) !important;
-  border: 1px solid rgba(129, 188, 255, 0.22) !important;
-  box-shadow: none !important;
-}
-
-#redoc-container .menu-content li:has(ul) > a,
-#redoc-container .menu-content li:has(ul) > div a {
-  cursor: pointer !important;
-}
-
-#redoc-container .menu-content li:has(ul) > a:hover,
-#redoc-container .menu-content li:has(ul) > div a:hover {
-  text-decoration: none !important;
-}
     
   </style>
-
-<!-- Dark-theme nav + dropdown styles -->
-<style>
-/* Left nav container */
-.left-nav { width: 260px; font-family: inherit; padding: 12px; }
-
-/* Top-level toggle button */
-.left-nav .nav-toggle {
-  display:block;
-  width:100%;
-  text-align:left;
-  background: linear-gradient(180deg,#06232e,#0b3140);
-  color:#e6f6fb;
-  border:0;
-  padding:10px 14px;
-  border-radius:8px;
-  cursor:pointer;
-  font-weight:600;
-}
-
-/* Submenu hidden by default */
-.left-nav .nav-submenu {
-  margin:8px 0 16px 6px;
-  padding:8px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-  border-radius:6px;
-  list-style:none;
-  display:none;
-}
-
-/* Show submenu when parent has .open */
-.left-nav .nav-group.open .nav-submenu { display:block; }
-
-.left-nav .nav-submenu li a {
-  display:block;
-  color:#d6eef4;
-  padding:8px;
-  text-decoration:none;
-  border-radius:4px;
-}
-.left-nav .nav-submenu li a:hover {
-  background: rgba(255,255,255,0.03);
-}
-
-/* Force dark background for generated dropdowns (override library defaults) */
-.api-dropdown, .api-dropdown input, .api-dropdown .select,
-.swagger-ui .servers, .swagger-ui .servers select,
-.swagger-ui .scheme-container {
-  background: #07151a !important;
-  color: #cfeff4 !important;
-  border: 1px solid rgba(255,255,255,0.06) !important;
-  border-radius:6px !important;
-}
-
-/* placeholder dim */
-.api-dropdown input::placeholder { color: rgba(255,255,255,0.18) !important; }
-
-
-/* Final endpoint detail overrides to eliminate lingering white panels */
-#redoc-container .api-content button[aria-expanded="true"] + div,
-#redoc-container .api-content button[aria-expanded="true"] + div > div,
-#redoc-container .api-content button[aria-expanded="true"] + div section,
-#redoc-container .api-content button[aria-expanded="true"] + div article,
-#redoc-container .api-content button[aria-expanded="true"] + div div:not([role="tablist"]),
-#redoc-container .api-content button[aria-expanded="true"] + div label {
-  background-color: transparent !important;
-  color: #dcecff !important;
-}
-
-#redoc-container .api-content button[aria-expanded="true"] + div [class*="sample"] > div,
-#redoc-container .api-content button[aria-expanded="true"] + div [class*="Sample"] > div,
-#redoc-container .api-content button[aria-expanded="true"] + div [class*="server"] > div,
-#redoc-container .api-content button[aria-expanded="true"] + div [class*="Server"] > div,
-#redoc-container .api-content button[aria-expanded="true"] + div [class*="url"] > div,
-#redoc-container .api-content button[aria-expanded="true"] + div [class*="Url"] > div,
-#redoc-container .api-content button[aria-expanded="true"] + div input[readonly],
-#redoc-container .api-content button[aria-expanded="true"] + div input[type="text"],
-#redoc-container .api-content button[aria-expanded="true"] + div textarea[readonly],
-#redoc-container .api-content button[aria-expanded="true"] + div select {
-  background: linear-gradient(180deg, rgba(11, 24, 46, 0.98), rgba(6, 16, 32, 0.98)) !important;
-  color: #f5fbff !important;
-  -webkit-text-fill-color: #f5fbff !important;
-  border: 1px solid rgba(120, 190, 255, 0.28) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.04),
-    0 10px 24px rgba(0, 7, 20, 0.24) !important;
-}
-
-#redoc-container .api-content button[aria-expanded="true"] + div p,
-#redoc-container .api-content button[aria-expanded="true"] + div span,
-#redoc-container .api-content button[aria-expanded="true"] + div small {
-  color: #dcecff !important;
-}
-
-#redoc-container .api-content button[aria-expanded="true"] + div input::placeholder,
-#redoc-container .api-content button[aria-expanded="true"] + div textarea::placeholder {
-  color: rgba(188, 214, 244, 0.72) !important;
-}
-
-
-</style>
-  
 </head>
 <body class="carrier-list">
 
@@ -907,26 +542,6 @@ html {
   <div class="bg-grid"></div>
 
   <div id="site-header"></div>
-
- <aside id="sidebar">
-  <nav class="left-nav" aria-label="Docs nav">
-    <ul>
-      <li class="nav-group">
-        <button class="nav-toggle" aria-expanded="false" type="button">Carriers</button>
-        <ul class="nav-submenu">
-          <li><a href="#carriers-overview">Overview</a></li>
-          <li><a href="#carriers-endpoints">Endpoints</a></li>
-        </ul>
-      </li>
-      <li class="nav-group">
-        <button class="nav-toggle" aria-expanded="false" type="button">Alerts</button>
-        <ul class="nav-submenu">
-          <li><a href="#alerts-overview">Overview</a></li>
-        </ul>
-      </li>
-    </ul>
-  </nav>
-</aside> 
 
   <main class="docs-shell">
     <section class="docs-hero">
@@ -950,7 +565,6 @@ html {
 
   <footer id="site-footer"></footer>
 
- 
   <script src="/js/shared/shared.js"></script>
   <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
   <script>
@@ -972,7 +586,9 @@ html {
             dark: '#0a8dc8',
             contrastText: '#04111d'
           },
-          success: { main: '#37d67a' },
+          success: {
+            main: '#37d67a'
+          },
           text: {
             primary: '#f6fbff',
             secondary: '#d7e7fa'
@@ -1005,7 +621,7 @@ html {
           fontSize: '15px',
           lineHeight: '1.7',
           code: {
-            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace',
+            fontFamily: 'ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
             fontSize: '14px',
             fontWeight: '500',
             color: '#f2f8ff',
@@ -1037,8 +653,12 @@ html {
           backgroundColor: '#08152d',
           textColor: '#b9cde9',
           activeTextColor: '#f6fbff',
-          groupItems: { textTransform: 'none' },
-          level1Items: { textTransform: 'none' }
+          groupItems: {
+            textTransform: 'none'
+          },
+          level1Items: {
+            textTransform: 'none'
+          }
         },
         logo: {
           maxHeight: '0',
@@ -1056,67 +676,8 @@ html {
         }
       }
     }, document.getElementById('redoc-container'));
+    
 
-    function wireRedocMenu() {
-      const menu = document.querySelector('#redoc-container .menu-content');
-      if (!menu || menu.dataset.csMenuWired === 'true') return;
-
-      menu.dataset.csMenuWired = 'true';
-
-      menu.addEventListener('click', function (e) {
-        const link = e.target.closest('a');
-        if (!link) return;
-
-        const li = link.closest('li');
-        if (!li) return;
-
-        const toggleBtn = li.querySelector('button[aria-expanded]');
-        const hasChildren = !!li.querySelector('ul');
-
-        if (toggleBtn && hasChildren) {
-          e.preventDefault();
-          e.stopPropagation();
-          toggleBtn.click();
-        }
-      }, true);
-    }
-
-    const redocObserver = new MutationObserver(() => {
-      wireRedocMenu();
-    });
-
-    redocObserver.observe(document.getElementById('redoc-container'), {
-      childList: true,
-      subtree: true
-    });
-
-    wireRedocMenu();
   </script>
-
-  <script>
-/* Simple toggle to open/close submenus without navigating away */
-document.addEventListener('DOMContentLoaded', function () {
-  document.querySelectorAll('.nav-toggle').forEach(function(btn){
-    btn.addEventListener('click', function(e){
-      var group = btn.closest('.nav-group');
-      var isOpen = group.classList.contains('open');
-      // close any sibling group (optional - keep only one open)
-      group.parentElement.querySelectorAll('.nav-group').forEach(function(g){ if(g!==group) { g.classList.remove('open'); g.querySelector('.nav-toggle').setAttribute('aria-expanded','false'); } });
-      if(isOpen) {
-        group.classList.remove('open');
-        btn.setAttribute('aria-expanded','false');
-      } else {
-        group.classList.add('open');
-        btn.setAttribute('aria-expanded','true');
-      }
-    });
-
-    // keyboard access
-    btn.addEventListener('keydown', function(e){
-      if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.click(); }
-    });
-  });
-});
-</script>
 </body>
 </html>
