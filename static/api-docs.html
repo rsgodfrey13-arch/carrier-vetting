@@ -688,7 +688,7 @@ html {
 
     menu.dataset.csGroupToggleBound = 'true';
 
-    menu.addEventListener('click', function (e) {
+    function onGroupClick(e) {
       const groupLabel = e.target.closest('li[data-item-id^="tag/"] > label.-depth1');
       if (!groupLabel || !menu.contains(groupLabel)) return;
 
@@ -704,14 +704,23 @@ html {
 
       const isExpanded = groupLi.getAttribute('aria-expanded') === 'true';
 
-      groupLi.setAttribute('aria-expanded', String(!isExpanded));
+      groupLi.setAttribute('aria-expanded', isExpanded ? 'false' : 'true');
 
       if (isExpanded) {
+        childList.hidden = true;
         childList.style.display = 'none';
+        childList.style.maxHeight = '0';
+        childList.style.overflow = 'hidden';
       } else {
-        childList.style.display = '';
+        childList.hidden = false;
+        childList.style.display = 'block';
+        childList.style.maxHeight = 'none';
+        childList.style.overflow = 'visible';
       }
-    }, true);
+    }
+
+    menu.addEventListener('pointerdown', onGroupClick, true);
+    menu.addEventListener('click', onGroupClick, true);
   }
 
   function initWhenReady() {
