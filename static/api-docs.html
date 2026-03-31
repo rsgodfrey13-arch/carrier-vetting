@@ -590,6 +590,32 @@ html {
 #redoc-container .api-content div[role="button"] {
   border-radius: 10px !important;
 }
+
+
+/* Wrap long JSON lines cleanly in response/code samples */
+#redoc-container .api-content pre,
+#redoc-container .api-content code,
+#redoc-container .api-content .redoc-json,
+#redoc-container .api-content [class*="codeBlock"],
+#redoc-container .api-content [class*="CodeBlock"],
+#redoc-container .api-content [class*="sample"] pre,
+#redoc-container .api-content pre code {
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+}
+
+/* Make sure code blocks can scroll if needed instead of clipping */
+#redoc-container .api-content pre,
+#redoc-container .api-content [class*="sample"] > div {
+  overflow-x: auto !important;
+  max-width: 100% !important;
+}
+
+/* Give the sample text a little more room from the left edge */
+#redoc-container .api-content pre {
+  padding: 18px 20px !important;
+}
     
   </style>
 </head>
