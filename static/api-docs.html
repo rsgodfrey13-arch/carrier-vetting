@@ -682,69 +682,52 @@ html {
 
 <script>
 (function () {
-  function bindRedocCategoryToggleOnly() {
+  function bindSidebarGroupToggle() {
     const menu = document.querySelector('#redoc-container .menu-content');
-    if (!menu || menu.dataset.csCategoryToggleBound === 'true') return;
+    if (!menu || menu.dataset.csGroupToggleBound === 'true') return;
 
-    menu.dataset.csCategoryToggleBound = 'true';
+    menu.dataset.csGroupToggleBound = 'true';
 
     menu.addEventListener('click', function (e) {
-      const anchor = e.target.closest('a');
-      if (!anchor || !menu.contains(anchor)) return;
+      const groupLabel = e.target.closest('li[data-item-id^="tag/"] > label.-depth1');
+      if (!groupLabel || !menu.contains(groupLabel)) return;
 
-      const li = anchor.closest('li');
-      if (!li) return;
+      const groupLi = groupLabel.parentElement;
+      const childList = groupLi.querySelector(':scope > ul');
+      if (!groupLi || !childList) return;
 
-      const childList = li.querySelector(':scope > ul');
-      if (!childList) return; // real endpoint item, let it navigate normally
-
-      // Category row clicked: block ReDoc jump behavior completely
       e.preventDefault();
       e.stopPropagation();
       if (typeof e.stopImmediatePropagation === 'function') {
         e.stopImmediatePropagation();
       }
 
-      // Try to find a separate expand/collapse control in the same row
-      const toggle =
-        li.querySelector(':scope > button[aria-expanded]') ||
-        li.querySelector(':scope > label') ||
-        li.querySelector(':scope > span[role="button"]') ||
-        li.querySelector(':scope > div[role="button"]') ||
-        li.querySelector(':scope > button') ||
-        li.querySelector('svg')?.parentElement;
+      const isExpanded = groupLi.getAttribute('aria-expanded') === 'true';
 
-      if (toggle && toggle !== anchor) {
-        toggle.click();
-        return;
+      groupLi.setAttribute('aria-expanded', String(!isExpanded));
+
+      if (isExpanded) {
+        childList.style.display = 'none';
+      } else {
+        childList.style.display = '';
       }
-
-      // Fallback: manually toggle the child list
-      const isOpen =
-        !childList.hidden &&
-        getComputedStyle(childList).display !== 'none';
-
-      childList.hidden = isOpen;
-      childList.style.display = isOpen ? 'none' : '';
-      li.setAttribute('aria-expanded', String(!isOpen));
-      li.classList.toggle('open', !isOpen);
     }, true);
   }
 
-  function waitForRedocMenu() {
+  function initWhenReady() {
     let tries = 0;
     const timer = setInterval(() => {
       const menu = document.querySelector('#redoc-container .menu-content');
       if (menu) {
         clearInterval(timer);
-        bindRedocCategoryToggleOnly();
+        bindSidebarGroupToggle();
       }
       tries += 1;
       if (tries > 40) clearInterval(timer);
     }, 250);
   }
 
-  window.addEventListener('load', waitForRedocMenu);
+  window.addEventListener('load', initWhenReady);
 })();
 </script>
   
