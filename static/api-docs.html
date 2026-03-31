@@ -557,6 +557,18 @@ html {
 #redoc-container .menu-content input[type="text"] {
   padding-left: 38px !important;
 }  
+
+/* Get rid of magnifying glass completely */
+#redoc-container .menu-content [role="search"] svg {
+  display: none !important;
+}
+
+#redoc-container .menu-content [role="search"] input,
+#redoc-container .menu-content input[type="search"],
+#redoc-container .menu-content input[type="text"] {
+  padding-left: 12px !important;
+}
+
     
   </style>
 </head>
