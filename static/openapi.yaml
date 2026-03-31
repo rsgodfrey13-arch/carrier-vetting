@@ -947,7 +947,7 @@ paths:
                   - contract:
                       contract_id: '8b0f63ae-1f1e-4aa3-9211-8b9f24f4eabc'
                       dotnumber: "336075"
-                      status: COMPLETED
+                      status: SIGNED
                       created_at: '2026-03-10T12:00:00Z'
                       updated_at: '2026-03-11T09:00:00Z'
                       sent_at: '2026-03-10T12:00:00Z'
@@ -983,17 +983,17 @@ paths:
   /contracts/new:
     get:
       tags: [Contracts]
-      summary: List ready contracts
+      summary: List signed contracts
       description: |
-        Returns contracts in `COMPLETED` status.
-        Use this for contracts ready for broker-side processing.
+        Returns contracts in `SIGNED` status.
+        Use this for contracts that have been completed by carriers and are ready for broker-side processing.
       operationId: listNewContracts
       parameters:
         - $ref: '#/components/parameters/PageQuery'
         - $ref: '#/components/parameters/PageSizeQuery'
       responses:
         '200':
-          description: Completed contracts.
+          description: Signed contracts.
           headers:
             X-RateLimit-Limit:
               $ref: '#/components/headers/X-RateLimit-Limit'
@@ -1024,40 +1024,46 @@ paths:
               example:
                 error: Failed to load new contracts
 
-  /contracts/send:
+  /contracts/send/{dot}:
     post:
       tags: [Contracts]
-      summary: Create contracts
+      summary: Send contract
       description: |
-        Creates contract records in `SENT` status for one or more carriers.
-        This endpoint does **not** send email or deliver links to recipients.
-        Submitted DOT values are normalized and invalid values are returned separately.
-      operationId: sendContracts
+        Sends a contract email to a carrier and creates a contract record in `SENT` status.
+        This endpoint generates a signing token, stores the contract, and emails the carrier a signing link.
+      operationId: sendContract
+      parameters:
+        - $ref: '#/components/parameters/DotPath'
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [dot]
+              required:
+                - user_contract_id
+                - email_to
               properties:
-                dot:
-                  oneOf:
-                    - type: string
-                    - type: array
-                      items:
-                        type: string
-                  description: Numeric DOT value or array of DOT values.
-            examples:
-              single:
-                value:
-                  dot: "336075"
-              multiple:
-                value:
-                  dot: ["336075", "123456"]
+                user_contract_id:
+                  type: integer
+                  description: Agreement template ID to send.
+                  example: 12
+                email_to:
+                  type: string
+                  format: email
+                  description: Carrier email address.
+                  example: dispatch@abctrucking.com
+                carrier_name:
+                  type: string
+                  description: Optional carrier display name.
+                  example: ABC Trucking
+            example:
+              user_contract_id: 12
+              email_to: dispatch@abctrucking.com
+              carrier_name: ABC Trucking
       responses:
         '200':
-          description: Contracts created.
+          description: Contract email sent successfully.
           headers:
             X-RateLimit-Limit:
               $ref: '#/components/headers/X-RateLimit-Limit'
@@ -1069,66 +1075,33 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [summary, created, invalidDots]
+                required: [ok, contract_id, status, link]
                 properties:
-                  summary:
-                    type: object
-                    required: [totalSubmitted, created, invalidDots]
-                    properties:
-                      totalSubmitted:
-                        type: integer
-                      created:
-                        type: integer
-                      invalidDots:
-                        type: integer
-                  created:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        contract_id:
-                          oneOf:
-                            - type: integer
-                            - type: string
-                              format: uuid
-                        dotnumber:
-                          type: string
-                        status:
-                          type: string
-                        created_at:
-                          type: string
-                          format: date-time
-                        sent_at:
-                          type: string
-                          format: date-time
-                  invalidDots:
-                    type: array
-                    items:
-                      type: string
+                  ok:
+                    type: boolean
+                    example: true
+                  contract_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    example: SENT
+                  link:
+                    type: string
+                    example: https://carriershark.com/contract/abc123token
         '400':
-          description: No DOT values were supplied or none matched carriers.
+          description: Missing required fields or invalid template.
           content:
             application/json:
               schema:
-                oneOf:
-                  - $ref: '#/components/schemas/Error'
-                  - type: object
-                    required: [error, invalidDots]
-                    properties:
-                      error:
-                        type: string
-                      invalidDots:
-                        type: array
-                        items:
-                          type: string
+                $ref: '#/components/schemas/Error'
               examples:
-                dotRequired:
+                missingFields:
                   value:
-                    error: dot is required (numeric DOT or array of DOTs)
-                noValidDots:
+                    error: user_contract_id and email_to are required
+                invalidTemplate:
                   value:
-                    error: No valid DOTs found in carriers table
-                    invalidDots: ["999999"]
+                    error: Invalid or unauthorized contract template
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '429':
@@ -1140,21 +1113,21 @@ paths:
               example:
                 error: Rate limit exceeded
         '500':
-          description: Failed to create contracts.
+          description: Failed to send contract.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
               example:
-                error: Failed to create contracts
+                error: Failed to send contract
 
   /contracts/processed:
     patch:
       tags: [Contracts]
       summary: Mark contracts processed
       description: |
-        Marks one or more `COMPLETED` contracts as `PROCESSED`.
-        IDs not found in your account or not currently completed are reported as not updated.
+        Marks one or more `SIGNED` contracts as `PROCESSED`.
+        IDs not found in your account or not currently signed are reported as not updated.
       operationId: markContractsProcessed
       requestBody:
         required: true
@@ -1215,9 +1188,9 @@ paths:
   /contracts/unprocessed:
     patch:
       tags: [Contracts]
-      summary: Mark contracts completed
+      summary: Mark contracts signed
       description: |
-        Marks one or more `PROCESSED` contracts back to `COMPLETED`.
+        Marks one or more `PROCESSED` contracts back to `SIGNED`.
         IDs not found in your account or not currently processed are reported as not updated.
       operationId: markContractsUnprocessed
       requestBody:
