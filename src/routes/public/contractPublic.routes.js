@@ -1186,7 +1186,7 @@ if (startData.status !== "MFA_ALREADY_VALID") {
             btn.disabled = false;
             btn.textContent = "Accept Agreement";
           } else {
-            document.getElementById("signed-screen").style.display = "flex";
+            document.getElementById("accepted-screen").style.display = "flex";
             document.querySelector(".wrap").style.display = "none";
           }
         } catch (e) {
@@ -1228,12 +1228,12 @@ if (startData.status !== "MFA_ALREADY_VALID") {
 </div>
 
 <!-- Success Screen (swap-in) -->
-<div class="success-screen" id="signed-screen" style="display:none;">
+<div class="success-screen" id="accepted-screen" style="display:none;">
   <div class="success-card">
     <div class="success-title">Thank you.</div>
 
     <div class="success-sub">
-      This agreement has been signed successfully.
+      This agreement has been accepted successfully.
     </div>
 
     <div class="success-sub muted" style="margin-top:10px;">

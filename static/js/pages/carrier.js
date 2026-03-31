@@ -1493,7 +1493,7 @@ async function loadCarrierAgreements(dot) {
   if (!wrap || !statusEl || !metaEl || !tableBodyEl || !mobileListEl || !emptyEl) return;
 
   wrap.hidden = true;
-  statusEl.textContent = "No agreements signed";
+  statusEl.textContent = "No agreements accepted";
   metaEl.innerHTML = "";
   tableBodyEl.innerHTML = "";
   mobileListEl.innerHTML = "";
@@ -1515,23 +1515,23 @@ async function loadCarrierAgreements(dot) {
     const latestSignedAt = data.latest_signed_at;
 
     if (count > 0 && latestSignedAt) {
-      setContractSignStatus(`✓ Signed ${fmtSignedDate(latestSignedAt)}`, true);
+      setContractSignStatus(`✓ Accepted ${fmtSignedDate(latestSignedAt)}`, true);
     } else if (count > 0 && agreements.length > 0) {
       const fallbackSignedAt =
         agreements[0]?.signed_at || agreements[0]?.sent_at || agreements[0]?.created_at;
 
       setContractSignStatus(
-  fallbackSignedAt ? `✓ Signed ${fmtSignedDate(fallbackSignedAt)}` : "✓ Signed",
+  fallbackSignedAt ? `✓ Accepted ${fmtSignedDate(fallbackSignedAt)}` : "✓ Accepted",
   true
 );
     } else {
       setContractSignStatus("", false);
     }
 
-    statusEl.textContent = `${count} Agreement${count === 1 ? "" : "s"} Signed`;
+    statusEl.textContent = `${count} Agreement${count === 1 ? "" : "s"} Accepted`;
 
     if (latestSignedAt) {
-      metaEl.innerHTML = `<span class="docs-summary-chip">Latest Signed: ${fmtDateTime(latestSignedAt)}</span>`;
+      metaEl.innerHTML = `<span class="docs-summary-chip">Latest Accepted: ${fmtDateTime(latestSignedAt)}</span>`;
     }
 
     if (agreements.length > 0) {
@@ -1547,7 +1547,7 @@ async function loadCarrierAgreements(dot) {
       mobileListEl.innerHTML = agreements.map((agreement) => `
         <article class="docs-mobile-card">
           <div class="docs-mobile-title">${safeText(agreement.agreement_type, "Carrier Agreement")}</div>
-          <div class="docs-mobile-meta">Signed: ${fmtDateTime(agreement.signed_at || agreement.sent_at || agreement.created_at)}</div>
+          <div class="docs-mobile-meta">Accepted: ${fmtDateTime(agreement.signed_at || agreement.sent_at || agreement.created_at)}</div>
           <div class="docs-row-actions docs-mobile-actions">
             ${renderRowActionLink({ href: agreement.pdf_url, label: "View Agreement" })}
             ${renderRowActionLink({ href: agreement.certificate_url, label: "View Certificate" })}

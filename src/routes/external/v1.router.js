@@ -1308,7 +1308,7 @@ router.patch('/contracts/unprocessed', async (req, res) => {
 // ---------------------------------------------
 // POST /api/v1/contracts/send
 // Body: { "dot": ["336075","123456"] }  (array or single)
-// creates contracts in SENT
+// creates contract records in SENT (no email dispatch in this endpoint)
 // ---------------------------------------------
 router.post('/contracts/send', async (req, res) => {
   try {
@@ -1352,7 +1352,7 @@ router.post('/contracts/send', async (req, res) => {
     });
   } catch (err) {
     console.error('Error in POST /api/v1/contracts/send:', err);
-    res.status(500).json({ error: 'Failed to send contracts' });
+    res.status(500).json({ error: 'Failed to create contracts' });
   }
 });
 
