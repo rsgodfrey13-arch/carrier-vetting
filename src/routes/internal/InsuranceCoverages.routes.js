@@ -5,10 +5,39 @@ const { pool } = require("../../db/pool");
 
 const router = express.Router();
 
+function getViewerContext(req) {
+  const companyId =
+    req.companyContext?.companyId ||
+    req.company_id ||
+    req.companyId ||
+    req.auth?.companyId ||
+    req.company?.id ||
+    req.user?.company_id ||
+    req.user?.companyId ||
+    null;
+
+  const userId = req.session?.userId || req.user?.id || req.auth?.userId || null;
+
+  return {
+    companyId: companyId ? String(companyId) : null,
+    userId: userId ? String(userId) : null,
+  };
+}
+
+function canViewerAccessInsuranceDocument(docRow, viewer) {
+  // Contract for frontend: structured coverage data may be visible even when
+  // document viewing is not. UI must use explicit can_view_document and never
+  // infer ownership. PDF endpoint still enforces authorization independently.
+  if (!viewer?.companyId) return false;
+  if (!docRow?.company_id) return false;
+  return String(docRow.company_id) === viewer.companyId;
+}
+
 // GET /api/carriers/:dot/insurance-coverages
 router.get("/carriers/:dot/insurance-coverages", async (req, res) => {
   const dot = String(req.params.dot || "").replace(/\D/g, "");
   if (!dot) return res.status(400).json({ error: "Missing DOT" });
+  const viewer = getViewerContext(req);
 
 const sql = `
   WITH cov AS (
@@ -64,13 +93,45 @@ const sql = `
   
     // If parsed coverages exist, we're done
     if (rows.length > 0) {
-      return res.json({ mode: "STRUCTURED", rows, document: null });
+      const documentIds = [
+        ...new Set(
+          rows
+            .map((row) => row.document_id)
+            .filter((documentId) => documentId !== null && documentId !== undefined)
+        ),
+      ];
+
+      const docById = new Map();
+      if (documentIds.length > 0) {
+        const docsRes = await pool.query(
+          `
+          SELECT id, company_id
+          FROM public.insurance_documents
+          WHERE id = ANY($1::bigint[]);
+          `,
+          [documentIds]
+        );
+
+        for (const doc of docsRes.rows) {
+          docById.set(String(doc.id), doc);
+        }
+      }
+
+      const rowsWithVisibility = rows.map((row) => {
+        const doc = row.document_id ? docById.get(String(row.document_id)) : null;
+        return {
+          ...row,
+          can_view_document: canViewerAccessInsuranceDocument(doc, viewer),
+        };
+      });
+
+      return res.json({ mode: "STRUCTURED", rows: rowsWithVisibility, document: null });
     }
   
     // 2) No coverages → check if there's a COI document on file
     const docRes = await pool.query(
       `
-      SELECT id, uploaded_at
+      SELECT id, uploaded_at, company_id
       FROM public.insurance_documents
       WHERE dot_number = $1
         AND document_type = 'COI'
@@ -81,10 +142,15 @@ const sql = `
     );
   
     if (docRes.rows.length > 0) {
+      const document = docRes.rows[0];
       return res.json({
         mode: "ON_FILE",
         rows: [],
-        document: docRes.rows[0], // { id, uploaded_at }
+        document: {
+          id: document.id,
+          uploaded_at: document.uploaded_at,
+          can_view_document: canViewerAccessInsuranceDocument(document, viewer),
+        },
       });
     }
   
