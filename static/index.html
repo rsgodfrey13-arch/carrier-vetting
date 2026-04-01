@@ -71,7 +71,6 @@
           <p class="carriers-subtitle" id="grid-subtitle">
             Click a DOT number to open its profile page.
           </p>
-
           <div id="refreshStatus" class="refresh-status" aria-live="polite"></div>
         </div>
 
@@ -262,29 +261,21 @@
       </table>
 
       <!-- 🔻 New footer: rows-per-page + pagination -->
-<div class="table-footer">
-  <div class="rows-per-page">
-    Rows per page:
-    <select id="rows-per-page">
-      <option value="25" selected>25</option>
-      <option value="50">50</option>
-      <option value="100">100</option>
-    </select>
-  </div>
-
-  <div class="pagination" id="pagination-controls"></div>
-</div>
-
-<div class="table-tip carrier-disclaimer">
-  Carrier information may be delayed, incomplete, or sourced from public and third-party providers. Users are responsible for independently verifying authority, insurance, safety, and compliance status before making business decisions.
-</div>
-
-<div class="table-tip">
-  Status legend: A = Active, I = Inactive, N = None / Not Available.
-</div>
-<div class="table-tip">
+      <div class="table-footer">
+        <div class="rows-per-page">
+          Rows per page:
+          <select id="rows-per-page">
+            <option value="25" selected>25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
+      
+        <div class="pagination" id="pagination-controls"></div>
+      </div>
+        <div class="table-tip">
   Tip: Click a column header to sort.
-</div>
+      </div>
     </section>
   </div>
 
