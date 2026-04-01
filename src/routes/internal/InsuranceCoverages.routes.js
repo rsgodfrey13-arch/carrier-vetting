@@ -90,7 +90,7 @@ const sql = `
           `
           SELECT id, company_id
           FROM public.insurance_documents
-          WHERE id = ANY($1::bigint[]);
+          WHERE id = ANY($1::uuid[]);
           `,
           [documentIds]
         );
