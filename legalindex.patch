@@ -1,0 +1,112 @@
+diff --git a/static/index.html b/static/index.html
+index b50ef0a13462b273e988b7082c07cb26bd2606fd..7c5e474c4ecab9442789fcc06483c2a43ea1e51f 100644
+--- a/static/index.html
++++ b/static/index.html
+@@ -49,50 +49,53 @@
+   </div>
+ 
+   <button id="open-carrier-btn" class="search-btn">Search</button>
+ </div>
+ 
+ 
+     </section>
+ 
+     <!-- LIST SECTION -->
+     <section id="my-carriers" class="glass-card carriers-card">
+       <header class="carriers-card-header card-header">
+         <div class="carriers-header-left">
+           <h2 class="carriers-title" id="grid-title">My Carriers</h2>
+         
+           <div class="grid-modebar" id="grid-modebar">
+             <span class="grid-modepill status-pill" id="grid-modepill">Viewing: My Carriers</span>
+             <span class="grid-query" id="grid-query" hidden></span>
+             <button class="grid-back" id="grid-back-btn" type="button" hidden>
+               Back to My Carriers
+             </button>
+           </div>
+         
+           <p class="carriers-subtitle" id="grid-subtitle">
+             Click a DOT number to open its profile page.
+           </p>
++          <p class="carriers-subtitle">
++            Carrier information may be delayed, incomplete, or sourced from public and third-party providers. Users are responsible for independently verifying authority, insurance, safety, and compliance status before making business decisions.
++          </p>
+           <div id="refreshStatus" class="refresh-status" aria-live="polite"></div>
+         </div>
+ 
+       
+ 
+       
+         <div class="carriers-header-actions action-bar">
+           <button id="filters-btn" class="filters-btn" type="button">
+             Filters <span id="filters-count" class="filters-count" hidden>0</span>
+           </button>
+         
+           <button id="bulk-import-btn" class="bulk-import-btn">Bulk Import</button>
+           <button id="download-btn" class="download-btn">Download CSV</button>
+         </div>
+ 
+         
+         
+       </header>
+         <!-- Filters popover -->
+         <div id="filters-popover" class="filters-popover hidden" role="dialog" aria-modal="false" aria-label="Filters">
+           <div class="filters-popover-inner">
+             <div class="filters-head">
+               <div>
+                 <div class="filters-title">Filters</div>
+                 <div class="filters-subtitle">Narrow down your carrier list.</div>
+@@ -250,50 +253,53 @@
+             <th class="sortable" data-col="safety">
+               <span class="th-label">Safety Rating</span>
+               <span class="sort-icon">
+                 <span class="arrow-up"></span>
+                 <span class="arrow-down"></span>
+               </span>
+             </th>
+           </tr>
+         </thead>
+ 
+         <tbody id="carrier-table-body"></tbody>
+       </table>
+ 
+       <!-- 🔻 New footer: rows-per-page + pagination -->
+       <div class="table-footer">
+         <div class="rows-per-page">
+           Rows per page:
+           <select id="rows-per-page">
+             <option value="25" selected>25</option>
+             <option value="50">50</option>
+             <option value="100">100</option>
+           </select>
+         </div>
+       
+         <div class="pagination" id="pagination-controls"></div>
++      </div>
++      <div class="table-tip">
++        Status legend: A = Active, I = Inactive, N = None / Not Available.
+       </div>
+         <div class="table-tip">
+   Tip: Click a column header to sort.
+       </div>
+     </section>
+   </div>
+ 
+ <!-- Bulk Import Modal -->
+ <div id="import-modal" class="import-modal hidden">
+   <div class="import-modal-backdrop" aria-hidden="true"></div>
+ 
+   <div class="import-modal-dialog glass-card" role="dialog" aria-modal="true" aria-labelledby="import-modal-title">
+     <header class="import-modal-header">
+       <div>
+         <h2 class="import-modal-title" id="import-modal-title">Carrier Import Wizard</h2>
+         <p class="import-modal-subtitle">
+           Upload a CSV or paste DOTs, then review and confirm before importing.
+         </p>
+       </div>
+       <button class="import-modal-close" id="import-modal-close" type="button" aria-label="Close">✕</button>
+     </header>
+ 
+     <div class="import-steps" aria-label="Import steps">
+       <div class="import-step import-step-1 import-step-active">
+         <span class="import-step-number">1</span><span class="import-step-label">Upload</span>
