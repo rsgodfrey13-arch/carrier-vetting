@@ -2,42 +2,25 @@
 
 const express = require("express");
 const { pool } = require("../../db/pool");
+const { requireAuth } = require("../../middleware/requireAuth");
+const { loadCompanyContext } = require("../../middleware/companyContext");
 
 const router = express.Router();
 
-function getViewerContext(req) {
-  const companyId =
-    req.companyContext?.companyId ||
-    req.company_id ||
-    req.companyId ||
-    req.auth?.companyId ||
-    req.company?.id ||
-    req.user?.company_id ||
-    req.user?.companyId ||
-    null;
-
-  const userId = req.session?.userId || req.user?.id || req.auth?.userId || null;
-
-  return {
-    companyId: companyId ? String(companyId) : null,
-    userId: userId ? String(userId) : null,
-  };
-}
-
-function canViewerAccessInsuranceDocument(docRow, viewer) {
+function canViewerAccessInsuranceDocument(docRow, companyId) {
   // Contract for frontend: structured coverage data may be visible even when
   // document viewing is not. UI must use explicit can_view_document and never
   // infer ownership. PDF endpoint still enforces authorization independently.
-  if (!viewer?.companyId) return false;
+  if (!companyId) return false;
   if (!docRow?.company_id) return false;
-  return String(docRow.company_id) === viewer.companyId;
+  return String(docRow.company_id) === String(companyId);
 }
 
 // GET /api/carriers/:dot/insurance-coverages
-router.get("/carriers/:dot/insurance-coverages", async (req, res) => {
+router.get("/carriers/:dot/insurance-coverages", requireAuth, loadCompanyContext, async (req, res) => {
   const dot = String(req.params.dot || "").replace(/\D/g, "");
   if (!dot) return res.status(400).json({ error: "Missing DOT" });
-  const viewer = getViewerContext(req);
+  const companyId = req.companyContext?.companyId || null;
 
 const sql = `
   WITH cov AS (
@@ -121,7 +104,7 @@ const sql = `
         const doc = row.document_id ? docById.get(String(row.document_id)) : null;
         return {
           ...row,
-          can_view_document: canViewerAccessInsuranceDocument(doc, viewer),
+          can_view_document: canViewerAccessInsuranceDocument(doc, companyId),
         };
       });
 
@@ -149,7 +132,7 @@ const sql = `
         document: {
           id: document.id,
           uploaded_at: document.uploaded_at,
-          can_view_document: canViewerAccessInsuranceDocument(document, viewer),
+          can_view_document: canViewerAccessInsuranceDocument(document, companyId),
         },
       });
     }
