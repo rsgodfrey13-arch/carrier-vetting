@@ -1,6 +1,7 @@
 // api-v1.js
 const express = require("express");
 const crypto = require("crypto");
+const rateLimit = require("express-rate-limit");
 const { getPolicyForUser } = require("../../policies/importPolicy");
 const { sendContractEmail } = require("../../clients/mailgun");
 const {
@@ -53,9 +54,120 @@ function makeToken() {
   return crypto.randomBytes(24).toString("hex");
 }
 
+function getTrimmedLength(value) {
+  return String(value ?? "").trim().length;
+}
+
+function hasValue(value) {
+  return getTrimmedLength(value) > 0;
+}
+
+function getNormalizedSearchInput(query = {}) {
+  return {
+    dot: String(query.dot ?? "").trim(),
+    mc: String(query.mc ?? "").trim(),
+    legalname: String(query.legalname ?? "").trim(),
+    dbaname: String(query.dbaname ?? "").trim(),
+    city: String(query.city ?? "").trim(),
+    state: String(query.state ?? "").trim(),
+  };
+}
+
+function validateCarrierSearchInput(searchInput) {
+  const hasDot = hasValue(searchInput.dot);
+  const hasMc = hasValue(searchInput.mc);
+  const hasLegalname = hasValue(searchInput.legalname);
+  const hasDbaname = hasValue(searchInput.dbaname);
+  const hasCity = hasValue(searchInput.city);
+  const hasState = hasValue(searchInput.state);
+
+  if (hasState && !hasCity && !hasLegalname && !hasDbaname && !hasDot && !hasMc) {
+    return {
+      valid: false,
+      error: "state alone is too broad; combine it with city, legalname, or dbaname.",
+    };
+  }
+
+  if (hasCity && !hasState && !hasDot && !hasMc && !hasLegalname && !hasDbaname) {
+    return {
+      valid: false,
+      error: "city alone is too broad; include state.",
+    };
+  }
+
+  if (hasDot) {
+    return { valid: true };
+  }
+
+  if (hasMc) {
+    return { valid: true };
+  }
+
+  if (getTrimmedLength(searchInput.legalname) > 0 && getTrimmedLength(searchInput.legalname) < 3) {
+    return {
+      valid: false,
+      error: "Search requires dot, mc, legalname (3+ chars), dbaname (3+ chars), or city + state.",
+    };
+  }
+
+  if (getTrimmedLength(searchInput.dbaname) > 0 && getTrimmedLength(searchInput.dbaname) < 3) {
+    return {
+      valid: false,
+      error: "Search requires dot, mc, legalname (3+ chars), dbaname (3+ chars), or city + state.",
+    };
+  }
+
+  if (getTrimmedLength(searchInput.legalname) >= 3) {
+    return { valid: true };
+  }
+
+  if (getTrimmedLength(searchInput.dbaname) >= 3) {
+    return { valid: true };
+  }
+
+  if (getTrimmedLength(searchInput.city) >= 2 && getTrimmedLength(searchInput.state) >= 2) {
+    return { valid: true };
+  }
+
+  return {
+    valid: false,
+    error: "Search requires dot, mc, legalname (3+ chars), dbaname (3+ chars), or city + state.",
+  };
+}
+
+function createExternalCarrierSearchLimiter() {
+  return rateLimit({
+    windowMs: 60 * 1000,
+    max: 6,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => {
+      const companyId = getCompanyId(req);
+      if (companyId) return `company:${companyId}`;
+
+      const apiKey = String(
+        req.auth?.apiKey ||
+        req.auth?.apiKeyId ||
+        req.auth?.key ||
+        req.get("x-api-key") ||
+        ""
+      ).trim();
+      if (apiKey) return `api_key:${apiKey}`;
+
+      return req.ip;
+    },
+    handler: (req, res) => {
+      res.status(429).json({
+        error: "Carrier search rate limit exceeded. Please slow down.",
+      });
+    },
+  });
+}
+
 
 function createApiV1(pool) {
   const router = express.Router();
+  const externalCarrierSearchLimiter = createExternalCarrierSearchLimiter();
 
   if (!pool || typeof pool.query !== "function") {
     throw new Error("V1 router initialized without a valid pool");
@@ -401,71 +513,75 @@ router.post('/me/carriers/import', async (req, res) => {
 
 // ---------------------------------------------
 // GET /api/v1/carriers — field-based search / list
+// External carrier search is intentionally lookup-oriented.
+// Broad extraction should use saved carriers or enterprise workflows.
+// Strict rate limits are intentional to discourage bulk polling.
 // ---------------------------------------------
-router.get('/carriers', async (req, res) => {
+router.get('/carriers', externalCarrierSearchLimiter, async (req, res) => {
   try {
     const auth = getApiAuthContext(req, res);
     if (!auth) return;
 
     const companyId = auth.companyId;
-    const {
-      dot,
-      mc,
-      legalname,
-      dbaname,
-      city,
-      state,
-      page = 1,
-      pageSize = 25
-    } = req.query;
+    const { page = 1, pageSize = 25 } = req.query;
+    const searchInput = getNormalizedSearchInput(req.query);
 
-    const limit = Math.min(parseInt(pageSize, 10) || 25, 100);
-    const offset = (parseInt(page, 10) - 1) * limit;
+    const parsedPage = parseInt(page, 10) || 1;
+    const parsedPageSize = parseInt(pageSize, 10) || 25;
 
-    // Require at least one filter
-    if (!dot && !mc && !legalname && !dbaname && !city && !state) {
-      return res.status(400).json({
-        error: "At least one search parameter is required (dot, mc, legalname, dbaname, city, state)"
-      });
+    if (parsedPageSize > 25) {
+      return res.status(400).json({ error: "pageSize cannot exceed 25." });
     }
+
+    if (parsedPage > 5) {
+      return res.status(400).json({ error: "page cannot exceed 5 for carrier search." });
+    }
+
+    const validation = validateCarrierSearchInput(searchInput);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    const limit = Math.min(parsedPageSize, 25);
+    const offset = (parsedPage - 1) * limit;
 
     const conditions = [];
     const params = [];
     let i = 1;
 
-    if (dot) {
+    if (searchInput.dot) {
       conditions.push(`c.dotnumber = $${i}`);
-      params.push(dot);
+      params.push(searchInput.dot);
       i++;
     }
 
-    if (mc) {
+    if (searchInput.mc) {
       conditions.push(`c.mc_number = $${i}`);
-      params.push(mc);
+      params.push(searchInput.mc);
       i++;
     }
 
-    if (legalname) {
+    if (searchInput.legalname) {
       conditions.push(`c.legalname ILIKE $${i}`);
-      params.push(`%${legalname}%`);
+      params.push(`%${searchInput.legalname}%`);
       i++;
     }
 
-    if (dbaname) {
+    if (searchInput.dbaname) {
       conditions.push(`c.dbaname ILIKE $${i}`);
-      params.push(`%${dbaname}%`);
+      params.push(`%${searchInput.dbaname}%`);
       i++;
     }
 
-    if (city) {
+    if (searchInput.city) {
       conditions.push(`c.phycity ILIKE $${i}`);
-      params.push(`%${city}%`);
+      params.push(`%${searchInput.city}%`);
       i++;
     }
 
-    if (state) {
+    if (searchInput.state) {
       conditions.push(`c.phystate ILIKE $${i}`);
-      params.push(`%${state}%`);
+      params.push(`%${searchInput.state}%`);
       i++;
     }
 
@@ -512,7 +628,7 @@ router.get('/carriers', async (req, res) => {
     res.json({
       rows: rowsWithInsuranceSummary,
       total: countResult.rows[0].count,
-      page: parseInt(page, 10),
+      page: parsedPage,
       pageSize: limit
     });
   } catch (err) {
