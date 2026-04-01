@@ -1,0 +1,531 @@
+diff --git a/src/routes/external/v1.router.js b/src/routes/external/v1.router.js
+index 5f0858624ebd7839e8cf1cc216e71498f4e76b58..be780177f335504d5edb1b3d9e9cf6e2892edc1f 100644
+--- a/src/routes/external/v1.router.js
++++ b/src/routes/external/v1.router.js
+@@ -70,50 +70,60 @@ function normalizeAlertIds(input) {
+   )];
+ }
+ 
+ function normalizeIdArray(input) {
+   if (!input) return [];
+   const arr = Array.isArray(input) ? input : [input];
+   const isUuid = (value) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+ 
+   return [...new Set(
+     arr
+       .map((x) => String(x).trim())
+       .filter((x) => /^\d+$/.test(x) || isUuid(x))
+   )];
+ }
+ 
+ function normalizeDotArray(input) {
+   if (!input) return [];
+   const arr = Array.isArray(input) ? input : [input];
+   return [...new Set(
+     arr
+       .map(d => String(d).trim())
+       .filter(d => /^\d+$/.test(d))
+   )];
+ }
+ 
++function normalizeRecipientList(input) {
++  const values = Array.isArray(input) ? input : [input];
++  return [...new Set(
++    values
++      .flatMap((value) => String(value || "").split(","))
++      .map((value) => value.trim().toLowerCase())
++      .filter(Boolean)
++  )];
++}
++
+ function normalizeDotsWithInvalid(input) {
+   const invalid = [];
+   const cleaned = [];
+ 
+   const arr = Array.isArray(input) ? input : [input];
+ 
+   for (const raw of arr) {
+     const s = String(raw ?? '').trim();
+     if (!s) continue;
+ 
+     // keep digits only
+     const digits = s.replace(/\D/g, '');
+ 
+     // DOT is typically up to 7 digits
+     if (digits.length < 1 || digits.length > 7) {
+       invalid.push(s);
+       continue;
+     }
+ 
+     cleaned.push(digits);
+   }
+ 
+   const unique = [...new Set(cleaned)];
+   return { unique, invalid };
+ }
+@@ -1353,52 +1363,52 @@ router.post('/contracts/send', async (req, res) => {
+         created: insertRes.rowCount,
+         invalidDots: invalidDots.length
+       },
+       created: insertRes.rows,
+       invalidDots
+     });
+   } catch (err) {
+     console.error('Error in POST /api/v1/contracts/send:', err);
+     res.status(500).json({ error: 'Failed to create contracts' });
+   }
+ });
+ 
+ // ---------------------------------------------
+ // POST /api/v1/contracts/send/:dot
+ // Body: { user_contract_id, email_to, carrier_name? }
+ // Mirrors broker send flow but uses v1 API auth context.
+ // ---------------------------------------------
+ router.post('/contracts/send/:dot', async (req, res) => {
+   const dotnumber = String(req.params.dot || '').trim();
+   const { user_contract_id, email_to, carrier_name } = req.body || {};
+ 
+   if (!dotnumber || !/^\d+$/.test(dotnumber)) {
+     return res.status(400).json({ error: 'dot must be a numeric USDOT value' });
+   }
+ 
+-  if (!user_contract_id || !email_to) {
+-    return res.status(400).json({ error: 'user_contract_id and email_to are required' });
++  if (!user_contract_id) {
++    return res.status(400).json({ error: 'user_contract_id is required' });
+   }
+ 
+   try {
+     const auth = getApiAuthContext(req, res);
+     if (!auth) return;
+ 
+     const token = makeToken();
+     const token_expires_at = new Date(Date.now() + 72 * 60 * 60 * 1000);
+     const link = `https://carriershark.com/contract/${token}`;
+ 
+     const client = await pool.connect();
+     try {
+       await client.query('BEGIN');
+ 
+       const actorRes = await client.query(
+         `
+         SELECT cm.user_id
+         FROM public.company_members cm
+         JOIN public.users u
+           ON u.id = cm.user_id
+         WHERE cm.company_id = $1
+           AND cm.status = 'ACTIVE'
+         ORDER BY
+           CASE
+             WHEN cm.role = 'OWNER' THEN 0
+@@ -1427,108 +1437,140 @@ router.post('/contracts/send/:dot', async (req, res) => {
+           COALESCE(insurance_required, FALSE) AS insurance_required,
+           COALESCE(w9_required, TRUE) AS w9_required,
+           COALESCE(ach_required, FALSE) AS ach_required
+         FROM public.user_contracts
+         WHERE id = $1
+           AND company_id = $2
+           AND storage_provider = 'DO_SPACES'
+           AND storage_key IS NOT NULL
+         LIMIT 1;
+         `,
+         [user_contract_id, auth.companyId]
+       );
+ 
+       if (templateRes.rowCount === 0) {
+         throw Object.assign(new Error('Invalid or unauthorized contract template'), {
+           statusCode: 400,
+         });
+       }
+ 
+       const agreement_type = templateRes.rows[0].name || 'Carrier Agreement';
+       const broker_name = templateRes.rows[0].display_name || 'Carrier Agreement';
+       const insurance_required = templateRes.rows[0].insurance_required;
+       const w9_required = templateRes.rows[0].w9_required;
+       const ach_required = templateRes.rows[0].ach_required;
+ 
++      const carrierRes = await client.query(
++        `
++        SELECT email_address, legalname, dbaname
++        FROM public.carriers
++        WHERE dotnumber = $1
++        LIMIT 1;
++        `,
++        [dotnumber]
++      );
++
++      if (carrierRes.rowCount === 0) {
++        throw Object.assign(new Error('Carrier not found for this DOT'), {
++          statusCode: 404,
++        });
++      }
++
++      const carrierMainEmail = String(carrierRes.rows[0].email_address || '')
++        .trim()
++        .toLowerCase();
++
++      if (!carrierMainEmail) {
++        throw Object.assign(new Error('No FMCSA contact email found for this carrier'), {
++          statusCode: 400,
++        });
++      }
++
++      const recipients = normalizeRecipientList(email_to);
++      const finalRecipients = recipients.includes(carrierMainEmail)
++        ? recipients
++        : [carrierMainEmail, ...recipients];
++      const finalEmailTo = finalRecipients.join(', ');
++
+       const insertRes = await client.query(
+         `
+         INSERT INTO public.contracts (
+           user_id,
+           company_id,
+           dotnumber,
+           status,
+           channel,
+           provider,
+           payload,
+           sent_at,
+           token,
+           token_expires_at,
+           email_to,
+           user_contract_id,
+           insurance_required,
+           w9_required,
+           ach_required
+         )
+         VALUES (
+           $1,
+           $2,
+           $3,
+           'SENT',
+           'EMAIL',
+           'MAILGUN',
+           $4::jsonb,
+           NOW(),
+           $5,
+           $6,
+           $7,
+           $8,
+           $9,
+           $10,
+           $11
+         )
+         RETURNING contract_id;
+         `,
+         [
+           userId,
+           auth.companyId,
+           dotnumber,
+           JSON.stringify({ broker_name, agreement_type }),
+           token,
+           token_expires_at.toISOString(),
+-          email_to,
++          finalEmailTo,
+           user_contract_id,
+           insurance_required,
+           w9_required,
+           ach_required,
+         ]
+       );
+ 
+       const contract_id = insertRes.rows[0]?.contract_id;
+       if (!contract_id) throw new Error('Failed to create contract');
+ 
+       await sendContractEmail({
+-        to: email_to,
++        to: finalEmailTo,
+         broker_name,
+         carrier_name: carrier_name || '',
+         dotnumber,
+         agreement_type,
+         link,
+       });
+ 
+       await client.query('COMMIT');
+ 
+       return res.json({
+         ok: true,
+         contract_id,
+         status: 'SENT',
+         link,
+       });
+     } catch (err) {
+       try {
+         await client.query('ROLLBACK');
+       } catch {}
+       throw err;
+     } finally {
+       client.release();
+     }
+   } catch (err) {
+     console.error('Error in POST /api/v1/contracts/send/:dot:', err);
+diff --git a/src/routes/internal/contracts.routes.js b/src/routes/internal/contracts.routes.js
+index 6e8b8b3fba949e742196c740847bb268f8dc8242..6476f5edeb08d57880894e15268a91e9678836b9 100644
+--- a/src/routes/internal/contracts.routes.js
++++ b/src/routes/internal/contracts.routes.js
+@@ -4,50 +4,60 @@ const express = require("express");
+ const crypto = require("crypto");
+ 
+ const { pool } = require("../../db/pool");
+ const { requireAuth } = require("../../middleware/requireAuth");
+ const { loadCompanyContext } = require("../../middleware/companyContext");
+ const { sendContractEmail } = require("../../clients/mailgun");
+ 
+ const { spaces } = require("../../clients/spacesS3v2");
+ 
+ 
+ const router = express.Router();
+ 
+ const ALLOWED_DOCUMENT_MIME_TYPES = new Set([
+   "application/pdf",
+   "image/png",
+   "image/jpeg",
+   "image/webp",
+ ]);
+ const MASTER_AGREEMENT_LIMIT_PER_COMPANY = 5;
+ const MASTER_AGREEMENT_PDF_MIME_TYPES = new Set(["application/pdf"]);
+ 
+ function makeToken() {
+   return crypto.randomBytes(24).toString("hex");
+ }
+ 
++function normalizeRecipientList(input) {
++  const values = Array.isArray(input) ? input : [input];
++  return [...new Set(
++    values
++      .flatMap((value) => String(value || "").split(","))
++      .map((value) => value.trim().toLowerCase())
++      .filter(Boolean)
++  )];
++}
++
+ function cleanAgreementNameFromFilename(filename) {
+   const raw = String(filename || "").trim();
+   if (!raw) return "Master Agreement";
+ 
+   const withoutExt = raw.replace(/\.[^/.]+$/, "");
+   const normalized = withoutExt
+     .replace(/[\-_]+/g, " ")
+     .replace(/\s+/g, " ")
+     .trim();
+ 
+   return normalized || "Master Agreement";
+ }
+ 
+ function cleanAgreementTitleInput(title) {
+   const normalized = String(title || "")
+     .replace(/\s+/g, " ")
+     .trim();
+ 
+   if (!normalized) return "";
+   return normalized.slice(0, 120);
+ }
+ 
+ function contractsBaseUrl(req) {
+   return process.env.APP_BASE_URL || `${req.protocol}://${req.get("host")}`;
+ }
+@@ -372,160 +382,196 @@ router.delete("/user-contracts/:id", requireAuth, loadCompanyContext, async (req
+     if (template.storage_provider === "DO_SPACES" && template.storage_key) {
+       try {
+         await spaces.deleteObject({
+           Bucket: process.env.SPACES_BUCKET,
+           Key: template.storage_key,
+         }).promise();
+       } catch (storageErr) {
+         console.warn("DELETE /api/user-contracts/:id storage cleanup warning:", storageErr?.message || storageErr);
+       }
+     }
+ 
+     return res.json({ ok: true, id: templateId });
+   } catch (err) {
+     try { await client.query("ROLLBACK"); } catch {}
+     console.error("DELETE /api/user-contracts/:id error:", err?.message, err);
+     return res.status(500).json({ error: "Failed to delete agreement" });
+   } finally {
+     client.release();
+   }
+ });
+ 
+ 
+ 
+ /** ---------- CONTRACT SEND ROUTE ---------- **/
+ router.post("/contracts/send/:dot", requireAuth, loadCompanyContext, async (req, res) => {
+-  const dotnumber = req.params.dot;
+-  const { user_contract_id, email_to,carrier_name } = req.body || {};
++  const dotnumber = String(req.params.dot || "").trim();
++  const { user_contract_id, email_to, carrier_name } = req.body || {};
+   const user_id = req.session.userId;
+   const companyId = req.companyContext.companyId;
+ 
+-  if (!user_contract_id || !email_to) {
++  if (!dotnumber || !/^\d+$/.test(dotnumber)) {
++    return res.status(400).json({ error: "dot must be a numeric USDOT value" });
++  }
++
++  if (!user_contract_id) {
+     return res.status(400).json({
+-      error: "user_contract_id and email_to are required"
++      error: "user_contract_id is required"
+     });
+   }
+ 
+   const token = makeToken();
+   const token_expires_at = new Date(Date.now() + 72 * 60 * 60 * 1000);
+   const link = `https://carriershark.com/contract/${token}`;
+ 
+   const client = await pool.connect();
+   try {
+     await client.query("BEGIN");
+ 
+ const templateRes = await client.query(
+   `
+   SELECT
+     name,
+     display_name,
+     COALESCE(insurance_required, FALSE) AS insurance_required,
+     COALESCE(w9_required, TRUE) AS w9_required,
+     COALESCE(ach_required, FALSE) AS ach_required
+   FROM public.user_contracts
+   WHERE id = $1
+     AND company_id = $2
+     AND storage_provider = 'DO_SPACES'
+     AND storage_key IS NOT NULL
+   LIMIT 1;
+   `,
+   [user_contract_id, companyId]
+ );
+ 
+ if (templateRes.rowCount === 0) {
+   throw Object.assign(new Error("Invalid or unauthorized contract template"), {
+     statusCode: 400
+   });
+ }
+ 
+ const agreement_type = templateRes.rows[0].name || "Carrier Agreement";
+ const broker_name = templateRes.rows[0].display_name || "Carrier Agreement";
+ const insurance_required = templateRes.rows[0].insurance_required;
+ const w9_required = templateRes.rows[0].w9_required;
+ const ach_required = templateRes.rows[0].ach_required;
+ 
++    const carrierRes = await client.query(
++      `
++      SELECT email_address, legalname, dbaname
++      FROM public.carriers
++      WHERE dotnumber = $1
++      LIMIT 1;
++      `,
++      [dotnumber]
++    );
++
++    if (carrierRes.rowCount === 0) {
++      throw Object.assign(new Error("Carrier not found for this DOT"), {
++        statusCode: 404,
++      });
++    }
++
++    const carrierMainEmail = String(carrierRes.rows[0].email_address || "")
++      .trim()
++      .toLowerCase();
++
++    if (!carrierMainEmail) {
++      throw Object.assign(new Error("No FMCSA contact email found for this carrier"), {
++        statusCode: 400,
++      });
++    }
++
++    const recipients = normalizeRecipientList(email_to);
++    const finalRecipients = recipients.includes(carrierMainEmail)
++      ? recipients
++      : [carrierMainEmail, ...recipients];
++    const finalEmailTo = finalRecipients.join(", ");
++
+ 
+     const insertSql = `
+       INSERT INTO public.contracts
+         (
+           user_id,
+           company_id,
+           dotnumber,
+           status,
+           channel,
+           provider,
+           payload,
+           sent_at,
+           token,
+           token_expires_at,
+           email_to,
+           user_contract_id,
+           insurance_required,
+           w9_required,
+           ach_required
+         )
+       VALUES
+         (
+           $1,
+           $2,
+           $3,
+           'SENT',
+           'EMAIL',
+           'MAILGUN',
+           $4::jsonb,
+           NOW(),
+           $5,
+           $6,
+           $7,
+           $8,
+           $9,
+           $10,
+           $11
+         )
+       RETURNING contract_id;
+     `;
+ 
+     const { rows } = await client.query(insertSql, [
+       user_id,
+       companyId,
+       dotnumber,
+       JSON.stringify({ broker_name, agreement_type }),
+       token,
+       token_expires_at.toISOString(),
+-      email_to,
++      finalEmailTo,
+       user_contract_id,
+       insurance_required,
+       w9_required,
+       ach_required
+     ]);
+ 
+ 
+     const contract_id = rows[0]?.contract_id;
+     if (!contract_id) throw new Error("Failed to create contract");
+ 
+     await sendContractEmail({
+-      to: email_to,
++      to: finalEmailTo,
+       broker_name,
+       carrier_name: carrier_name || "", // optional for now
+       dotnumber: String(dotnumber),
+       agreement_type,
+       link
+     });
+ 
+     await client.query("COMMIT");
+ 
+     return res.json({
+       ok: true,
+       contract_id,
+       status: "SENT",
+       link
+     });
+   } catch (err) {
+     try {
+       await client.query("ROLLBACK");
+     } catch {}
+ 
+     console.error("SEND CONTRACT ERROR:", err);
+ 
+     return res.status(err.statusCode || 500).json({
+       error: err.message || "Failed to send contract"
+     });
