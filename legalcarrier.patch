@@ -1,0 +1,306 @@
+diff --git a/static/carrier.html b/static/carrier.html
+index 7656166ca8a86ce229a9ba33960dcf5be3585b07..b0ffb4b0a3dd97b9d7c3ff4b3214969e0c47817f 100644
+--- a/static/carrier.html
++++ b/static/carrier.html
+@@ -67,51 +67,51 @@
+       </div>
+ 
+       <!-- META INLINE BELOW NAME -->
+       <div class="carrier-meta-inline">
+         <div class="meta-pair">
+           <div class="meta-label">Legal Name</div>
+           <div id="carrier-legalname" class="meta-value">—</div>
+         </div>
+ 
+         <div class="meta-pair">
+           <div class="meta-label">Address</div>
+           <div class="meta-value">
+             <div id="carrier-address">—</div>
+             <div>
+               <span id="carrier-location">—</span><span id="carrier-zip"></span>
+             </div>
+           </div>
+         </div>
+ 
+         <div class="meta-pair">
+           <div class="meta-label">DBA Name</div>
+           <div id="carrier-dbaname" class="meta-value">—</div>
+         </div>
+ 
+         <div class="meta-pair">
+-          <div class="meta-label">Last Verified</div>
++          <div class="meta-label">Last Updated</div>
+         
+           <div class="meta-value meta-verified">
+             <span id="field-retrieval_date_formatted">—</span>
+         
+             <button
+               id="btn-refresh-carrier"
+               class="meta-refresh"
+               type="button"
+               title="Re-check carrier data"
+               aria-label="Refresh carrier data"
+             >
+               ↻ Refresh
+             </button>
+         
+             <span id="carrier-refresh-status" class="meta-refresh-status" aria-live="polite"></span>
+           </div>
+         </div>
+ 
+       </div>
+     </div> <!-- end .carrier-left -->
+ 
+     <div class="carrier-right">
+       <div class="pill-group">
+         <div id="carrier-status" class="carrier-pill">—</div>
+         <div id="carrier-allowed" class="carrier-pill ghost small" >—</div>
+@@ -160,50 +160,54 @@
+   <section id="carrier-agreements" class="carrier-agreements glass-card" hidden>
+     <div class="carrier-docs-header">
+       <div class="agreements-left">
+         <div class="agreements-kicker">Agreements</div>
+         <div id="agreements-status" class="agreements-status">No signed agreements yet</div>
+       </div>
+       <div id="agreements-summary-meta" class="docs-summary-meta"></div>
+     </div>
+ 
+     <div id="agreements-table-wrap" class="docs-table-wrap">
+       <table class="docs-table" aria-label="Carrier agreements">
+         <thead>
+           <tr>
+             <th>Agreement</th>
+             <th>Signed Date</th>
+             <th>Document</th>
+             <th>Certificate</th>
+           </tr>
+         </thead>
+         <tbody id="agreements-table-body"></tbody>
+       </table>
+       <div id="agreements-mobile-list" class="docs-mobile-list" aria-label="Carrier agreements mobile"></div>
+       <div id="agreements-empty" class="docs-empty">No signed agreements yet.</div>
+     </div>
+   </section>
++
++  <div class="cs-hint" style="margin:12px 0 0;">
++    Carrier information may be delayed, incomplete, or sourced from public and third-party providers. Users are responsible for independently verifying authority, insurance, safety, and compliance status before making business decisions.
++  </div>
+   
+ </section>
+ 
+ 
+     <!-- MAIN GRID -->
+     <section class="card-grid">
+ 
+       <!-- Equipment Summary -->
+       <article id="section-equipment" class="info-card glass-card">
+         <div class="card-header">
+           <h2>Equipment Summary</h2>
+           <span class="card-tag">Assets</span>
+         </div>
+         <dl>
+           <div class="row">
+             <dt>Total Drivers</dt>
+             <dd id="field-totaldrivers">—</dd>
+           </div>
+           <div class="row">
+             <dt>Total Power Units</dt>
+             <dd id="field-totalpowerunits">—</dd>
+           </div>
+         </dl>
+       </article>
+       
+@@ -380,50 +384,51 @@
+         </div>
+       </article>
+ 
+ 
+ <!-- Insurance Coverages -->
+ <article class="info-card glass-card" id="ins-coverages-card">
+   <div class="card-header">
+     <h2>Insurance Coverages</h2>
+     <span class="card-tag">COI</span>
+   </div>
+ 
+     <!-- NEW: Insurance lock overlay -->
+ <div class="alerts-lock-overlay" id="insurance-locked" style="display:none;">
+   <div class="alerts-lock-content">
+     <div class="alerts-lock-title" id="insurance-lock-title">Insurance access isn’t enabled</div>
+     <div class="alerts-lock-sub" id="insurance-lock-body">
+       Upgrade your plan to view carrier insurance coverages.
+     </div>
+     <button class="btn-primary" type="button" id="btn-upgrade-insurance">
+       Upgrade your plan
+     </button>
+   </div>
+ </div>
+ 
+   <div id="ins-coverages-body" class="ins-coverages-body">
++    <div class="cs-hint" style="margin-bottom:8px;">Insurance information may change and should be independently confirmed before relying on it.</div>
+     <div class="cs-hint">Loading…</div>
+   </div>
+ </article>
+       
+       
+       <!-- 
+       
+       Counts & Flags 
+       <article class="info-card glass-card">
+         <div class="card-header">
+           <h2>Counts &amp; Flags</h2>
+           <span class="card-tag">Status</span>
+         </div>
+         <dl>
+           <div class="row">
+             <dt>Status Code</dt>
+             <dd id="field-statuscode-dup">—</dd>
+           </div>
+           <div class="row">
+             <dt>Snapshot Date</dt>
+             <dd id="field-snapshotdate-dup">—</dd>
+           </div>
+         </dl>
+       </article>
+ 
+@@ -535,71 +540,72 @@
+ 
+   </div>
+ </div>
+ 
+ <div id="add-document-modal" class="cs-modal-backdrop" hidden>
+   <div class="cs-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="add-document-title">
+     <div class="cs-modal-header">
+       <div class="cs-modal-headings">
+         <div id="add-document-title" class="cs-modal-title">Upload Document</div>
+         <div class="cs-modal-subtitle">Attach a document to this carrier profile.</div>
+       </div>
+       <button id="add-document-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
+     </div>
+ 
+     <form id="add-document-form" class="cs-modal-body docs-upload-form">
+       <label class="cs-label" for="document-type">Document Type</label>
+       <select id="document-type" class="cs-input docs-select" required>
+         <option value="w9">W-9</option>
+         <option value="ach">ACH</option>
+         <option value="other">Other</option>
+       </select>
+ 
+       <label class="cs-label" for="document-file" style="margin-top:12px;">File</label>
+       <input id="document-file" class="cs-input docs-file-input" type="file" accept=".pdf,image/*" required>
+ 
++      <div class="cs-hint" style="margin-top:8px;">Only upload documents you are authorized to share. Avoid including unnecessary sensitive information.</div>
+ 
+       <div id="add-document-error" class="cs-hint docs-upload-error" hidden></div>
+     </form>
+ 
+     <div class="cs-modal-footer">
+       <div class="cs-footer-right">
+         <button id="add-document-cancel" class="cs-btn cs-btn-ghost" type="button">Cancel</button>
+         <button id="add-document-submit" class="cs-btn cs-btn-primary" type="button">Upload Document</button>
+       </div>
+     </div>
+   </div>
+ </div>
+   
+ <!-- Email Alerts Modal -->
+ <div id="email-alerts-modal" class="cs-modal-backdrop" hidden>
+   <div class="cs-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="email-alerts-title">
+     
+     <div class="cs-modal-header">
+       <div class="cs-modal-headings">
+         <div id="email-alerts-title" class="cs-modal-title">Email Alerts</div>
+-        <div class="cs-modal-subtitle">Get updates when something changes for this carrier.</div>
++        <div class="cs-modal-subtitle">Get email alerts for tracked carrier changes.</div>
+       </div>
+ 
+       <button id="email-alerts-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
+     </div>
+ 
+     <div class="cs-modal-body">
+ 
+       <!-- ON/OFF switch -->
+       <div class="cs-row cs-row-between">
+         <div>
+           <div class="cs-label">Alerts</div>
+           <div class="cs-hint">Turn on email notifications for carrier changes.</div>
+         </div>
+ 
+         <label class="cs-toggle" aria-label="Email Alerts On/Off">
+           <input id="email-alerts-enabled" type="checkbox">
+           <span class="cs-toggle-ui"></span>
+         </label>
+       </div>
+ 
+       <div class="cs-divider"></div>
+ 
+       <!-- Recipients (default email shows as a selected removable chip too) -->
+       <div class="cs-row cs-row-col">
+         <div class="cs-label">Recipients</div>
+@@ -619,65 +625,65 @@
+     <div class="cs-modal-footer">
+       <div class="cs-footer-left">
+         <a class="cs-btn cs-btn-manage" href="/account?tab=alerts">
+           Manage Alert Settings
+           <span class="cs-btn-arrow">→</span>
+         </a>
+       </div>
+     
+       <div class="cs-footer-right">
+         <button id="email-alerts-cancel" class="cs-btn cs-btn-ghost" type="button">Cancel</button>
+         <button id="email-alerts-save" class="cs-btn cs-btn-primary" type="button">Save</button>
+       </div>
+     
+     </div>
+ 
+   </div>
+ </div>
+ 
+  <!-- Contract Sent Modal --> 
+ <div id="contractSuccessModal" class="contract-success-modal hidden" aria-hidden="true">
+   <div class="contract-success-backdrop"></div>
+   <div class="contract-success-card" role="dialog" aria-modal="true" aria-labelledby="contractSuccessTitle">
+     <button class="contract-success-close" id="contractSuccessClose" aria-label="Close">×</button>
+     <div class="contract-success-icon">✓</div>
+     <h3 id="contractSuccessTitle">Contract Sent</h3>
+-    <p>The contract was successfully sent to the carrier.</p>
++    <p>The contract email was sent successfully.</p>
+     <div class="contract-success-actions">
+       <button class="cs-btn cs-btn-primary" id="contractSuccessOk" type="button">Got it</button>
+     </div>
+   </div>
+ </div>
+ 
+ <!-- Send Contract Modal -->
+ <div id="send-contract-modal" class="cs-modal-backdrop" hidden>
+   <div class="cs-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="send-contract-title">
+ 
+     <div class="cs-modal-header">
+       <div class="cs-modal-headings">
+         <div id="send-contract-title" class="cs-modal-title">Send Contract</div>
+-        <div class="cs-modal-subtitle">Send a contract to this carrier’s FMCSA contact and any additional recipients.</div>
++        <div class="cs-modal-subtitle">Send a contract to the carrier contact email on file with FMCSA and any additional recipients.</div>
+       </div>
+ 
+       <button id="send-contract-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
+     </div>
+ 
+     <div class="cs-modal-body">
+ 
+       <!-- Contract template -->
+       <div class="cs-row cs-row-col">
+         <div class="cs-label">Contract Template</div>
+         <div class="cs-hint">Choose which contract version to send.</div>
+ 
+         <select id="send-contract-template" class="cs-input" style="width:100%;">
+           <option value="">Loading…</option>
+         </select>
+       </div>
+ 
+       <div class="cs-divider"></div>
+ 
+       <!-- Default recipient (locked) -->
+       <div class="cs-row cs-row-col">
+         <div class="cs-label">FMCSA Contact</div>
+         <div class="cs-hint">This is the carrier contact email on file with FMCSA (can’t be removed).</div>
+ 
+         <div id="send-contract-default-chip" class="cs-chips"></div>
