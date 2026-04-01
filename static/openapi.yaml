@@ -185,8 +185,22 @@ paths:
       tags: [Carriers]
       summary: Search carrier database
       description: |
-        Search carriers by DOT, MC, legal name, DBA name, or location.
-        At least one filter is required.
+        Lookup-oriented carrier search endpoint for focused carrier retrieval.
+        Broader extraction workflows should use saved carriers or enterprise workflows.
+        Strict rate limits are intentional to discourage bulk polling.
+
+        Allowed searches:
+        - dot
+        - mc
+        - legalname with 3+ characters
+        - dbaname with 3+ characters
+        - city + state
+
+        Blocked searches:
+        - state alone
+        - city alone
+        - legalname shorter than 3 chars
+        - dbaname shorter than 3 chars
       operationId: searchCarriers
       parameters:
         - $ref: '#/components/parameters/DotQuery'
@@ -210,8 +224,22 @@ paths:
           in: query
           schema:
             type: string
-        - $ref: '#/components/parameters/PageQuery'
-        - $ref: '#/components/parameters/PageSizeQuery'
+        - name: page
+          in: query
+          description: Page number of results (starting at 1, maximum 5 for this endpoint).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 5
+            default: 1
+        - name: pageSize
+          in: query
+          description: Number of results per page (maximum 25 for this endpoint).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 25
+            default: 25
       responses:
         '200':
           description: Carrier search results.
@@ -245,17 +273,40 @@ paths:
                     totalpowerunits: 10
                     retrieval_date: '2026-03-15T00:00:00.000Z'
                     last_polled_at: '2026-03-30T18:42:31.000Z'
+                    insurance_summary:
+                      has_on_file: true
+                      has_structured_coverages: true
+                      is_expired: false
+                      next_expiration_date: '2026-12-31'
+                      auto_liability_limit: 1000000
+                      cargo_limit: 100000
+                      general_liability_limit: 1000000
+                      coverage_count: 3
                 total: 1
                 page: 1
                 pageSize: 25
         '400':
-          description: No search filters were supplied.
+          description: Invalid carrier search input.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: At least one search parameter is required (dot, mc, legalname, dbaname, city, state)
+              examples:
+                requiresValidSearch:
+                  value:
+                    error: Search requires dot, mc, legalname (3+ chars), dbaname (3+ chars), or city + state.
+                stateAlone:
+                  value:
+                    error: state alone is too broad; combine it with city, legalname, or dbaname.
+                cityAlone:
+                  value:
+                    error: city alone is too broad; include state.
+                pageSizeLimit:
+                  value:
+                    error: pageSize cannot exceed 25.
+                pageLimit:
+                  value:
+                    error: page cannot exceed 5 for carrier search.
         '429':
           description: Rate limit exceeded
           content:
@@ -263,7 +314,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
               example:
-                error: Rate limit exceeded
+                error: Carrier search rate limit exceeded. Please slow down.
         '500':
           description: Search failed.
           content:
@@ -324,6 +375,36 @@ paths:
                 cargo_carried:
                   - General Freight
                   - Machinery
+                insurance_coverages:
+                  - id: 981
+                    document_id: 442
+                    coverage_type: AUTO LIABILITY
+                    insurer_name: Great West Casualty Company
+                    policy_number: GL-4459011
+                    effective_date: '2026-01-01'
+                    expiration_date: '2026-12-31'
+                    limit_amount: 1000000
+                    status: ACTIVE
+                    is_expired: false
+                  - id: 982
+                    document_id: 442
+                    coverage_type: CARGO
+                    insurer_name: Great West Casualty Company
+                    policy_number: CG-2087710
+                    effective_date: '2026-01-01'
+                    expiration_date: '2026-12-31'
+                    limit_amount: 100000
+                    status: ACTIVE
+                    is_expired: false
+                insurance_summary:
+                  has_on_file: true
+                  has_structured_coverages: true
+                  is_expired: false
+                  next_expiration_date: '2026-12-31'
+                  auto_liability_limit: 1000000
+                  cargo_limit: 100000
+                  general_liability_limit: 1000000
+                  coverage_count: 2
         '404':
           description: Carrier not found.
           content:
@@ -415,6 +496,15 @@ paths:
                     retrieval_date: '2026-03-15T00:00:00.000Z'
                     last_polled_at: '2026-03-30T18:42:31.000Z'
                     added_at: '2026-03-01T14:25:00Z'
+                    insurance_summary:
+                      has_on_file: true
+                      has_structured_coverages: true
+                      is_expired: false
+                      next_expiration_date: '2026-12-31'
+                      auto_liability_limit: 1000000
+                      cargo_limit: 100000
+                      general_liability_limit: 1000000
+                      coverage_count: 3
                 total: 1
                 page: 1
                 pageSize: 25
@@ -1442,6 +1532,84 @@ components:
       properties:
         error:
           type: string
+    InsuranceSummary:
+      type: object
+      required:
+        - has_on_file
+        - has_structured_coverages
+        - is_expired
+        - next_expiration_date
+        - auto_liability_limit
+        - cargo_limit
+        - general_liability_limit
+        - coverage_count
+      properties:
+        has_on_file:
+          type: boolean
+        has_structured_coverages:
+          type: boolean
+        is_expired:
+          type: boolean
+        next_expiration_date:
+          type: string
+          format: date
+          nullable: true
+        auto_liability_limit:
+          type: number
+          nullable: true
+        cargo_limit:
+          type: number
+          nullable: true
+        general_liability_limit:
+          type: number
+          nullable: true
+        coverage_count:
+          type: integer
+    InsuranceCoverage:
+      type: object
+      properties:
+        id:
+          oneOf:
+            - type: integer
+            - type: string
+              format: uuid
+          nullable: true
+        document_id:
+          oneOf:
+            - type: integer
+            - type: string
+              format: uuid
+          nullable: true
+        coverage_type:
+          type: string
+          enum:
+            - AUTO LIABILITY
+            - CARGO
+            - GENERAL LIABILITY
+            - WORKERS COMP
+            - OTHER
+        insurer_name:
+          type: string
+          nullable: true
+        policy_number:
+          type: string
+          nullable: true
+        effective_date:
+          type: string
+          format: date
+          nullable: true
+        expiration_date:
+          type: string
+          format: date
+          nullable: true
+        limit_amount:
+          type: number
+          nullable: true
+        status:
+          type: string
+          enum: [ACTIVE, EXPIRED]
+        is_expired:
+          type: boolean
     Carrier:
       type: object
       description: |
@@ -1499,6 +1667,8 @@ components:
           type: string
           format: date-time
           nullable: true
+        insurance_summary:
+          $ref: '#/components/schemas/InsuranceSummary'
       additionalProperties: true
     CarrierListResponse:
       type: object
@@ -1565,6 +1735,12 @@ components:
               type: array
               items:
                 type: string
+            insurance_summary:
+              $ref: '#/components/schemas/InsuranceSummary'
+            insurance_coverages:
+              type: array
+              items:
+                $ref: '#/components/schemas/InsuranceCoverage'
           additionalProperties: true
     CarrierMutationSummary:
       type: object
@@ -1769,13 +1945,13 @@ components:
           type: integer
     ContractMutationProcessedSummary:
       type: object
-      required: [totalSubmitted, updated, notFoundOrNotCompleted]
+      required: [totalSubmitted, updated, notFoundOrNotSigned]
       properties:
         totalSubmitted:
           type: integer
         updated:
           type: integer
-        notFoundOrNotCompleted:
+        notFoundOrNotSigned:
           type: integer
     ContractMutationProcessedResponse:
       type: object
@@ -1793,7 +1969,7 @@ components:
                 type: string
               status:
                 type: string
-                enum: [processed, not_found_or_not_completed]
+                enum: [processed, not_found_or_not_signed]
     ContractMutationUnprocessedSummary:
       type: object
       required: [totalSubmitted, updated, notFoundOrNotProcessed]
