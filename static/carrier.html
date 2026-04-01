@@ -89,7 +89,7 @@
         </div>
 
         <div class="meta-pair">
-          <div class="meta-label">Last Updated</div>
+          <div class="meta-label">Last Verified</div>
         
           <div class="meta-value meta-verified">
             <span id="field-retrieval_date_formatted">—</span>
@@ -182,10 +182,6 @@
       <div id="agreements-empty" class="docs-empty">No signed agreements yet.</div>
     </div>
   </section>
-
-  <div class="cs-hint" style="margin:12px 0 0;">
-    Carrier information may be delayed, incomplete, or sourced from public and third-party providers. Users are responsible for independently verifying authority, insurance, safety, and compliance status before making business decisions.
-  </div>
   
 </section>
 
@@ -406,7 +402,6 @@
 </div>
 
   <div id="ins-coverages-body" class="ins-coverages-body">
-    <div class="cs-hint" style="margin-bottom:8px;">Insurance information may change and should be independently confirmed before relying on it.</div>
     <div class="cs-hint">Loading…</div>
   </div>
 </article>
@@ -562,7 +557,6 @@
       <label class="cs-label" for="document-file" style="margin-top:12px;">File</label>
       <input id="document-file" class="cs-input docs-file-input" type="file" accept=".pdf,image/*" required>
 
-      <div class="cs-hint" style="margin-top:8px;">Only upload documents you are authorized to share. Avoid including unnecessary sensitive information.</div>
 
       <div id="add-document-error" class="cs-hint docs-upload-error" hidden></div>
     </form>
@@ -583,7 +577,7 @@
     <div class="cs-modal-header">
       <div class="cs-modal-headings">
         <div id="email-alerts-title" class="cs-modal-title">Email Alerts</div>
-        <div class="cs-modal-subtitle">Get email alerts for tracked carrier changes.</div>
+        <div class="cs-modal-subtitle">Get updates when something changes for this carrier.</div>
       </div>
 
       <button id="email-alerts-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
@@ -647,7 +641,7 @@
     <button class="contract-success-close" id="contractSuccessClose" aria-label="Close">×</button>
     <div class="contract-success-icon">✓</div>
     <h3 id="contractSuccessTitle">Contract Sent</h3>
-    <p>The contract email was sent successfully.</p>
+    <p>The contract was successfully sent to the carrier.</p>
     <div class="contract-success-actions">
       <button class="cs-btn cs-btn-primary" id="contractSuccessOk" type="button">Got it</button>
     </div>
@@ -661,7 +655,7 @@
     <div class="cs-modal-header">
       <div class="cs-modal-headings">
         <div id="send-contract-title" class="cs-modal-title">Send Contract</div>
-        <div class="cs-modal-subtitle">Send a contract to the carrier contact email on file with FMCSA and any additional recipients.</div>
+        <div class="cs-modal-subtitle">Send a contract to this carrier’s FMCSA contact and any additional recipients.</div>
       </div>
 
       <button id="send-contract-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
