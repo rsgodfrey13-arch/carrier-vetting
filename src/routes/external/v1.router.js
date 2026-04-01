@@ -1247,7 +1247,7 @@ router.patch('/contracts/processed', async (req, res) => {
           updated_at = NOW()
       WHERE company_id = $1
         AND contract_id::text = ANY($2::text[])
-        AND status = 'COMPLETED'
+        AND status = 'SIGNED'
       RETURNING contract_id;
       `,
       [auth.companyId, ids]
@@ -1260,11 +1260,11 @@ router.patch('/contracts/processed', async (req, res) => {
       summary: {
         totalSubmitted: ids.length,
         updated: updated.length,
-        notFoundOrNotCompleted: ids.length - updated.length
+        notFoundOrNotSigned: ids.length - updated.length
       },
       details: ids.map(id => ({
         contract_id: String(id),
-        status: updatedSet.has(String(id)) ? 'processed' : 'not_found_or_not_completed'
+        status: updatedSet.has(String(id)) ? 'processed' : 'not_found_or_not_signed'
       }))
     });
   } catch (err) {
@@ -1291,7 +1291,7 @@ router.patch('/contracts/unprocessed', async (req, res) => {
     const updateResult = await pool.query(
       `
       UPDATE contracts
-      SET status = 'COMPLETED',
+      SET status = 'SIGNED',
           updated_at = NOW()
       WHERE company_id = $1
         AND contract_id::text = ANY($2::text[])
