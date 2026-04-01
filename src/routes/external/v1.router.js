@@ -1393,7 +1393,17 @@ router.post('/contracts/send/:dot', async (req, res) => {
     const auth = getApiAuthContext(req, res);
     if (!auth) return;
 
-    const carrierRes = await client.query(
+
+
+    const token = makeToken();
+    const token_expires_at = new Date(Date.now() + 72 * 60 * 60 * 1000);
+    const link = `https://carriershark.com/contract/${token}`;
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+          const carrierRes = await client.query(
   `
     SELECT email_address, legalname, dbaname
     FROM public.carriers
@@ -1419,14 +1429,6 @@ router.post('/contracts/send/:dot', async (req, res) => {
   const requestedRecipients = normalizeRecipientList(email_to);
   const finalRecipients = [...new Set([mainRecipient, ...requestedRecipients])];
   const finalEmailTo = finalRecipients.join(', ');
-
-    const token = makeToken();
-    const token_expires_at = new Date(Date.now() + 72 * 60 * 60 * 1000);
-    const link = `https://carriershark.com/contract/${token}`;
-
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
 
       const actorRes = await client.query(
         `
