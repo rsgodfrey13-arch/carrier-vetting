@@ -70,6 +70,16 @@ function normalizeAlertIds(input) {
   )];
 }
 
+function normalizeRecipientList(input) {
+  const values = Array.isArray(input) ? input : [input];
+  return [...new Set(
+    values
+      .flatMap(v => String(v || '').split(','))
+      .map(v => v.trim().toLowerCase())
+      .filter(Boolean)
+  )];
+}
+  
 function normalizeIdArray(input) {
   if (!input) return [];
   const arr = Array.isArray(input) ? input : [input];
@@ -1383,6 +1393,33 @@ router.post('/contracts/send/:dot', async (req, res) => {
     const auth = getApiAuthContext(req, res);
     if (!auth) return;
 
+    const carrierRes = await client.query(
+  `
+    SELECT email_address, legalname, dbaname
+    FROM public.carriers
+    WHERE dotnumber = $1
+    LIMIT 1;
+    `,
+    [dotnumber]
+  );
+  
+  if (carrierRes.rowCount === 0) {
+    throw Object.assign(new Error('Carrier not found'), { statusCode: 404 });
+  }
+  
+  const carrier = carrierRes.rows[0] || {};
+  const mainRecipient = String(carrier.email_address || '').trim().toLowerCase();
+  
+  if (!mainRecipient) {
+    throw Object.assign(new Error('No FMCSA contact email found for this carrier'), {
+      statusCode: 400
+    });
+  }
+  
+  const requestedRecipients = normalizeRecipientList(email_to);
+  const finalRecipients = [...new Set([mainRecipient, ...requestedRecipients])];
+  const finalEmailTo = finalRecipients.join(', ');
+
     const token = makeToken();
     const token_expires_at = new Date(Date.now() + 72 * 60 * 60 * 1000);
     const link = `https://carriershark.com/contract/${token}`;
@@ -1494,7 +1531,7 @@ router.post('/contracts/send/:dot', async (req, res) => {
           JSON.stringify({ broker_name, agreement_type }),
           token,
           token_expires_at.toISOString(),
-          email_to,
+          finalEmailTo,
           user_contract_id,
           insurance_required,
           w9_required,
@@ -1506,7 +1543,7 @@ router.post('/contracts/send/:dot', async (req, res) => {
       if (!contract_id) throw new Error('Failed to create contract');
 
       await sendContractEmail({
-        to: email_to,
+        to: finalEmailTo,
         broker_name,
         carrier_name: carrier_name || '',
         dotnumber,
