@@ -3,6 +3,12 @@ const express = require("express");
 const crypto = require("crypto");
 const { getPolicyForUser } = require("../../policies/importPolicy");
 const { sendContractEmail } = require("../../clients/mailgun");
+const {
+  buildEmptyInsuranceSummary,
+  buildInsuranceDataFromCoverageRows,
+  buildInsuranceSummariesByDot,
+  mergeDocumentOnlyDotsIntoSummaries,
+} = require("./carrierInsurance.helpers");
 
 function getCompanyId(req) {
   return req.auth?.companyId || req.company?.id || null;
@@ -53,6 +59,39 @@ function createApiV1(pool) {
 
   if (!pool || typeof pool.query !== "function") {
     throw new Error("V1 router initialized without a valid pool");
+  }
+
+  async function loadInsuranceSummariesForDots(companyId, dots) {
+    if (!companyId || !Array.isArray(dots) || dots.length === 0) {
+      return new Map();
+    }
+
+    const [coverageRes, documentRes] = await Promise.all([
+      pool.query(
+        `
+        SELECT c.*
+        FROM public.insurance_coverages c
+        JOIN public.insurance_documents d
+          ON d.id = c.document_id
+        WHERE d.company_id = $1
+          AND c.dot_number = ANY($2::text[]);
+        `,
+        [companyId, dots]
+      ),
+      pool.query(
+        `
+        SELECT DISTINCT d.dot_number
+        FROM public.insurance_documents d
+        WHERE d.company_id = $1
+          AND d.dot_number = ANY($2::text[]);
+        `,
+        [companyId, dots]
+      ),
+    ]);
+
+    const summariesByDot = buildInsuranceSummariesByDot(coverageRes.rows);
+    const dotsWithDocuments = documentRes.rows.map((row) => row.dot_number);
+    return mergeDocumentOnlyDotsIntoSummaries(summariesByDot, dotsWithDocuments);
   }
 
   
@@ -275,7 +314,11 @@ router.post('/me/carriers/import', async (req, res) => {
   // GET /api/v1/carriers/:dot  (mounted as /carriers/:dot here)
   // ---------------------------------------------
   router.get('/carriers/:dot', async (req, res) => {
+    const auth = getApiAuthContext(req, res);
+    if (!auth) return;
+
     const dot = req.params.dot;
+    const companyId = auth.companyId;
 
     try {
       const carrierColumns = carrierSelectColumns('c');
@@ -307,6 +350,46 @@ router.post('/me/carriers/import', async (req, res) => {
       );
 
       carrier.cargo_carried = cargoResult.rows.map(r => r.cargo_desc);
+      const insuranceResult = await pool.query(
+        `
+        SELECT c.*
+        FROM public.insurance_coverages c
+        JOIN public.insurance_documents d
+          ON d.id = c.document_id
+        WHERE c.dot_number = $1
+          AND d.company_id = $2
+        ORDER BY c.expiration_date DESC NULLS LAST, c.created_at DESC;
+        `,
+        [dot, companyId]
+      );
+
+      const insuranceData = buildInsuranceDataFromCoverageRows(insuranceResult.rows);
+      if (
+        insuranceData.insurance_coverages.length === 0 &&
+        !insuranceData.insurance_summary.has_on_file
+      ) {
+        const insuranceDocumentResult = await pool.query(
+          `
+          SELECT 1
+          FROM public.insurance_documents d
+          WHERE d.dot_number = $1
+            AND d.company_id = $2
+          LIMIT 1;
+          `,
+          [dot, companyId]
+        );
+
+        if (insuranceDocumentResult.rowCount > 0) {
+          // Document-only fallback: treat as on-file but not yet fully
+          // structured into coverage rows, so we avoid marking definitively expired.
+          insuranceData.insurance_summary.has_on_file = true;
+          insuranceData.insurance_summary.has_structured_coverages = false;
+          insuranceData.insurance_summary.is_expired = false;
+        }
+      }
+
+      carrier.insurance_summary = insuranceData.insurance_summary;
+      carrier.insurance_coverages = insuranceData.insurance_coverages;
 
       res.json(carrier);
     } catch (err) {
@@ -321,6 +404,10 @@ router.post('/me/carriers/import', async (req, res) => {
 // ---------------------------------------------
 router.get('/carriers', async (req, res) => {
   try {
+    const auth = getApiAuthContext(req, res);
+    if (!auth) return;
+
+    const companyId = auth.companyId;
     const {
       dot,
       mc,
@@ -405,8 +492,25 @@ router.get('/carriers', async (req, res) => {
       pool.query(countSql, params)
     ]);
 
+    const dots = [...new Set(
+      dataResult.rows
+        .map((row) => row.dotnumber || row.dot)
+        .filter((value) => value !== null && value !== undefined)
+        .map((value) => String(value))
+    )];
+
+    const summariesByDot = await loadInsuranceSummariesForDots(companyId, dots);
+
+    const rowsWithInsuranceSummary = dataResult.rows.map((row) => {
+      const dotKey = String(row.dotnumber || row.dot || "");
+      return {
+        ...row,
+        insurance_summary: summariesByDot.get(dotKey) || buildEmptyInsuranceSummary(),
+      };
+    });
+
     res.json({
-      rows: dataResult.rows,
+      rows: rowsWithInsuranceSummary,
       total: countResult.rows[0].count,
       page: parseInt(page, 10),
       pageSize: limit
@@ -422,10 +526,10 @@ router.get('/carriers', async (req, res) => {
 // ---------------------------------------------
 router.get('/me/carriers', async (req, res) => {
   try {
-      const companyId = getCompanyId(req);
-      if (!companyId) {
-        return res.status(401).json({ error: 'Not authorized' });
-      }
+    const auth = getApiAuthContext(req, res);
+    if (!auth) return;
+
+    const companyId = auth.companyId;
 
     const {
       dot,
@@ -510,8 +614,24 @@ router.get('/me/carriers', async (req, res) => {
       pool.query(countSql, params)
     ]);
 
+    const dots = [...new Set(
+      dataResult.rows
+        .map((row) => row.dotnumber || row.dot)
+        .filter((value) => value !== null && value !== undefined)
+        .map((value) => String(value))
+    )];
+
+    const summariesByDot = await loadInsuranceSummariesForDots(companyId, dots);
+    const rowsWithInsuranceSummary = dataResult.rows.map((row) => {
+      const dotKey = String(row.dotnumber || row.dot || "");
+      return {
+        ...row,
+        insurance_summary: summariesByDot.get(dotKey) || buildEmptyInsuranceSummary(),
+      };
+    });
+
     res.json({
-      rows: dataResult.rows,
+      rows: rowsWithInsuranceSummary,
       total: countResult.rows[0].count,
       page: parseInt(page, 10),
       pageSize: limit
