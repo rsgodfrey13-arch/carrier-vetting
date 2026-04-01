@@ -457,6 +457,17 @@ function safeText(v) {
 function renderInsuranceDocumentOnly(doc, dot) {
   const wrap = document.getElementById("ins-coverages-body");
   if (!wrap) return;
+  const canViewDocument = doc?.can_view_document === true;
+  const openBtn = canViewDocument
+    ? `
+            <button class="ins-open-coi" type="button" data-open-ins-doc="${doc.id}">
+              View Insurance Certificate
+            </button>
+      `
+    : ``;
+  const hintText = canViewDocument
+    ? "Open the certificate to view coverage details."
+    : "Structured coverage data is available, but the source document is only visible to the company that owns or requested it.";
 
   wrap.innerHTML = `
     <div class="ins-coverage ins-coverage--doconly">
@@ -464,18 +475,18 @@ function renderInsuranceDocumentOnly(doc, dot) {
         <div class="ins-title-row">
           <div class="ins-title">Insurance Certificate on File</div>
           <div class="ins-title-actions">
-            <button class="ins-open-coi" type="button" data-open-ins-doc="${doc.id}">
-              View Insurance Certificate
-            </button>
+            ${openBtn}
           </div>
         </div>
         <div class="cs-hint" style="margin-top:10px;">
-          Open the certificate to view coverage details.
+          ${hintText}
         </div>
       </div>
     </div>
   `;
 
+  // Frontend only hides buttons/links; backend must also enforce document access.
+  if (!canViewDocument) return;
   wrap.querySelectorAll("[data-open-ins-doc]").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -512,8 +523,12 @@ function renderInsuranceDocumentOnly(doc, dot) {
     const policy = safeText(c.policy_number);
     const eff = fmtDate(c.effective_date);
     const exp = fmtDate(c.expiration_date);
-    const openBtn = c.document_id
+    const canViewDocument = c.can_view_document === true;
+    const openBtn = c.document_id && canViewDocument
       ? `<button class="ins-open-coi" type="button" data-open-ins-doc="${c.document_id}">View Insurance Certificate</button>`
+      : ``;
+    const privateHint = c.document_id && !canViewDocument
+      ? `<div class="cs-hint" style="margin-top:10px;">Source certificate is private to the company that uploaded or requested it.</div>`
       : ``;
 
     const addl = (c.additional_insured || "").toString().trim();
@@ -577,6 +592,7 @@ function renderInsuranceDocumentOnly(doc, dot) {
         </div>
 
         ${flags ? `<div class="ins-flags">${flags}</div>` : ``}
+        ${privateHint}
       </div>
 
       <div class="ins-divider"></div>
@@ -586,7 +602,8 @@ function renderInsuranceDocumentOnly(doc, dot) {
 
     wrap.appendChild(card);
   });
-      wrap.querySelectorAll("[data-open-ins-doc]").forEach((btn) => {
+    // Frontend only hides buttons/links; backend must also enforce document access.
+    wrap.querySelectorAll("[data-open-ins-doc]").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         const id = btn.getAttribute("data-open-ins-doc");
@@ -1431,8 +1448,12 @@ if (data && data.source === "cache_stale") {
 
     if (docs.length > 0) {
       tableBodyEl.innerHTML = docs.map((doc) => {
+        const canViewDocument = doc?.can_view_document === true;
         const actions = [
-          renderRowActionLink({ href: doc.pdf_url, label: "View" }),
+          // Frontend only hides buttons/links; backend must also enforce document access.
+          canViewDocument
+            ? renderRowActionLink({ href: doc.pdf_url, label: "View" })
+            : `<span class="cs-hint">Private</span>`,
         ];
         if (doc.certificate_url) {
           actions.push(renderRowActionLink({ href: doc.certificate_url, label: "Certificate" }));
@@ -1450,8 +1471,12 @@ if (data && data.source === "cache_stale") {
       }).join("");
 
       mobileListEl.innerHTML = docs.map((doc) => {
+        const canViewDocument = doc?.can_view_document === true;
         const actions = [
-          renderRowActionLink({ href: doc.pdf_url, label: "View Document" }),
+          // Frontend only hides buttons/links; backend must also enforce document access.
+          canViewDocument
+            ? renderRowActionLink({ href: doc.pdf_url, label: "View Document" })
+            : `<span class="cs-hint">Private</span>`,
         ];
         if (doc.certificate_url) {
           actions.push(renderRowActionLink({ href: doc.certificate_url, label: "Certificate" }));
