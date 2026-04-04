@@ -27,6 +27,15 @@ function toPlanDisplayName(planCode) {
   return code.charAt(0) + code.slice(1).toLowerCase();
 }
 
+function isPaidPlan(planCode) {
+  const code = String(planCode || "").trim().toUpperCase();
+  return !!code && code !== "STARTER";
+}
+
+function isActiveishStatus(status) {
+  return status === "active" || status === "trialing";
+}
+
 async function getPlanCodeByPriceId(pool, priceId) {
   if (!priceId) return null;
   const { rows } = await pool.query(
@@ -154,9 +163,23 @@ async function getWelcomeEmailContextByCustomerId(pool, stripeCustomerId, planCo
   return rows[0] || null;
 }
 
+async function getCurrentUserBillingStateByCustomerId(pool, stripeCustomerId) {
+  const { rows } = await pool.query(
+    `
+    SELECT plan, subscription_status
+    FROM users
+    WHERE stripe_customer_id = $1
+    LIMIT 1
+    `,
+    [stripeCustomerId]
+  );
+
+  return rows[0] || null;
+}
+
 async function maybeSendWelcomeEmail(payload) {
   const { status } = payload || {};
-  const isActive = status === "active" || status === "trialing";
+  const isActive = isActiveishStatus(status);
   if (!isActive) return;
 
   try {
@@ -354,6 +377,7 @@ module.exports = async function stripeWebhookHandler(req, res) {
           : invoice.subscription?.id;
 
       if (subId) {
+        const beforeState = await getCurrentUserBillingStateByCustomerId(pool, stripeCustomerId);
         const sub = await stripe.subscriptions.retrieve(subId);
         const status = normalizeStatus(sub.status);
         const currentPeriodEnd = sub.current_period_end
@@ -372,17 +396,25 @@ module.exports = async function stripeWebhookHandler(req, res) {
           cancel_at_period_end: cancelAtPeriodEnd,
         });
 
-        const user = await getWelcomeEmailContextByCustomerId(pool, stripeCustomerId, planCode);
-        if (user?.email) {
-          await maybeSendWelcomeEmail({
-            to: user.email,
-            bcc: "robert@carriershark.com",
-            first_name: (user.user_name || "").split(" ")[0] || "",
-            company_name: user.company_name || "",
-            plan_name: toPlanDisplayName(user.plan_code || planCode || ""),
-            login_url: `${process.env.APP_BASE_URL || ""}/login`,
-            status
-          });
+        const shouldSendPaidWelcome =
+          isPaidPlan(planCode) &&
+          isActiveishStatus(status) &&
+          !(isPaidPlan(beforeState?.plan) && isActiveishStatus(normalizeStatus(beforeState?.subscription_status)));
+
+        if (shouldSendPaidWelcome) {
+          const user = await getWelcomeEmailContextByCustomerId(pool, stripeCustomerId, planCode);
+          const baseUrl = process.env.PUBLIC_BASE_URL || process.env.APP_BASE_URL || "";
+          if (user?.email) {
+            await maybeSendWelcomeEmail({
+              to: user.email,
+              bcc: "robert@carriershark.com",
+              first_name: (user.user_name || "").split(" ")[0] || "",
+              company_name: user.company_name || "",
+              plan_name: toPlanDisplayName(user.plan_code || planCode || ""),
+              login_url: `${baseUrl}/account`,
+              status
+            });
+          }
         }
 
         console.log("Payment succeeded → applied plan/status:", {

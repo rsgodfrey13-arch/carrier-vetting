@@ -351,6 +351,44 @@ async function sendWelcomeEmail({
   });
 }
 
+async function sendStarterWelcomeEmail({
+  to,
+  first_name,
+  company_name,
+  login_url
+}) {
+  const domain = process.env.MAILGUN_DOMAIN;
+
+  return mg.messages.create(domain, {
+    from: process.env.MAILGUN_FROM,
+    to,
+    subject: "Your Carrier Shark Starter account is ready",
+    template: "starter welcome",
+    "h:X-Mailgun-Variables": JSON.stringify({
+      first_name,
+      company_name,
+      login_url
+    }),
+    text: [
+      `Welcome to Carrier Shark${first_name ? `, ${first_name}` : ""}`,
+      ``,
+      `Your Starter account is active.`,
+      `You can now:`,
+      `• Search carriers by DOT, MC, or company name`,
+      `• Save carriers to monitor them`,
+      `• Upload agreements and documents`,
+      `• Track insurance, authority, and safety changes`,
+      ``,
+      `Log in here:`,
+      login_url,
+      ``,
+      `Need help getting started? Reply to this email and our team can help.`,
+      ``,
+      `— Carrier Shark`
+    ].join("\n")
+  });
+}
+
 
 module.exports = {
   sendContractEmail,
@@ -359,6 +397,7 @@ module.exports = {
   sendVerificationEmail,
   sendNewSignupAlertEmail,
   sendWelcomeEmail,
+  sendStarterWelcomeEmail,
   sendSupportTicketEmail,
   sendCarrierContractAcceptedEmail,
   sendBrokerContractAcceptedEmail,

@@ -4,6 +4,7 @@ const express = require("express");
 const router = express.Router();
 const Stripe = require("stripe");
 const { loadCompanyContext, requireCompanyOwner } = require("../../middleware/companyContext");
+const { sendStarterWelcomeEmail } = require("../../clients/mailgun");
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2024-06-20",
@@ -251,6 +252,38 @@ router.post("/billing/activate-starter", loadCompanyContext, requireCompanyOwner
       cancelAtPeriodEnd: false,
     });
     await req.db.query("COMMIT");
+
+    const baseUrl =
+      process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get("host")}`;
+    const loginUrl = `${baseUrl}/account`;
+
+    try {
+      const { rows } = await req.db.query(
+        `
+        SELECT
+          u.email,
+          u.name AS user_name,
+          c.name AS company_name
+        FROM users u
+        LEFT JOIN companies c
+          ON c.id = $1
+        WHERE u.id = $2
+        LIMIT 1
+        `,
+        [companyId, req.companyContext.ownerUserId]
+      );
+      const owner = rows[0];
+      if (owner?.email) {
+        await sendStarterWelcomeEmail({
+          to: owner.email,
+          first_name: (owner.user_name || "").split(" ")[0] || "",
+          company_name: owner.company_name || "",
+          login_url: loginUrl,
+        });
+      }
+    } catch (mailErr) {
+      console.error("sendStarterWelcomeEmail failed:", mailErr?.message || mailErr);
+    }
 
     return res.json({ ok: true, companyId, url: "/account" });
   } catch (e) {
