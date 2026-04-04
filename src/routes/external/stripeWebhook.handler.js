@@ -166,6 +166,28 @@ async function getWelcomeEmailContextByCustomerId(pool, stripeCustomerId, planCo
   return rows[0] || null;
 }
 
+async function getWelcomeEmailContextByUserId(pool, userId, planCode) {
+  const { rows } = await pool.query(
+    `
+    SELECT
+      u.email,
+      u.name AS user_name,
+      c.name AS company_name,
+      p.plan_code
+    FROM users u
+    LEFT JOIN companies c
+      ON c.id = u.default_company_id
+    LEFT JOIN plans p
+      ON p.plan_code = $2
+    WHERE u.id = $1
+    LIMIT 1
+    `,
+    [userId, planCode]
+  );
+
+  return rows[0] || null;
+}
+
 function resolveBillingEmailTransition({
   previousPlan,
   previousStatus,
@@ -353,7 +375,7 @@ module.exports = async function stripeWebhookHandler(req, res) {
       });
 
       if (transition.type === "paid_activation") {
-        const user = await getWelcomeEmailContextByCustomerId(pool, stripeCustomerId, planCode);
+        const user = await getWelcomeEmailContextByUserId(pool, userId, planCode);
         const baseUrl = process.env.PUBLIC_BASE_URL || process.env.APP_BASE_URL || "";
         console.log("[billing-email-debug] paid activation email branch entered", {
           email: user?.email || null,
