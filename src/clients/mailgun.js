@@ -287,12 +287,78 @@ async function sendVerificationEmail({ to, first_name, verify_url, expires_minut
   });
 }
 
+async function sendNewSignupAlertEmail({
+  to,
+  first_name,
+  last_name,
+  email,
+  company_name
+}) {
+  const domain = process.env.MAILGUN_DOMAIN;
+
+  return mg.messages.create(domain, {
+    from: process.env.MAILGUN_FROM,
+    to,
+    subject: "New Carrier Shark account created",
+    text: [
+      `A new Carrier Shark account was just created.`,
+      ``,
+      `First name: ${first_name || ""}`,
+      `Last name: ${last_name || ""}`,
+      `Email: ${email || ""}`,
+      `Company: ${company_name || ""}`,
+      ``,
+      `This user has created an account but may not have activated a plan yet.`,
+      ``,
+      `— Carrier Shark`
+    ].join("\n")
+  });
+}
+
+async function sendWelcomeEmail({
+  to,
+  bcc,
+  first_name,
+  company_name,
+  plan_name,
+  login_url
+}) {
+  const domain = process.env.MAILGUN_DOMAIN;
+
+  return mg.messages.create(domain, {
+    from: process.env.MAILGUN_FROM,
+    to,
+    bcc,
+    subject: "Welcome to Carrier Shark",
+    template: "welcome email",
+    "h:X-Mailgun-Variables": JSON.stringify({
+      first_name,
+      company_name,
+      plan_name,
+      login_url
+    }),
+    text: [
+      `Welcome to Carrier Shark, ${first_name || ""}`.trim(),
+      ``,
+      `Your account and plan are now active.`,
+      `You can log in here:`,
+      login_url,
+      ``,
+      `If you need help getting started, just reply and our team will help.`,
+      ``,
+      `— Carrier Shark`
+    ].join("\n")
+  });
+}
+
 
 module.exports = {
   sendContractEmail,
   sendContractOtpEmail,
   sendPasswordResetEmail,
   sendVerificationEmail,
+  sendNewSignupAlertEmail,
+  sendWelcomeEmail,
   sendSupportTicketEmail,
   sendCarrierContractAcceptedEmail,
   sendBrokerContractAcceptedEmail,

@@ -1,6 +1,7 @@
 "use strict";
 
 const Stripe = require("stripe");
+const { sendWelcomeEmail } = require("../../clients/mailgun");
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2024-06-20",
 });
@@ -18,6 +19,12 @@ function pickPriceIdFromSubscription(sub) {
     null;
 
   return typeof priceId === "string" && priceId.length ? priceId : null;
+}
+
+function toPlanDisplayName(planCode) {
+  const code = String(planCode || "").trim().toUpperCase();
+  if (!code) return "";
+  return code.charAt(0) + code.slice(1).toLowerCase();
 }
 
 async function getPlanCodeByPriceId(pool, priceId) {
@@ -123,6 +130,40 @@ async function applyPlanToUserByCustomerId(pool, stripeCustomerId, planCode, ext
       cancel_at_period_end,
     ]
   );
+}
+
+async function getWelcomeEmailContextByCustomerId(pool, stripeCustomerId, planCode) {
+  const { rows } = await pool.query(
+    `
+    SELECT
+      u.email,
+      u.name AS user_name,
+      c.name AS company_name,
+      p.plan_code
+    FROM users u
+    LEFT JOIN companies c
+      ON c.id = u.default_company_id
+    LEFT JOIN plans p
+      ON p.plan_code = $2
+    WHERE u.stripe_customer_id = $1
+    LIMIT 1
+    `,
+    [stripeCustomerId, planCode]
+  );
+
+  return rows[0] || null;
+}
+
+async function maybeSendWelcomeEmail(payload) {
+  const { status } = payload || {};
+  const isActive = status === "active" || status === "trialing";
+  if (!isActive) return;
+
+  try {
+    await sendWelcomeEmail(payload);
+  } catch (e) {
+    console.error("sendWelcomeEmail failed:", e?.message || e);
+  }
 }
 
 module.exports = async function stripeWebhookHandler(req, res) {
@@ -330,6 +371,19 @@ module.exports = async function stripeWebhookHandler(req, res) {
           current_period_end: currentPeriodEnd,
           cancel_at_period_end: cancelAtPeriodEnd,
         });
+
+        const user = await getWelcomeEmailContextByCustomerId(pool, stripeCustomerId, planCode);
+        if (user?.email) {
+          await maybeSendWelcomeEmail({
+            to: user.email,
+            bcc: "robert@carriershark.com",
+            first_name: (user.user_name || "").split(" ")[0] || "",
+            company_name: user.company_name || "",
+            plan_name: toPlanDisplayName(user.plan_code || planCode || ""),
+            login_url: `${process.env.APP_BASE_URL || ""}/login`,
+            status
+          });
+        }
 
         console.log("Payment succeeded → applied plan/status:", {
           stripeCustomerId,

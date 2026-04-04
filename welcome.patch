@@ -1,0 +1,424 @@
+diff --git a/src/clients/mailgun.js b/src/clients/mailgun.js
+index 22063e1ad2c09d9f5b96f04edff57379c5bccd20..d832a46fbb925c7c62fa2953e41b7e392be43e3a 100644
+--- a/src/clients/mailgun.js
++++ b/src/clients/mailgun.js
+@@ -265,37 +265,103 @@ async function sendVerificationEmail({ to, first_name, verify_url, expires_minut
+     template: "email verification",
+ 
+     // Variables for the HTML template + subject (Mailgun Variables)
+     "h:X-Mailgun-Variables": JSON.stringify({
+       first_name,
+       verify_url,
+       expires_minutes: String(expires_minutes ?? "60"),
+     }),
+ 
+     // Plain-text fallback
+     text: [
+       `Hi ${first_name || ""}`.trim(),
+       ``,
+       `Verify your Carrier Shark email to continue:`,
+       verify_url,
+       ``,
+       `This link expires in ${expires_minutes ?? "60"} minutes.`,
+       ``,
+       `If you didn’t create this account, you can ignore this email.`,
+       ``,
+       `— Carrier Shark`
+     ].join("\n")
+   });
+ }
+ 
++async function sendNewSignupAlertEmail({
++  to,
++  first_name,
++  last_name,
++  email,
++  company_name
++}) {
++  const domain = process.env.MAILGUN_DOMAIN;
++
++  return mg.messages.create(domain, {
++    from: process.env.MAILGUN_FROM,
++    to,
++    subject: "New Carrier Shark account created",
++    text: [
++      `A new Carrier Shark account was just created.`,
++      ``,
++      `First name: ${first_name || ""}`,
++      `Last name: ${last_name || ""}`,
++      `Email: ${email || ""}`,
++      `Company: ${company_name || ""}`,
++      ``,
++      `This user has created an account but may not have activated a plan yet.`,
++      ``,
++      `— Carrier Shark`
++    ].join("\n")
++  });
++}
++
++async function sendWelcomeEmail({
++  to,
++  bcc,
++  first_name,
++  company_name,
++  plan_name,
++  login_url
++}) {
++  const domain = process.env.MAILGUN_DOMAIN;
++
++  return mg.messages.create(domain, {
++    from: process.env.MAILGUN_FROM,
++    to,
++    bcc,
++    subject: "Welcome to Carrier Shark",
++    template: "welcome email",
++    "h:X-Mailgun-Variables": JSON.stringify({
++      first_name,
++      company_name,
++      plan_name,
++      login_url
++    }),
++    text: [
++      `Welcome to Carrier Shark, ${first_name || ""}`.trim(),
++      ``,
++      `Your account and plan are now active.`,
++      `You can log in here:`,
++      login_url,
++      ``,
++      `If you need help getting started, just reply and our team will help.`,
++      ``,
++      `— Carrier Shark`
++    ].join("\n")
++  });
++}
++
+ 
+ module.exports = {
+   sendContractEmail,
+   sendContractOtpEmail,
+   sendPasswordResetEmail,
+   sendVerificationEmail,
++  sendNewSignupAlertEmail,
++  sendWelcomeEmail,
+   sendSupportTicketEmail,
+   sendCarrierContractAcceptedEmail,
+   sendBrokerContractAcceptedEmail,
+   sendTeamInviteEmail,
+   sendPublicContactEmail
+ };
+diff --git a/src/routes/external/stripeWebhook.handler.js b/src/routes/external/stripeWebhook.handler.js
+index b8bfd77350f4c538a4d8999d1e7ad603868fdd4e..7a42900f893d6b71c165cb210ad5b255e4e33418 100644
+--- a/src/routes/external/stripeWebhook.handler.js
++++ b/src/routes/external/stripeWebhook.handler.js
+@@ -1,47 +1,54 @@
+ "use strict";
+ 
+ const Stripe = require("stripe");
++const { sendWelcomeEmail } = require("../../clients/mailgun");
+ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+   apiVersion: "2024-06-20",
+ });
+ 
+ function normalizeStatus(s) {
+   return String(s || "").toLowerCase();
+ }
+ 
+ function pickPriceIdFromSubscription(sub) {
+   // Prefer first item’s price id (common case)
+   const first = sub?.items?.data?.[0];
+   const priceId =
+     first?.price?.id ||
+     first?.plan?.id || // older shapes
+     null;
+ 
+   return typeof priceId === "string" && priceId.length ? priceId : null;
+ }
+ 
++function toPlanDisplayName(planCode) {
++  const code = String(planCode || "").trim().toUpperCase();
++  if (!code) return "";
++  return code.charAt(0) + code.slice(1).toLowerCase();
++}
++
+ async function getPlanCodeByPriceId(pool, priceId) {
+   if (!priceId) return null;
+   const { rows } = await pool.query(
+     `
+       SELECT plan_code
+       FROM plans
+       WHERE stripe_price_id = $1
+         AND is_active = true
+       LIMIT 1
+     `,
+     [priceId]
+   );
+   return rows[0]?.plan_code || null;
+ }
+ 
+ async function applyPlanToUserById(pool, userId, planCode, extra = {}) {
+   // Pull canonical settings from plans, apply to users.
+   // NOTE: we set BOTH legacy booleans and any “enabled” booleans you have.
+   const {
+     subscription_status = null,
+     stripe_customer_id = null,
+     stripe_subscription_id = null,
+     current_period_end = null,
+     cancel_at_period_end = null,
+   } = extra;
+@@ -103,50 +110,84 @@ async function applyPlanToUserByCustomerId(pool, stripeCustomerId, planCode, ext
+       webhook_alerts = p.webhook_alerts,
+       view_insurance = p.view_insurance,
+       send_contracts = p.send_contracts,
+       email_alerts_enabled = p.email_alerts,
+ 
+       subscription_status = COALESCE($3, u.subscription_status),
+       stripe_subscription_id = COALESCE($4, u.stripe_subscription_id),
+       current_period_end = COALESCE($5::timestamp, u.current_period_end),
+       cancel_at_period_end = COALESCE($6, u.cancel_at_period_end)
+ 
+     FROM plans p
+     WHERE u.stripe_customer_id = $1
+       AND p.plan_code = $2
+     `,
+     [
+       stripeCustomerId,
+       planCode,
+       subscription_status,
+       stripe_subscription_id,
+       current_period_end,
+       cancel_at_period_end,
+     ]
+   );
+ }
+ 
++async function getWelcomeEmailContextByCustomerId(pool, stripeCustomerId, planCode) {
++  const { rows } = await pool.query(
++    `
++    SELECT
++      u.email,
++      u.name AS user_name,
++      c.name AS company_name,
++      p.plan_code
++    FROM users u
++    LEFT JOIN companies c
++      ON c.id = u.default_company_id
++    LEFT JOIN plans p
++      ON p.plan_code = $2
++    WHERE u.stripe_customer_id = $1
++    LIMIT 1
++    `,
++    [stripeCustomerId, planCode]
++  );
++
++  return rows[0] || null;
++}
++
++async function maybeSendWelcomeEmail(payload) {
++  const { status } = payload || {};
++  const isActive = status === "active" || status === "trialing";
++  if (!isActive) return;
++
++  try {
++    await sendWelcomeEmail(payload);
++  } catch (e) {
++    console.error("sendWelcomeEmail failed:", e?.message || e);
++  }
++}
++
+ module.exports = async function stripeWebhookHandler(req, res) {
+   let event;
+ 
+   try {
+     const sig = req.headers["stripe-signature"];
+     event = stripe.webhooks.constructEvent(
+       req.body,
+       sig,
+       process.env.STRIPE_WEBHOOK_SECRET
+     );
+   } catch (err) {
+     console.error("Stripe webhook signature verify failed:", err.message);
+     return res.status(400).send(`Webhook Error: ${err.message}`);
+   }
+ 
+   try {
+     const { pool } = require("../../db/pool");
+ 
+     // ===== CHECKOUT COMPLETED =====
+     if (event.type === "checkout.session.completed") {
+       const session = event.data.object;
+ 
+       const userId = session.metadata?.userId;
+       const planFromMeta = session.metadata?.plan; // optional fallback if you keep it
+       if (!userId) {
+@@ -309,50 +350,63 @@ module.exports = async function stripeWebhookHandler(req, res) {
+       // safest: retrieve subscription and apply correct plan + status
+       const subId =
+         typeof invoice.subscription === "string"
+           ? invoice.subscription
+           : invoice.subscription?.id;
+ 
+       if (subId) {
+         const sub = await stripe.subscriptions.retrieve(subId);
+         const status = normalizeStatus(sub.status);
+         const currentPeriodEnd = sub.current_period_end
+           ? new Date(sub.current_period_end * 1000)
+           : null;
+         const cancelAtPeriodEnd = !!sub.cancel_at_period_end;
+ 
+         const priceId = pickPriceIdFromSubscription(sub);
+         const planByPrice = await getPlanCodeByPriceId(pool, priceId);
+         const planCode = planByPrice || "STARTER";
+ 
+         await applyPlanToUserByCustomerId(pool, stripeCustomerId, planCode, {
+           subscription_status: status,
+           stripe_subscription_id: sub.id,
+           current_period_end: currentPeriodEnd,
+           cancel_at_period_end: cancelAtPeriodEnd,
+         });
+ 
++        const user = await getWelcomeEmailContextByCustomerId(pool, stripeCustomerId, planCode);
++        if (user?.email) {
++          await maybeSendWelcomeEmail({
++            to: user.email,
++            bcc: "robert@carriershark.com",
++            first_name: (user.user_name || "").split(" ")[0] || "",
++            company_name: user.company_name || "",
++            plan_name: toPlanDisplayName(user.plan_code || planCode || ""),
++            login_url: `${process.env.APP_BASE_URL || ""}/login`,
++            status
++          });
++        }
++
+         console.log("Payment succeeded → applied plan/status:", {
+           stripeCustomerId,
+           planCode,
+           status,
+         });
+       } else {
+         // fallback to your prior behavior
+         await pool.query(
+           `
+           UPDATE users
+           SET subscription_status = 'active'
+           WHERE stripe_customer_id = $1
+           `,
+           [stripeCustomerId]
+         );
+         console.log("Payment succeeded (no subscription id on invoice):", stripeCustomerId);
+       }
+     }
+ 
+     return res.json({ received: true });
+   } catch (err) {
+     console.error("Stripe webhook handler error:", err);
+     return res.status(500).send("Webhook handler failed");
+   }
+ };
+diff --git a/src/routes/internal/auth.routes.js b/src/routes/internal/auth.routes.js
+index b38546b0ee350b193305402375e46be6d4c03ad6..4d6c732e01344910c06d3b9f66060c15a2235d82 100644
+--- a/src/routes/internal/auth.routes.js
++++ b/src/routes/internal/auth.routes.js
+@@ -1,35 +1,39 @@
+ "use strict";
+ 
+ const express = require("express");
+ const bcrypt = require("bcrypt");
+ const { pool } = require("../../db/pool");
+ 
+ const router = express.Router();
+ 
+ const crypto = require("crypto");
+-const { sendPasswordResetEmail, sendVerificationEmail } = require("../../clients/mailgun");
++const {
++  sendPasswordResetEmail,
++  sendVerificationEmail,
++  sendNewSignupAlertEmail
++} = require("../../clients/mailgun");
+ const { authLimiter } = require("../../middleware/rateLimit");
+ 
+ // who am I? (used by UI + Postman to check login)
+ router.get("/me", async (req, res) => {
+   if (!req.session?.userId) {
+     return res.json({ user: null });
+   }
+ 
+   try {
+     const { rows } = await pool.query(
+       `
+       SELECT
+         u.id,
+         u.email,
+         u.carrier_limit,
+         u.view_insurance,
+         u.email_alerts,
+         u.send_contracts,
+         u.default_company_id,
+ 
+         -- chosen company context
+         chosen.company_id,
+         chosen.company_role,
+ 
+         -- company info (null if no company yet)
+@@ -448,50 +452,62 @@ router.post("/auth/signup", authLimiter, async (req, res) => {
+         userId,
+         tokenHash,
+         expiresAt.toISOString(),
+         req.ip || null,
+         req.get("user-agent") || null
+       ]
+     );
+ 
+     await client.query("COMMIT");
+ 
+     req.session.userId = userId;
+ 
+     const verifyUrl = `https://carriershark.com/verify-email/${token}`;
+ 
+     try {
+       await sendVerificationEmail({
+         to: emailRaw,
+         first_name: firstName,
+         verify_url: verifyUrl,
+         expires_minutes: String(expiresMinutes),
+       });
+     } catch (e) {
+       console.error("sendVerificationEmail failed:", e?.message || e);
+     }
+ 
++    try {
++      await sendNewSignupAlertEmail({
++        to: "robert@carriershark.com",
++        first_name: firstName,
++        last_name: lastName,
++        email: emailRaw,
++        company_name: company
++      });
++    } catch (e) {
++      console.error("sendNewSignupAlertEmail failed:", e?.message || e);
++    }
++
+     return res.redirect(303, `/verify-email?email=${encodeURIComponent(emailRaw)}`);
+   } catch (err) {
+     try { await client.query("ROLLBACK"); } catch {}
+     console.error("SIGNUP FAILED:", err?.message, err);
+     return res.status(500).json({
+       error: "signup_failed",
+       message: err?.message || "unknown",
+       code: err?.code || null
+     });
+   } finally {
+     client.release();
+   }
+ });
+ 
+ router.post("/auth/resend-verification", async (req, res) => {
+   const userId = req.session?.userId;
+ 
+   if (!userId) {
+     return res.redirect(302, "/login");
+   }
+ 
+   const client = await pool.connect();
+ 
+   try {
+     const { rows } = await client.query(

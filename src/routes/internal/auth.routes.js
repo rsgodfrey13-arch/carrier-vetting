@@ -7,7 +7,11 @@ const { pool } = require("../../db/pool");
 const router = express.Router();
 
 const crypto = require("crypto");
-const { sendPasswordResetEmail, sendVerificationEmail } = require("../../clients/mailgun");
+const {
+  sendPasswordResetEmail,
+  sendVerificationEmail,
+  sendNewSignupAlertEmail
+} = require("../../clients/mailgun");
 const { authLimiter } = require("../../middleware/rateLimit");
 
 // who am I? (used by UI + Postman to check login)
@@ -468,6 +472,18 @@ router.post("/auth/signup", authLimiter, async (req, res) => {
       });
     } catch (e) {
       console.error("sendVerificationEmail failed:", e?.message || e);
+    }
+
+    try {
+      await sendNewSignupAlertEmail({
+        to: "robert@carriershark.com",
+        first_name: firstName,
+        last_name: lastName,
+        email: emailRaw,
+        company_name: company
+      });
+    } catch (e) {
+      console.error("sendNewSignupAlertEmail failed:", e?.message || e);
     }
 
     return res.redirect(303, `/verify-email?email=${encodeURIComponent(emailRaw)}`);
