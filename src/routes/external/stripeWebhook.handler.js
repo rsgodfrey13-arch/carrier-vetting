@@ -1,7 +1,10 @@
 "use strict";
 
 const Stripe = require("stripe");
-const { sendWelcomeEmail } = require("../../clients/mailgun");
+const {
+  sendPaidActivationEmail,
+  sendPlanUpdatedEmail,
+} = require("../../clients/mailgun");
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2024-06-20",
 });
@@ -163,6 +166,39 @@ async function getWelcomeEmailContextByCustomerId(pool, stripeCustomerId, planCo
   return rows[0] || null;
 }
 
+function resolveBillingEmailTransition({
+  previousPlan,
+  previousStatus,
+  nextPlan,
+  nextStatus,
+}) {
+  const prevPlanCode = String(previousPlan || "").toUpperCase();
+  const nextPlanCode = String(nextPlan || "").toUpperCase();
+  const prevStatusNorm = normalizeStatus(previousStatus);
+  const nextStatusNorm = normalizeStatus(nextStatus);
+
+  const wasActive = isActiveishStatus(prevStatusNorm);
+  const isActive = isActiveishStatus(nextStatusNorm);
+  const wasPaid = isPaidPlan(prevPlanCode) && wasActive;
+  const isPaid = isPaidPlan(nextPlanCode) && isActive;
+
+  if (!isPaid) return { type: "none" };
+
+  if (!wasPaid) {
+    return { type: "paid_activation" };
+  }
+
+  if (prevPlanCode !== nextPlanCode) {
+    return {
+      type: "paid_plan_changed",
+      previousPlanCode: prevPlanCode,
+      nextPlanCode,
+    };
+  }
+
+  return { type: "none" };
+}
+
 async function getCurrentUserBillingStateByCustomerId(pool, stripeCustomerId) {
   const { rows } = await pool.query(
     `
@@ -177,15 +213,26 @@ async function getCurrentUserBillingStateByCustomerId(pool, stripeCustomerId) {
   return rows[0] || null;
 }
 
-async function maybeSendWelcomeEmail(payload) {
+async function maybeSendPaidActivationEmail(payload) {
   const { status } = payload || {};
   const isActive = isActiveishStatus(status);
   if (!isActive) return;
 
   try {
-    await sendWelcomeEmail(payload);
+    await sendPaidActivationEmail(payload);
   } catch (e) {
-    console.error("sendWelcomeEmail failed:", e?.message || e);
+    console.error("sendPaidActivationEmail failed:", e?.message || e);
+  }
+}
+
+async function maybeSendPlanUpdatedEmail(payload) {
+  const { status } = payload || {};
+  if (!isActiveishStatus(status)) return;
+
+  try {
+    await sendPlanUpdatedEmail(payload);
+  } catch (e) {
+    console.error("sendPlanUpdatedEmail failed:", e?.message || e);
   }
 }
 
@@ -396,24 +443,37 @@ module.exports = async function stripeWebhookHandler(req, res) {
           cancel_at_period_end: cancelAtPeriodEnd,
         });
 
-        const shouldSendPaidWelcome =
-          isPaidPlan(planCode) &&
-          isActiveishStatus(status) &&
-          !(isPaidPlan(beforeState?.plan) && isActiveishStatus(normalizeStatus(beforeState?.subscription_status)));
+        const transition = resolveBillingEmailTransition({
+          previousPlan: beforeState?.plan,
+          previousStatus: beforeState?.subscription_status,
+          nextPlan: planCode,
+          nextStatus: status,
+        });
 
-        if (shouldSendPaidWelcome) {
+        if (transition.type !== "none") {
           const user = await getWelcomeEmailContextByCustomerId(pool, stripeCustomerId, planCode);
           const baseUrl = process.env.PUBLIC_BASE_URL || process.env.APP_BASE_URL || "";
           if (user?.email) {
-            await maybeSendWelcomeEmail({
+            const commonPayload = {
               to: user.email,
               bcc: "robert@carriershark.com",
               first_name: (user.user_name || "").split(" ")[0] || "",
               company_name: user.company_name || "",
               plan_name: toPlanDisplayName(user.plan_code || planCode || ""),
               login_url: `${baseUrl}/account`,
-              status
-            });
+              status,
+            };
+
+            if (transition.type === "paid_activation") {
+              await maybeSendPaidActivationEmail(commonPayload);
+            }
+
+            if (transition.type === "paid_plan_changed") {
+              await maybeSendPlanUpdatedEmail({
+                ...commonPayload,
+                previous_plan_name: toPlanDisplayName(transition.previousPlanCode),
+              });
+            }
           }
         }
 

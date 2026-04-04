@@ -1,0 +1,533 @@
+diff --git a/src/clients/mailgun.js b/src/clients/mailgun.js
+index b4d0b7c6e4821c2f655c57f5ed5966c327ac0ba9..c90151bd4d07f5d60a0752e191ca6d72fb8b4436 100644
+--- a/src/clients/mailgun.js
++++ b/src/clients/mailgun.js
+@@ -293,115 +293,154 @@ async function sendNewSignupAlertEmail({
+   last_name,
+   email,
+   company_name
+ }) {
+   const domain = process.env.MAILGUN_DOMAIN;
+ 
+   return mg.messages.create(domain, {
+     from: process.env.MAILGUN_FROM,
+     to,
+     subject: "New Carrier Shark account created",
+     text: [
+       `A new Carrier Shark account was just created.`,
+       ``,
+       `First name: ${first_name || ""}`,
+       `Last name: ${last_name || ""}`,
+       `Email: ${email || ""}`,
+       `Company: ${company_name || ""}`,
+       ``,
+       `This user has created an account but may not have activated a plan yet.`,
+       ``,
+       `— Carrier Shark`
+     ].join("\n")
+   });
+ }
+ 
+-async function sendWelcomeEmail({
++async function sendPaidActivationEmail({
+   to,
+   bcc,
+   first_name,
+   company_name,
+   plan_name,
+   login_url
+ }) {
+   const domain = process.env.MAILGUN_DOMAIN;
+ 
+   return mg.messages.create(domain, {
+     from: process.env.MAILGUN_FROM,
+     to,
+-    bcc: "robert@carriershark.com",
+-    subject: "Welcome to Carrier Shark",
++    bcc: bcc || "robert@carriershark.com",
++    subject: "Your Carrier Shark plan is active",
+     template: "welcome email",
+     "h:X-Mailgun-Variables": JSON.stringify({
+       first_name,
+       company_name,
+       plan_name,
+       login_url
+     }),
+     text: [
+-      `Welcome to Carrier Shark, ${first_name || ""}`.trim(),
++      `Hi${first_name ? ` ${first_name}` : ""},`,
+       ``,
+-      `Your account and plan are now active.`,
++      `Your Carrier Shark ${plan_name || "paid"} plan is now active.`,
+       `You can log in here:`,
+       login_url,
+       ``,
+       `If you need help getting started, just reply and our team will help.`,
+       ``,
+       `— Carrier Shark`
+     ].join("\n")
+   });
+ }
+ 
++async function sendPlanUpdatedEmail({
++  to,
++  bcc,
++  first_name,
++  company_name,
++  previous_plan_name,
++  plan_name,
++  login_url
++}) {
++  const domain = process.env.MAILGUN_DOMAIN;
++
++  return mg.messages.create(domain, {
++    from: process.env.MAILGUN_FROM,
++    to,
++    bcc: bcc || "robert@carriershark.com",
++    subject: "Your Carrier Shark plan was updated",
++    template: "plan updated",
++    "h:X-Mailgun-Variables": JSON.stringify({
++      first_name,
++      company_name,
++      previous_plan_name,
++      plan_name,
++      login_url
++    }),
++    text: [
++      `Hi${first_name ? ` ${first_name}` : ""},`,
++      ``,
++      `Your Carrier Shark plan was updated from ${previous_plan_name || "your previous plan"} to ${plan_name || "your new plan"}.`,
++      `You can review your account here:`,
++      login_url,
++      ``,
++      `If this change was unexpected, reply to this email and we can help.`,
++      ``,
++      `— Carrier Shark`
++    ].join("\n")
++  });
++}
++
+ async function sendStarterWelcomeEmail({
+   to,
+   first_name,
+   company_name,
+   login_url
+ }) {
+   const domain = process.env.MAILGUN_DOMAIN;
+ 
+   return mg.messages.create(domain, {
+     from: process.env.MAILGUN_FROM,
+     to,
+     bcc: "robert@carriershark.com",
+     subject: "Your Carrier Shark Starter account is ready",
+     template: "starter welcome",
+     "h:X-Mailgun-Variables": JSON.stringify({
+       first_name,
+       company_name,
+       login_url
+     }),
+     text: [
+       `Welcome to Carrier Shark${first_name ? `, ${first_name}` : ""}`,
+       ``,
+       `Your Starter account is active.`,
+       `You can now:`,
+       `• Search carriers by DOT, MC, or company name`,
+       `• Save carriers to monitor them`,
+       `• Upload agreements and documents`,
+       `• Track insurance, authority, and safety changes`,
+       ``,
+       `Log in here:`,
+       login_url,
+       ``,
+       `Need help getting started? Reply to this email and our team can help.`,
+       ``,
+       `— Carrier Shark`
+     ].join("\n")
+   });
+ }
+ 
+ 
+ module.exports = {
+   sendContractEmail,
+   sendContractOtpEmail,
+   sendPasswordResetEmail,
+   sendVerificationEmail,
+   sendNewSignupAlertEmail,
+-  sendWelcomeEmail,
++  sendPaidActivationEmail,
+   sendStarterWelcomeEmail,
++  sendPlanUpdatedEmail,
+   sendSupportTicketEmail,
+   sendCarrierContractAcceptedEmail,
+   sendBrokerContractAcceptedEmail,
+   sendTeamInviteEmail,
+   sendPublicContactEmail
+ };
+diff --git a/src/routes/external/stripeWebhook.handler.js b/src/routes/external/stripeWebhook.handler.js
+index 674cbacbcd0f9b449164ace8fe7613c9b7ce14d7..893b8ee9a4ba21f7b9253efcece6b4bfa5a6e504 100644
+--- a/src/routes/external/stripeWebhook.handler.js
++++ b/src/routes/external/stripeWebhook.handler.js
+@@ -1,29 +1,32 @@
+ "use strict";
+ 
+ const Stripe = require("stripe");
+-const { sendWelcomeEmail } = require("../../clients/mailgun");
++const {
++  sendPaidActivationEmail,
++  sendPlanUpdatedEmail,
++} = require("../../clients/mailgun");
+ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+   apiVersion: "2024-06-20",
+ });
+ 
+ function normalizeStatus(s) {
+   return String(s || "").toLowerCase();
+ }
+ 
+ function pickPriceIdFromSubscription(sub) {
+   // Prefer first item’s price id (common case)
+   const first = sub?.items?.data?.[0];
+   const priceId =
+     first?.price?.id ||
+     first?.plan?.id || // older shapes
+     null;
+ 
+   return typeof priceId === "string" && priceId.length ? priceId : null;
+ }
+ 
+ function toPlanDisplayName(planCode) {
+   const code = String(planCode || "").trim().toUpperCase();
+   if (!code) return "";
+   return code.charAt(0) + code.slice(1).toLowerCase();
+ }
+ 
+@@ -141,73 +144,117 @@ async function applyPlanToUserByCustomerId(pool, stripeCustomerId, planCode, ext
+   );
+ }
+ 
+ async function getWelcomeEmailContextByCustomerId(pool, stripeCustomerId, planCode) {
+   const { rows } = await pool.query(
+     `
+     SELECT
+       u.email,
+       u.name AS user_name,
+       c.name AS company_name,
+       p.plan_code
+     FROM users u
+     LEFT JOIN companies c
+       ON c.id = u.default_company_id
+     LEFT JOIN plans p
+       ON p.plan_code = $2
+     WHERE u.stripe_customer_id = $1
+     LIMIT 1
+     `,
+     [stripeCustomerId, planCode]
+   );
+ 
+   return rows[0] || null;
+ }
+ 
++function resolveBillingEmailTransition({
++  previousPlan,
++  previousStatus,
++  nextPlan,
++  nextStatus,
++}) {
++  const prevPlanCode = String(previousPlan || "").toUpperCase();
++  const nextPlanCode = String(nextPlan || "").toUpperCase();
++  const prevStatusNorm = normalizeStatus(previousStatus);
++  const nextStatusNorm = normalizeStatus(nextStatus);
++
++  const wasActive = isActiveishStatus(prevStatusNorm);
++  const isActive = isActiveishStatus(nextStatusNorm);
++  const wasPaid = isPaidPlan(prevPlanCode) && wasActive;
++  const isPaid = isPaidPlan(nextPlanCode) && isActive;
++
++  if (!isPaid) return { type: "none" };
++
++  if (!wasPaid) {
++    return { type: "paid_activation" };
++  }
++
++  if (prevPlanCode !== nextPlanCode) {
++    return {
++      type: "paid_plan_changed",
++      previousPlanCode: prevPlanCode,
++      nextPlanCode,
++    };
++  }
++
++  return { type: "none" };
++}
++
+ async function getCurrentUserBillingStateByCustomerId(pool, stripeCustomerId) {
+   const { rows } = await pool.query(
+     `
+     SELECT plan, subscription_status
+     FROM users
+     WHERE stripe_customer_id = $1
+     LIMIT 1
+     `,
+     [stripeCustomerId]
+   );
+ 
+   return rows[0] || null;
+ }
+ 
+-async function maybeSendWelcomeEmail(payload) {
++async function maybeSendPaidActivationEmail(payload) {
+   const { status } = payload || {};
+   const isActive = isActiveishStatus(status);
+   if (!isActive) return;
+ 
+   try {
+-    await sendWelcomeEmail(payload);
++    await sendPaidActivationEmail(payload);
++  } catch (e) {
++    console.error("sendPaidActivationEmail failed:", e?.message || e);
++  }
++}
++
++async function maybeSendPlanUpdatedEmail(payload) {
++  const { status } = payload || {};
++  if (!isActiveishStatus(status)) return;
++
++  try {
++    await sendPlanUpdatedEmail(payload);
+   } catch (e) {
+-    console.error("sendWelcomeEmail failed:", e?.message || e);
++    console.error("sendPlanUpdatedEmail failed:", e?.message || e);
+   }
+ }
+ 
+ module.exports = async function stripeWebhookHandler(req, res) {
+   let event;
+ 
+   try {
+     const sig = req.headers["stripe-signature"];
+     event = stripe.webhooks.constructEvent(
+       req.body,
+       sig,
+       process.env.STRIPE_WEBHOOK_SECRET
+     );
+   } catch (err) {
+     console.error("Stripe webhook signature verify failed:", err.message);
+     return res.status(400).send(`Webhook Error: ${err.message}`);
+   }
+ 
+   try {
+     const { pool } = require("../../db/pool");
+ 
+     // ===== CHECKOUT COMPLETED =====
+     if (event.type === "checkout.session.completed") {
+       const session = event.data.object;
+ 
+@@ -374,68 +421,81 @@ module.exports = async function stripeWebhookHandler(req, res) {
+       const subId =
+         typeof invoice.subscription === "string"
+           ? invoice.subscription
+           : invoice.subscription?.id;
+ 
+       if (subId) {
+         const beforeState = await getCurrentUserBillingStateByCustomerId(pool, stripeCustomerId);
+         const sub = await stripe.subscriptions.retrieve(subId);
+         const status = normalizeStatus(sub.status);
+         const currentPeriodEnd = sub.current_period_end
+           ? new Date(sub.current_period_end * 1000)
+           : null;
+         const cancelAtPeriodEnd = !!sub.cancel_at_period_end;
+ 
+         const priceId = pickPriceIdFromSubscription(sub);
+         const planByPrice = await getPlanCodeByPriceId(pool, priceId);
+         const planCode = planByPrice || "STARTER";
+ 
+         await applyPlanToUserByCustomerId(pool, stripeCustomerId, planCode, {
+           subscription_status: status,
+           stripe_subscription_id: sub.id,
+           current_period_end: currentPeriodEnd,
+           cancel_at_period_end: cancelAtPeriodEnd,
+         });
+ 
+-        const shouldSendPaidWelcome =
+-          isPaidPlan(planCode) &&
+-          isActiveishStatus(status) &&
+-          !(isPaidPlan(beforeState?.plan) && isActiveishStatus(normalizeStatus(beforeState?.subscription_status)));
++        const transition = resolveBillingEmailTransition({
++          previousPlan: beforeState?.plan,
++          previousStatus: beforeState?.subscription_status,
++          nextPlan: planCode,
++          nextStatus: status,
++        });
+ 
+-        if (shouldSendPaidWelcome) {
++        if (transition.type !== "none") {
+           const user = await getWelcomeEmailContextByCustomerId(pool, stripeCustomerId, planCode);
+           const baseUrl = process.env.PUBLIC_BASE_URL || process.env.APP_BASE_URL || "";
+           if (user?.email) {
+-            await maybeSendWelcomeEmail({
++            const commonPayload = {
+               to: user.email,
+               bcc: "robert@carriershark.com",
+               first_name: (user.user_name || "").split(" ")[0] || "",
+               company_name: user.company_name || "",
+               plan_name: toPlanDisplayName(user.plan_code || planCode || ""),
+               login_url: `${baseUrl}/account`,
+-              status
+-            });
++              status,
++            };
++
++            if (transition.type === "paid_activation") {
++              await maybeSendPaidActivationEmail(commonPayload);
++            }
++
++            if (transition.type === "paid_plan_changed") {
++              await maybeSendPlanUpdatedEmail({
++                ...commonPayload,
++                previous_plan_name: toPlanDisplayName(transition.previousPlanCode),
++              });
++            }
+           }
+         }
+ 
+         console.log("Payment succeeded → applied plan/status:", {
+           stripeCustomerId,
+           planCode,
+           status,
+         });
+       } else {
+         // fallback to your prior behavior
+         await pool.query(
+           `
+           UPDATE users
+           SET subscription_status = 'active'
+           WHERE stripe_customer_id = $1
+           `,
+           [stripeCustomerId]
+         );
+         console.log("Payment succeeded (no subscription id on invoice):", stripeCustomerId);
+       }
+     }
+ 
+     return res.json({ received: true });
+   } catch (err) {
+     console.error("Stripe webhook handler error:", err);
+diff --git a/src/routes/internal/billing.routes.js b/src/routes/internal/billing.routes.js
+index 5ed992eb3e02ce65e6dd9bb6eabca7da003041cc..06130838007e5638ad06055070eda2d7d8bf670f 100644
+--- a/src/routes/internal/billing.routes.js
++++ b/src/routes/internal/billing.routes.js
+@@ -203,99 +203,113 @@ router.post("/billing/continue", loadCompanyContext, requireCompanyOwner, async
+       cancel_url: `${baseUrl}/billing-canceled`,
+       allow_promotion_codes: true,
+       metadata: {
+         userId: String(req.session.userId),
+         companyId: String(companyId),
+         plan,
+       },
+     });
+ 
+     return res.json({ url: session.url, mode: "checkout" });
+   } catch (e) {
+     console.error("POST /billing/continue error:", e);
+     return res.status(500).json({ error: e.message || "Server error" });
+   }
+ });
+ 
+ /**
+  * POST /billing/activate-starter
+  * Activates Starter without creating a Stripe checkout session.
+  */
+ router.post("/billing/activate-starter", loadCompanyContext, requireCompanyOwner, async (req, res) => {
+   if (!requireSession(req, res)) return;
+ 
+   try {
+     const companyId = req.companyContext.companyId;
++    const currentBilling = await req.db.query(
++      `
++      SELECT plan, subscription_status
++      FROM companies
++      WHERE id = $1
++      LIMIT 1
++      `,
++      [companyId]
++    );
++    const previousPlan = String(currentBilling.rows[0]?.plan || "").toUpperCase();
++    const previousStatus = String(currentBilling.rows[0]?.subscription_status || "").toLowerCase();
++    const shouldSendStarterWelcome =
++      previousPlan !== "STARTER" ||
++      !["active", "trialing"].includes(previousStatus);
+ 
+     const exists = await req.db.query(
+       `
+       SELECT 1
+       FROM plans
+       WHERE plan_code = 'STARTER'
+         AND is_active = true
+       LIMIT 1
+       `
+     );
+     if (!exists.rows.length) {
+       return res.status(400).json({ error: "Starter plan is unavailable." });
+     }
+ 
+     await req.db.query("BEGIN");
+     await applyPlanToCompany(req, "STARTER", {
+       subscriptionStatus: "active",
+       stripeSubscriptionId: null,
+       currentPeriodEnd: null,
+       cancelAtPeriodEnd: false,
+     });
+     await syncPlanToCompanyMembers(req, "STARTER", {
+       subscriptionStatus: "active",
+       currentPeriodEnd: null,
+       cancelAtPeriodEnd: false,
+     });
+     await req.db.query("COMMIT");
+ 
+     const baseUrl =
+       process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get("host")}`;
+     const loginUrl = `${baseUrl}/account`;
+ 
+     try {
+       const { rows } = await req.db.query(
+         `
+         SELECT
+           u.email,
+           u.name AS user_name,
+           c.name AS company_name
+         FROM users u
+         LEFT JOIN companies c
+           ON c.id = $1
+         WHERE u.id = $2
+         LIMIT 1
+         `,
+         [companyId, req.companyContext.ownerUserId]
+       );
+       const owner = rows[0];
+-      if (owner?.email) {
++      if (owner?.email && shouldSendStarterWelcome) {
+         await sendStarterWelcomeEmail({
+           to: owner.email,
+           first_name: (owner.user_name || "").split(" ")[0] || "",
+           company_name: owner.company_name || "",
+           login_url: loginUrl,
+         });
+       }
+     } catch (mailErr) {
+       console.error("sendStarterWelcomeEmail failed:", mailErr?.message || mailErr);
+     }
+ 
+     return res.json({ ok: true, companyId, url: "/account" });
+   } catch (e) {
+     await req.db.query("ROLLBACK").catch(() => {});
+     console.error("POST /billing/activate-starter error:", e);
+     return res.status(500).json({ error: e.message || "Server error" });
+   }
+ });
+ 
+ 
+ 
+ 
+ 
+ 
+ 

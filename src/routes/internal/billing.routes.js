@@ -225,6 +225,20 @@ router.post("/billing/activate-starter", loadCompanyContext, requireCompanyOwner
 
   try {
     const companyId = req.companyContext.companyId;
+    const currentBilling = await req.db.query(
+      `
+      SELECT plan, subscription_status
+      FROM companies
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [companyId]
+    );
+    const previousPlan = String(currentBilling.rows[0]?.plan || "").toUpperCase();
+    const previousStatus = String(currentBilling.rows[0]?.subscription_status || "").toLowerCase();
+    const shouldSendStarterWelcome =
+      previousPlan !== "STARTER" ||
+      !["active", "trialing"].includes(previousStatus);
 
     const exists = await req.db.query(
       `
@@ -273,7 +287,7 @@ router.post("/billing/activate-starter", loadCompanyContext, requireCompanyOwner
         [companyId, req.companyContext.ownerUserId]
       );
       const owner = rows[0];
-      if (owner?.email) {
+      if (owner?.email && shouldSendStarterWelcome) {
         await sendStarterWelcomeEmail({
           to: owner.email,
           first_name: (owner.user_name || "").split(" ")[0] || "",

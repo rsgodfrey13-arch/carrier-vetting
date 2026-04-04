@@ -315,7 +315,7 @@ async function sendNewSignupAlertEmail({
   });
 }
 
-async function sendWelcomeEmail({
+async function sendPaidActivationEmail({
   to,
   bcc,
   first_name,
@@ -328,8 +328,8 @@ async function sendWelcomeEmail({
   return mg.messages.create(domain, {
     from: process.env.MAILGUN_FROM,
     to,
-    bcc: "robert@carriershark.com",
-    subject: "Welcome to Carrier Shark",
+    bcc: bcc || "robert@carriershark.com",
+    subject: "Your Carrier Shark plan is active",
     template: "welcome email",
     "h:X-Mailgun-Variables": JSON.stringify({
       first_name,
@@ -338,13 +338,51 @@ async function sendWelcomeEmail({
       login_url
     }),
     text: [
-      `Welcome to Carrier Shark, ${first_name || ""}`.trim(),
+      `Hi${first_name ? ` ${first_name}` : ""},`,
       ``,
-      `Your account and plan are now active.`,
+      `Your Carrier Shark ${plan_name || "paid"} plan is now active.`,
       `You can log in here:`,
       login_url,
       ``,
       `If you need help getting started, just reply and our team will help.`,
+      ``,
+      `— Carrier Shark`
+    ].join("\n")
+  });
+}
+
+async function sendPlanUpdatedEmail({
+  to,
+  bcc,
+  first_name,
+  company_name,
+  previous_plan_name,
+  plan_name,
+  login_url
+}) {
+  const domain = process.env.MAILGUN_DOMAIN;
+
+  return mg.messages.create(domain, {
+    from: process.env.MAILGUN_FROM,
+    to,
+    bcc: bcc || "robert@carriershark.com",
+    subject: "Your Carrier Shark plan was updated",
+    template: "plan updated",
+    "h:X-Mailgun-Variables": JSON.stringify({
+      first_name,
+      company_name,
+      previous_plan_name,
+      plan_name,
+      login_url
+    }),
+    text: [
+      `Hi${first_name ? ` ${first_name}` : ""},`,
+      ``,
+      `Your Carrier Shark plan was updated from ${previous_plan_name || "your previous plan"} to ${plan_name || "your new plan"}.`,
+      `You can review your account here:`,
+      login_url,
+      ``,
+      `If this change was unexpected, reply to this email and we can help.`,
       ``,
       `— Carrier Shark`
     ].join("\n")
@@ -397,8 +435,9 @@ module.exports = {
   sendPasswordResetEmail,
   sendVerificationEmail,
   sendNewSignupAlertEmail,
-  sendWelcomeEmail,
+  sendPaidActivationEmail,
   sendStarterWelcomeEmail,
+  sendPlanUpdatedEmail,
   sendSupportTicketEmail,
   sendCarrierContractAcceptedEmail,
   sendBrokerContractAcceptedEmail,
