@@ -1,0 +1,66 @@
+diff --git a/src/routes/internal/billing.routes.js b/src/routes/internal/billing.routes.js
+index ddd5b332eb85df11c6ca668da2732029915db047..cc3420ee325fd857cee2225e598200ce302e4ff4 100644
+--- a/src/routes/internal/billing.routes.js
++++ b/src/routes/internal/billing.routes.js
+@@ -101,56 +101,55 @@ async function syncPlanToCompanyMembers(req, planCode, extra = {}) {
+   const companyId = req.companyContext.companyId;
+   const normalizedPlan = String(planCode || "").trim().toUpperCase();
+   if (!normalizedPlan) throw new Error("Missing plan code");
+ 
+   const {
+     subscriptionStatus = null,
+     currentPeriodEnd = null,
+     cancelAtPeriodEnd = null,
+   } = extra;
+ 
+   await req.db.query(
+     `
+     UPDATE users u
+     SET
+       plan = p.plan_code,
+       carrier_limit = p.carrier_limit,
+       email_alerts = p.email_alerts,
+       rest_alerts = p.rest_alerts,
+       webhook_alerts = p.webhook_alerts,
+       view_insurance = p.view_insurance,
+       send_contracts = p.send_contracts,
+       email_alerts_enabled = p.email_alerts,
+       subscription_status = COALESCE($3, u.subscription_status),
+       current_period_end = COALESCE($4::timestamp, u.current_period_end),
+       cancel_at_period_end = COALESCE($5, u.cancel_at_period_end)
+-    FROM plans p
+-    JOIN company_members cm
+-      ON cm.user_id = u.id
+-     AND cm.company_id = $1
+-     AND cm.status = 'ACTIVE'
+-    WHERE p.plan_code = $2
++    FROM plans p, company_members cm
++    WHERE u.id = cm.user_id
++      AND cm.company_id = $1
++      AND cm.status = 'ACTIVE'
++      AND p.plan_code = $2
+       AND p.is_active = true
+     `,
+     [companyId, normalizedPlan, subscriptionStatus, currentPeriodEnd, cancelAtPeriodEnd]
+   );
+ }
+ 
+ 
+ 
+ 
+ /**
+  * POST /billing/continue
+  * Body: { plan: "core" | "pro" | "enterprise", context?: "upgrade" | "new" }
+  * Returns: { url, mode }
+  */
+ router.post("/billing/continue", loadCompanyContext, requireCompanyOwner, async (req, res) => {
+   if (!requireSession(req, res)) return;
+ 
+   try {
+     const companyId = req.companyContext.companyId;
+     const plan = String(req.body?.plan || "core").toLowerCase().trim();
+     const context = String(req.body?.context || "").toLowerCase().trim(); // optional
+ 
+     // Pull subscription state from your users table
+     const { rows } = await req.db.query(
+       `

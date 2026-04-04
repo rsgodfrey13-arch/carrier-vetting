@@ -123,12 +123,11 @@ async function syncPlanToCompanyMembers(req, planCode, extra = {}) {
       subscription_status = COALESCE($3, u.subscription_status),
       current_period_end = COALESCE($4::timestamp, u.current_period_end),
       cancel_at_period_end = COALESCE($5, u.cancel_at_period_end)
-    FROM plans p
-    JOIN company_members cm
-      ON cm.user_id = u.id
-     AND cm.company_id = $1
-     AND cm.status = 'ACTIVE'
-    WHERE p.plan_code = $2
+    FROM plans p, company_members cm
+    WHERE u.id = cm.user_id
+      AND cm.company_id = $1
+      AND cm.status = 'ACTIVE'
+      AND p.plan_code = $2
       AND p.is_active = true
     `,
     [companyId, normalizedPlan, subscriptionStatus, currentPeriodEnd, cancelAtPeriodEnd]
