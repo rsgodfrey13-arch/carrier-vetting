@@ -252,7 +252,7 @@ router.post("/billing/activate-starter", loadCompanyContext, requireCompanyOwner
     });
     await req.db.query("COMMIT");
 
-    return res.json({ ok: true, companyId, url: "/app" });
+    return res.json({ ok: true, companyId, url: "/account" });
   } catch (e) {
     await req.db.query("ROLLBACK").catch(() => {});
     console.error("POST /billing/activate-starter error:", e);
