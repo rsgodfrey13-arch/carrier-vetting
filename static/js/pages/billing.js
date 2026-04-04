@@ -17,13 +17,14 @@
     const plan = (planInput?.value || "core").toLowerCase();
     const params = new URLSearchParams(window.location.search);
     const context = (params.get("context") || "").toLowerCase();
+    const endpoint = plan === "starter" ? "/api/billing/activate-starter" : "/api/billing/continue";
 
     btn.disabled = true;
     btn.classList.add("is-loading");
-    setStatus("Redirecting…");
+    setStatus(plan === "starter" ? "Activating Starter…" : "Redirecting…");
 
     try {
-      const res = await fetch("/api/billing/continue", {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

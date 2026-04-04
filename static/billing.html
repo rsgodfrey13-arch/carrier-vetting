@@ -47,7 +47,7 @@
             <div class="cs-fineprint">Cancel anytime.</div>
           </div>
 
-          <div class="billing-summary-right cs-fineprint">
+          <div class="billing-summary-right cs-fineprint" id="billing-summary-note">
             Secure checkout by Stripe. We never store card details.
           </div>
         </div>
@@ -90,18 +90,34 @@
     const plan = (params.get("plan") || "core").toLowerCase();
     const context = (params.get("context") || "").toLowerCase(); // "upgrade"
 
-    const pretty = { core: "Core", pro: "Pro", enterprise: "Enterprise" };
-    const price  = { core: "$399", pro: "$999", enterprise: "Custom" };
+    const pretty = { starter: "Starter", core: "Core", pro: "Pro", enterprise: "Enterprise" };
+    const price  = { starter: "$0", core: "$399", pro: "$999", enterprise: "Custom" };
+    const isStarter = plan === "starter";
+    const normalizedPlan = pretty[plan] ? plan : "core";
 
-    document.getElementById("plan-label").textContent = pretty[plan] || "Core";
-    document.getElementById("plan-input").value = (pretty[plan] ? plan : "core");
-    document.getElementById("price-label").textContent = price[plan] || "$399";
+    document.getElementById("plan-label").textContent = pretty[normalizedPlan] || "Core";
+    document.getElementById("plan-input").value = normalizedPlan;
+    document.getElementById("price-label").textContent = price[normalizedPlan] || "$399";
+
+    const perEl = document.querySelector(".billing-per");
+    if (perEl) perEl.textContent = normalizedPlan === "starter" ? "" : "/mo";
+
+    const noteEl = document.getElementById("billing-summary-note");
+    if (noteEl) {
+      noteEl.textContent = isStarter
+        ? "Starter activates instantly. No card required."
+        : "Secure checkout by Stripe. We never store card details.";
+    }
 
     const titleEl = document.getElementById("billing-title");
     const subEl = document.getElementById("billing-subtitle");
     const btnLabel = document.getElementById("checkout-btn-label");
 
-    if (context === "upgrade") {
+    if (isStarter) {
+      if (titleEl) titleEl.textContent = "Confirm your plan.";
+      if (subEl) subEl.textContent = "Review the Starter plan and activate your account.";
+      if (btnLabel) btnLabel.textContent = "Activate Starter";
+    } else if (context === "upgrade") {
       if (titleEl) titleEl.textContent = "Confirm plan change.";
       if (subEl) subEl.textContent = "Accept the Terms. You’ll finalize billing in Stripe.";
       if (btnLabel) btnLabel.textContent = "Continue";

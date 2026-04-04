@@ -59,6 +59,82 @@ async function getOrCreateStripeCustomer(req) {
   return { customerId: customer.id, email: company.email };
 }
 
+async function applyPlanToCompany(req, planCode, extra = {}) {
+  const companyId = req.companyContext.companyId;
+  const normalizedPlan = String(planCode || "").trim().toUpperCase();
+  if (!normalizedPlan) throw new Error("Missing plan code");
+
+  const {
+    subscriptionStatus = null,
+    stripeSubscriptionId = null,
+    currentPeriodEnd = null,
+    cancelAtPeriodEnd = null,
+  } = extra;
+
+  await req.db.query(
+    `
+    UPDATE companies c
+    SET
+      plan = p.plan_code,
+      carrier_limit = p.carrier_limit,
+      subscription_status = COALESCE($3, c.subscription_status),
+      stripe_subscription_id = $4,
+      current_period_end = $5::timestamp,
+      cancel_at_period_end = COALESCE($6, c.cancel_at_period_end)
+    FROM plans p
+    WHERE c.id = $1
+      AND p.plan_code = $2
+      AND p.is_active = true
+    `,
+    [
+      companyId,
+      normalizedPlan,
+      subscriptionStatus,
+      stripeSubscriptionId,
+      currentPeriodEnd,
+      cancelAtPeriodEnd,
+    ]
+  );
+}
+
+async function syncPlanToCompanyMembers(req, planCode, extra = {}) {
+  const companyId = req.companyContext.companyId;
+  const normalizedPlan = String(planCode || "").trim().toUpperCase();
+  if (!normalizedPlan) throw new Error("Missing plan code");
+
+  const {
+    subscriptionStatus = null,
+    currentPeriodEnd = null,
+    cancelAtPeriodEnd = null,
+  } = extra;
+
+  await req.db.query(
+    `
+    UPDATE users u
+    SET
+      plan = p.plan_code,
+      carrier_limit = p.carrier_limit,
+      email_alerts = p.email_alerts,
+      rest_alerts = p.rest_alerts,
+      webhook_alerts = p.webhook_alerts,
+      view_insurance = p.view_insurance,
+      send_contracts = p.send_contracts,
+      email_alerts_enabled = p.email_alerts,
+      subscription_status = COALESCE($3, u.subscription_status),
+      current_period_end = COALESCE($4::timestamp, u.current_period_end),
+      cancel_at_period_end = COALESCE($5, u.cancel_at_period_end)
+    FROM plans p
+    JOIN company_members cm
+      ON cm.user_id = u.id
+     AND cm.company_id = $1
+     AND cm.status = 'ACTIVE'
+    WHERE p.plan_code = $2
+      AND p.is_active = true
+    `,
+    [companyId, normalizedPlan, subscriptionStatus, currentPeriodEnd, cancelAtPeriodEnd]
+  );
+}
+
 
 
 
@@ -136,6 +212,51 @@ router.post("/billing/continue", loadCompanyContext, requireCompanyOwner, async 
     return res.json({ url: session.url, mode: "checkout" });
   } catch (e) {
     console.error("POST /billing/continue error:", e);
+    return res.status(500).json({ error: e.message || "Server error" });
+  }
+});
+
+/**
+ * POST /billing/activate-starter
+ * Activates Starter without creating a Stripe checkout session.
+ */
+router.post("/billing/activate-starter", loadCompanyContext, requireCompanyOwner, async (req, res) => {
+  if (!requireSession(req, res)) return;
+
+  try {
+    const companyId = req.companyContext.companyId;
+
+    const exists = await req.db.query(
+      `
+      SELECT 1
+      FROM plans
+      WHERE plan_code = 'STARTER'
+        AND is_active = true
+      LIMIT 1
+      `
+    );
+    if (!exists.rows.length) {
+      return res.status(400).json({ error: "Starter plan is unavailable." });
+    }
+
+    await req.db.query("BEGIN");
+    await applyPlanToCompany(req, "STARTER", {
+      subscriptionStatus: "active",
+      stripeSubscriptionId: null,
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+    });
+    await syncPlanToCompanyMembers(req, "STARTER", {
+      subscriptionStatus: "active",
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+    });
+    await req.db.query("COMMIT");
+
+    return res.json({ ok: true, companyId, url: "/app" });
+  } catch (e) {
+    await req.db.query("ROLLBACK").catch(() => {});
+    console.error("POST /billing/activate-starter error:", e);
     return res.status(500).json({ error: e.message || "Server error" });
   }
 });
