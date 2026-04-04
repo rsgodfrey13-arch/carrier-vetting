@@ -328,7 +328,7 @@ async function sendWelcomeEmail({
   return mg.messages.create(domain, {
     from: process.env.MAILGUN_FROM,
     to,
-    bcc,
+    bcc: "robert@carriershark.com",
     subject: "Welcome to Carrier Shark",
     template: "welcome email",
     "h:X-Mailgun-Variables": JSON.stringify({
@@ -362,6 +362,7 @@ async function sendStarterWelcomeEmail({
   return mg.messages.create(domain, {
     from: process.env.MAILGUN_FROM,
     to,
+    bcc: "robert@carriershark.com",
     subject: "Your Carrier Shark Starter account is ready",
     template: "starter welcome",
     "h:X-Mailgun-Variables": JSON.stringify({
