@@ -233,9 +233,21 @@ async function maybeSendPaidActivationEmail(payload) {
   if (!isActive) return;
 
   try {
+    console.log("[billing-email-debug] maybeSendPaidActivationEmail before Mailgun", {
+      to: payload?.to,
+      plan_name: payload?.plan_name,
+      status: payload?.status,
+    });
     await sendPaidActivationEmail(payload);
+    console.log("[billing-email-debug] maybeSendPaidActivationEmail Mailgun send succeeded", {
+      to: payload?.to,
+      plan_name: payload?.plan_name,
+    });
   } catch (e) {
-    console.error("sendPaidActivationEmail failed:", e?.message || e);
+    console.error(
+      "[billing-email-debug] maybeSendPaidActivationEmail Mailgun send failed:",
+      e?.message || e
+    );
   }
 }
 
@@ -244,9 +256,23 @@ async function maybeSendPlanUpdatedEmail(payload) {
   if (!isActiveishStatus(status)) return;
 
   try {
+    console.log("[billing-email-debug] maybeSendPlanUpdatedEmail before Mailgun", {
+      to: payload?.to,
+      plan_name: payload?.plan_name,
+      previous_plan_name: payload?.previous_plan_name,
+      status: payload?.status,
+    });
     await sendPlanUpdatedEmail(payload);
+    console.log("[billing-email-debug] maybeSendPlanUpdatedEmail Mailgun send succeeded", {
+      to: payload?.to,
+      plan_name: payload?.plan_name,
+      previous_plan_name: payload?.previous_plan_name,
+    });
   } catch (e) {
-    console.error("sendPlanUpdatedEmail failed:", e?.message || e);
+    console.error(
+      "[billing-email-debug] maybeSendPlanUpdatedEmail Mailgun send failed:",
+      e?.message || e
+    );
   }
 }
 
@@ -313,9 +339,29 @@ module.exports = async function stripeWebhookHandler(req, res) {
         nextStatus: status,
       });
 
+      console.log("[billing-email-debug] checkout.session.completed computed", {
+        eventType: event.type,
+        userId,
+        stripeCustomerId,
+        stripeSubscriptionId,
+        planFromMeta,
+        priceId,
+        planCode,
+        status,
+        beforeState,
+        transition,
+      });
+
       if (transition.type === "paid_activation") {
         const user = await getWelcomeEmailContextByCustomerId(pool, stripeCustomerId, planCode);
         const baseUrl = process.env.PUBLIC_BASE_URL || process.env.APP_BASE_URL || "";
+        console.log("[billing-email-debug] paid activation email branch entered", {
+          email: user?.email || null,
+          first_name: (user?.user_name || "").split(" ")[0] || "",
+          company_name: user?.company_name || "",
+          plan_name: toPlanDisplayName(user?.plan_code || planCode || ""),
+          login_url: `${baseUrl}/account`,
+        });
         if (user?.email) {
           await maybeSendPaidActivationEmail({
             to: user.email,
@@ -326,7 +372,20 @@ module.exports = async function stripeWebhookHandler(req, res) {
             login_url: `${baseUrl}/account`,
             status,
           });
+        } else {
+          console.log(
+            "[billing-email-debug] paid activation email skipped because user email context was missing",
+            { userContext: user }
+          );
         }
+      } else {
+        console.log("[billing-email-debug] paid activation email skipped", {
+          transition,
+          previousPlan: beforeState?.plan || null,
+          previousStatus: beforeState?.subscription_status || null,
+          nextPlan: planCode,
+          nextStatus: status,
+        });
       }
 
       console.log("Checkout completed → applied plan:", { userId, planCode, status });
@@ -359,6 +418,19 @@ module.exports = async function stripeWebhookHandler(req, res) {
       // If price changed (upgrade/downgrade), re-apply plan from DB mapping:
       const priceId = pickPriceIdFromSubscription(sub);
       const planByPrice = await getPlanCodeByPriceId(pool, priceId);
+      const transition = resolveBillingEmailTransition({
+        previousPlan: beforeState?.plan,
+        previousStatus: beforeState?.subscription_status,
+        nextPlan: planByPrice,
+        nextStatus: status,
+      });
+
+      console.log("[billing-email-debug] customer.subscription.updated computed", {
+        beforeState,
+        planByPrice,
+        status,
+        transition,
+      });
 
       // If we can resolve a plan, apply it (also updates status/period end).
       // If we cannot, just update subscription fields as you did before.
@@ -378,13 +450,10 @@ module.exports = async function stripeWebhookHandler(req, res) {
           currentPeriodEnd,
         });
 
-        const transition = resolveBillingEmailTransition({
-          previousPlan: beforeState?.plan,
-          previousStatus: beforeState?.subscription_status,
-          nextPlan: planByPrice,
-          nextStatus: status,
+        console.log("[billing-email-debug] plan-updated email branch check", {
+          entered: transition.type === "paid_plan_changed",
+          transition,
         });
-
         if (transition.type === "paid_plan_changed") {
           const user = await getWelcomeEmailContextByCustomerId(
             pool,
