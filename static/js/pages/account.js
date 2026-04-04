@@ -1041,6 +1041,18 @@ function applyEmailAlertsLock(user) {
   overlay.style.display = enabled ? "none" : "flex";
 }
 
+
+function applyBillingLock(user) {
+  const overlay = document.getElementById("billing-locked");
+  if (!overlay) return;
+
+  const plan = String(user?.plan || user?.user?.plan || "").trim().toUpperCase();
+  const billingEnabled = plan !== "STARTER";
+
+  overlay.style.display = billingEnabled ? "none" : "flex";
+}
+
+  
 function setAlertsSwitchColor(enabled) {
   const wrap = document.querySelector(".alerts-switch-wrap");
   if (!wrap) return;
@@ -1618,6 +1630,7 @@ if (document.getElementById("email-alert-fields")) {
 
     // Email Alerts feature gate (single overlay)
     applyEmailAlertsLock(me);
+    applyBillingLock(me);
     await loadEmailAlertsEnabled(me);
     
   }
