@@ -213,6 +213,20 @@ async function getCurrentUserBillingStateByCustomerId(pool, stripeCustomerId) {
   return rows[0] || null;
 }
 
+async function getCurrentUserBillingStateByUserId(pool, userId) {
+  const { rows } = await pool.query(
+    `
+    SELECT plan, subscription_status
+    FROM users
+    WHERE id = $1
+    LIMIT 1
+    `,
+    [userId]
+  );
+
+  return rows[0] || null;
+}
+
 async function maybeSendPaidActivationEmail(payload) {
   const { status } = payload || {};
   const isActive = isActiveishStatus(status);
@@ -267,6 +281,7 @@ module.exports = async function stripeWebhookHandler(req, res) {
 
       const stripeCustomerId = session.customer;
       const stripeSubscriptionId = session.subscription;
+      const beforeState = await getCurrentUserBillingStateByUserId(pool, userId);
 
       // Fetch subscription to get real status + period end + price id
       const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
@@ -290,6 +305,29 @@ module.exports = async function stripeWebhookHandler(req, res) {
         current_period_end: currentPeriodEnd,
         cancel_at_period_end: cancelAtPeriodEnd,
       });
+
+      const transition = resolveBillingEmailTransition({
+        previousPlan: beforeState?.plan,
+        previousStatus: beforeState?.subscription_status,
+        nextPlan: planCode,
+        nextStatus: status,
+      });
+
+      if (transition.type === "paid_activation") {
+        const user = await getWelcomeEmailContextByCustomerId(pool, stripeCustomerId, planCode);
+        const baseUrl = process.env.PUBLIC_BASE_URL || process.env.APP_BASE_URL || "";
+        if (user?.email) {
+          await maybeSendPaidActivationEmail({
+            to: user.email,
+            bcc: "robert@carriershark.com",
+            first_name: (user.user_name || "").split(" ")[0] || "",
+            company_name: user.company_name || "",
+            plan_name: toPlanDisplayName(user.plan_code || planCode || ""),
+            login_url: `${baseUrl}/account`,
+            status,
+          });
+        }
+      }
 
       console.log("Checkout completed → applied plan:", { userId, planCode, status });
     }
@@ -316,6 +354,7 @@ module.exports = async function stripeWebhookHandler(req, res) {
         null;
 
       const currentPeriodEnd = periodEndUnix ? new Date(periodEndUnix * 1000) : null;
+      const beforeState = await getCurrentUserBillingStateByCustomerId(pool, stripeCustomerId);
 
       // If price changed (upgrade/downgrade), re-apply plan from DB mapping:
       const priceId = pickPriceIdFromSubscription(sub);
@@ -338,6 +377,34 @@ module.exports = async function stripeWebhookHandler(req, res) {
           cancelAtPeriodEnd,
           currentPeriodEnd,
         });
+
+        const transition = resolveBillingEmailTransition({
+          previousPlan: beforeState?.plan,
+          previousStatus: beforeState?.subscription_status,
+          nextPlan: planByPrice,
+          nextStatus: status,
+        });
+
+        if (transition.type === "paid_plan_changed") {
+          const user = await getWelcomeEmailContextByCustomerId(
+            pool,
+            stripeCustomerId,
+            planByPrice
+          );
+          const baseUrl = process.env.PUBLIC_BASE_URL || process.env.APP_BASE_URL || "";
+          if (user?.email) {
+            await maybeSendPlanUpdatedEmail({
+              to: user.email,
+              bcc: "robert@carriershark.com",
+              first_name: (user.user_name || "").split(" ")[0] || "",
+              company_name: user.company_name || "",
+              plan_name: toPlanDisplayName(user.plan_code || planByPrice || ""),
+              previous_plan_name: toPlanDisplayName(transition.previousPlanCode),
+              login_url: `${baseUrl}/account`,
+              status,
+            });
+          }
+        }
       } else {
         // fallback: keep your existing update-only behavior
         await pool.query(
@@ -424,7 +491,6 @@ module.exports = async function stripeWebhookHandler(req, res) {
           : invoice.subscription?.id;
 
       if (subId) {
-        const beforeState = await getCurrentUserBillingStateByCustomerId(pool, stripeCustomerId);
         const sub = await stripe.subscriptions.retrieve(subId);
         const status = normalizeStatus(sub.status);
         const currentPeriodEnd = sub.current_period_end
@@ -442,40 +508,6 @@ module.exports = async function stripeWebhookHandler(req, res) {
           current_period_end: currentPeriodEnd,
           cancel_at_period_end: cancelAtPeriodEnd,
         });
-
-        const transition = resolveBillingEmailTransition({
-          previousPlan: beforeState?.plan,
-          previousStatus: beforeState?.subscription_status,
-          nextPlan: planCode,
-          nextStatus: status,
-        });
-
-        if (transition.type !== "none") {
-          const user = await getWelcomeEmailContextByCustomerId(pool, stripeCustomerId, planCode);
-          const baseUrl = process.env.PUBLIC_BASE_URL || process.env.APP_BASE_URL || "";
-          if (user?.email) {
-            const commonPayload = {
-              to: user.email,
-              bcc: "robert@carriershark.com",
-              first_name: (user.user_name || "").split(" ")[0] || "",
-              company_name: user.company_name || "",
-              plan_name: toPlanDisplayName(user.plan_code || planCode || ""),
-              login_url: `${baseUrl}/account`,
-              status,
-            };
-
-            if (transition.type === "paid_activation") {
-              await maybeSendPaidActivationEmail(commonPayload);
-            }
-
-            if (transition.type === "paid_plan_changed") {
-              await maybeSendPlanUpdatedEmail({
-                ...commonPayload,
-                previous_plan_name: toPlanDisplayName(transition.previousPlanCode),
-              });
-            }
-          }
-        }
 
         console.log("Payment succeeded → applied plan/status:", {
           stripeCustomerId,
