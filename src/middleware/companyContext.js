@@ -64,7 +64,16 @@ function requireCompanyOwner(req, res, next) {
   return next();
 }
 
+function requireCompanyAdmin(req, res, next) {
+  const role = req.companyContext?.role;
+  if (role !== "OWNER" && role !== "ADMIN") {
+    return res.status(403).json({ error: "Insufficient permissions" });
+  }
+  return next();
+}
+
 module.exports = {
   loadCompanyContext,
   requireCompanyOwner,
+  requireCompanyAdmin,
 };

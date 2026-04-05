@@ -11,6 +11,7 @@
     team: $("tab-team"),
     alerts: $("tab-alerts"),
     agreements: $("tab-agreements"),
+    screening: $("tab-screening"),
     api: $("tab-api"),
     plan: $("tab-plan"),
     billing: $("tab-billing"),
@@ -475,6 +476,10 @@ let agreementRequirementsOriginal = null;
 let agreementRequirementsCurrent = null;
 let agreementDeleteTargetId = null;
 const AGREEMENT_LIMIT_PER_COMPANY = 5;
+let screeningProfiles = [];
+let selectedScreeningProfileId = null;
+let screeningCriteriaOriginal = [];
+let screeningCriteriaCurrent = [];
 
 function normalizeAgreementRequirements(tpl) {
   return {
@@ -868,6 +873,246 @@ function wireAgreementDeleteModalOnce() {
       confirmBtn.disabled = false;
     }
   });
+}
+
+function normalizeScreeningCriterionForSave(row) {
+  return {
+    screening_criteria_id: Number(row.screening_criteria_id),
+    is_enabled: !!row.is_enabled,
+    value_bool: row.value_bool === null || row.value_bool === undefined ? null : !!row.value_bool,
+    value_number: row.value_number === null || row.value_number === undefined || row.value_number === "" ? null : Number(row.value_number),
+    value_date: row.value_date ? String(row.value_date).slice(0, 10) : null,
+    value_text: row.value_text === null || row.value_text === undefined || row.value_text === "" ? null : String(row.value_text),
+  };
+}
+
+function screeningCriteriaDirty() {
+  const a = (screeningCriteriaCurrent || []).map(normalizeScreeningCriterionForSave);
+  const b = (screeningCriteriaOriginal || []).map(normalizeScreeningCriterionForSave);
+  return JSON.stringify(a) !== JSON.stringify(b);
+}
+
+function updateScreeningSaveState() {
+  const btn = document.getElementById("btn-screening-save");
+  if (!btn) return;
+  btn.disabled = !selectedScreeningProfileId || !screeningCriteriaDirty();
+}
+
+function getSelectedScreeningProfile() {
+  return (screeningProfiles || []).find((p) => String(p.id) === String(selectedScreeningProfileId)) || null;
+}
+
+function setScreeningActionButtonState() {
+  const selected = getSelectedScreeningProfile();
+  const hasSelected = !!selected;
+  const isDefault = !!selected?.is_default;
+
+  const renameBtn = document.getElementById("btn-screening-rename-profile");
+  const deleteBtn = document.getElementById("btn-screening-delete-profile");
+  const defaultBtn = document.getElementById("btn-screening-set-default");
+
+  if (renameBtn) renameBtn.disabled = !hasSelected;
+  if (deleteBtn) deleteBtn.disabled = !hasSelected || isDefault;
+  if (defaultBtn) defaultBtn.disabled = !hasSelected || isDefault;
+}
+
+function renderScreeningProfiles() {
+  const host = document.getElementById("screening-profiles-list");
+  if (!host) return;
+
+  if (!screeningProfiles.length) {
+    selectedScreeningProfileId = null;
+    screeningCriteriaOriginal = [];
+    screeningCriteriaCurrent = [];
+    host.innerHTML = `<div class="muted">No screening profiles yet. Create one to start.</div>`;
+    renderScreeningCriteria([]);
+    setScreeningActionButtonState();
+    updateScreeningSaveState();
+    return;
+  }
+
+  if (!selectedScreeningProfileId || !screeningProfiles.some((p) => String(p.id) === String(selectedScreeningProfileId))) {
+    const fallback = screeningProfiles.find((p) => p.is_default) || screeningProfiles[0];
+    selectedScreeningProfileId = fallback?.id || null;
+  }
+
+  host.innerHTML = screeningProfiles.map((p) => {
+    const isSelected = String(p.id) === String(selectedScreeningProfileId);
+    return `
+      <button class="screening-profile-pill ${isSelected ? "is-selected" : ""}" data-screening-profile-id="${p.id}">
+        <span class="screening-profile-pill__name">${escapeHtml(p.profile_name || "Untitled")}</span>
+        <span class="screening-profile-pill__meta">
+          ${p.is_default ? `<span class="pill-badge pill-badge--on">DEFAULT</span>` : ``}
+          ${p.is_active ? `` : `<span class="pill-badge">INACTIVE</span>`}
+        </span>
+      </button>
+    `;
+  }).join("");
+
+  host.querySelectorAll("[data-screening-profile-id]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const profileId = btn.getAttribute("data-screening-profile-id");
+      if (!profileId || String(profileId) === String(selectedScreeningProfileId)) return;
+      selectedScreeningProfileId = profileId;
+      renderScreeningProfiles();
+      await loadScreeningCriteria(profileId);
+    });
+  });
+
+  setScreeningActionButtonState();
+  updateScreeningSaveState();
+}
+
+function renderScreeningCriteria(criteria = []) {
+  const host = document.getElementById("screening-criteria-list");
+  if (!host) return;
+
+  if (!selectedScreeningProfileId) {
+    host.innerHTML = `<div class="muted">Select a screening profile to configure criteria.</div>`;
+    updateScreeningSaveState();
+    return;
+  }
+
+  if (!criteria.length) {
+    host.innerHTML = `<div class="muted">No active screening criteria were found.</div>`;
+    updateScreeningSaveState();
+    return;
+  }
+
+  host.innerHTML = criteria.map((row, idx) => {
+    const disabledAttr = row.is_enabled ? "" : "disabled";
+    let inputHtml = `<span class="muted">Unsupported criterion type</span>`;
+    const type = String(row.value_type || "").toUpperCase();
+
+    if (type === "BOOLEAN") {
+      inputHtml = `<label class="switch"><input type="checkbox" data-screening-value="value_bool" data-idx="${idx}" ${row.value_bool ? "checked" : ""} ${disabledAttr}><span class="switch-ui"></span></label>`;
+    } else if (type === "NUMBER") {
+      inputHtml = `<input class="api-input" type="number" step="any" data-screening-value="value_number" data-idx="${idx}" value="${row.value_number ?? ""}" ${disabledAttr}>`;
+    } else if (type === "DATE") {
+      const value = row.value_date ? String(row.value_date).slice(0, 10) : "";
+      inputHtml = `<input class="api-input" type="date" data-screening-value="value_date" data-idx="${idx}" value="${value}" ${disabledAttr}>`;
+    } else if (type === "ENUM") {
+      const options = Array.isArray(row.enum_options) ? row.enum_options : [];
+      const opts = [`<option value="">Select…</option>`].concat(
+        options.map((opt) => `<option value="${escapeHtml(opt)}" ${String(row.value_text || "") === String(opt) ? "selected" : ""}>${escapeHtml(opt)}</option>`)
+      ).join("");
+      inputHtml = `<select class="api-input" data-screening-value="value_text" data-idx="${idx}" ${disabledAttr}>${opts}</select>`;
+    }
+
+    return `
+      <div class="row screening-criteria-row ${row.is_enabled ? "" : "is-disabled"}">
+        <div class="screening-criteria-main">
+          <label class="toggle">
+            <input type="checkbox" data-screening-enabled="${idx}" ${row.is_enabled ? "checked" : ""}>
+            <span>${escapeHtml(row.label || row.criteria_key || "Criterion")}</span>
+          </label>
+          ${row.description ? `<div class="row-sub">${escapeHtml(row.description)}</div>` : ``}
+        </div>
+        <div class="screening-criteria-input">${inputHtml}</div>
+      </div>
+    `;
+  }).join("");
+
+  host.querySelectorAll("[data-screening-enabled]").forEach((el) => {
+    el.addEventListener("change", () => {
+      const idx = Number(el.getAttribute("data-screening-enabled"));
+      const row = screeningCriteriaCurrent[idx];
+      if (!row) return;
+      row.is_enabled = el.checked;
+      renderScreeningCriteria(screeningCriteriaCurrent);
+      updateScreeningSaveState();
+    });
+  });
+
+  host.querySelectorAll("[data-screening-value]").forEach((el) => {
+    el.addEventListener("input", () => {
+      const idx = Number(el.getAttribute("data-idx"));
+      const key = el.getAttribute("data-screening-value");
+      const row = screeningCriteriaCurrent[idx];
+      if (!row) return;
+      if (key === "value_bool") row.value_bool = !!el.checked;
+      if (key === "value_number") row.value_number = el.value === "" ? null : Number(el.value);
+      if (key === "value_date") row.value_date = el.value || null;
+      if (key === "value_text") row.value_text = el.value || null;
+      updateScreeningSaveState();
+    });
+  });
+
+  updateScreeningSaveState();
+}
+
+async function loadScreeningProfiles() {
+  const data = await apiGet("/api/screening/profiles");
+  screeningProfiles = Array.isArray(data?.profiles) ? data.profiles : [];
+  renderScreeningProfiles();
+  if (selectedScreeningProfileId) {
+    await loadScreeningCriteria(selectedScreeningProfileId);
+  } else {
+    screeningCriteriaOriginal = [];
+    screeningCriteriaCurrent = [];
+    renderScreeningCriteria([]);
+  }
+}
+
+async function loadScreeningCriteria(profileId) {
+  if (!profileId) return;
+  const data = await apiGet(`/api/screening/profiles/${encodeURIComponent(profileId)}/criteria`);
+  const rows = Array.isArray(data?.criteria) ? data.criteria : [];
+  screeningCriteriaOriginal = clone(rows);
+  screeningCriteriaCurrent = clone(rows);
+  renderScreeningCriteria(screeningCriteriaCurrent);
+}
+
+async function saveScreeningCriteria() {
+  if (!selectedScreeningProfileId) return;
+  const payload = screeningCriteriaCurrent.map((row) => {
+    const norm = normalizeScreeningCriterionForSave(row);
+    if (norm.value_number !== null && Number.isNaN(norm.value_number)) {
+      throw new Error(`Invalid number for ${row.label || row.criteria_key}`);
+    }
+    return norm;
+  });
+
+  await apiPost(`/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/criteria`, {
+    criteria: payload,
+  });
+  screeningCriteriaOriginal = clone(screeningCriteriaCurrent);
+  updateScreeningSaveState();
+}
+
+async function createScreeningProfile() {
+  const name = prompt("Name your new screening profile:");
+  if (!name || !String(name).trim()) return;
+  await apiPost("/api/screening/profiles", { profile_name: String(name).trim() });
+  await loadScreeningProfiles();
+}
+
+async function renameScreeningProfile() {
+  const selected = getSelectedScreeningProfile();
+  if (!selected) return;
+  const next = prompt("Rename screening profile:", selected.profile_name || "");
+  if (!next || !String(next).trim()) return;
+  await apiPatch(`/api/screening/profiles/${encodeURIComponent(selected.id)}`, { profile_name: String(next).trim() });
+  await loadScreeningProfiles();
+}
+
+async function deleteScreeningProfile() {
+  const selected = getSelectedScreeningProfile();
+  if (!selected) return;
+  if (selected.is_default) {
+    alert("Default profile cannot be deleted.");
+    return;
+  }
+  if (!confirm(`Delete screening profile \"${selected.profile_name}\"?`)) return;
+  await apiDelete(`/api/screening/profiles/${encodeURIComponent(selected.id)}`);
+  await loadScreeningProfiles();
+}
+
+async function setDefaultScreeningProfile() {
+  const selected = getSelectedScreeningProfile();
+  if (!selected) return;
+  await apiPost(`/api/screening/profiles/${encodeURIComponent(selected.id)}/set-default`, {});
+  await loadScreeningProfiles();
 }
 
 
@@ -1590,6 +1835,10 @@ if (document.getElementById("email-alert-fields")) {
       await loadAgreements();
     }
 
+    if (document.getElementById("screening-profiles-list")) {
+      await loadScreeningProfiles();
+    }
+
     // 3) API (only if that section exists)
       if ($("api-key-masked")) {
         // Only fetch API key if REST access is enabled
@@ -1669,6 +1918,41 @@ document.getElementById("btn-save-agreement-requirements")?.addEventListener("cl
     alert("Failed to save agreement requirements.");
     setAgreementRequirementsSaveState();
   }
+});
+
+document.getElementById("btn-screening-new-profile")?.addEventListener("click", () => {
+  createScreeningProfile().catch((err) => {
+    console.error(err);
+    alert(err?.message || "Failed to create screening profile.");
+  });
+});
+
+document.getElementById("btn-screening-rename-profile")?.addEventListener("click", () => {
+  renameScreeningProfile().catch((err) => {
+    console.error(err);
+    alert(err?.message || "Failed to rename screening profile.");
+  });
+});
+
+document.getElementById("btn-screening-delete-profile")?.addEventListener("click", () => {
+  deleteScreeningProfile().catch((err) => {
+    console.error(err);
+    alert(err?.message || "Failed to delete screening profile.");
+  });
+});
+
+document.getElementById("btn-screening-set-default")?.addEventListener("click", () => {
+  setDefaultScreeningProfile().catch((err) => {
+    console.error(err);
+    alert(err?.message || "Failed to set default screening profile.");
+  });
+});
+
+document.getElementById("btn-screening-save")?.addEventListener("click", () => {
+  saveScreeningCriteria().catch((err) => {
+    console.error(err);
+    alert(err?.message || "Failed to save screening criteria.");
+  });
 });
 
 
