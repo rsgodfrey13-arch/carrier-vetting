@@ -1,0 +1,278 @@
+diff --git a/static/js/shared/shared.js b/static/js/shared/shared.js
+index c79cf27344bead552301de443884523a9095b1bc..767fe071f6fe4674a0c28e38705aad234b20cae4 100644
+--- a/static/js/shared/shared.js
++++ b/static/js/shared/shared.js
+@@ -502,203 +502,217 @@ function initMobileHeaderMenu() {
+     const isOpen = toggleBtn.getAttribute("aria-expanded") === "true";
+     if (isOpen) closeMenu();
+     else openMenu();
+   });
+ 
+   backdrop.addEventListener("click", closeMenu);
+ 
+   drawer.querySelectorAll("a, button").forEach((el) => {
+     el.addEventListener("click", closeMenu);
+   });
+ 
+   document.addEventListener("keydown", (e) => {
+     if (e.key === "Escape") closeMenu();
+   });
+ 
+   window.addEventListener("resize", () => {
+     if (window.innerWidth > 900) closeMenu();
+   });
+ }
+ 
+ 
+ async function initAuthUI() {
+ 
+   const loginBtn = document.getElementById("login-btn");
+   const logoutBtn = document.getElementById("logout-btn");
++  const startFreeLink = document.getElementById("start-free-link");
+   const accountLink = document.getElementById("account-link");
+   const mobileAccountLink = document.getElementById("mobile-account-link");
++  const mobileStartFreeLink = document.getElementById("mobile-start-free-link");
+   const mobileMyCarriersLink = document.getElementById("mobile-my-carriers-link");
+   const mobileSecurityLink = document.getElementById("mobile-security-link");
+   const mobileHelpLink = document.getElementById("mobile-help-link");
+   const mobileContactLink = document.getElementById("mobile-contact-link");
+   const mobileDemoLink = document.getElementById("mobile-demo-link");
+   const mobileLogoutBtn = document.getElementById("mobile-logout-btn");
+   const header = document.querySelector(".site-header");
+   const tourLink = document.getElementById("tour-link");
+   const setMobileMenuOrder = (isLoggedIn) => {
+     if (!mobileHelpLink || !mobileSecurityLink) return;
+     const parent = mobileHelpLink.parentElement;
+     if (!parent) return;
+ 
+     if (isLoggedIn) {
+       parent.insertBefore(mobileHelpLink, mobileSecurityLink);
+     } else {
+       parent.insertBefore(mobileSecurityLink, mobileHelpLink);
+     }
+   };
+ 
+   try {
+     const res = await fetch("/api/me", { cache: "no-store" });
+     const data = await res.json();
+ 
+     if (data.user) {
+       // LOGGED IN
+       if (loginBtn) loginBtn.style.display = "none";
+       if (logoutBtn) logoutBtn.style.display = DESKTOP_AUTH_DISPLAY;
++      if (startFreeLink) startFreeLink.style.display = "none";
+       if (tourLink) tourLink.style.display = "none";
+       window.csIsLoggedIn = true;
+       setMobileMenuOrder(true);
+       
+       if (header) {
+         header.classList.remove("is-logged-out");
+         header.classList.add("is-logged-in");
+       }
+ 
+       if (accountLink) {
+         accountLink.style.display = DESKTOP_AUTH_DISPLAY;
+         accountLink.textContent = "My Account";
+         accountLink.href = "/account";
+       }
+ 
+       if (mobileMyCarriersLink) {
+         mobileMyCarriersLink.style.display = "flex";
+       }
+ 
+       if (mobileContactLink) {
+         mobileContactLink.style.display = "none";
+       }
+ 
+       if (mobileAccountLink) {
+         mobileAccountLink.style.display = "flex";
+         mobileAccountLink.textContent = "My Account";
+         mobileAccountLink.href = "/account";
+       }
+ 
++      if (mobileStartFreeLink) {
++        mobileStartFreeLink.style.display = "none";
++      }
++
+       if (mobileDemoLink) {
+         mobileDemoLink.style.display = "none";
+       }
+ 
+       const logoutHandler = async () => {
+         await fetch("/api/logout", { method: "POST" });
+         window.location.href = "/";
+       };
+ 
+       if (logoutBtn) {
+         logoutBtn.onclick = logoutHandler;
+       }
+ 
+       if (mobileLogoutBtn) {
+         mobileLogoutBtn.style.display = "flex";
+         mobileLogoutBtn.onclick = logoutHandler;
+       }
+ 
+       setHelpMenu(true);
+       renderActivationBanner(data.user);
+ 
+       // logged in → no tour click handler needed
+       if (tourLink) tourLink.onclick = null;
+ 
+     } else {
+       // LOGGED OUT
+       if (loginBtn) loginBtn.style.display = DESKTOP_AUTH_DISPLAY;
+       if (logoutBtn) logoutBtn.style.display = "none";
++      if (startFreeLink) startFreeLink.style.display = DESKTOP_AUTH_DISPLAY;
+       if (tourLink) tourLink.style.display = DESKTOP_AUTH_DISPLAY;
+       window.csIsLoggedIn = false;
+       setMobileMenuOrder(false);
+ 
+       if (header) {
+         header.classList.remove("is-logged-in");
+         header.classList.add("is-logged-out");
+       }
+ 
+       if (accountLink) {
+         accountLink.style.display = "none";
+         accountLink.textContent = "My Account";
+         accountLink.href = "/login";
+       }
+ 
+       if (mobileMyCarriersLink) {
+         mobileMyCarriersLink.style.display = "none";
+       }
+ 
+       if (mobileContactLink) {
+         mobileContactLink.style.display = "flex";
+       }
+ 
+       if (mobileAccountLink) {
+         mobileAccountLink.style.display = "flex";
+         mobileAccountLink.textContent = "Login";
+         mobileAccountLink.href = "/login";
+       }
+ 
++      if (mobileStartFreeLink) {
++        mobileStartFreeLink.style.display = "flex";
++      }
++
+       if (mobileDemoLink) {
+         mobileDemoLink.style.display = "flex";
+       }
+ 
+       if (mobileLogoutBtn) {
+         mobileLogoutBtn.style.display = "none";
+       }
+ 
+       setHelpMenu(false);
+       renderActivationBanner(null);
+ 
+       if (loginBtn) {
+         loginBtn.onclick = () => (window.location.href = "/login");
+       }
+     }
+ 
+   } catch (err) {
+     console.error("auth ui error", err);
+ 
+     // Fail closed to logged-out UI
+     if (header) {
+       header.classList.remove("is-logged-in");
+       header.classList.add("is-logged-out");
+     }
+ 
+     if (loginBtn) loginBtn.style.display = DESKTOP_AUTH_DISPLAY;
+     if (logoutBtn) logoutBtn.style.display = "none";
++    if (startFreeLink) startFreeLink.style.display = DESKTOP_AUTH_DISPLAY;
+     setMobileMenuOrder(false);
+     if (tourLink) tourLink.style.display = DESKTOP_AUTH_DISPLAY;
+     if (accountLink) accountLink.style.display = "none";
+     if (mobileMyCarriersLink) mobileMyCarriersLink.style.display = "none";
+     if (mobileContactLink) mobileContactLink.style.display = "flex";
+     if (mobileAccountLink) {
+       mobileAccountLink.style.display = "flex";
+       mobileAccountLink.textContent = "Login";
+       mobileAccountLink.href = "/login";
+     }
++    if (mobileStartFreeLink) mobileStartFreeLink.style.display = "flex";
+     if (mobileDemoLink) mobileDemoLink.style.display = "flex";
+     if (mobileLogoutBtn) mobileLogoutBtn.style.display = "none";
+ 
+     if (loginBtn) {
+       loginBtn.onclick = () => (window.location.href = "/login");
+     }
+ 
+     setHelpMenu(false);
+     renderActivationBanner(null);
+   }
+ }
+ 
+ 
+ async function initAccountLink() {
+   const accountLink = document.getElementById("account-link");
+   if (!accountLink) return;
+ 
+   try {
+     const res = await fetch("/api/me", { cache: "no-store" });
+     const data = await res.json();
+ 
+     if (data && data.user) {
+       // Logged in → upgrade link
+       accountLink.href = "/account";
+     }
+diff --git a/static/partials/header.html b/static/partials/header.html
+index 77e9cf1e09dc2ef1b4c0126b9e3b32f026aed25b..4e9e077c765e534ef8a931123fb4d8fb23586a08 100644
+--- a/static/partials/header.html
++++ b/static/partials/header.html
+@@ -39,49 +39,51 @@
+           <a href="/help" class="nav-dd-link" role="menuitem">Help Center</a>
+           <a href="/faq" class="nav-dd-link" role="menuitem">FAQs</a>
+         </div>
+       </div>
+ 
+       <div class="nav-dropdown">
+         <a href="#" class="nav-link nav-dropbtn">
+           Security <span class="nav-caret">▾</span>
+         </a>
+ 
+         <div class="nav-dropdown-menu" role="menu" aria-label="Security and Legal">
+           <a href="/security" class="nav-dd-link" role="menuitem">Security Overview</a>
+           <div class="nav-dd-sep"></div>
+           <a href="/privacy" class="nav-dd-link" role="menuitem">Privacy Policy</a>
+           <a href="/terms" class="nav-dd-link" role="menuitem">Terms of Service</a>
+           <a href="/acceptable-use" class="nav-dd-link" role="menuitem">Acceptable Use</a>
+           <a href="/dpa" class="nav-dd-link" role="menuitem">Data Processing Addendum</a>
+         </div>
+       </div>
+     </nav>
+ 
+     <div class="nav-right">
+       <a href="/login" id="account-link" class="nav-link">My Account</a>
+ 
+       <button id="login-btn" class="nav-btn nav-auth-btn">Sign In</button>
++      <a href="/create-account" id="start-free-link" class="nav-btn nav-auth-btn" style="display:none;">Start Free</a>
+       <button id="logout-btn" class="nav-btn nav-auth-btn" style="display:none;">Sign Out</button>
+ 
+       <a href="/demo" id="demo-link" class="nav-cta">Get a Demo</a>
+     </div>
+ 
+   </div>
+ 
+   <div class="mobile-nav-backdrop" id="mobile-nav-backdrop" hidden></div>
+ 
+   <aside class="mobile-nav-drawer" id="mobile-nav-drawer" aria-label="Mobile navigation" hidden>
+     <nav class="mobile-nav-list" aria-label="Mobile primary">
+       <a href="/#search" class="mobile-nav-link">Search</a>
+       <a href="/#my-carriers" id="mobile-my-carriers-link" class="mobile-nav-link">My Carriers</a>
+       <a href="/plans" class="mobile-nav-link">Plans</a>
+       <a href="#" id="mobile-tour-link" class="mobile-nav-link">Tour</a>  
+       <a href="/security" id="mobile-security-link" class="mobile-nav-link">Security</a>
+       <a href="/help" id="mobile-help-link" class="mobile-nav-link">Help</a>
+       <a href="/contact" id="mobile-contact-link" class="mobile-nav-link">Contact Us</a>
+       <a href="/login" id="mobile-account-link" class="mobile-nav-link">My Account</a>
++      <a href="/create-account" id="mobile-start-free-link" class="mobile-nav-link">Start Free</a>
+       <button id="mobile-logout-btn" class="mobile-nav-link mobile-nav-signout" type="button" style="display:none;">Sign Out</button>
+       <a href="/demo" id="mobile-demo-link" class="mobile-nav-link mobile-nav-cta">Get a Demo</a>
+     </nav>
+   </aside>
+ </header>

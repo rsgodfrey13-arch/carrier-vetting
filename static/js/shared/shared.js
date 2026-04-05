@@ -524,8 +524,10 @@ async function initAuthUI() {
 
   const loginBtn = document.getElementById("login-btn");
   const logoutBtn = document.getElementById("logout-btn");
+  const startFreeLink = document.getElementById("start-free-link");
   const accountLink = document.getElementById("account-link");
   const mobileAccountLink = document.getElementById("mobile-account-link");
+  const mobileStartFreeLink = document.getElementById("mobile-start-free-link");
   const mobileMyCarriersLink = document.getElementById("mobile-my-carriers-link");
   const mobileSecurityLink = document.getElementById("mobile-security-link");
   const mobileHelpLink = document.getElementById("mobile-help-link");
@@ -554,6 +556,7 @@ async function initAuthUI() {
       // LOGGED IN
       if (loginBtn) loginBtn.style.display = "none";
       if (logoutBtn) logoutBtn.style.display = DESKTOP_AUTH_DISPLAY;
+      if (startFreeLink) startFreeLink.style.display = "none";
       if (tourLink) tourLink.style.display = "none";
       window.csIsLoggedIn = true;
       setMobileMenuOrder(true);
@@ -581,6 +584,10 @@ async function initAuthUI() {
         mobileAccountLink.style.display = "flex";
         mobileAccountLink.textContent = "My Account";
         mobileAccountLink.href = "/account";
+      }
+
+      if (mobileStartFreeLink) {
+        mobileStartFreeLink.style.display = "none";
       }
 
       if (mobileDemoLink) {
@@ -611,6 +618,7 @@ async function initAuthUI() {
       // LOGGED OUT
       if (loginBtn) loginBtn.style.display = DESKTOP_AUTH_DISPLAY;
       if (logoutBtn) logoutBtn.style.display = "none";
+      if (startFreeLink) startFreeLink.style.display = DESKTOP_AUTH_DISPLAY;
       if (tourLink) tourLink.style.display = DESKTOP_AUTH_DISPLAY;
       window.csIsLoggedIn = false;
       setMobileMenuOrder(false);
@@ -640,6 +648,10 @@ async function initAuthUI() {
         mobileAccountLink.href = "/login";
       }
 
+      if (mobileStartFreeLink) {
+        mobileStartFreeLink.style.display = "flex";
+      }
+
       if (mobileDemoLink) {
         mobileDemoLink.style.display = "flex";
       }
@@ -667,6 +679,7 @@ async function initAuthUI() {
 
     if (loginBtn) loginBtn.style.display = DESKTOP_AUTH_DISPLAY;
     if (logoutBtn) logoutBtn.style.display = "none";
+    if (startFreeLink) startFreeLink.style.display = DESKTOP_AUTH_DISPLAY;
     setMobileMenuOrder(false);
     if (tourLink) tourLink.style.display = DESKTOP_AUTH_DISPLAY;
     if (accountLink) accountLink.style.display = "none";
@@ -677,6 +690,7 @@ async function initAuthUI() {
       mobileAccountLink.textContent = "Login";
       mobileAccountLink.href = "/login";
     }
+    if (mobileStartFreeLink) mobileStartFreeLink.style.display = "flex";
     if (mobileDemoLink) mobileDemoLink.style.display = "flex";
     if (mobileLogoutBtn) mobileLogoutBtn.style.display = "none";
 
