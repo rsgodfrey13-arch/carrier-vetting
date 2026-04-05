@@ -82,6 +82,8 @@ const slides = [
   const btnNext = document.getElementById("tourNext");
   const btnClose = document.getElementById("tourClose");
   const dontShowEl = document.getElementById("tourDontShow");
+  const dontShowIntroEl = document.getElementById("tourDontShowIntro");
+  const dontShowIntroWrapEl = document.getElementById("tourDontShowIntroWrap");
   const skipLink = document.getElementById("tourSkip");
   const TOUR_TRIGGER_SELECTOR = "#tour-link, #mobile-tour-link, #openTourLink";
 
@@ -93,6 +95,22 @@ const slides = [
 
   function setSeen(val) {
     localStorage.setItem(STORAGE_KEY, val ? "1" : "0");
+  }
+
+  function setDontShowChecked(checked) {
+    [dontShowEl, dontShowIntroEl].forEach((el) => {
+      if (!el) return;
+      el.checked = checked;
+    });
+  }
+
+  function isDontShowChecked() {
+    return Boolean(dontShowEl?.checked || dontShowIntroEl?.checked);
+  }
+
+  function syncDontShowControls(sourceEl) {
+    if (!sourceEl) return;
+    setDontShowChecked(sourceEl.checked);
   }
 
   function openTour(startIndex = 0) {
@@ -108,7 +126,7 @@ const slides = [
   function closeTour() {
     if (!overlay) return;
     // Persist if checked
-    if (dontShowEl.checked) setSeen(true);
+    if (isDontShowChecked()) setSeen(true);
 
     overlay.classList.remove("is-open");
     overlay.setAttribute("aria-hidden", "true");
@@ -234,6 +252,8 @@ if (idx === 0) {
 
   if (btnGo) btnGo.style.display = "";
   if (skipLink) skipLink.style.display = "none";
+  if (dontShowIntroWrapEl) dontShowIntroWrapEl.style.display = "block";
+  if (dontShowEl?.parentElement) dontShowEl.parentElement.style.display = "none";
 } else {
   btnNext.classList.remove("cs-btn-tour-hero");
 
@@ -242,6 +262,8 @@ if (idx === 0) {
 
   if (btnGo) btnGo.style.display = "none";
   if (skipLink) skipLink.style.display = "";
+  if (dontShowIntroWrapEl) dontShowIntroWrapEl.style.display = "none";
+  if (dontShowEl?.parentElement) dontShowEl.parentElement.style.display = "inline-flex";
 }
   
   renderDots();
@@ -289,6 +311,10 @@ if (idx === 0) {
     e.preventDefault();
     closeTour();
   });
+
+  dontShowEl?.addEventListener("change", () => syncDontShowControls(dontShowEl));
+  dontShowIntroEl?.addEventListener("change", () => syncDontShowControls(dontShowIntroEl));
+  setDontShowChecked(isDontShowChecked());
 
   imgEl?.addEventListener("error", () => {
     mediaEl?.classList.add("is-missing");

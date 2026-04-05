@@ -194,6 +194,20 @@
   accent-color: #38bdf8;
 }
 
+.cs-tour-dontshow-intro-wrap {
+  display: none;
+}
+
+.cs-tour-dontshow-intro {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: rgba(226, 232, 240, 0.98);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(15, 23, 42, 0.62);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
 .cs-tour-footer {
   display: flex;
   align-items: center;
@@ -309,6 +323,10 @@
 .cs-modal.cs-tour-intro .cs-tour-controls {
   border-top: 0;
   padding-top: 10px;
+}
+
+.cs-modal.cs-tour-intro .cs-tour-dontshow-intro-wrap {
+  display: block;
 }
 
 .cs-modal.cs-tour-intro .cs-tour-dots,
