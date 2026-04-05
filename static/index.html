@@ -525,13 +525,6 @@
         <div class="cs-tour-body" id="tourBody"></div>
 
 <div class="cs-tour-controls">
-  <div class="cs-tour-dontshow-intro-wrap" id="tourDontShowIntroWrap">
-    <label class="cs-tour-dontshow cs-tour-dontshow-intro" for="tourDontShowIntro">
-      <input type="checkbox" id="tourDontShowIntro" />
-      Don’t show again
-    </label>
-  </div>
-
   <label class="cs-tour-dontshow">
     <input type="checkbox" id="tourDontShow" />
     Don’t show again
@@ -549,7 +542,9 @@
       <button class="cs-btn cs-btn-secondary-muted" id="tourGo" type="button" style="display:none;">
         Continue to Carrier Shark
       </button>
-
+      <button class="cs-btn cs-btn-secondary-muted cs-btn-tour-dismiss" id="tourDismissForever" type="button" style="display:none;">
+        Don’t show this again
+      </button>
 
     </div>
   </div>

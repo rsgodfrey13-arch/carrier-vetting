@@ -258,6 +258,22 @@
   min-width: 210px;
 }
 
+
+.cs-btn-tour-dismiss {
+  min-width: 240px !important;
+  min-height: 44px !important;
+  font-size: 0.96rem !important;
+  font-weight: 700;
+  border: 1px solid rgba(148, 163, 184, 0.65) !important;
+  background: rgba(30, 41, 59, 0.95) !important;
+  color: #f8fafc !important;
+}
+
+.cs-btn-tour-dismiss:hover {
+  border-color: rgba(226, 232, 240, 0.95) !important;
+  background: rgba(15, 23, 42, 1) !important;
+}
+
 .cs-tour-link {
   display: inline-block;
   width: fit-content;

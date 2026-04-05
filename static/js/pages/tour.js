@@ -82,8 +82,7 @@ const slides = [
   const btnNext = document.getElementById("tourNext");
   const btnClose = document.getElementById("tourClose");
   const dontShowEl = document.getElementById("tourDontShow");
-  const dontShowIntroEl = document.getElementById("tourDontShowIntro");
-  const dontShowIntroWrapEl = document.getElementById("tourDontShowIntroWrap");
+  const dismissForeverBtn = document.getElementById("tourDismissForever");
   const skipLink = document.getElementById("tourSkip");
   const TOUR_TRIGGER_SELECTOR = "#tour-link, #mobile-tour-link, #openTourLink";
 
@@ -98,14 +97,12 @@ const slides = [
   }
 
   function setDontShowChecked(checked) {
-    [dontShowEl, dontShowIntroEl].forEach((el) => {
-      if (!el) return;
-      el.checked = checked;
-    });
+    if (!dontShowEl) return;
+    dontShowEl.checked = checked;
   }
 
   function isDontShowChecked() {
-    return Boolean(dontShowEl?.checked || dontShowIntroEl?.checked);
+    return Boolean(dontShowEl?.checked);
   }
 
   function syncDontShowControls(sourceEl) {
@@ -205,6 +202,7 @@ function renderDots() {
 
 function render() {
   const s = slides[idx];
+  const isIntroSlide = idx === 0;
 
   if (kickerEl) {
   kickerEl.textContent = (idx === 0) ? "" : "QUICK TOUR";
@@ -213,7 +211,7 @@ function render() {
   
 
   const modal = overlay.querySelector(".cs-modal");
-  modal.classList.toggle("cs-tour-intro", idx === 0);
+  modal.classList.toggle("cs-tour-intro", isIntroSlide);
 
   titleEl.textContent = s.title;
   renderBody(s.body);
@@ -242,17 +240,17 @@ function render() {
 
 
 // Back button
-btnPrev.disabled = idx === 0;
-btnPrev.style.visibility = (idx === 0) ? "hidden" : "visible";
+btnPrev.disabled = isIntroSlide;
+btnPrev.style.visibility = isIntroSlide ? "hidden" : "visible";
 
 // Next button + secondary button logic
-if (idx === 0) {
+if (isIntroSlide) {
   btnNext.textContent = "Take the Tour";
   btnNext.classList.add("cs-btn-tour-hero");
 
   if (btnGo) btnGo.style.display = "";
+  if (dismissForeverBtn) dismissForeverBtn.style.display = "";
   if (skipLink) skipLink.style.display = "none";
-  if (dontShowIntroWrapEl) dontShowIntroWrapEl.style.display = "block";
   if (dontShowEl?.parentElement) dontShowEl.parentElement.style.display = "none";
 } else {
   btnNext.classList.remove("cs-btn-tour-hero");
@@ -261,8 +259,8 @@ if (idx === 0) {
   btnNext.textContent = (idx === slides.length - 1) ? "Done" : "Next";
 
   if (btnGo) btnGo.style.display = "none";
+  if (dismissForeverBtn) dismissForeverBtn.style.display = "none";
   if (skipLink) skipLink.style.display = "";
-  if (dontShowIntroWrapEl) dontShowIntroWrapEl.style.display = "none";
   if (dontShowEl?.parentElement) dontShowEl.parentElement.style.display = "inline-flex";
 }
   
@@ -282,6 +280,11 @@ if (idx === 0) {
   btnPrev?.addEventListener("click", prev);
   btnClose?.addEventListener("click", closeTour);
   btnGo?.addEventListener("click", closeTour);
+  dismissForeverBtn?.addEventListener("click", () => {
+    setSeen(true);
+    setDontShowChecked(true);
+    closeTour();
+  });
 
   
   // Click outside modal closes
@@ -313,7 +316,6 @@ if (idx === 0) {
   });
 
   dontShowEl?.addEventListener("change", () => syncDontShowControls(dontShowEl));
-  dontShowIntroEl?.addEventListener("change", () => syncDontShowControls(dontShowIntroEl));
   setDontShowChecked(isDontShowChecked());
 
   imgEl?.addEventListener("error", () => {

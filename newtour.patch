@@ -1,0 +1,400 @@
+diff --git a/static/css/tour.css b/static/css/tour.css
+index 87a82b01c92ead77de8f1432f55b6e137274d2fd..8e2a92f2242b907c8d8f38baac67b3f11ec8e2b0 100644
+--- a/static/css/tour.css
++++ b/static/css/tour.css
+@@ -236,50 +236,66 @@
+ }
+ 
+ .cs-tour-actions {
+   display: flex;
+   align-items: center;
+   gap: 10px;
+ }
+ 
+ #tourPrev,
+ #tourNext,
+ #tourGo {
+   min-width: 104px;
+   min-height: 40px;
+   border-radius: 11px;
+   font-size: 0.88rem;
+ }
+ 
+ .cs-btn-tour-hero {
+   min-width: 168px !important;
+ }
+ 
+ #tourGo {
+   min-width: 210px;
+ }
+ 
++
++.cs-btn-tour-dismiss {
++  min-width: 240px !important;
++  min-height: 44px !important;
++  font-size: 0.96rem !important;
++  font-weight: 700;
++  border: 1px solid rgba(148, 163, 184, 0.65) !important;
++  background: rgba(30, 41, 59, 0.95) !important;
++  color: #f8fafc !important;
++}
++
++.cs-btn-tour-dismiss:hover {
++  border-color: rgba(226, 232, 240, 0.95) !important;
++  background: rgba(15, 23, 42, 1) !important;
++}
++
+ .cs-tour-link {
+   display: inline-block;
+   width: fit-content;
+   font-size: 0.83rem;
+   color: rgba(148, 163, 184, 0.95);
+   text-decoration: none;
+ }
+ 
+ .cs-tour-link:hover {
+   color: rgba(226, 232, 240, 0.95);
+ }
+ 
+ .cs-tour-intro-badge {
+   display: none;
+   position: absolute;
+   top: 20px;
+   left: 24px;
+   z-index: 2;
+   opacity: 0.95;
+ }
+ 
+ .cs-tour-logo {
+   width: auto;
+   height: 30px;
+ }
+diff --git a/static/index.html b/static/index.html
+index b83f8dc6237430d6e1c1f132b4f6322010ee73f1..59f6a5a7ffd01aa54a270a5be82514483f1c9b45 100644
+--- a/static/index.html
++++ b/static/index.html
+@@ -503,75 +503,70 @@
+ <div class="cs-modal-overlay" id="tourOverlay" aria-hidden="true">
+   <div class="cs-modal" role="dialog" aria-modal="true" aria-labelledby="tourTitle">
+     <button class="cs-modal-x" id="tourClose" aria-label="Close">✕</button>
+ 
+   <!-- ✅ Slide 0 logo badge -->
+   <div class="cs-tour-intro-badge" aria-hidden="true">
+     <img src="/images/white-c-teal-shark-white-text-on-right-condensed.svg"
+          alt=""
+          class="cs-tour-logo">
+   </div>
+     
+     
+     <div class="cs-tour">
+     <div class="cs-tour-media">
+       <img id="tourImg" src="/static/help-art/image.png" alt="" />
+     </div>
+ 
+       <div class="cs-tour-content">
+ 
+         
+         <div class="cs-tour-kicker">PLATFORM OVERVIEW</div>
+         <h2 class="cs-tour-title" id="tourTitle"></h2>
+         <div class="cs-tour-body" id="tourBody"></div>
+ 
+ <div class="cs-tour-controls">
+-  <div class="cs-tour-dontshow-intro-wrap" id="tourDontShowIntroWrap">
+-    <label class="cs-tour-dontshow cs-tour-dontshow-intro" for="tourDontShowIntro">
+-      <input type="checkbox" id="tourDontShowIntro" />
+-      Don’t show again
+-    </label>
+-  </div>
+-
+   <label class="cs-tour-dontshow">
+     <input type="checkbox" id="tourDontShow" />
+     Don’t show again
+   </label>
+ 
+   <div class="cs-tour-footer">
+     <div class="cs-tour-dots" id="tourDots"></div>
+ 
+     <div class="cs-tour-actions">
+       <button class="cs-btn cs-btn-ghost" id="tourPrev" type="button">Back</button>
+ 
+       <button class="cs-btn cs-btn-primary" id="tourNext" type="button">Next</button>
+       
+       <!-- keep your tourGo button here if you’re using it -->
+       <button class="cs-btn cs-btn-secondary-muted" id="tourGo" type="button" style="display:none;">
+         Continue to Carrier Shark
+       </button>
+-
++      <button class="cs-btn cs-btn-secondary-muted cs-btn-tour-dismiss" id="tourDismissForever" type="button" style="display:none;">
++        Don’t show this again
++      </button>
+ 
+     </div>
+   </div>
+ 
+   <a href="#" class="cs-tour-link" id="tourSkip">Skip Tour</a>
+ </div>
+       </div>
+     </div>
+   </div>
+ </div>
+ 
+ 
+ 
+ <!-- Confirm Modal (used by window.showConfirm in shared.js) -->
+ <div id="confirm-modal" class="import-modal hidden">
+   <div class="import-modal-backdrop" aria-hidden="true"></div>
+ 
+   <div class="import-modal-dialog glass-card" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+     <header class="import-modal-header">
+       <div>
+         <h2 class="import-modal-title" id="confirm-title">Confirm</h2>
+         <p class="import-modal-subtitle" id="confirm-message">Are you sure?</p>
+       </div>
+       <button class="import-modal-close" id="confirm-cancel" type="button" aria-label="Close">✕</button>
+     </header>
+diff --git a/static/js/pages/tour.js b/static/js/pages/tour.js
+index bde55100891bab7c659da610345ad5e2fd48ae58..b4e76f8581e75438b56709ccbd3533aa2d939ef3 100644
+--- a/static/js/pages/tour.js
++++ b/static/js/pages/tour.js
+@@ -60,74 +60,71 @@ const slides = [
+     img: "/static/images/tour/email_alert.png"
+   },
+   {
+     title: "You’re ready.",
+     body: `
+   Start by searching for a carrier, open the profile, and add it to My Carriers.
+   <br><br>
+   Carrier Shark will monitor the carrier and alert you when something changes.
+   `,
+     img: "/static/images/tour/my_account.png",
+     cta: { text: "Create account", href: "/signup" }
+   }
+ ];
+ 
+   const overlay = document.getElementById("tourOverlay");
+   const titleEl = document.getElementById("tourTitle");
+   const bodyEl  = document.getElementById("tourBody");
+   const imgEl   = document.getElementById("tourImg");
+   const mediaEl = document.querySelector(".cs-tour-media");
+   const dotsEl  = document.getElementById("tourDots");
+ 
+   const btnPrev = document.getElementById("tourPrev");
+   const btnNext = document.getElementById("tourNext");
+   const btnClose = document.getElementById("tourClose");
+   const dontShowEl = document.getElementById("tourDontShow");
+-  const dontShowIntroEl = document.getElementById("tourDontShowIntro");
+-  const dontShowIntroWrapEl = document.getElementById("tourDontShowIntroWrap");
++  const dismissForeverBtn = document.getElementById("tourDismissForever");
+   const skipLink = document.getElementById("tourSkip");
+   const TOUR_TRIGGER_SELECTOR = "#tour-link, #mobile-tour-link, #openTourLink";
+ 
+   let idx = 0;
+ 
+   function isSeen() {
+     return localStorage.getItem(STORAGE_KEY) === "1";
+   }
+ 
+   function setSeen(val) {
+     localStorage.setItem(STORAGE_KEY, val ? "1" : "0");
+   }
+ 
+   function setDontShowChecked(checked) {
+-    [dontShowEl, dontShowIntroEl].forEach((el) => {
+-      if (!el) return;
+-      el.checked = checked;
+-    });
++    if (!dontShowEl) return;
++    dontShowEl.checked = checked;
+   }
+ 
+   function isDontShowChecked() {
+-    return Boolean(dontShowEl?.checked || dontShowIntroEl?.checked);
++    return Boolean(dontShowEl?.checked);
+   }
+ 
+   function syncDontShowControls(sourceEl) {
+     if (!sourceEl) return;
+     setDontShowChecked(sourceEl.checked);
+   }
+ 
+   function openTour(startIndex = 0) {
+     if (!overlay) return;
+     idx = Math.max(0, Math.min(slides.length - 1, startIndex));
+     overlay.setAttribute("aria-hidden", "false");
+     overlay.classList.add("is-open");
+     render();
+     // Lock scroll (optional)
+     document.documentElement.classList.add("cs-modal-open");
+   }
+ 
+   function closeTour() {
+     if (!overlay) return;
+     // Persist if checked
+     if (isDontShowChecked()) setSeen(true);
+ 
+     overlay.classList.remove("is-open");
+     overlay.setAttribute("aria-hidden", "true");
+     document.documentElement.classList.remove("cs-modal-open");
+@@ -183,150 +180,155 @@ const slides = [
+         p.innerHTML = section;
+         bodyEl.appendChild(p);
+       }
+     });
+   }
+ 
+ function renderDots() {
+   const stepCount = slides.length - 1;
+   const stepIndex = Math.max(0, idx - 1);
+ 
+   dotsEl.innerHTML = Array.from({ length: stepCount }, (_, i) =>
+     `<button type="button" class="cs-dot ${i === stepIndex ? "is-active" : ""}"
+       aria-label="Step ${i + 1}"></button>`
+   ).join("");
+ 
+   [...dotsEl.querySelectorAll(".cs-dot")].forEach((b, i) => {
+     b.addEventListener("click", () => {
+       idx = i + 1;   // jump to real slide (offset by 1)
+       render();
+     });
+   });
+ }
+ 
+ function render() {
+   const s = slides[idx];
++  const isIntroSlide = idx === 0;
+ 
+   if (kickerEl) {
+   kickerEl.textContent = (idx === 0) ? "" : "QUICK TOUR";
+ }
+ 
+   
+ 
+   const modal = overlay.querySelector(".cs-modal");
+-  modal.classList.toggle("cs-tour-intro", idx === 0);
++  modal.classList.toggle("cs-tour-intro", isIntroSlide);
+ 
+   titleEl.textContent = s.title;
+   renderBody(s.body);
+ 
+   if (s.cta) {
+     const a = document.createElement("a");
+     a.className = "cs-btn cs-btn-primary cs-tour-cta";
+     a.href = s.cta.href;
+     a.textContent = s.cta.text;
+     bodyEl.appendChild(a);
+   }
+ 
+   // Image handling
+   if (s.img) {
+     imgEl.style.display = "";
+     imgEl.src = s.img;
+     imgEl.alt = `${s.title} screenshot`;
+     imgEl.style.objectPosition = s.imgPosition || "center top";
+     mediaEl?.classList.remove("is-missing");
+   } else {
+     imgEl.removeAttribute("src");
+     imgEl.alt = "";
+     imgEl.style.display = "none";
+     mediaEl?.classList.remove("is-missing");
+   }
+ 
+ 
+ // Back button
+-btnPrev.disabled = idx === 0;
+-btnPrev.style.visibility = (idx === 0) ? "hidden" : "visible";
++btnPrev.disabled = isIntroSlide;
++btnPrev.style.visibility = isIntroSlide ? "hidden" : "visible";
+ 
+ // Next button + secondary button logic
+-if (idx === 0) {
++if (isIntroSlide) {
+   btnNext.textContent = "Take the Tour";
+   btnNext.classList.add("cs-btn-tour-hero");
+ 
+   if (btnGo) btnGo.style.display = "";
++  if (dismissForeverBtn) dismissForeverBtn.style.display = "";
+   if (skipLink) skipLink.style.display = "none";
+-  if (dontShowIntroWrapEl) dontShowIntroWrapEl.style.display = "block";
+   if (dontShowEl?.parentElement) dontShowEl.parentElement.style.display = "none";
+ } else {
+   btnNext.classList.remove("cs-btn-tour-hero");
+ 
+   // ✅ reset the label properly for tour slides
+   btnNext.textContent = (idx === slides.length - 1) ? "Done" : "Next";
+ 
+   if (btnGo) btnGo.style.display = "none";
++  if (dismissForeverBtn) dismissForeverBtn.style.display = "none";
+   if (skipLink) skipLink.style.display = "";
+-  if (dontShowIntroWrapEl) dontShowIntroWrapEl.style.display = "none";
+   if (dontShowEl?.parentElement) dontShowEl.parentElement.style.display = "inline-flex";
+ }
+   
+   renderDots();
+ }
+ 
+   function next() {
+     if (idx < slides.length - 1) { idx++; render(); }
+     else closeTour();
+   }
+   function prev() {
+     if (idx > 0) { idx--; render(); }
+   }
+ 
+   // Events
+   btnNext?.addEventListener("click", next);
+   btnPrev?.addEventListener("click", prev);
+   btnClose?.addEventListener("click", closeTour);
+   btnGo?.addEventListener("click", closeTour);
++  dismissForeverBtn?.addEventListener("click", () => {
++    setSeen(true);
++    setDontShowChecked(true);
++    closeTour();
++  });
+ 
+   
+   // Click outside modal closes
+   overlay?.addEventListener("click", (e) => {
+     if (e.target === overlay) closeTour();
+   });
+ 
+   // Esc closes
+   document.addEventListener("keydown", (e) => {
+     if (e.key === "Escape" && overlay.classList.contains("is-open")) closeTour();
+     if (e.key === "ArrowRight" && overlay.classList.contains("is-open")) next();
+     if (e.key === "ArrowLeft" && overlay.classList.contains("is-open")) prev();
+   });
+ 
+   document.addEventListener("click", (e) => {
+     const trigger = e.target.closest(TOUR_TRIGGER_SELECTOR);
+     if (!trigger) return;
+     e.preventDefault();
+     closeMobileDrawerIfOpen();
+     openTour(0);
+   });
+ 
+   window.openTour = openTour;
+   window.closeTour = closeTour;
+ 
+   skipLink?.addEventListener("click", (e) => {
+     e.preventDefault();
+     closeTour();
+   });
+ 
+   dontShowEl?.addEventListener("change", () => syncDontShowControls(dontShowEl));
+-  dontShowIntroEl?.addEventListener("change", () => syncDontShowControls(dontShowIntroEl));
+   setDontShowChecked(isDontShowChecked());
+ 
+   imgEl?.addEventListener("error", () => {
+     mediaEl?.classList.add("is-missing");
+   });
+ 
+   imgEl?.addEventListener("load", () => {
+     mediaEl?.classList.remove("is-missing");
+   });
+ 
+   // Auto-show for first-time visitors (you can gate this by logged-in status)
+   if (!isSeen()) {
+     // optionally delay a bit so it doesn’t feel like a pop-ad
+     setTimeout(() => openTour(0), 500);
+   }
+ })();
