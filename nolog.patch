@@ -1,0 +1,107 @@
+diff --git a/static/api.html b/static/api.html
+index aefaf0b8137f232e7a502de01f7ae7ce60f08811..fe714c24c824aad63bf012aaccc8dce952fafefc 100644
+--- a/static/api.html
++++ b/static/api.html
+@@ -1,54 +1,54 @@
+ <!doctype html>
+ <html lang="en">
+ <head>
+   <meta charset="utf-8" />
+   <meta name="viewport" content="width=device-width, initial-scale=1" />
+   <title>Carrier Shark API — Carrier Data for Operational Workflows</title>
+   <meta
+     name="description"
+     content="Use the Carrier Shark REST API to search carriers, monitor alerts, sync saved carriers, send contracts, and import DOTs in bulk."
+   />
+   <link rel="stylesheet" href="/static/css/base.css" />
+   <link rel="stylesheet" href="/static/css/style1.css" />
+   <link rel="stylesheet" href="/static/css/api.css" />
+   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+ </head>
+ <body class="api-page-body app-page">
+   <div class="bg-gradient"></div>
+   <div class="bg-grid"></div>
+   <div id="site-header"></div>
+ 
+   <main class="api-page">
+     <section class="api-hero api-card">
+       <p class="api-kicker">Carrier Shark API</p>
+       <h1>Carrier Data API for Your Existing Systems</h1>
+-      <p class="api-lead">Connect Carrier Shark to your TMS, CRM, onboarding flow, or internal tools. Search carriers, retrieve alerts, manage saved carriers, send contracts, and import DOTs through one REST API.</p>
++      <p class="api-lead">Launch faster with Carrier Shark in your TMS, CRM, onboarding flow, or internal tools. Search carriers, retrieve alerts, manage saved carriers, send contracts, and import DOTs through one REST API.</p>
+       <div class="api-hero-ctas">
+-        <a class="btn-primary api-btn-primary" href="/contact">Get API Access</a>
+-        <a class="btn-secondary api-btn-secondary" href="/api-docs">View Docs</a>
+-        <a class="api-btn-tertiary" href="/demo">Book Demo</a>
++        <a class="btn-primary api-btn-primary" href="/create-account">Start Free</a>
++        <a class="btn-secondary api-btn-secondary" href="/demo">Get a Demo</a>
++        <a class="api-btn-tertiary" href="/login">Already have an account? Sign in</a>
+       </div>
+       <div class="api-hero-meta">
+         <span><strong>Base URL:</strong> /api/v1</span>
+         <span><strong>Auth:</strong> Authorization: Bearer cs_live_your_api_key</span>
+       </div>
+     </section>
+ 
+     <section class="api-section">
+       <div class="api-section-head">
+         <h2>Built for operational workflows</h2>
+         <p>Business outcomes first. Endpoints that fit the way freight teams already work.</p>
+       </div>
+       <div class="api-feature-grid">
+         <article class="api-feature-card">
+           <h3>Carrier Search</h3>
+           <p>Run carrier lookups inside dispatch, onboarding, or compliance tools without tab-switching.</p>
+         </article>
+         <article class="api-feature-card">
+           <h3>Saved Carriers</h3>
+           <p>Sync your tracked carrier list into internal systems and keep internal workflows aligned.</p>
+         </article>
+         <article class="api-feature-card">
+           <h3>Alerts &amp; Monitoring</h3>
+           <p>Pull alert activity for tracked carriers so teams can react quickly to operational changes.</p>
+         </article>
+@@ -128,41 +128,41 @@
+         <article class="api-endpoint-item">
+           <p class="api-endpoint-path"><span>GET</span> /me/carriers</p>
+           <p>List saved carriers for your company account.</p>
+         </article>
+         <article class="api-endpoint-item">
+           <p class="api-endpoint-path"><span>GET</span> /alerts/new</p>
+           <p>Fetch newly generated alerts for tracked carriers.</p>
+         </article>
+         <article class="api-endpoint-item">
+           <p class="api-endpoint-path"><span>POST</span> /me/carriers/import</p>
+           <p>Bulk import DOTs into saved carriers with limits enforced.</p>
+         </article>
+         <article class="api-endpoint-item">
+           <p class="api-endpoint-path"><span>POST</span> /contracts/send/{dot}</p>
+           <p>Send a carrier contract inside your onboarding workflow.</p>
+         </article>
+       </div>
+     </section>
+ 
+     <section class="api-bottom-cta api-card">
+       <h2>Put Carrier Shark into your workflow</h2>
+       <p>
+         Connect carrier monitoring, search, and contract activity to the systems your team already uses.
+       </p>
+       <div class="api-hero-ctas">
+-        <a class="btn-primary api-btn-primary" href="/contact">Get API Access</a>
+-        <a class="btn-secondary api-btn-secondary" href="/api-docs">View Documentation</a>
++        <a class="btn-primary api-btn-primary" href="/create-account">Start Free</a>
++        <a class="btn-secondary api-btn-secondary" href="/demo">Get a Demo</a>
+       </div>
+     </section>
+   </main>
+ 
+   <footer id="site-footer"></footer>
+ 
+   <script
+     src="https://js.sentry-cdn.com/1df77c56ba17c2098baf02e362c93be2.min.js"
+     crossorigin="anonymous"
+   ></script>
+   <script src="/js/shared/sentry.js"></script>
+   <script src="/static/js/shared/shared.js"></script>
+ </body>
+ </html>
