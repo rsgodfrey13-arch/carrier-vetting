@@ -1,0 +1,163 @@
+diff --git a/static/api.html b/static/api.html
+index 3f49528594097977f113c25fa98ab146c6ae39ac..aefaf0b8137f232e7a502de01f7ae7ce60f08811 100644
+--- a/static/api.html
++++ b/static/api.html
+@@ -1,41 +1,41 @@
+ <!doctype html>
+ <html lang="en">
+ <head>
+   <meta charset="utf-8" />
+   <meta name="viewport" content="width=device-width, initial-scale=1" />
+   <title>Carrier Shark API — Carrier Data for Operational Workflows</title>
+   <meta
+     name="description"
+     content="Use the Carrier Shark REST API to search carriers, monitor alerts, sync saved carriers, send contracts, and import DOTs in bulk."
+   />
+   <link rel="stylesheet" href="/static/css/base.css" />
+   <link rel="stylesheet" href="/static/css/style1.css" />
+   <link rel="stylesheet" href="/static/css/api.css" />
+   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+ </head>
+-<body class="api-page-body">
++<body class="api-page-body app-page">
+   <div class="bg-gradient"></div>
+   <div class="bg-grid"></div>
+   <div id="site-header"></div>
+ 
+   <main class="api-page">
+     <section class="api-hero api-card">
+       <p class="api-kicker">Carrier Shark API</p>
+       <h1>Carrier Data API for Your Existing Systems</h1>
+       <p class="api-lead">Connect Carrier Shark to your TMS, CRM, onboarding flow, or internal tools. Search carriers, retrieve alerts, manage saved carriers, send contracts, and import DOTs through one REST API.</p>
+       <div class="api-hero-ctas">
+         <a class="btn-primary api-btn-primary" href="/contact">Get API Access</a>
+         <a class="btn-secondary api-btn-secondary" href="/api-docs">View Docs</a>
+         <a class="api-btn-tertiary" href="/demo">Book Demo</a>
+       </div>
+       <div class="api-hero-meta">
+         <span><strong>Base URL:</strong> /api/v1</span>
+         <span><strong>Auth:</strong> Authorization: Bearer cs_live_your_api_key</span>
+       </div>
+     </section>
+ 
+     <section class="api-section">
+       <div class="api-section-head">
+         <h2>Built for operational workflows</h2>
+         <p>Business outcomes first. Endpoints that fit the way freight teams already work.</p>
+       </div>
+diff --git a/static/css/api.css b/static/css/api.css
+index 3c88a91570f90b11f4481f39f4c4f835bff8fa58..bbf95ea50a3f4d4159d37d8522c86e64aff7bac0 100644
+--- a/static/css/api.css
++++ b/static/css/api.css
+@@ -1,30 +1,56 @@
++body.api-page-body{
++  min-height: 100vh;
++  display: block;
++  padding: 0;
++  margin: 0;
++  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
++  background:
++    radial-gradient(circle at 82% 34%, rgba(56,189,248,0.22), transparent 58%),
++    radial-gradient(circle at 10% -6%, rgba(11,120,207,0.24), transparent 52%),
++    linear-gradient(150deg, #0b1120 0%, #071327 42%, #020617 100%);
++  color: var(--text-main);
++  position: relative;
++  overflow-x: hidden;
++}
++
++body.api-page-body .bg-gradient,
++body.api-page-body .bg-grid{
++  pointer-events: none;
++}
++
++body.api-page-body #site-header,
++body.api-page-body #site-footer{
++  width: 100%;
++}
++
+ .api-page-body .api-page{
+-  width:min(1120px, calc(100% - 40px));
+-  margin:32px auto 64px;
+-  display:grid;
+-  gap:26px;
++  width: min(1280px, calc(100% - 36px));
++  margin: 0 auto;
++  padding: 28px 0 52px;
++  display: grid;
++  gap: 26px;
+ }
+ 
+ .api-page-body .api-card{
+   border:1px solid rgba(148, 163, 184, 0.26);
+   background:linear-gradient(160deg, rgba(15,23,42,0.9), rgba(2,6,23,0.84));
+   box-shadow:0 14px 34px rgba(2,6,23,.45);
+   border-radius:18px;
+ }
+ 
+ .api-page-body .api-hero{
+   padding:42px clamp(22px, 4vw, 44px);
+ }
+ 
+ .api-page-body .api-kicker{
+   margin:0 0 12px;
+   color:#38d3ff;
+   font-size:.74rem;
+   letter-spacing:.14em;
+   text-transform:uppercase;
+   font-weight:700;
+ }
+ 
+ .api-page-body .api-hero h1{
+   margin:0;
+   line-height:1.08;
+@@ -194,48 +220,48 @@
+   margin-right:8px;
+ }
+ 
+ .api-page-body .api-endpoint-item p:last-child{
+   margin:8px 0 0;
+   color:rgba(203,213,225,.85);
+ }
+ 
+ .api-page-body .api-bottom-cta{
+   padding:28px clamp(18px, 3.6vw, 34px);
+ }
+ 
+ .api-page-body .api-bottom-cta p{
+   margin:10px 0 0;
+   color:rgba(226,232,240,.92);
+ }
+ 
+ @media (max-width: 1080px){
+   .api-page-body .api-feature-grid{
+     grid-template-columns:repeat(3, minmax(0, 1fr));
+   }
+ }
+ 
+ @media (max-width: 860px){
+   .api-page-body .api-page{
+-    width:min(1120px, calc(100% - 26px));
+-    margin-top:22px;
++    width: min(1280px, calc(100% - 28px));
++    padding-top: 22px;
+   }
+   .api-page-body .api-feature-grid{
+     grid-template-columns:repeat(2, minmax(0, 1fr));
+   }
+   .api-page-body .api-example-grid{
+     grid-template-columns:1fr;
+   }
+ }
+ 
+ @media (max-width: 620px){
+   .api-page-body .api-feature-grid{
+     grid-template-columns:1fr;
+   }
+   .api-page-body .api-hero{
+     padding:30px 16px;
+   }
+   .api-page-body .api-hero-meta span{
+     width:100%;
+     border-radius:12px;
+   }
+ }
