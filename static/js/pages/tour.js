@@ -59,6 +59,24 @@ const slides = [
   `,
     img: "/static/images/tour/email_alert.png"
   },
+    {
+    title: "Ready for more advanced workflows?",
+    body: `
+Carrier Shark also includes APIs for teams that want to connect carrier search, alerts, saved carriers, contracts, and onboarding directly into their own systems.
+
+<br><br>
+
+Use Carrier Shark inside your:
+<br><br>
+
+• TMS<br>
+• CRM<br>
+• Internal onboarding flow<br>
+• Dispatch workflows<br>
+• Custom integrations
+  `,
+    img: "/static/images/tour/api_docs.png"
+  },
   {
     title: "You’re ready.",
     body: `
