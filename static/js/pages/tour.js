@@ -75,7 +75,7 @@ Use Carrier Shark inside your:
 • Dispatch workflows<br>
 • Custom integrations
   `,
-    img: "/static/images/tour/api_docs.png"
+    img: "/static/images/tour/api-tour.png"
   },
   {
     title: "You’re ready.",
