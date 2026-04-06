@@ -18,6 +18,7 @@ const verifyRoutes = require("./verify-email.routes");
 const demoRoutes = require("./demo.routes");
 const dpaRoutes = require("./dpa.routes");
 const faqRoutes = require("./faq.routes");
+const apiRoutes = require("./api.routes");
 const apiDocsRoutes = require("./api-docs.routes");
 const helpRoutes = require("./help.routes");
 const helpArticleRoutes = require("./help");
@@ -43,6 +44,7 @@ function publicRoutes() {
   router.use(demoRoutes);
   router.use(dpaRoutes);
   router.use(faqRoutes);
+  router.use(apiRoutes);
   router.use(helpRoutes);
   router.use(helpArticleRoutes);
   router.use(aboutRoutes);

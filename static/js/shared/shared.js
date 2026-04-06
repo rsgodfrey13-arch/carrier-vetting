@@ -527,6 +527,8 @@ async function initAuthUI() {
   const startFreeLink = document.getElementById("start-free-link");
   const accountLink = document.getElementById("account-link");
   const mobileAccountLink = document.getElementById("mobile-account-link");
+  const apiLink = document.getElementById("api-link");
+  const mobileApiLink = document.getElementById("mobile-api-link");
   const mobileStartFreeLink = document.getElementById("mobile-start-free-link");
   const mobileMyCarriersLink = document.getElementById("mobile-my-carriers-link");
   const mobileSecurityLink = document.getElementById("mobile-security-link");
@@ -574,6 +576,12 @@ async function initAuthUI() {
 
       if (mobileMyCarriersLink) {
         mobileMyCarriersLink.style.display = "flex";
+      }
+      if (apiLink) {
+        apiLink.style.display = "none";
+      }
+      if (mobileApiLink) {
+        mobileApiLink.style.display = "none";
       }
 
       if (mobileContactLink) {
@@ -637,6 +645,12 @@ async function initAuthUI() {
       if (mobileMyCarriersLink) {
         mobileMyCarriersLink.style.display = "none";
       }
+      if (apiLink) {
+        apiLink.style.display = DESKTOP_AUTH_DISPLAY;
+      }
+      if (mobileApiLink) {
+        mobileApiLink.style.display = "flex";
+      }
 
       if (mobileContactLink) {
         mobileContactLink.style.display = "flex";
@@ -684,6 +698,8 @@ async function initAuthUI() {
     if (tourLink) tourLink.style.display = DESKTOP_AUTH_DISPLAY;
     if (accountLink) accountLink.style.display = "none";
     if (mobileMyCarriersLink) mobileMyCarriersLink.style.display = "none";
+    if (apiLink) apiLink.style.display = DESKTOP_AUTH_DISPLAY;
+    if (mobileApiLink) mobileApiLink.style.display = "flex";
     if (mobileContactLink) mobileContactLink.style.display = "flex";
     if (mobileAccountLink) {
       mobileAccountLink.style.display = "flex";
