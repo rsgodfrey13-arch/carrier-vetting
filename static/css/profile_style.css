@@ -2434,3 +2434,33 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
 .contract-success-close:hover {
   background: rgba(255,255,255,.12);
 }
+
+
+.carrier-screening-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.carrier-screening-status-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.carrier-screening-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+  line-height: 1;
+  color: #6fb8ff;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.carrier-screening-link:hover {
+  text-decoration: underline;
+}
