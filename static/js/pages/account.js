@@ -881,14 +881,14 @@ function normalizeOperator(value) {
 }
 
 const OPERATOR_LABELS = {
-  EQUALS: "is",
-  NOT_EQUALS: "is not",
+  EQUALS: "equals",
+  NOT_EQUALS: "does not equal",
   GREATER_THAN: "greater than",
   GREATER_THAN_OR_EQUAL: "greater than or equal to",
   LESS_THAN: "less than",
   LESS_THAN_OR_EQUAL: "less than or equal to",
-  IN: "in",
-  NOT_IN: "not in",
+  IN: "includes",
+  NOT_IN: "does not include",
   IS_TRUE: "is true",
   IS_FALSE: "is false",
 };
@@ -920,6 +920,36 @@ const SCREENING_INTEGER_CRITERIA_KEYS = new Set([
 ]);
 
 const SCREENING_MULTI_ENUM_OPERATORS = new Set(["IN", "NOT_IN"]);
+let screeningSaveUiState = "idle";
+let screeningSaveStateTimer = null;
+
+function clearScreeningSaveStateTimer() {
+  if (!screeningSaveStateTimer) return;
+  clearTimeout(screeningSaveStateTimer);
+  screeningSaveStateTimer = null;
+}
+
+function setScreeningSaveFeedback(state = "idle", message = "") {
+  const el = document.getElementById("screening-save-status");
+  if (!el) return;
+  clearScreeningSaveStateTimer();
+  screeningSaveUiState = state;
+
+  el.textContent = message || "";
+  el.className = "screening-save-status";
+  if (!message) return;
+  el.classList.add("is-visible");
+  if (state === "unsaved") el.classList.add("is-unsaved");
+  if (state === "saving") el.classList.add("is-saving");
+  if (state === "saved") el.classList.add("is-saved");
+  if (state === "error") el.classList.add("is-error");
+
+  if (state === "saved") {
+    screeningSaveStateTimer = setTimeout(() => {
+      setScreeningSaveFeedback("idle", "");
+    }, 2500);
+  }
+}
 
 function criterionDefaultOperator(row) {
   const type = String(row?.value_type || "").toUpperCase();
@@ -1079,13 +1109,13 @@ function screeningRulePreview(row) {
 
   if (type === "NUMBER") {
     const hasValue = !(row.value_number === null || row.value_number === undefined || row.value_number === "");
-    if (!hasValue) return `Carrier is flagged if ${label} is ${opLabel} the selected value. Enter a value to complete this rule.`;
-    return `Carrier is flagged if ${label} is ${opLabel} ${formatNumberForDisplay(row, row.value_number)}.`;
+    if (!hasValue) return `Carrier is flagged if ${label} ${opLabel} the selected value. Enter a value to complete this rule.`;
+    return `Carrier is flagged if ${label} ${opLabel} ${formatNumberForDisplay(row, row.value_number)}.`;
   }
 
   if (type === "DATE") {
     const value = row.value_date ? String(row.value_date).slice(0, 10) : "the selected date";
-    return `Carrier is flagged if ${label} is ${opLabel} ${value}.`;
+    return `Carrier is flagged if ${label} ${opLabel} ${value}.`;
   }
 
   if (type === "ENUM") {
@@ -1093,11 +1123,7 @@ function screeningRulePreview(row) {
     const value = selectedValues.length
       ? selectedValues.map((selectedValue) => getEnumLabelForValue(row, selectedValue)).join(", ")
       : "the selected value";
-    if (op === "IN" || op === "NOT_IN") {
-      return `Carrier is flagged if ${label} is ${opLabel} ${value}.`;
-    }
-    if (op === "NOT_EQUALS") return `Carrier is flagged if ${label} is not ${value}.`;
-    return `Carrier is flagged if ${label} is ${value}.`;
+    return `Carrier is flagged if ${label} ${opLabel} ${value}.`;
   }
 
   return `Carrier is flagged if ${label} matches this rule.`;
@@ -1130,7 +1156,20 @@ function screeningCriteriaDirty() {
 function updateScreeningSaveState() {
   const btn = document.getElementById("btn-screening-save");
   if (!btn) return;
-  btn.disabled = !selectedScreeningProfileId || !screeningCriteriaDirty();
+  const dirty = !!selectedScreeningProfileId && screeningCriteriaDirty();
+  btn.textContent = "Save Changes";
+  btn.disabled = !dirty || screeningSaveUiState === "saving";
+  if (screeningSaveUiState === "saving") {
+    setScreeningSaveFeedback("saving", "Saving...");
+    return;
+  }
+  if (dirty) {
+    setScreeningSaveFeedback("unsaved", "Unsaved changes");
+    return;
+  }
+  if (screeningSaveUiState !== "saved" && screeningSaveUiState !== "error") {
+    setScreeningSaveFeedback("idle", "");
+  }
 }
 
 function getSelectedScreeningProfile() {
@@ -1412,6 +1451,8 @@ async function loadScreeningProfiles() {
 
 async function loadScreeningCriteria(profileId) {
   if (!profileId) return;
+  screeningSaveUiState = "idle";
+  setScreeningSaveFeedback("idle", "");
   const data = await apiGet(`/api/screening/profiles/${encodeURIComponent(profileId)}/criteria`);
   const rows = Array.isArray(data?.criteria) ? data.criteria : [];
   screeningCriteriaOriginal = clone(rows);
@@ -1424,19 +1465,33 @@ async function loadScreeningCriteria(profileId) {
 
 async function saveScreeningCriteria() {
   if (!selectedScreeningProfileId) return;
-  const payload = screeningCriteriaCurrent.map((row) => {
-    const norm = normalizeScreeningCriterionForSave(row);
-    if (norm.value_number !== null && Number.isNaN(norm.value_number)) {
-      throw new Error(`Invalid number for ${row.label || row.criteria_key}`);
-    }
-    return norm;
-  });
-
-  await apiPost(`/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/criteria`, {
-    criteria: payload,
-  });
-  screeningCriteriaOriginal = clone(screeningCriteriaCurrent);
+  if (screeningSaveUiState === "saving") return;
+  screeningSaveUiState = "saving";
+  const btn = document.getElementById("btn-screening-save");
+  if (btn) btn.textContent = "Saving...";
   updateScreeningSaveState();
+  try {
+    const payload = screeningCriteriaCurrent.map((row) => {
+      const norm = normalizeScreeningCriterionForSave(row);
+      if (norm.value_number !== null && Number.isNaN(norm.value_number)) {
+        throw new Error(`Invalid number for ${row.label || row.criteria_key}`);
+      }
+      return norm;
+    });
+
+    await apiPost(`/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/criteria`, {
+      criteria: payload,
+    });
+    screeningCriteriaOriginal = clone(screeningCriteriaCurrent);
+    screeningSaveUiState = "saved";
+    setScreeningSaveFeedback("saved", "Changes saved");
+  } catch (err) {
+    screeningSaveUiState = "error";
+    setScreeningSaveFeedback("error", "Could not save changes");
+    throw err;
+  } finally {
+    updateScreeningSaveState();
+  }
 }
 
 async function createScreeningProfile() {
@@ -2310,7 +2365,6 @@ document.getElementById("btn-screening-set-default")?.addEventListener("click", 
 document.getElementById("btn-screening-save")?.addEventListener("click", () => {
   saveScreeningCriteria().catch((err) => {
     console.error(err);
-    alert(err?.message || "Failed to save screening criteria.");
   });
 });
 

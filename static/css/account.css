@@ -900,6 +900,50 @@ body.account-page .page{
   );
 }
 
+.screening-save-status{
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  margin-left: 10px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: .9rem;
+  font-weight: 600;
+  letter-spacing: .01em;
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity .18s ease, transform .18s ease;
+}
+
+.screening-save-status.is-visible{
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.screening-save-status.is-unsaved{
+  color: #f5d38b;
+  background: rgba(245,211,139,.16);
+  border: 1px solid rgba(245,211,139,.42);
+}
+
+.screening-save-status.is-saving{
+  color: #9ac8ff;
+  background: rgba(154,200,255,.14);
+  border: 1px solid rgba(154,200,255,.4);
+}
+
+.screening-save-status.is-saved{
+  color: #91e3bc;
+  background: rgba(145,227,188,.14);
+  border: 1px solid rgba(145,227,188,.38);
+}
+
+.screening-save-status.is-error{
+  color: #ff9c9c;
+  background: rgba(255,156,156,.14);
+  border: 1px solid rgba(255,156,156,.4);
+}
+
 
 .categories-header {
   display: flex;

@@ -1,0 +1,560 @@
+diff --git a/static/account.html b/static/account.html
+index 4b720f76c07b4458c96532636aee1ed64b9505a9..85f910d33a9df61c01fa159e78fa0c55dfe1cac6 100644
+--- a/static/account.html
++++ b/static/account.html
+@@ -397,50 +397,51 @@
+                 <div class="row-sub">Choose a default screening profile and configure the criteria that determine carrier status.</div>
+               </div>
+               <div class="row-actions screening-profile-actions">
+                 <button class="btn-primary" id="btn-screening-new-profile">New Profile</button>
+                 <button class="btn-ghost" id="btn-screening-rename-profile">Rename Profile</button>
+                 <button class="btn-ghost" id="btn-screening-delete-profile">Delete Profile</button>
+                 <button class="btn-ghost" id="btn-screening-set-default">Set Default</button>
+               </div>
+             </div>
+ 
+             <div id="screening-profiles-list" class="screening-profiles-list">
+               <div class="muted">Loading profiles…</div>
+             </div>
+ 
+             <div class="divider"></div>
+ 
+             <div class="screening-criteria-wrap">
+               <div class="row-title">Screening Criteria</div>
+               <div id="screening-criteria-list" class="screening-criteria-list">
+                 <div class="muted">Select a screening profile to configure criteria.</div>
+               </div>
+             </div>
+ 
+             <div class="alerts-save-row">
+               <button class="btn-primary" id="btn-screening-save" disabled>Save Changes</button>
++              <span id="screening-save-status" class="screening-save-status" aria-live="polite"></span>
+             </div>
+           </div>
+         </section>
+ 
+         <!-- API -->
+         <section class="tab-panel" id="tab-api">
+           <div class="card">
+             <div class="card-head card-header">
+               <h2>API</h2>
+               <p class="muted">Everything you need to integrate Carrier Shark into your workflow.</p>
+             </div>
+ 
+             <div class="row lock-wrap" id="api-key-row">
+               <div class="lock-main">
+                 <div class="row-title">API Key</div>
+                 <div class="row-sub" id="api-key-masked">—</div>
+               </div>
+             
+               <div class="row-actions">
+                 <button class="btn-ghost" id="btn-copy-key">Copy</button>
+                 <button class="btn-primary" id="btn-rotate-key">Rotate</button>
+               </div>
+             
+               <div class="lock-footer" id="api-key-locked" style="display:none;">
+                 <span class="lock-dot"></span>
+diff --git a/static/css/account.css b/static/css/account.css
+index 6c383733dd7cd50731ff352f1f3d5bc21dd39b24..57190c8c51304331f4baf18fc45a7f5c17d6c2d6 100644
+--- a/static/css/account.css
++++ b/static/css/account.css
+@@ -878,50 +878,94 @@ body.account-page .page{
+ 
+ .toggle-grid{
+   gap: 12px 16px;
+ }
+ 
+ /* Space above the Save Changes button */
+ .alerts-save-row{
+   margin-top: 24px;          /* separation from last category */
+   padding-top: 12px;
+ }
+ 
+ /* Optional: subtle divider above save row */
+ .alerts-save-row::before{
+   content: "";
+   display: block;
+   height: 1px;
+   margin-bottom: 16px;
+   background: linear-gradient(
+     to right,
+     transparent,
+     rgba(255,255,255,.12),
+     transparent
+   );
+ }
+ 
++.screening-save-status{
++  display: inline-flex;
++  align-items: center;
++  min-height: 36px;
++  margin-left: 10px;
++  padding: 0 12px;
++  border-radius: 999px;
++  font-size: .9rem;
++  font-weight: 600;
++  letter-spacing: .01em;
++  opacity: 0;
++  transform: translateY(2px);
++  transition: opacity .18s ease, transform .18s ease;
++}
++
++.screening-save-status.is-visible{
++  opacity: 1;
++  transform: translateY(0);
++}
++
++.screening-save-status.is-unsaved{
++  color: #f5d38b;
++  background: rgba(245,211,139,.16);
++  border: 1px solid rgba(245,211,139,.42);
++}
++
++.screening-save-status.is-saving{
++  color: #9ac8ff;
++  background: rgba(154,200,255,.14);
++  border: 1px solid rgba(154,200,255,.4);
++}
++
++.screening-save-status.is-saved{
++  color: #91e3bc;
++  background: rgba(145,227,188,.14);
++  border: 1px solid rgba(145,227,188,.38);
++}
++
++.screening-save-status.is-error{
++  color: #ff9c9c;
++  background: rgba(255,156,156,.14);
++  border: 1px solid rgba(255,156,156,.4);
++}
++
+ 
+ .categories-header {
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   margin-bottom: 20px;
+ }
+ 
+ .categories-header .section-h3 {
+   margin: 0;
+ }
+ 
+ .btn-save-inline {
+   padding: 8px 16px;
+   font-size: 0.9rem;
+ }
+ 
+ 
+ .agreements-grid{
+   display:grid;
+   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+   gap:14px;
+ }
+ 
+ .agreement-tile{
+diff --git a/static/js/pages/account.js b/static/js/pages/account.js
+index 81ef5975b8a24449f5715d960c43f4a05754d60b..75c690493a43f5bba2619b794a738f6a6204044d 100644
+--- a/static/js/pages/account.js
++++ b/static/js/pages/account.js
+@@ -859,89 +859,119 @@ function wireAgreementDeleteModalOnce() {
+     confirmBtn.disabled = true;
+     try {
+       const deletedId = agreementDeleteTargetId;
+       await deleteAgreementById(deletedId);
+       closeModal();
+ 
+       if (String(agreementsSelectedId) === String(deletedId)) {
+         agreementsSelectedId = null;
+       }
+ 
+       await loadAgreements();
+     } catch (err) {
+       errEl.hidden = false;
+       errEl.textContent = err?.message || "Failed to delete agreement.";
+       confirmBtn.disabled = false;
+     }
+   });
+ }
+ 
+ function normalizeOperator(value) {
+   if (value === null || value === undefined || String(value).trim() === "") return null;
+   return String(value).trim().toUpperCase();
+ }
+ 
+ const OPERATOR_LABELS = {
+-  EQUALS: "is",
+-  NOT_EQUALS: "is not",
++  EQUALS: "equals",
++  NOT_EQUALS: "does not equal",
+   GREATER_THAN: "greater than",
+   GREATER_THAN_OR_EQUAL: "greater than or equal to",
+   LESS_THAN: "less than",
+   LESS_THAN_OR_EQUAL: "less than or equal to",
+-  IN: "in",
+-  NOT_IN: "not in",
++  IN: "includes",
++  NOT_IN: "does not include",
+   IS_TRUE: "is true",
+   IS_FALSE: "is false",
+ };
+ 
+ const OPERATORS_BY_TYPE = {
+   BOOLEAN: ["IS_TRUE", "IS_FALSE"],
+   NUMBER: ["GREATER_THAN", "GREATER_THAN_OR_EQUAL", "LESS_THAN", "LESS_THAN_OR_EQUAL", "EQUALS", "NOT_EQUALS"],
+   DATE: ["LESS_THAN", "LESS_THAN_OR_EQUAL", "GREATER_THAN", "GREATER_THAN_OR_EQUAL", "EQUALS", "NOT_EQUALS"],
+   ENUM: ["EQUALS", "NOT_EQUALS", "IN", "NOT_IN"],
+ };
+ 
+ const SCREENING_DEFAULT_OPERATOR_BY_KEY = {
+   ALLOWED_TO_OPERATE: "IS_TRUE",
+   CARGO_INSURANCE_ON_FILE: "IS_TRUE",
+   BIPD_INSURANCE_ON_FILE: "IS_TRUE",
+   BOND_INSURANCE_ON_FILE: "IS_TRUE",
+   MCS_150_OUTDATED: "IS_FALSE",
+   CRASH_TOTAL: "GREATER_THAN",
+   DRIVER_OOS_RATE: "GREATER_THAN",
+   VEHICLE_OOS_RATE: "GREATER_THAN",
+   TOTAL_DRIVERS: "LESS_THAN",
+   TOTAL_POWER_UNITS: "LESS_THAN",
+ };
+ 
+ const SCREENING_INTEGER_CRITERIA_KEYS = new Set([
+   "CRASH_TOTAL",
+   "TOTAL_DRIVERS",
+   "TOTAL_POWER_UNITS",
+ ]);
+ 
+ const SCREENING_MULTI_ENUM_OPERATORS = new Set(["IN", "NOT_IN"]);
++let screeningSaveUiState = "idle";
++let screeningSaveStateTimer = null;
++
++function clearScreeningSaveStateTimer() {
++  if (!screeningSaveStateTimer) return;
++  clearTimeout(screeningSaveStateTimer);
++  screeningSaveStateTimer = null;
++}
++
++function setScreeningSaveFeedback(state = "idle", message = "") {
++  const el = document.getElementById("screening-save-status");
++  if (!el) return;
++  clearScreeningSaveStateTimer();
++  screeningSaveUiState = state;
++
++  el.textContent = message || "";
++  el.className = "screening-save-status";
++  if (!message) return;
++  el.classList.add("is-visible");
++  if (state === "unsaved") el.classList.add("is-unsaved");
++  if (state === "saving") el.classList.add("is-saving");
++  if (state === "saved") el.classList.add("is-saved");
++  if (state === "error") el.classList.add("is-error");
++
++  if (state === "saved") {
++    screeningSaveStateTimer = setTimeout(() => {
++      setScreeningSaveFeedback("idle", "");
++    }, 2500);
++  }
++}
+ 
+ function criterionDefaultOperator(row) {
+   const type = String(row?.value_type || "").toUpperCase();
+   const options = OPERATORS_BY_TYPE[type] || [];
+   if (!options.length) return null;
+ 
+   const key = String(row?.criteria_key || "").trim().toUpperCase();
+   const mapped = SCREENING_DEFAULT_OPERATOR_BY_KEY[key];
+   if (mapped && options.includes(mapped)) return mapped;
+ 
+   if (type === "BOOLEAN") return "IS_TRUE";
+   if (type === "NUMBER") return "GREATER_THAN";
+   if (type === "DATE") return "LESS_THAN_OR_EQUAL";
+   if (type === "ENUM") return "EQUALS";
+   return options[0] || null;
+ }
+ 
+ function isIntegerLikeScreeningCriterion(row) {
+   const key = String(row?.criteria_key || "").trim().toUpperCase();
+   return SCREENING_INTEGER_CRITERIA_KEYS.has(key);
+ }
+ 
+ function normalizeNumberForCriterion(row, value) {
+   if (value === null || value === undefined || value === "") return null;
+   const numeric = Number(value);
+@@ -1057,102 +1087,111 @@ function screeningRulePreview(row) {
+         : "Carrier must have cargo insurance on file.";
+     }
+     if (key === "BIPD_INSURANCE_ON_FILE") {
+       return op === "IS_FALSE"
+         ? "Carrier is flagged if BIPD insurance is not on file."
+         : "Carrier must have BIPD insurance on file.";
+     }
+     if (key === "BOND_INSURANCE_ON_FILE") {
+       return op === "IS_FALSE"
+         ? "Carrier is flagged if bond insurance is not on file."
+         : "Carrier must have bond insurance on file.";
+     }
+     if (key === "MCS_150_OUTDATED") {
+       return op === "IS_FALSE"
+         ? "Carrier must not have an outdated MCS-150."
+         : "Carrier is flagged if the MCS-150 is outdated.";
+     }
+ 
+     return op === "IS_FALSE"
+       ? `Carrier is flagged if ${label} is false.`
+       : `Carrier is flagged if ${label} is true.`;
+   }
+ 
+   if (type === "NUMBER") {
+     const hasValue = !(row.value_number === null || row.value_number === undefined || row.value_number === "");
+-    if (!hasValue) return `Carrier is flagged if ${label} is ${opLabel} the selected value. Enter a value to complete this rule.`;
+-    return `Carrier is flagged if ${label} is ${opLabel} ${formatNumberForDisplay(row, row.value_number)}.`;
++    if (!hasValue) return `Carrier is flagged if ${label} ${opLabel} the selected value. Enter a value to complete this rule.`;
++    return `Carrier is flagged if ${label} ${opLabel} ${formatNumberForDisplay(row, row.value_number)}.`;
+   }
+ 
+   if (type === "DATE") {
+     const value = row.value_date ? String(row.value_date).slice(0, 10) : "the selected date";
+-    return `Carrier is flagged if ${label} is ${opLabel} ${value}.`;
++    return `Carrier is flagged if ${label} ${opLabel} ${value}.`;
+   }
+ 
+   if (type === "ENUM") {
+     const selectedValues = parseEnumSelections(row.value_text);
+     const value = selectedValues.length
+       ? selectedValues.map((selectedValue) => getEnumLabelForValue(row, selectedValue)).join(", ")
+       : "the selected value";
+-    if (op === "IN" || op === "NOT_IN") {
+-      return `Carrier is flagged if ${label} is ${opLabel} ${value}.`;
+-    }
+-    if (op === "NOT_EQUALS") return `Carrier is flagged if ${label} is not ${value}.`;
+-    return `Carrier is flagged if ${label} is ${value}.`;
++    return `Carrier is flagged if ${label} ${opLabel} ${value}.`;
+   }
+ 
+   return `Carrier is flagged if ${label} matches this rule.`;
+ }
+ 
+ 
+ function normalizeScreeningCriterionForSave(row) {
+   const normalizedNumber = row.value_number === null || row.value_number === undefined || row.value_number === ""
+     ? null
+     : normalizeNumberForCriterion(row, row.value_number);
+   return {
+     screening_criteria_id: Number(row.screening_criteria_id),
+     is_enabled: !!row.is_enabled,
+     comparison_operator: normalizeOperator(row.comparison_operator),
+     value_bool: row.value_bool === null || row.value_bool === undefined ? null : !!row.value_bool,
+     value_number: normalizedNumber === null
+       ? null
+       : (isIntegerLikeScreeningCriterion(row) ? Math.round(normalizedNumber) : normalizedNumber),
+     value_date: row.value_date ? String(row.value_date).slice(0, 10) : null,
+     value_text: row.value_text === null || row.value_text === undefined || row.value_text === "" ? null : String(row.value_text),
+   };
+ }
+ 
+ function screeningCriteriaDirty() {
+   const a = (screeningCriteriaCurrent || []).map(normalizeScreeningCriterionForSave);
+   const b = (screeningCriteriaOriginal || []).map(normalizeScreeningCriterionForSave);
+   return JSON.stringify(a) !== JSON.stringify(b);
+ }
+ 
+ function updateScreeningSaveState() {
+   const btn = document.getElementById("btn-screening-save");
+   if (!btn) return;
+-  btn.disabled = !selectedScreeningProfileId || !screeningCriteriaDirty();
++  const dirty = !!selectedScreeningProfileId && screeningCriteriaDirty();
++  btn.textContent = "Save Changes";
++  btn.disabled = !dirty || screeningSaveUiState === "saving";
++  if (screeningSaveUiState === "saving") {
++    setScreeningSaveFeedback("saving", "Saving...");
++    return;
++  }
++  if (dirty) {
++    setScreeningSaveFeedback("unsaved", "Unsaved changes");
++    return;
++  }
++  if (screeningSaveUiState !== "saved" && screeningSaveUiState !== "error") {
++    setScreeningSaveFeedback("idle", "");
++  }
+ }
+ 
+ function getSelectedScreeningProfile() {
+   return (screeningProfiles || []).find((p) => String(p.id) === String(selectedScreeningProfileId)) || null;
+ }
+ 
+ function setScreeningActionButtonState() {
+   const selected = getSelectedScreeningProfile();
+   const hasSelected = !!selected;
+   const isDefault = !!selected?.is_default;
+ 
+   const renameBtn = document.getElementById("btn-screening-rename-profile");
+   const deleteBtn = document.getElementById("btn-screening-delete-profile");
+   const defaultBtn = document.getElementById("btn-screening-set-default");
+ 
+   if (renameBtn) renameBtn.disabled = !hasSelected;
+   if (deleteBtn) deleteBtn.disabled = !hasSelected || isDefault;
+   if (defaultBtn) defaultBtn.disabled = !hasSelected || isDefault;
+ }
+ 
+ function renderScreeningProfiles() {
+   const host = document.getElementById("screening-profiles-list");
+   if (!host) return;
+ 
+   if (!screeningProfiles.length) {
+@@ -1390,75 +1429,91 @@ function renderScreeningCriteria(criteria = []) {
+       row.value_text = checked.length ? checked.join(", ") : null;
+       updateScreeningSaveState();
+       const previewEl = host.querySelector(`.screening-rule-card input[data-screening-enabled="${idx}"]`)?.closest('.screening-rule-card')?.querySelector('.screening-rule-preview');
+       if (previewEl) previewEl.textContent = screeningRulePreview(row);
+     });
+   });
+ 
+   updateScreeningSaveState();
+ }
+ 
+ async function loadScreeningProfiles() {
+   const data = await apiGet("/api/screening/profiles");
+   screeningProfiles = Array.isArray(data?.profiles) ? data.profiles : [];
+   renderScreeningProfiles();
+   if (selectedScreeningProfileId) {
+     await loadScreeningCriteria(selectedScreeningProfileId);
+   } else {
+     screeningCriteriaOriginal = [];
+     screeningCriteriaCurrent = [];
+     renderScreeningCriteria([]);
+   }
+ }
+ 
+ async function loadScreeningCriteria(profileId) {
+   if (!profileId) return;
++  screeningSaveUiState = "idle";
++  setScreeningSaveFeedback("idle", "");
+   const data = await apiGet(`/api/screening/profiles/${encodeURIComponent(profileId)}/criteria`);
+   const rows = Array.isArray(data?.criteria) ? data.criteria : [];
+   screeningCriteriaOriginal = clone(rows);
+   screeningCriteriaCurrent = clone(rows);
+   screeningCriteriaCurrent.forEach((row) => {
+     if (row?.is_enabled) ensureScreeningDefaults(row);
+   });
+   renderScreeningCriteria(screeningCriteriaCurrent);
+ }
+ 
+ async function saveScreeningCriteria() {
+   if (!selectedScreeningProfileId) return;
+-  const payload = screeningCriteriaCurrent.map((row) => {
+-    const norm = normalizeScreeningCriterionForSave(row);
+-    if (norm.value_number !== null && Number.isNaN(norm.value_number)) {
+-      throw new Error(`Invalid number for ${row.label || row.criteria_key}`);
+-    }
+-    return norm;
+-  });
+-
+-  await apiPost(`/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/criteria`, {
+-    criteria: payload,
+-  });
+-  screeningCriteriaOriginal = clone(screeningCriteriaCurrent);
++  if (screeningSaveUiState === "saving") return;
++  screeningSaveUiState = "saving";
++  const btn = document.getElementById("btn-screening-save");
++  if (btn) btn.textContent = "Saving...";
+   updateScreeningSaveState();
++  try {
++    const payload = screeningCriteriaCurrent.map((row) => {
++      const norm = normalizeScreeningCriterionForSave(row);
++      if (norm.value_number !== null && Number.isNaN(norm.value_number)) {
++        throw new Error(`Invalid number for ${row.label || row.criteria_key}`);
++      }
++      return norm;
++    });
++
++    await apiPost(`/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/criteria`, {
++      criteria: payload,
++    });
++    screeningCriteriaOriginal = clone(screeningCriteriaCurrent);
++    screeningSaveUiState = "saved";
++    setScreeningSaveFeedback("saved", "Changes saved");
++  } catch (err) {
++    screeningSaveUiState = "error";
++    setScreeningSaveFeedback("error", "Could not save changes");
++    throw err;
++  } finally {
++    updateScreeningSaveState();
++  }
+ }
+ 
+ async function createScreeningProfile() {
+   const name = prompt("Name your new screening profile:");
+   if (!name || !String(name).trim()) return;
+   await apiPost("/api/screening/profiles", { profile_name: String(name).trim() });
+   await loadScreeningProfiles();
+ }
+ 
+ async function renameScreeningProfile() {
+   const selected = getSelectedScreeningProfile();
+   if (!selected) return;
+   const next = prompt("Rename screening profile:", selected.profile_name || "");
+   if (!next || !String(next).trim()) return;
+   await apiPatch(`/api/screening/profiles/${encodeURIComponent(selected.id)}`, { profile_name: String(next).trim() });
+   await loadScreeningProfiles();
+ }
+ 
+ async function deleteScreeningProfile() {
+   const selected = getSelectedScreeningProfile();
+   if (!selected) return;
+   if (selected.is_default) {
+     alert("Default profile cannot be deleted.");
+     return;
+   }
+@@ -2288,51 +2343,50 @@ document.getElementById("btn-screening-new-profile")?.addEventListener("click",
+ 
+ document.getElementById("btn-screening-rename-profile")?.addEventListener("click", () => {
+   renameScreeningProfile().catch((err) => {
+     console.error(err);
+     alert(err?.message || "Failed to rename screening profile.");
+   });
+ });
+ 
+ document.getElementById("btn-screening-delete-profile")?.addEventListener("click", () => {
+   deleteScreeningProfile().catch((err) => {
+     console.error(err);
+     alert(err?.message || "Failed to delete screening profile.");
+   });
+ });
+ 
+ document.getElementById("btn-screening-set-default")?.addEventListener("click", () => {
+   setDefaultScreeningProfile().catch((err) => {
+     console.error(err);
+     alert(err?.message || "Failed to set default screening profile.");
+   });
+ });
+ 
+ document.getElementById("btn-screening-save")?.addEventListener("click", () => {
+   saveScreeningCriteria().catch((err) => {
+     console.error(err);
+-    alert(err?.message || "Failed to save screening criteria.");
+   });
+ });
+ 
+ 
+ 
+ document.getElementById("alerts-enabled")?.addEventListener("change", async (e) => {
+   const toggle = e.currentTarget;
+ 
+   try {
+     const r = await fetch("/api/account/email-alerts-enabled", {
+       method: "POST",
+       credentials: "include",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify({ email_alerts_enabled: toggle.checked }),
+     });
+ 
+     if (!r.ok) {
+       const text = await r.text().catch(() => "");
+       throw new Error(`POST failed: ${r.status} ${text}`);
+     }
+ 
+     // ✅ show confirmation only AFTER user toggles
+     setAlertsSwitchColor(toggle.checked);
+     setAlertsFooter(toggle.checked);
+ 
