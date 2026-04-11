@@ -801,41 +801,11 @@ function normalizeCarrierDocumentRows(rows, pdfLabel) {
     .filter(Boolean);
 }
 
+
 async function ensureCarrierDocumentsTable() {
-  await pool.query(
-    `
-    CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
-    CREATE TABLE IF NOT EXISTS public.carrier_documents (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      company_id UUID NOT NULL,
-      contract_id UUID NULL REFERENCES public.contracts(contract_id) ON DELETE CASCADE,
-      dot_number TEXT NOT NULL,
-      document_type TEXT NOT NULL CHECK (document_type IN ('w9', 'ach', 'other')),
-      uploaded_by_role TEXT NOT NULL DEFAULT 'user' CHECK (uploaded_by_role IN ('carrier', 'user', 'system')),
-      uploaded_by_user_id BIGINT NULL,
-      uploaded_by_name TEXT NULL,
-      uploaded_by_email TEXT NULL,
-      storage_key TEXT NOT NULL,
-      certificate_storage_key TEXT NULL,
-      mime_type TEXT NOT NULL,
-      certificate_mime_type TEXT NULL,
-      original_filename TEXT NULL,
-      certificate_original_filename TEXT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-
-    ALTER TABLE public.carrier_documents
-      ADD COLUMN IF NOT EXISTS contract_id UUID;
-
-    CREATE INDEX IF NOT EXISTS idx_carrier_documents_company_dot_created
-      ON public.carrier_documents (company_id, dot_number, created_at DESC);
-
-    CREATE INDEX IF NOT EXISTS idx_carrier_documents_contract_id
-      ON public.carrier_documents (contract_id);
-    `
-  );
+  return;
 }
+
 
 function buildCarrierDocumentStorageKey({ companyId, dot, documentType, originalFilename }) {
   const safeFileName = toSafeStoragePart(originalFilename || 'document');
