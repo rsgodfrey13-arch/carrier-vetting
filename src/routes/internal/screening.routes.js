@@ -25,18 +25,43 @@ const ALLOWED_COMPARISON_OPERATORS = new Set([
 
 function normalizeEnumOptions(raw) {
   if (!raw) return [];
-  if (Array.isArray(raw)) return raw.map((x) => String(x)).filter(Boolean);
+
+  const normalizeOne = (option) => {
+    if (option && typeof option === "object" && !Array.isArray(option)) {
+      const value = option.value === null || option.value === undefined
+        ? ""
+        : String(option.value).trim();
+
+      const label = option.label === null || option.label === undefined || String(option.label).trim() === ""
+        ? value
+        : String(option.label).trim();
+
+      return value ? { value, label } : null;
+    }
+
+    const value = option === null || option === undefined ? "" : String(option).trim();
+    return value ? { value, label: value } : null;
+  };
+
+  if (Array.isArray(raw)) {
+    return raw.map(normalizeOne).filter(Boolean);
+  }
+
   if (typeof raw === "string") {
     try {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed.map((x) => String(x)).filter(Boolean);
+      if (Array.isArray(parsed)) {
+        return parsed.map(normalizeOne).filter(Boolean);
+      }
     } catch {
       return raw
         .split(",")
         .map((x) => x.trim())
-        .filter(Boolean);
+        .filter(Boolean)
+        .map((value) => ({ value, label: value }));
     }
   }
+
   return [];
 }
 
@@ -426,16 +451,18 @@ router.post("/screening/profiles/:profileId/criteria", requireAuth, loadCompanyC
       } else if (valueType === "ENUM") {
         if (item?.value_text !== null && item?.value_text !== undefined && item?.value_text !== "") {
           const options = normalizeEnumOptions(def.enum_options);
+          const optionValues = options.map((opt) => opt.value);
           const enumOp = comparisonOperator || "EQUALS";
           const allowsMulti = enumOp === "IN" || enumOp === "NOT_IN";
           const rawValue = String(item.value_text).trim();
+          
           if (allowsMulti) {
             const values = rawValue.split(",").map((v) => v.trim()).filter(Boolean);
             if (values.length === 0) {
               await client.query("ROLLBACK");
               return res.status(400).json({ error: `Invalid ENUM value for criteria ${criteriaId}` });
             }
-            if (options.length && values.some((v) => !options.includes(v))) {
+            if (optionValues.length && values.some((v) => !optionValues.includes(v))) {
               await client.query("ROLLBACK");
               return res.status(400).json({ error: `Invalid ENUM value for criteria ${criteriaId}` });
             }
@@ -446,7 +473,7 @@ router.post("/screening/profiles/:profileId/criteria", requireAuth, loadCompanyC
               await client.query("ROLLBACK");
               return res.status(400).json({ error: `Invalid ENUM value for criteria ${criteriaId}` });
             }
-            if (options.length && !options.includes(nextValue)) {
+            if (optionValues.length && !optionValues.includes(nextValue)) {
               await client.query("ROLLBACK");
               return res.status(400).json({ error: `Invalid ENUM value for criteria ${criteriaId}` });
             }
