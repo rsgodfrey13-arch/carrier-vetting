@@ -18,6 +18,34 @@ const SUPPORTED_OPERATORS = new Set([
   "IS_FALSE"
 ]);
 
+const SAFETY_RATING_ENUM_FIELDS = new Set(["safety_rating"]);
+const AUTHORITY_STATUS_ENUM_FIELDS = new Set([
+  "common_authority_status",
+  "contract_authority_status",
+  "broker_authority_status"
+]);
+
+const SAFETY_RATING_CANONICAL_MAP = new Map([
+  ["S", "Satisfactory"],
+  ["SATISFACTORY", "Satisfactory"],
+  ["C", "Conditional"],
+  ["CONDITIONAL", "Conditional"],
+  ["U", "Unsatisfactory"],
+  ["UNSATISFACTORY", "Unsatisfactory"],
+  ["N", "Not Rated"],
+  ["NONE", "Not Rated"],
+  ["NOT RATED", "Not Rated"]
+]);
+
+const AUTHORITY_STATUS_CANONICAL_MAP = new Map([
+  ["A", "Active"],
+  ["ACTIVE", "Active"],
+  ["I", "Inactive"],
+  ["INACTIVE", "Inactive"],
+  ["N", "None"],
+  ["NONE", "None"]
+]);
+
 function normalizeDot(dotNumber) {
   return String(dotNumber || "").replace(/\D/g, "");
 }
@@ -57,6 +85,24 @@ function parseCsvSet(valueText) {
     .map((item) => normalizeText(item))
     .filter(Boolean)
     .map((item) => item.toUpperCase());
+}
+
+function normalizeEnumCarrierValue({ criterion, rawValue }) {
+  const text = normalizeText(rawValue);
+  if (!text) return null;
+
+  const field = String(criterion?.carrier_field || "").trim().toLowerCase();
+  const token = text.toUpperCase();
+
+  if (SAFETY_RATING_ENUM_FIELDS.has(field)) {
+    return SAFETY_RATING_CANONICAL_MAP.get(token) || null;
+  }
+
+  if (AUTHORITY_STATUS_ENUM_FIELDS.has(field)) {
+    return AUTHORITY_STATUS_CANONICAL_MAP.get(token) || null;
+  }
+
+  return text;
 }
 
 async function getDefaultActiveProfile({ companyId, client }) {
@@ -188,7 +234,7 @@ function evaluateNumberCriterion({ criterion, rawValue }) {
 }
 
 function evaluateEnumCriterion({ criterion, rawValue }) {
-  const actual = normalizeText(rawValue);
+  const actual = normalizeEnumCarrierValue({ criterion, rawValue });
   const op = String(criterion.comparison_operator || "EQUALS").toUpperCase();
   const expectedText = normalizeText(criterion.value_text);
 

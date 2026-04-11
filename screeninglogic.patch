@@ -1,0 +1,190 @@
+diff --git a/src/services/carrierScreeningService.js b/src/services/carrierScreeningService.js
+index 8f4768313fbcb404f3d0ef86cd0d99c2f8b2f4cd..7ef18534723ef219315154aca999c89f11ed9020 100644
+--- a/src/services/carrierScreeningService.js
++++ b/src/services/carrierScreeningService.js
+@@ -1,86 +1,132 @@
+ "use strict";
+ 
+ const { pool } = require("../db/pool");
+ 
+ const TRUE_SET = new Set(["Y", "YES", "TRUE", "T", "1", "ACTIVE", "AUTHORIZED"]);
+ const FALSE_SET = new Set(["N", "NO", "FALSE", "F", "0", "INACTIVE", "NOT AUTHORIZED"]);
+ 
+ const SUPPORTED_OPERATORS = new Set([
+   "EQUALS",
+   "NOT_EQUALS",
+   "LESS_THAN",
+   "LESS_THAN_OR_EQUAL",
+   "GREATER_THAN",
+   "GREATER_THAN_OR_EQUAL",
+   "IN",
+   "NOT_IN",
+   "IS_TRUE",
+   "IS_FALSE"
+ ]);
+ 
++const SAFETY_RATING_ENUM_FIELDS = new Set(["safety_rating"]);
++const AUTHORITY_STATUS_ENUM_FIELDS = new Set([
++  "common_authority_status",
++  "contract_authority_status",
++  "broker_authority_status"
++]);
++
++const SAFETY_RATING_CANONICAL_MAP = new Map([
++  ["S", "Satisfactory"],
++  ["SATISFACTORY", "Satisfactory"],
++  ["C", "Conditional"],
++  ["CONDITIONAL", "Conditional"],
++  ["U", "Unsatisfactory"],
++  ["UNSATISFACTORY", "Unsatisfactory"],
++  ["N", "Not Rated"],
++  ["NONE", "Not Rated"],
++  ["NOT RATED", "Not Rated"]
++]);
++
++const AUTHORITY_STATUS_CANONICAL_MAP = new Map([
++  ["A", "Active"],
++  ["ACTIVE", "Active"],
++  ["I", "Inactive"],
++  ["INACTIVE", "Inactive"],
++  ["N", "None"],
++  ["NONE", "None"]
++]);
++
+ function normalizeDot(dotNumber) {
+   return String(dotNumber || "").replace(/\D/g, "");
+ }
+ 
+ function normalizeText(value) {
+   if (value === null || value === undefined) return null;
+   const trimmed = String(value).trim();
+   return trimmed ? trimmed : null;
+ }
+ 
+ function normalizeBoolean(value) {
+   if (value === true || value === false) return value;
+   const text = normalizeText(value);
+   if (!text) return null;
+   const token = text.toUpperCase();
+   if (TRUE_SET.has(token)) return true;
+   if (FALSE_SET.has(token)) return false;
+   return null;
+ }
+ 
+ function normalizeNumber(value) {
+   if (value === null || value === undefined) return null;
+   if (typeof value === "number" && Number.isFinite(value)) return value;
+   const text = normalizeText(value);
+   if (!text) return null;
+   const cleaned = text.replace(/[%,$\s]/g, "").replace(/,/g, "");
+   if (!cleaned) return null;
+   const parsed = Number(cleaned);
+   return Number.isFinite(parsed) ? parsed : null;
+ }
+ 
+ function parseCsvSet(valueText) {
+   const normalized = normalizeText(valueText);
+   if (!normalized) return [];
+   return normalized
+     .split(",")
+     .map((item) => normalizeText(item))
+     .filter(Boolean)
+     .map((item) => item.toUpperCase());
+ }
+ 
++function normalizeEnumCarrierValue({ criterion, rawValue }) {
++  const text = normalizeText(rawValue);
++  if (!text) return null;
++
++  const field = String(criterion?.carrier_field || "").trim().toLowerCase();
++  const token = text.toUpperCase();
++
++  if (SAFETY_RATING_ENUM_FIELDS.has(field)) {
++    return SAFETY_RATING_CANONICAL_MAP.get(token) || null;
++  }
++
++  if (AUTHORITY_STATUS_ENUM_FIELDS.has(field)) {
++    return AUTHORITY_STATUS_CANONICAL_MAP.get(token) || null;
++  }
++
++  return text;
++}
++
+ async function getDefaultActiveProfile({ companyId, client }) {
+   const { rows } = await client.query(
+     `
+     SELECT id, company_id, profile_name
+     FROM public.company_screening_profiles
+     WHERE company_id = $1
+       AND is_default = true
+       AND is_active = true
+     ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST
+     LIMIT 1
+     `,
+     [companyId]
+   );
+   return rows[0] || null;
+ }
+ 
+ async function getEnabledCriteriaForProfile({ profileId, client }) {
+   const { rows } = await client.query(
+     `
+     SELECT
+       sc.id AS screening_criteria_id,
+       sc.criteria_key,
+       sc.label,
+       sc.description,
+       sc.value_type,
+@@ -166,51 +212,51 @@ function evaluateNumberCriterion({ criterion, rawValue }) {
+   const expected = normalizeNumber(criterion.value_number);
+ 
+   if (actual === null) {
+     return { status: "REVIEW", matched: null, reason: "Carrier value is missing or not numeric", actualNormalized: null };
+   }
+   if (expected === null) {
+     return { status: "REVIEW", matched: null, reason: "Expected numeric value is not configured", actualNormalized: actual };
+   }
+ 
+   let matched = null;
+   if (op === "EQUALS") matched = actual === expected;
+   else if (op === "NOT_EQUALS") matched = actual !== expected;
+   else if (op === "LESS_THAN") matched = actual < expected;
+   else if (op === "LESS_THAN_OR_EQUAL") matched = actual <= expected;
+   else if (op === "GREATER_THAN") matched = actual > expected;
+   else if (op === "GREATER_THAN_OR_EQUAL") matched = actual >= expected;
+ 
+   if (matched === null) {
+     return { status: "REVIEW", matched: null, reason: `Unsupported NUMBER operator: ${op}`, actualNormalized: actual };
+   }
+ 
+   return { status: matched ? "PASS" : "FAIL", matched, reason: matched ? "Numeric value matched rule" : "Numeric value did not match rule", actualNormalized: actual };
+ }
+ 
+ function evaluateEnumCriterion({ criterion, rawValue }) {
+-  const actual = normalizeText(rawValue);
++  const actual = normalizeEnumCarrierValue({ criterion, rawValue });
+   const op = String(criterion.comparison_operator || "EQUALS").toUpperCase();
+   const expectedText = normalizeText(criterion.value_text);
+ 
+   if (!actual) {
+     return { status: "REVIEW", matched: null, reason: "Carrier value is missing", actualNormalized: null };
+   }
+ 
+   const actualUpper = actual.toUpperCase();
+   if (op === "EQUALS") {
+     if (!expectedText) return { status: "REVIEW", matched: null, reason: "Expected text value is not configured", actualNormalized: actual };
+     const matched = actualUpper === expectedText.toUpperCase();
+     return { status: matched ? "PASS" : "FAIL", matched, reason: matched ? "Text matched expected value" : "Text did not match expected value", actualNormalized: actual };
+   }
+ 
+   if (op === "NOT_EQUALS") {
+     if (!expectedText) return { status: "REVIEW", matched: null, reason: "Expected text value is not configured", actualNormalized: actual };
+     const matched = actualUpper !== expectedText.toUpperCase();
+     return { status: matched ? "PASS" : "FAIL", matched, reason: matched ? "Text differs as expected" : "Text equals excluded value", actualNormalized: actual };
+   }
+ 
+   if (op === "IN" || op === "NOT_IN") {
+     const expectedSet = parseCsvSet(criterion.value_text);
+     if (!expectedSet.length) {
+       return { status: "REVIEW", matched: null, reason: "Expected IN list is not configured", actualNormalized: actual };
+     }
