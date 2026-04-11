@@ -436,6 +436,21 @@ body.account-page{
   color:rgba(148,163,184,.95);
 }
 
+.screening-group-controls{
+  display:flex;
+  align-items:flex-end;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.screening-group-match{
+  min-width:200px;
+}
+
+.screening-group-match .screening-field-label{
+  margin-bottom:4px;
+}
+
 .screening-group-criteria{
   margin:0;
   padding-left:18px;
@@ -474,6 +489,20 @@ body.account-page{
 .screening-field-note{
   font-size:.72rem;
   color:rgba(148,163,184,.88);
+}
+
+.screening-groups-empty{
+  border:1px dashed rgba(148,163,184,.4);
+  border-radius:12px;
+  background:rgba(15,23,42,.3);
+  padding:12px;
+}
+
+.screening-groups-empty ul{
+  margin:8px 0 0;
+  padding-left:18px;
+  color:rgba(226,232,240,.92);
+  font-size:.82rem;
 }
 
 .screening-select{
@@ -995,6 +1024,12 @@ body.account-page .page{
   color: #ff9c9c;
   background: rgba(255,156,156,.14);
   border: 1px solid rgba(255,156,156,.4);
+}
+
+.screening-group-modal-form{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
 }
 
 

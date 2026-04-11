@@ -481,6 +481,8 @@ let selectedScreeningProfileId = null;
 let screeningCriteriaOriginal = [];
 let screeningCriteriaCurrent = [];
 let screeningRuleGroups = [];
+let screeningRuleGroupModalState = { open: false, submitting: false };
+let screeningRuleGroupRenameModalState = { open: false, submitting: false, groupId: null };
 
 const SCREENING_GROUP_MATCH_LABELS = {
   ALL: "All of these",
@@ -1149,6 +1151,183 @@ function labelForScreeningGroupMatch(group) {
   return SCREENING_GROUP_MATCH_LABELS[matchType] || SCREENING_GROUP_MATCH_LABELS.ALL;
 }
 
+function getScreeningGroupModalEls() {
+  return {
+    modal: document.getElementById("screening-group-modal"),
+    form: document.getElementById("screening-group-modal-form"),
+    nameInput: document.getElementById("screening-group-name"),
+    matchTypeSelect: document.getElementById("screening-group-match-type"),
+    submitBtn: document.getElementById("screening-group-modal-submit"),
+    cancelBtn: document.getElementById("screening-group-modal-cancel"),
+    closeBtn: document.getElementById("screening-group-modal-close"),
+    errorEl: document.getElementById("screening-group-modal-error"),
+  };
+}
+
+function setScreeningGroupModalError(message = "") {
+  const { errorEl } = getScreeningGroupModalEls();
+  if (!errorEl) return;
+  errorEl.hidden = !message;
+  errorEl.textContent = message || "";
+}
+
+function closeScreeningRuleGroupModal() {
+  const { modal, form, nameInput, matchTypeSelect, submitBtn } = getScreeningGroupModalEls();
+  if (!modal || !form || !nameInput || !matchTypeSelect || !submitBtn) return;
+  screeningRuleGroupModalState = { open: false, submitting: false };
+  modal.hidden = true;
+  form.reset();
+  nameInput.value = "";
+  matchTypeSelect.value = "ALL";
+  submitBtn.disabled = false;
+  submitBtn.textContent = "Create Group";
+  setScreeningGroupModalError("");
+}
+
+function openScreeningRuleGroupModal() {
+  const { modal, nameInput, matchTypeSelect, submitBtn } = getScreeningGroupModalEls();
+  if (!modal || !nameInput || !matchTypeSelect || !submitBtn) return;
+  screeningRuleGroupModalState = { open: true, submitting: false };
+  nameInput.value = "";
+  matchTypeSelect.value = "ALL";
+  submitBtn.disabled = !selectedScreeningProfileId;
+  setScreeningGroupModalError(selectedScreeningProfileId ? "" : "Select a screening profile before creating a rule group.");
+  modal.hidden = false;
+  setTimeout(() => nameInput.focus(), 0);
+}
+
+function wireScreeningRuleGroupModalOnce() {
+  const { modal, form, nameInput, matchTypeSelect, submitBtn, cancelBtn, closeBtn } = getScreeningGroupModalEls();
+  if (!modal || !form || !nameInput || !matchTypeSelect || !submitBtn || !cancelBtn || !closeBtn) return;
+  if (modal.dataset.wired === "1") return;
+  modal.dataset.wired = "1";
+
+  closeBtn.addEventListener("click", closeScreeningRuleGroupModal);
+  cancelBtn.addEventListener("click", closeScreeningRuleGroupModal);
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) closeScreeningRuleGroupModal();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && screeningRuleGroupModalState.open) closeScreeningRuleGroupModal();
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (screeningRuleGroupModalState.submitting) return;
+    if (!selectedScreeningProfileId) {
+      setScreeningGroupModalError("Select a screening profile before creating a rule group.");
+      return;
+    }
+    const groupName = String(nameInput.value || "").trim();
+    if (!groupName) {
+      setScreeningGroupModalError("Group name is required.");
+      nameInput.focus();
+      return;
+    }
+    screeningRuleGroupModalState.submitting = true;
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Creating...";
+    setScreeningGroupModalError("");
+    try {
+      await createScreeningRuleGroup({ groupName, matchType: matchTypeSelect.value || "ALL" });
+      closeScreeningRuleGroupModal();
+    } catch (err) {
+      screeningRuleGroupModalState.submitting = false;
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Create Group";
+      setScreeningGroupModalError(err?.message || "Failed to create screening rule group.");
+    }
+  });
+}
+
+function getScreeningGroupRenameModalEls() {
+  return {
+    modal: document.getElementById("screening-group-rename-modal"),
+    form: document.getElementById("screening-group-rename-modal-form"),
+    nameInput: document.getElementById("screening-group-rename-name"),
+    submitBtn: document.getElementById("screening-group-rename-modal-submit"),
+    cancelBtn: document.getElementById("screening-group-rename-modal-cancel"),
+    closeBtn: document.getElementById("screening-group-rename-modal-close"),
+    errorEl: document.getElementById("screening-group-rename-modal-error"),
+  };
+}
+
+function setScreeningGroupRenameModalError(message = "") {
+  const { errorEl } = getScreeningGroupRenameModalEls();
+  if (!errorEl) return;
+  errorEl.hidden = !message;
+  errorEl.textContent = message || "";
+}
+
+function closeScreeningRuleGroupRenameModal() {
+  const { modal, form, submitBtn } = getScreeningGroupRenameModalEls();
+  if (!modal || !form || !submitBtn) return;
+  screeningRuleGroupRenameModalState = { open: false, submitting: false, groupId: null };
+  submitBtn.disabled = false;
+  submitBtn.textContent = "Save";
+  setScreeningGroupRenameModalError("");
+  form.reset();
+  modal.hidden = true;
+}
+
+function openScreeningRuleGroupRenameModal(group) {
+  if (!group) return;
+  const { modal, nameInput } = getScreeningGroupRenameModalEls();
+  if (!modal || !nameInput) return;
+  screeningRuleGroupRenameModalState = { open: true, submitting: false, groupId: String(group.id) };
+  nameInput.value = String(group.group_name || "");
+  setScreeningGroupRenameModalError("");
+  modal.hidden = false;
+  setTimeout(() => nameInput.focus(), 0);
+}
+
+function wireScreeningRuleGroupRenameModalOnce() {
+  const { modal, form, nameInput, submitBtn, cancelBtn, closeBtn } = getScreeningGroupRenameModalEls();
+  if (!modal || !form || !nameInput || !submitBtn || !cancelBtn || !closeBtn) return;
+  if (modal.dataset.wired === "1") return;
+  modal.dataset.wired = "1";
+
+  closeBtn.addEventListener("click", closeScreeningRuleGroupRenameModal);
+  cancelBtn.addEventListener("click", closeScreeningRuleGroupRenameModal);
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) closeScreeningRuleGroupRenameModal();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && screeningRuleGroupRenameModalState.open) closeScreeningRuleGroupRenameModal();
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (screeningRuleGroupRenameModalState.submitting) return;
+    if (!selectedScreeningProfileId || !screeningRuleGroupRenameModalState.groupId) return;
+    const nextName = String(nameInput.value || "").trim();
+    if (!nextName) {
+      setScreeningGroupRenameModalError("Group name is required.");
+      nameInput.focus();
+      return;
+    }
+
+    screeningRuleGroupRenameModalState.submitting = true;
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Saving...";
+    setScreeningGroupRenameModalError("");
+
+    try {
+      await apiPatch(
+        `/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/groups/${encodeURIComponent(screeningRuleGroupRenameModalState.groupId)}`,
+        { group_name: nextName }
+      );
+      closeScreeningRuleGroupRenameModal();
+      await loadScreeningCriteria(selectedScreeningProfileId);
+    } catch (err) {
+      screeningRuleGroupRenameModalState.submitting = false;
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Save";
+      setScreeningGroupRenameModalError(err?.message || "Failed to rename rule group.");
+    }
+  });
+}
+
 
 function normalizeScreeningCriterionForSave(row) {
   const normalizedNumber = row.value_number === null || row.value_number === undefined || row.value_number === ""
@@ -1301,7 +1480,7 @@ function renderScreeningCriteria(criteria = []) {
         ).join("");
       const groupSelect = `
         <label class="screening-field screening-rule-group-assignment">
-          <span class="screening-field-label">Group</span>
+          <span class="screening-field-label">Rule Group</span>
           <select class="api-input screening-select" data-screening-group-id="${idx}" ${canAssignGroup ? "" : "disabled"}>
             ${groupOptions}
           </select>
@@ -1498,7 +1677,15 @@ function renderScreeningRuleGroups() {
   }
 
   if (!screeningRuleGroups.length) {
-    host.innerHTML = `<div class="muted">No rule groups yet. Create a group to combine rules with ALL/ANY logic.</div>`;
+    host.innerHTML = `
+      <div class="screening-groups-empty">
+        <div>Create groups to combine multiple rules.</div>
+        <ul>
+          <li><strong>All of these</strong> = every rule in the group must match.</li>
+          <li><strong>Any of these</strong> = at least one rule in the group must match.</li>
+        </ul>
+      </div>
+    `;
     return;
   }
 
@@ -1511,12 +1698,20 @@ function renderScreeningRuleGroups() {
         <div class="screening-group-head">
           <div>
             <div class="screening-group-title">${escapeHtml(group.group_name || "Untitled Group")}</div>
-            <div class="screening-group-meta">Match: ${escapeHtml(labelForScreeningGroupMatch(group))}</div>
+            <div class="screening-group-meta">Assigned rules: ${(group.criteria || []).length}</div>
           </div>
-          <div class="row-actions">
-            <button class="btn-ghost" data-screening-group-rename="${group.id}">Rename</button>
-            <button class="btn-ghost" data-screening-group-match="${group.id}">Match Type</button>
-            <button class="btn-ghost" data-screening-group-delete="${group.id}">Delete</button>
+          <div class="screening-group-controls">
+            <label class="screening-group-match">
+              <span class="screening-field-label">Match Type: ${escapeHtml(labelForScreeningGroupMatch(group))}</span>
+              <select class="api-input screening-select" data-screening-group-match-select="${group.id}">
+                <option value="ALL" ${normalizeScreeningMatchType(group.match_type) === "ALL" ? "selected" : ""}>All of these</option>
+                <option value="ANY" ${normalizeScreeningMatchType(group.match_type) === "ANY" ? "selected" : ""}>Any of these</option>
+              </select>
+            </label>
+            <div class="row-actions">
+              <button class="btn-ghost" data-screening-group-rename="${group.id}">Rename</button>
+              <button class="btn-ghost" data-screening-group-delete="${group.id}">Delete</button>
+            </div>
           </div>
         </div>
         ${criteriaLines ? `<ul class="screening-group-criteria">${criteriaLines}</ul>` : `<div class="muted">No rules assigned yet.</div>`}
@@ -1525,26 +1720,20 @@ function renderScreeningRuleGroups() {
   }).join("");
 
   host.querySelectorAll("[data-screening-group-rename]").forEach((button) => {
-    button.addEventListener("click", async () => {
+    button.addEventListener("click", () => {
       const groupId = button.getAttribute("data-screening-group-rename");
       const group = getScreeningGroupById(groupId);
       if (!group || !selectedScreeningProfileId) return;
-      const nextName = prompt("Rename group:", group.group_name || "");
-      if (!nextName || !String(nextName).trim()) return;
-      await apiPatch(`/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/groups/${encodeURIComponent(group.id)}`, {
-        group_name: String(nextName).trim(),
-      });
-      await loadScreeningCriteria(selectedScreeningProfileId);
+      openScreeningRuleGroupRenameModal(group);
     });
   });
 
-  host.querySelectorAll("[data-screening-group-match]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      const groupId = button.getAttribute("data-screening-group-match");
+  host.querySelectorAll("[data-screening-group-match-select]").forEach((selectEl) => {
+    selectEl.addEventListener("change", async () => {
+      const groupId = selectEl.getAttribute("data-screening-group-match-select");
       const group = getScreeningGroupById(groupId);
       if (!group || !selectedScreeningProfileId) return;
-      const current = normalizeScreeningMatchType(group.match_type);
-      const next = current === "ALL" ? "ANY" : "ALL";
+      const next = normalizeScreeningMatchType(selectEl.value);
       await apiPatch(`/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/groups/${encodeURIComponent(group.id)}`, {
         match_type: next,
       });
@@ -1694,16 +1883,14 @@ async function setDefaultScreeningProfile() {
   await loadScreeningProfiles();
 }
 
-async function createScreeningRuleGroup() {
+async function createScreeningRuleGroup({ groupName, matchType } = {}) {
   if (!selectedScreeningProfileId) return;
-  const groupName = prompt("Name your new rule group:");
-  if (!groupName || !String(groupName).trim()) return;
-  const useAny = confirm("Use 'Any of these' matching?\n\nChoose OK for Any of these, Cancel for All of these.");
-  const matchType = useAny ? "ANY" : "ALL";
+  const nextName = String(groupName || "").trim();
+  if (!nextName) throw new Error("Group name is required.");
 
   await apiPost(`/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/groups`, {
-    group_name: String(groupName).trim(),
-    match_type: matchType,
+    group_name: nextName,
+    match_type: normalizeScreeningMatchType(matchType),
   });
   await loadScreeningCriteria(selectedScreeningProfileId);
 }
@@ -2542,10 +2729,7 @@ document.getElementById("btn-screening-set-default")?.addEventListener("click", 
 });
 
 document.getElementById("btn-screening-new-group")?.addEventListener("click", () => {
-  createScreeningRuleGroup().catch((err) => {
-    console.error(err);
-    alert(err?.message || "Failed to create screening rule group.");
-  });
+  openScreeningRuleGroupModal();
 });
 
 document.getElementById("btn-screening-save")?.addEventListener("click", () => {
@@ -2737,6 +2921,8 @@ pwSave?.addEventListener("click", async () => {
   .then(() => {
     wireAgreementUploadModalOnce();
     wireAgreementDeleteModalOnce();
+    wireScreeningRuleGroupModalOnce();
+    wireScreeningRuleGroupRenameModalOnce();
   })
   .then(() => {
     if (activeTab === "help") {

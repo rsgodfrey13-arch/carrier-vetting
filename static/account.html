@@ -410,20 +410,11 @@
 
             <div class="divider"></div>
 
-            <div class="screening-criteria-wrap">
-              <div class="row-title">Screening Criteria</div>
-              <div id="screening-criteria-list" class="screening-criteria-list">
-                <div class="muted">Select a screening profile to configure criteria.</div>
-              </div>
-            </div>
-
-            <div class="divider"></div>
-
             <div class="screening-groups-wrap">
               <div class="row screening-groups-head">
                 <div>
                   <div class="row-title">Rule Groups</div>
-                  <div class="row-sub">Group enabled rules with <strong>All of these</strong> or <strong>Any of these</strong> logic.</div>
+                  <div class="row-sub">Create a group, choose how it matches, then assign rules from the criteria cards below.</div>
                 </div>
                 <div class="row-actions">
                   <button class="btn-ghost" id="btn-screening-new-group">New Group</button>
@@ -431,6 +422,15 @@
               </div>
               <div id="screening-groups-list" class="screening-groups-list">
                 <div class="muted">Select a screening profile to configure rule groups.</div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="screening-criteria-wrap">
+              <div class="row-title">Screening Criteria</div>
+              <div id="screening-criteria-list" class="screening-criteria-list">
+                <div class="muted">Select a screening profile to configure criteria.</div>
               </div>
             </div>
 
@@ -1017,6 +1017,65 @@
     <div class="modal-actions">
       <button class="btn-ghost" type="button" id="pw-cancel">Cancel</button>
       <button class="btn-primary" type="button" id="pw-save">Update password</button>
+    </div>
+  </div>
+</div>
+
+<div id="screening-group-modal" class="cs-modal-backdrop" hidden>
+  <div class="cs-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="screening-group-modal-title">
+    <div class="cs-modal-header">
+      <div class="cs-modal-headings">
+        <div id="screening-group-modal-title" class="cs-modal-title">New Rule Group</div>
+        <div class="cs-modal-subtitle">Name the group and choose how its assigned rules should match.</div>
+      </div>
+      <button id="screening-group-modal-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
+    </div>
+
+    <form id="screening-group-modal-form" class="cs-modal-body screening-group-modal-form">
+      <label class="field">
+        <span class="field-label">Group Name</span>
+        <input id="screening-group-name" class="api-input" type="text" maxlength="120" required placeholder="e.g., Safety Priorities">
+      </label>
+
+      <label class="field">
+        <span class="field-label">Match Type</span>
+        <select id="screening-group-match-type" class="api-input screening-select">
+          <option value="ALL">All of these</option>
+          <option value="ANY">Any of these</option>
+        </select>
+      </label>
+
+      <div id="screening-group-modal-error" class="error-text" hidden></div>
+    </form>
+
+    <div class="cs-modal-footer">
+      <button id="screening-group-modal-cancel" class="btn-ghost" type="button">Cancel</button>
+      <button id="screening-group-modal-submit" class="btn-primary" type="submit" form="screening-group-modal-form">Create Group</button>
+    </div>
+  </div>
+</div>
+
+<div id="screening-group-rename-modal" class="cs-modal-backdrop" hidden>
+  <div class="cs-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="screening-group-rename-modal-title">
+    <div class="cs-modal-header">
+      <div class="cs-modal-headings">
+        <div id="screening-group-rename-modal-title" class="cs-modal-title">Rename Rule Group</div>
+      </div>
+      <button id="screening-group-rename-modal-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
+    </div>
+
+    <form id="screening-group-rename-modal-form" class="cs-modal-body screening-group-modal-form">
+      <label class="field">
+        <span class="field-label">Group Name</span>
+        <input id="screening-group-rename-name" class="api-input" type="text" maxlength="120" required>
+      </label>
+
+      <div id="screening-group-rename-modal-error" class="error-text" hidden></div>
+    </form>
+
+    <div class="cs-modal-footer">
+      <button id="screening-group-rename-modal-cancel" class="btn-ghost" type="button">Cancel</button>
+      <button id="screening-group-rename-modal-submit" class="btn-primary" type="submit" form="screening-group-rename-modal-form">Save</button>
     </div>
   </div>
 </div>
