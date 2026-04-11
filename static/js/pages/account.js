@@ -875,10 +875,160 @@ function wireAgreementDeleteModalOnce() {
   });
 }
 
+function normalizeOperator(value) {
+  if (value === null || value === undefined || String(value).trim() === "") return null;
+  return String(value).trim().toUpperCase();
+}
+
+const OPERATOR_LABELS = {
+  EQUALS: "is",
+  NOT_EQUALS: "is not",
+  GREATER_THAN: "greater than",
+  GREATER_THAN_OR_EQUAL: "greater than or equal to",
+  LESS_THAN: "less than",
+  LESS_THAN_OR_EQUAL: "less than or equal to",
+  IN: "in",
+  NOT_IN: "not in",
+  IS_TRUE: "is true",
+  IS_FALSE: "is false",
+};
+
+const OPERATORS_BY_TYPE = {
+  BOOLEAN: ["IS_TRUE", "IS_FALSE"],
+  NUMBER: ["GREATER_THAN", "GREATER_THAN_OR_EQUAL", "LESS_THAN", "LESS_THAN_OR_EQUAL", "EQUALS", "NOT_EQUALS"],
+  DATE: ["LESS_THAN", "LESS_THAN_OR_EQUAL", "GREATER_THAN", "GREATER_THAN_OR_EQUAL", "EQUALS", "NOT_EQUALS"],
+  ENUM: ["EQUALS", "NOT_EQUALS"],
+};
+
+const SCREENING_DEFAULT_OPERATOR_BY_KEY = {
+  ALLOWED_TO_OPERATE: "IS_TRUE",
+  CARGO_INSURANCE_ON_FILE: "IS_TRUE",
+  BIPD_INSURANCE_ON_FILE: "IS_TRUE",
+  BOND_INSURANCE_ON_FILE: "IS_TRUE",
+  MCS_150_OUTDATED: "IS_FALSE",
+  CRASH_TOTAL: "GREATER_THAN",
+  DRIVER_OOS_RATE: "GREATER_THAN",
+  VEHICLE_OOS_RATE: "GREATER_THAN",
+  TOTAL_DRIVERS: "LESS_THAN",
+  TOTAL_POWER_UNITS: "LESS_THAN",
+};
+
+function criterionDefaultOperator(row) {
+  const type = String(row?.value_type || "").toUpperCase();
+  const options = OPERATORS_BY_TYPE[type] || [];
+  if (!options.length) return null;
+
+  const key = String(row?.criteria_key || "").trim().toUpperCase();
+  const mapped = SCREENING_DEFAULT_OPERATOR_BY_KEY[key];
+  if (mapped && options.includes(mapped)) return mapped;
+
+  if (type === "BOOLEAN") return "IS_TRUE";
+  if (type === "NUMBER") return "GREATER_THAN";
+  if (type === "DATE") return "LESS_THAN_OR_EQUAL";
+  if (type === "ENUM") return "EQUALS";
+  return options[0] || null;
+}
+
+function ensureScreeningDefaults(row) {
+  const type = String(row?.value_type || "").toUpperCase();
+  if (!row) return;
+
+  if (!normalizeOperator(row.comparison_operator)) {
+    row.comparison_operator = criterionDefaultOperator(row);
+  }
+
+  if (type === "BOOLEAN") {
+    if (row.value_bool === null || row.value_bool === undefined) {
+      row.value_bool = normalizeOperator(row.comparison_operator) !== "IS_FALSE";
+    }
+  } else if (type === "NUMBER") {
+    if (row.value_number === "") {
+      row.value_number = null;
+    }
+  } else if (type === "ENUM") {
+    const options = Array.isArray(row.enum_options) ? row.enum_options : [];
+    if ((row.value_text === null || row.value_text === undefined || row.value_text === "") && options.length) {
+      row.value_text = options[0];
+    }
+  }
+}
+
+function operatorOptionsForRow(row) {
+  const type = String(row?.value_type || "").toUpperCase();
+  const allowed = OPERATORS_BY_TYPE[type] || [];
+  const current = normalizeOperator(row?.comparison_operator);
+  const base = allowed.length ? [...allowed] : [];
+  if (current && !base.includes(current)) base.unshift(current);
+  if (!base.length) base.push("EQUALS");
+  return base;
+}
+
+function screeningRulePreview(row) {
+  const rawLabel = row.label || row.criteria_key || "Criterion";
+  const label = String(rawLabel).trim();
+  const key = String(row.criteria_key || "").trim().toUpperCase();
+  const type = String(row.value_type || "").toUpperCase();
+  const op = normalizeOperator(row.comparison_operator) || criterionDefaultOperator(row);
+  const opLabel = OPERATOR_LABELS[op] || "is";
+
+  if (type === "BOOLEAN") {
+    if (key === "ALLOWED_TO_OPERATE") {
+      return op === "IS_FALSE"
+        ? "Carrier is flagged if the carrier is not allowed to operate."
+        : "Carrier must be allowed to operate.";
+    }
+    if (key === "CARGO_INSURANCE_ON_FILE") {
+      return op === "IS_FALSE"
+        ? "Carrier is flagged if cargo insurance is not on file."
+        : "Carrier must have cargo insurance on file.";
+    }
+    if (key === "BIPD_INSURANCE_ON_FILE") {
+      return op === "IS_FALSE"
+        ? "Carrier is flagged if BIPD insurance is not on file."
+        : "Carrier must have BIPD insurance on file.";
+    }
+    if (key === "BOND_INSURANCE_ON_FILE") {
+      return op === "IS_FALSE"
+        ? "Carrier is flagged if bond insurance is not on file."
+        : "Carrier must have bond insurance on file.";
+    }
+    if (key === "MCS_150_OUTDATED") {
+      return op === "IS_FALSE"
+        ? "Carrier must not have an outdated MCS-150."
+        : "Carrier is flagged if the MCS-150 is outdated.";
+    }
+
+    return op === "IS_FALSE"
+      ? `Carrier is flagged if ${label} is false.`
+      : `Carrier is flagged if ${label} is true.`;
+  }
+
+  if (type === "NUMBER") {
+    const hasValue = !(row.value_number === null || row.value_number === undefined || row.value_number === "");
+    if (!hasValue) return `Carrier is flagged if ${label} is ${opLabel} the selected value. Enter a value to complete this rule.`;
+    return `Carrier is flagged if ${label} is ${opLabel} ${row.value_number}.`;
+  }
+
+  if (type === "DATE") {
+    const value = row.value_date ? String(row.value_date).slice(0, 10) : "the selected date";
+    return `Carrier is flagged if ${label} is ${opLabel} ${value}.`;
+  }
+
+  if (type === "ENUM") {
+    const value = row.value_text || "the selected value";
+    if (op === "NOT_EQUALS") return `Carrier is flagged if ${label} is not ${value}.`;
+    return `Carrier is flagged if ${label} is ${value}.`;
+  }
+
+  return `Carrier is flagged if ${label} matches this rule.`;
+}
+
+
 function normalizeScreeningCriterionForSave(row) {
   return {
     screening_criteria_id: Number(row.screening_criteria_id),
     is_enabled: !!row.is_enabled,
+    comparison_operator: normalizeOperator(row.comparison_operator),
     value_bool: row.value_bool === null || row.value_bool === undefined ? null : !!row.value_bool,
     value_number: row.value_number === null || row.value_number === undefined || row.value_number === "" ? null : Number(row.value_number),
     value_date: row.value_date ? String(row.value_date).slice(0, 10) : null,
@@ -979,39 +1129,89 @@ function renderScreeningCriteria(criteria = []) {
     return;
   }
 
-  host.innerHTML = criteria.map((row, idx) => {
-    const disabledAttr = row.is_enabled ? "" : "disabled";
-    let inputHtml = `<span class="muted">Unsupported criterion type</span>`;
-    const type = String(row.value_type || "").toUpperCase();
+  const grouped = criteria.reduce((acc, row, idx) => {
+    const category = String(row.category || "Other").trim() || "Other";
+    if (!acc[category]) acc[category] = [];
+    acc[category].push({ row, idx });
+    return acc;
+  }, {});
 
-    if (type === "BOOLEAN") {
-      inputHtml = `<label class="switch"><input type="checkbox" data-screening-value="value_bool" data-idx="${idx}" ${row.value_bool ? "checked" : ""} ${disabledAttr}><span class="switch-ui"></span></label>`;
-    } else if (type === "NUMBER") {
-      inputHtml = `<input class="api-input" type="number" step="any" data-screening-value="value_number" data-idx="${idx}" value="${row.value_number ?? ""}" ${disabledAttr}>`;
-    } else if (type === "DATE") {
-      const value = row.value_date ? String(row.value_date).slice(0, 10) : "";
-      inputHtml = `<input class="api-input" type="date" data-screening-value="value_date" data-idx="${idx}" value="${value}" ${disabledAttr}>`;
-    } else if (type === "ENUM") {
-      const options = Array.isArray(row.enum_options) ? row.enum_options : [];
-      const opts = [`<option value="">Select…</option>`].concat(
-        options.map((opt) => `<option value="${escapeHtml(opt)}" ${String(row.value_text || "") === String(opt) ? "selected" : ""}>${escapeHtml(opt)}</option>`)
-      ).join("");
-      inputHtml = `<select class="api-input" data-screening-value="value_text" data-idx="${idx}" ${disabledAttr}>${opts}</select>`;
-    }
+  const sectionHtml = Object.entries(grouped).map(([category, rows]) => {
+    const enabledCount = rows.filter(({ row }) => row.is_enabled).length;
+    const cardsHtml = rows.map(({ row, idx }) => {
+      const type = String(row.value_type || "").toUpperCase();
+      const operatorOptions = operatorOptionsForRow(row);
+      const isEnabled = !!row.is_enabled;
+      const description = row.description ? `<div class="screening-criterion-desc">${escapeHtml(row.description)}</div>` : "";
+
+      const operatorSelect = `
+        <label class="screening-field">
+          <span class="screening-field-label">Operator</span>
+          <select class="api-input" data-screening-operator="${idx}">
+            ${operatorOptions.map((op) => `<option value="${op}" ${normalizeOperator(row.comparison_operator) === op ? "selected" : ""}>${escapeHtml(OPERATOR_LABELS[op] || op)}</option>`).join("")}
+          </select>
+        </label>
+      `;
+
+      let valueControl = "";
+      if (type === "NUMBER") {
+        const needsValue = row.value_number === null || row.value_number === undefined || row.value_number === "";
+        valueControl = `
+          <label class="screening-field">
+            <span class="screening-field-label">Value</span>
+            <input class="api-input ${needsValue ? "screening-value-missing" : ""}" type="number" step="any" placeholder="Enter value" data-screening-value="value_number" data-idx="${idx}" value="${row.value_number ?? ""}">
+            ${needsValue ? `<span class="screening-field-note">Add a value to complete this rule.</span>` : ""}
+          </label>
+        `;
+      } else if (type === "DATE") {
+        const value = row.value_date ? String(row.value_date).slice(0, 10) : "";
+        valueControl = `
+          <label class="screening-field">
+            <span class="screening-field-label">Date</span>
+            <input class="api-input" type="date" data-screening-value="value_date" data-idx="${idx}" value="${value}">
+          </label>
+        `;
+      } else if (type === "ENUM") {
+        const options = Array.isArray(row.enum_options) ? row.enum_options : [];
+        const opts = options.map((opt) => `<option value="${escapeHtml(opt)}" ${String(row.value_text || "") === String(opt) ? "selected" : ""}>${escapeHtml(opt)}</option>`).join("");
+        valueControl = `
+          <label class="screening-field">
+            <span class="screening-field-label">Value</span>
+            <select class="api-input" data-screening-value="value_text" data-idx="${idx}">${opts}</select>
+          </label>
+        `;
+      }
+
+      return `
+        <article class="screening-rule-card ${isEnabled ? "is-enabled" : "is-disabled"}">
+          <label class="screening-rule-head">
+            <input type="checkbox" data-screening-enabled="${idx}" ${isEnabled ? "checked" : ""}>
+            <span class="screening-rule-title">${escapeHtml(row.label || row.criteria_key || "Criterion")}</span>
+          </label>
+          ${description}
+          ${isEnabled ? `
+            <div class="screening-rule-body">
+              <div class="screening-fields">${operatorSelect}${valueControl}</div>
+              <div class="screening-preview-label">Rule Preview</div>
+              <div class="screening-rule-preview">${escapeHtml(screeningRulePreview(row))}</div>
+            </div>
+          ` : ""}
+        </article>
+      `;
+    }).join("");
 
     return `
-      <div class="row screening-criteria-row ${row.is_enabled ? "" : "is-disabled"}">
-        <div class="screening-criteria-main">
-          <label class="toggle">
-            <input type="checkbox" data-screening-enabled="${idx}" ${row.is_enabled ? "checked" : ""}>
-            <span>${escapeHtml(row.label || row.criteria_key || "Criterion")}</span>
-          </label>
-          ${row.description ? `<div class="row-sub">${escapeHtml(row.description)}</div>` : ``}
-        </div>
-        <div class="screening-criteria-input">${inputHtml}</div>
-      </div>
+      <section class="screening-category-section">
+        <header class="screening-category-head">
+          <h3>${escapeHtml(category)}</h3>
+          <span class="screening-category-meta">${enabledCount}/${rows.length} enabled</span>
+        </header>
+        <div class="screening-category-list">${cardsHtml}</div>
+      </section>
     `;
   }).join("");
+
+  host.innerHTML = sectionHtml;
 
   host.querySelectorAll("[data-screening-enabled]").forEach((el) => {
     el.addEventListener("change", () => {
@@ -1019,6 +1219,21 @@ function renderScreeningCriteria(criteria = []) {
       const row = screeningCriteriaCurrent[idx];
       if (!row) return;
       row.is_enabled = el.checked;
+      if (row.is_enabled) ensureScreeningDefaults(row);
+      renderScreeningCriteria(screeningCriteriaCurrent);
+      updateScreeningSaveState();
+    });
+  });
+
+  host.querySelectorAll("[data-screening-operator]").forEach((el) => {
+    el.addEventListener("change", () => {
+      const idx = Number(el.getAttribute("data-screening-operator"));
+      const row = screeningCriteriaCurrent[idx];
+      if (!row) return;
+      row.comparison_operator = normalizeOperator(el.value);
+      if (String(row.value_type || "").toUpperCase() === "BOOLEAN") {
+        row.value_bool = row.comparison_operator !== "IS_FALSE";
+      }
       renderScreeningCriteria(screeningCriteriaCurrent);
       updateScreeningSaveState();
     });
@@ -1030,11 +1245,12 @@ function renderScreeningCriteria(criteria = []) {
       const key = el.getAttribute("data-screening-value");
       const row = screeningCriteriaCurrent[idx];
       if (!row) return;
-      if (key === "value_bool") row.value_bool = !!el.checked;
       if (key === "value_number") row.value_number = el.value === "" ? null : Number(el.value);
       if (key === "value_date") row.value_date = el.value || null;
       if (key === "value_text") row.value_text = el.value || null;
       updateScreeningSaveState();
+      const previewEl = host.querySelector(`.screening-rule-card input[data-screening-enabled="${idx}"]`)?.closest('.screening-rule-card')?.querySelector('.screening-rule-preview');
+      if (previewEl) previewEl.textContent = screeningRulePreview(row);
     });
   });
 
@@ -1060,6 +1276,9 @@ async function loadScreeningCriteria(profileId) {
   const rows = Array.isArray(data?.criteria) ? data.criteria : [];
   screeningCriteriaOriginal = clone(rows);
   screeningCriteriaCurrent = clone(rows);
+  screeningCriteriaCurrent.forEach((row) => {
+    if (row?.is_enabled) ensureScreeningDefaults(row);
+  });
   renderScreeningCriteria(screeningCriteriaCurrent);
 }
 

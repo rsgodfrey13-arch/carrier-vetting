@@ -270,7 +270,7 @@ body.account-page{
 .screening-profile-actions{
   display:flex;
   flex-wrap:wrap;
-  gap:8px;
+  gap:7px;
   justify-content:flex-end;
 }
 
@@ -278,7 +278,7 @@ body.account-page{
   display:flex;
   flex-wrap:wrap;
   gap:10px;
-  margin-top:10px;
+  margin-top:8px;
 }
 
 .screening-profile-pill{
@@ -309,28 +309,138 @@ body.account-page{
 }
 
 .screening-criteria-list{
-  margin-top:10px;
+  margin-top:12px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.screening-category-section{
+  border:1px solid rgba(148,163,184,.2);
+  border-radius:14px;
+  background:linear-gradient(165deg, rgba(8,16,34,.85), rgba(7,13,26,.82));
+  padding:12px 12px 10px;
+}
+
+.screening-category-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding-bottom:8px;
+  margin-bottom:8px;
+  border-bottom:1px solid rgba(148,163,184,.16);
+}
+
+.screening-category-head h3{
+  margin:0;
+  font-size:.78rem;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:#cbd5e1;
+}
+
+.screening-category-meta{
+  font-size:.72rem;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:rgba(148,163,184,.9);
+}
+
+.screening-category-list{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+}
+
+.screening-rule-card{
+  border:1px solid rgba(148,163,184,.2);
+  border-radius:12px;
+  background:rgba(15,23,42,.4);
+  padding:8px 11px;
+  transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+.screening-rule-card.is-disabled{
+  background:rgba(15,23,42,.18);
+  border-color:rgba(148,163,184,.16);
+}
+
+.screening-rule-card.is-enabled{
+  border-color:rgba(56,189,248,.46);
+  background:linear-gradient(145deg, rgba(56,189,248,.13), rgba(15,23,42,.56));
+  box-shadow:0 0 0 1px rgba(56,189,248,.18) inset, 0 10px 22px rgba(2,6,23,.28);
+}
+
+.screening-rule-head{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-weight:700;
+  color:#f1f5f9;
+}
+
+.screening-rule-title{
+  font-size:.92rem;
+}
+
+.screening-criterion-desc{
+  margin:4px 0 0 26px;
+  color:rgba(148,163,184,.92);
+  font-size:.8rem;
+}
+
+.screening-rule-body{
+  margin-top:8px;
+  margin-left:26px;
   display:flex;
   flex-direction:column;
   gap:8px;
 }
 
-.screening-criteria-row{
-  border:1px solid rgba(148,163,184,.22);
-  border-radius:12px;
-  padding:10px 12px;
+.screening-fields{
+  display:grid;
+  grid-template-columns: minmax(180px, 220px) minmax(180px, 240px);
+  gap:10px;
 }
 
-.screening-criteria-row.is-disabled{
-  opacity:.65;
+.screening-field{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
 }
 
-.screening-criteria-main{
-  flex:1;
+.screening-field-label{
+  font-size:.68rem;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  color:rgba(148,163,184,.9);
 }
 
-.screening-criteria-input{
-  min-width:180px;
+
+.screening-field-note{
+  font-size:.72rem;
+  color:rgba(148,163,184,.88);
+}
+
+.screening-value-missing{
+  border-color:rgba(251,191,36,.55) !important;
+  box-shadow:0 0 0 1px rgba(251,191,36,.18) inset;
+}
+
+.screening-preview-label{
+  font-size:.66rem;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:rgba(148,163,184,.88);
+}
+.screening-rule-preview{
+  font-size:.78rem;
+  color:#c7d2fe;
+  padding:7px 10px;
+  border-radius:10px;
+  border:1px solid rgba(99,102,241,.28);
+  background:rgba(55,48,163,.18);
 }
 
 /* Buttons: match your pill vibe */
@@ -2511,4 +2621,10 @@ body.account-page .api-input{
   border-color: rgba(248,113,113,.65);
   color: #fecaca;
   background: rgba(127,29,29,.35);
+}
+
+
+@media (max-width: 760px){
+  .screening-fields{ grid-template-columns: 1fr; }
+  .screening-rule-body,.screening-criterion-desc{ margin-left: 0; }
 }
