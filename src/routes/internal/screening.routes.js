@@ -425,13 +425,33 @@ router.post("/screening/profiles/:profileId/criteria", requireAuth, loadCompanyC
         }
       } else if (valueType === "ENUM") {
         if (item?.value_text !== null && item?.value_text !== undefined && item?.value_text !== "") {
-          const nextValue = String(item.value_text).trim();
           const options = normalizeEnumOptions(def.enum_options);
-          if (options.length && !options.includes(nextValue)) {
-            await client.query("ROLLBACK");
-            return res.status(400).json({ error: `Invalid ENUM value for criteria ${criteriaId}` });
+          const enumOp = comparisonOperator || "EQUALS";
+          const allowsMulti = enumOp === "IN" || enumOp === "NOT_IN";
+          const rawValue = String(item.value_text).trim();
+          if (allowsMulti) {
+            const values = rawValue.split(",").map((v) => v.trim()).filter(Boolean);
+            if (values.length === 0) {
+              await client.query("ROLLBACK");
+              return res.status(400).json({ error: `Invalid ENUM value for criteria ${criteriaId}` });
+            }
+            if (options.length && values.some((v) => !options.includes(v))) {
+              await client.query("ROLLBACK");
+              return res.status(400).json({ error: `Invalid ENUM value for criteria ${criteriaId}` });
+            }
+            valueText = values.join(", ");
+          } else {
+            const nextValue = rawValue.split(",").map((v) => v.trim()).filter(Boolean)[0] || "";
+            if (!nextValue) {
+              await client.query("ROLLBACK");
+              return res.status(400).json({ error: `Invalid ENUM value for criteria ${criteriaId}` });
+            }
+            if (options.length && !options.includes(nextValue)) {
+              await client.query("ROLLBACK");
+              return res.status(400).json({ error: `Invalid ENUM value for criteria ${criteriaId}` });
+            }
+            valueText = nextValue;
           }
-          valueText = nextValue;
         }
       }
 

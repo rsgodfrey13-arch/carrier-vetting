@@ -897,7 +897,7 @@ const OPERATORS_BY_TYPE = {
   BOOLEAN: ["IS_TRUE", "IS_FALSE"],
   NUMBER: ["GREATER_THAN", "GREATER_THAN_OR_EQUAL", "LESS_THAN", "LESS_THAN_OR_EQUAL", "EQUALS", "NOT_EQUALS"],
   DATE: ["LESS_THAN", "LESS_THAN_OR_EQUAL", "GREATER_THAN", "GREATER_THAN_OR_EQUAL", "EQUALS", "NOT_EQUALS"],
-  ENUM: ["EQUALS", "NOT_EQUALS"],
+  ENUM: ["EQUALS", "NOT_EQUALS", "IN", "NOT_IN"],
 };
 
 const SCREENING_DEFAULT_OPERATOR_BY_KEY = {
@@ -912,6 +912,14 @@ const SCREENING_DEFAULT_OPERATOR_BY_KEY = {
   TOTAL_DRIVERS: "LESS_THAN",
   TOTAL_POWER_UNITS: "LESS_THAN",
 };
+
+const SCREENING_INTEGER_CRITERIA_KEYS = new Set([
+  "CRASH_TOTAL",
+  "TOTAL_DRIVERS",
+  "TOTAL_POWER_UNITS",
+]);
+
+const SCREENING_MULTI_ENUM_OPERATORS = new Set(["IN", "NOT_IN"]);
 
 function criterionDefaultOperator(row) {
   const type = String(row?.value_type || "").toUpperCase();
@@ -929,6 +937,30 @@ function criterionDefaultOperator(row) {
   return options[0] || null;
 }
 
+function isIntegerLikeScreeningCriterion(row) {
+  const key = String(row?.criteria_key || "").trim().toUpperCase();
+  return SCREENING_INTEGER_CRITERIA_KEYS.has(key);
+}
+
+function normalizeNumberForCriterion(row, value) {
+  if (value === null || value === undefined || value === "") return null;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  return numeric;
+}
+
+function formatNumberForDisplay(row, value) {
+  if (value === null || value === undefined || value === "") return "";
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return "";
+  return isIntegerLikeScreeningCriterion(row) ? String(Math.trunc(numeric)) : String(numeric);
+}
+
+function parseEnumSelections(valueText) {
+  if (valueText === null || valueText === undefined || String(valueText).trim() === "") return [];
+  return String(valueText).split(",").map((v) => v.trim()).filter(Boolean);
+}
+
 function ensureScreeningDefaults(row) {
   const type = String(row?.value_type || "").toUpperCase();
   if (!row) return;
@@ -944,11 +976,19 @@ function ensureScreeningDefaults(row) {
   } else if (type === "NUMBER") {
     if (row.value_number === "") {
       row.value_number = null;
+    } else if (row.value_number !== null && row.value_number !== undefined) {
+      row.value_number = normalizeNumberForCriterion(row, row.value_number);
     }
   } else if (type === "ENUM") {
     const options = Array.isArray(row.enum_options) ? row.enum_options : [];
-    if ((row.value_text === null || row.value_text === undefined || row.value_text === "") && options.length) {
+    const op = normalizeOperator(row.comparison_operator) || criterionDefaultOperator(row);
+    const selectedValues = parseEnumSelections(row.value_text).filter((val) => !options.length || options.includes(val));
+    if (SCREENING_MULTI_ENUM_OPERATORS.has(op)) {
+      row.value_text = selectedValues.length ? selectedValues.join(", ") : null;
+    } else if ((row.value_text === null || row.value_text === undefined || row.value_text === "") && options.length) {
       row.value_text = options[0];
+    } else if (selectedValues.length) {
+      row.value_text = selectedValues[0];
     }
   }
 }
@@ -1006,7 +1046,7 @@ function screeningRulePreview(row) {
   if (type === "NUMBER") {
     const hasValue = !(row.value_number === null || row.value_number === undefined || row.value_number === "");
     if (!hasValue) return `Carrier is flagged if ${label} is ${opLabel} the selected value. Enter a value to complete this rule.`;
-    return `Carrier is flagged if ${label} is ${opLabel} ${row.value_number}.`;
+    return `Carrier is flagged if ${label} is ${opLabel} ${formatNumberForDisplay(row, row.value_number)}.`;
   }
 
   if (type === "DATE") {
@@ -1015,7 +1055,11 @@ function screeningRulePreview(row) {
   }
 
   if (type === "ENUM") {
-    const value = row.value_text || "the selected value";
+    const selectedValues = parseEnumSelections(row.value_text);
+    const value = selectedValues.length ? selectedValues.join(", ") : "the selected value";
+    if (op === "IN" || op === "NOT_IN") {
+      return `Carrier is flagged if ${label} is ${opLabel} ${value}.`;
+    }
     if (op === "NOT_EQUALS") return `Carrier is flagged if ${label} is not ${value}.`;
     return `Carrier is flagged if ${label} is ${value}.`;
   }
@@ -1025,12 +1069,17 @@ function screeningRulePreview(row) {
 
 
 function normalizeScreeningCriterionForSave(row) {
+  const normalizedNumber = row.value_number === null || row.value_number === undefined || row.value_number === ""
+    ? null
+    : normalizeNumberForCriterion(row, row.value_number);
   return {
     screening_criteria_id: Number(row.screening_criteria_id),
     is_enabled: !!row.is_enabled,
     comparison_operator: normalizeOperator(row.comparison_operator),
     value_bool: row.value_bool === null || row.value_bool === undefined ? null : !!row.value_bool,
-    value_number: row.value_number === null || row.value_number === undefined || row.value_number === "" ? null : Number(row.value_number),
+    value_number: normalizedNumber === null
+      ? null
+      : (isIntegerLikeScreeningCriterion(row) ? Math.round(normalizedNumber) : normalizedNumber),
     value_date: row.value_date ? String(row.value_date).slice(0, 10) : null,
     value_text: row.value_text === null || row.value_text === undefined || row.value_text === "" ? null : String(row.value_text),
   };
@@ -1147,7 +1196,7 @@ function renderScreeningCriteria(criteria = []) {
       const operatorSelect = `
         <label class="screening-field">
           <span class="screening-field-label">Operator</span>
-          <select class="api-input" data-screening-operator="${idx}">
+          <select class="api-input screening-select" data-screening-operator="${idx}">
             ${operatorOptions.map((op) => `<option value="${op}" ${normalizeOperator(row.comparison_operator) === op ? "selected" : ""}>${escapeHtml(OPERATOR_LABELS[op] || op)}</option>`).join("")}
           </select>
         </label>
@@ -1156,11 +1205,14 @@ function renderScreeningCriteria(criteria = []) {
       let valueControl = "";
       if (type === "NUMBER") {
         const needsValue = row.value_number === null || row.value_number === undefined || row.value_number === "";
+        const hasFractionalValue = isIntegerLikeScreeningCriterion(row) && Number.isFinite(Number(row.value_number)) && Number(row.value_number) % 1 !== 0;
+        const numberStep = isIntegerLikeScreeningCriterion(row) ? "1" : "any";
         valueControl = `
           <label class="screening-field">
             <span class="screening-field-label">Value</span>
-            <input class="api-input ${needsValue ? "screening-value-missing" : ""}" type="number" step="any" placeholder="Enter value" data-screening-value="value_number" data-idx="${idx}" value="${row.value_number ?? ""}">
+            <input class="api-input ${needsValue || hasFractionalValue ? "screening-value-missing" : ""}" type="number" step="${numberStep}" placeholder="Enter value" data-screening-value="value_number" data-idx="${idx}" value="${formatNumberForDisplay(row, row.value_number)}">
             ${needsValue ? `<span class="screening-field-note">Add a value to complete this rule.</span>` : ""}
+            ${hasFractionalValue ? `<span class="screening-field-note">Whole numbers only.</span>` : ""}
           </label>
         `;
       } else if (type === "DATE") {
@@ -1173,13 +1225,31 @@ function renderScreeningCriteria(criteria = []) {
         `;
       } else if (type === "ENUM") {
         const options = Array.isArray(row.enum_options) ? row.enum_options : [];
-        const opts = options.map((opt) => `<option value="${escapeHtml(opt)}" ${String(row.value_text || "") === String(opt) ? "selected" : ""}>${escapeHtml(opt)}</option>`).join("");
-        valueControl = `
-          <label class="screening-field">
-            <span class="screening-field-label">Value</span>
-            <select class="api-input" data-screening-value="value_text" data-idx="${idx}">${opts}</select>
-          </label>
-        `;
+        const op = normalizeOperator(row.comparison_operator) || criterionDefaultOperator(row);
+        const selectedValues = parseEnumSelections(row.value_text);
+        const isMultiSelect = SCREENING_MULTI_ENUM_OPERATORS.has(op);
+        if (isMultiSelect) {
+          const opts = options.map((opt) => {
+            const checked = selectedValues.includes(opt) ? "checked" : "";
+            return `<label class="screening-enum-check"><input type="checkbox" data-screening-enum-multi="${idx}" value="${escapeHtml(opt)}" ${checked}><span>${escapeHtml(opt)}</span></label>`;
+          }).join("");
+          valueControl = `
+            <fieldset class="screening-field screening-enum-group">
+              <span class="screening-field-label">Values</span>
+              <div class="screening-enum-checklist">${opts}</div>
+              <span class="screening-field-note">Select one or more values.</span>
+            </fieldset>
+          `;
+        } else {
+          const selectedSingle = selectedValues[0] || "";
+          const opts = options.map((opt) => `<option value="${escapeHtml(opt)}" ${selectedSingle === String(opt) ? "selected" : ""}>${escapeHtml(opt)}</option>`).join("");
+          valueControl = `
+            <label class="screening-field">
+              <span class="screening-field-label">Value</span>
+              <select class="api-input screening-select" data-screening-value="value_text" data-idx="${idx}">${opts}</select>
+            </label>
+          `;
+        }
       }
 
       return `
@@ -1233,6 +1303,13 @@ function renderScreeningCriteria(criteria = []) {
       row.comparison_operator = normalizeOperator(el.value);
       if (String(row.value_type || "").toUpperCase() === "BOOLEAN") {
         row.value_bool = row.comparison_operator !== "IS_FALSE";
+      } else if (String(row.value_type || "").toUpperCase() === "ENUM") {
+        const selectedValues = parseEnumSelections(row.value_text);
+        if (SCREENING_MULTI_ENUM_OPERATORS.has(row.comparison_operator)) {
+          row.value_text = selectedValues.join(", ");
+        } else {
+          row.value_text = selectedValues[0] || null;
+        }
       }
       renderScreeningCriteria(screeningCriteriaCurrent);
       updateScreeningSaveState();
@@ -1245,9 +1322,36 @@ function renderScreeningCriteria(criteria = []) {
       const key = el.getAttribute("data-screening-value");
       const row = screeningCriteriaCurrent[idx];
       if (!row) return;
-      if (key === "value_number") row.value_number = el.value === "" ? null : Number(el.value);
+      if (key === "value_number") row.value_number = normalizeNumberForCriterion(row, el.value);
       if (key === "value_date") row.value_date = el.value || null;
       if (key === "value_text") row.value_text = el.value || null;
+      updateScreeningSaveState();
+      const previewEl = host.querySelector(`.screening-rule-card input[data-screening-enabled="${idx}"]`)?.closest('.screening-rule-card')?.querySelector('.screening-rule-preview');
+      if (previewEl) previewEl.textContent = screeningRulePreview(row);
+    });
+
+    el.addEventListener("blur", () => {
+      const idx = Number(el.getAttribute("data-idx"));
+      const key = el.getAttribute("data-screening-value");
+      const row = screeningCriteriaCurrent[idx];
+      if (!row || key !== "value_number" || !isIntegerLikeScreeningCriterion(row)) return;
+      if (row.value_number === null || row.value_number === undefined || row.value_number === "") return;
+      const numeric = Number(row.value_number);
+      if (!Number.isFinite(numeric)) return;
+      if (numeric % 1 !== 0) {
+        row.value_number = Math.round(numeric);
+        renderScreeningCriteria(screeningCriteriaCurrent);
+      }
+    });
+  });
+
+  host.querySelectorAll("[data-screening-enum-multi]").forEach((el) => {
+    el.addEventListener("change", () => {
+      const idx = Number(el.getAttribute("data-screening-enum-multi"));
+      const row = screeningCriteriaCurrent[idx];
+      if (!row) return;
+      const checked = Array.from(host.querySelectorAll(`[data-screening-enum-multi="${idx}"]:checked`)).map((input) => input.value).filter(Boolean);
+      row.value_text = checked.length ? checked.join(", ") : null;
       updateScreeningSaveState();
       const previewEl = host.querySelector(`.screening-rule-card input[data-screening-enabled="${idx}"]`)?.closest('.screening-rule-card')?.querySelector('.screening-rule-preview');
       if (previewEl) previewEl.textContent = screeningRulePreview(row);

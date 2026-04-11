@@ -423,6 +423,51 @@ body.account-page{
   color:rgba(148,163,184,.88);
 }
 
+.screening-select{
+  color-scheme: dark;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, rgba(148,163,184,.92) 50%), linear-gradient(135deg, rgba(148,163,184,.92) 50%, transparent 50%);
+  background-position: calc(100% - 16px) calc(50% - 2px), calc(100% - 11px) calc(50% - 2px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 30px;
+}
+
+.screening-select option{
+  color:#e2e8f0;
+  background:#0b1224;
+}
+
+.screening-enum-group{
+  margin:0;
+  padding:0;
+  border:0;
+  min-width:0;
+}
+
+.screening-enum-checklist{
+  display:grid;
+  gap:6px;
+  max-height:130px;
+  overflow:auto;
+  padding:8px 10px;
+  border-radius:10px;
+  border:1px solid rgba(148,163,184,.25);
+  background:rgba(2,6,23,.56);
+}
+
+.screening-enum-check{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:.82rem;
+  color:#e2e8f0;
+}
+
+.screening-enum-check input{
+  accent-color:#2ee6b7;
+}
+
 .screening-value-missing{
   border-color:rgba(251,191,36,.55) !important;
   box-shadow:0 0 0 1px rgba(251,191,36,.18) inset;
