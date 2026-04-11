@@ -132,9 +132,17 @@ body.carrier-page {
 .carrier-pill.ghost { background: transparent; }
 .pill-ok { border-color: #38BDF8; box-shadow: 0 0 14px rgba(56,189,248,.35); }
 .pill-warn { border-color: var(--accent-warn); box-shadow: 0 0 14px rgba(249,115,22,.45); }
+.pill-fail { border-color: #ef4444; box-shadow: 0 0 14px rgba(239,68,68,.4); }
 .pill-purp { border-color: #0B78CF; box-shadow: 0 0 14px rgba(11,120,207,.35); }
 
 .quick-metrics { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
+
+.carrier-screening-summary{
+  width:100%;
+  max-width:440px;
+  padding:12px 14px;
+  border:1px solid rgba(148,163,184,.24);
+}
 
 .metric-chip {
   min-width: 110px; padding: .4rem .7rem; border-radius: 999px;

@@ -316,6 +316,70 @@ function safeText(value, fallback = "—") {
   return text || fallback;
 }
 
+function getScreeningSummaryText(resultSummary) {
+  if (!resultSummary || typeof resultSummary !== "object") return "";
+  const keys = ["summary", "message", "text"];
+  for (const key of keys) {
+    const value = resultSummary[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
+function screeningBadgeClass(status) {
+  const normalized = String(status || "").toUpperCase();
+  if (normalized === "PASS") return "pill-ok";
+  if (normalized === "REVIEW") return "pill-warn";
+  if (normalized === "FAIL") return "pill-fail";
+  return "";
+}
+
+function renderScreeningSummary(data) {
+  const card = document.getElementById("screening-summary-card");
+  const badge = document.getElementById("screening-status-badge");
+  const profileName = document.getElementById("screening-profile-name");
+  const evaluatedAt = document.getElementById("screening-evaluated-at");
+  const summaryText = document.getElementById("screening-summary-text");
+  if (!card || !badge || !profileName || !evaluatedAt || !summaryText) return;
+
+  card.hidden = false;
+  const result = data?.result || null;
+  const status = result?.screening_status ? String(result.screening_status).toUpperCase() : "NOT SCREENED";
+  badge.textContent = status;
+  badge.classList.remove("pill-ok", "pill-warn", "pill-purp", "pill-fail");
+  const klass = screeningBadgeClass(status);
+  if (klass) badge.classList.add(klass);
+
+  profileName.textContent = safeText(data?.profile?.profile_name, "Default profile not set");
+  evaluatedAt.textContent = result?.evaluated_at ? fmtDateTime(result.evaluated_at) : "—";
+
+  const summary = getScreeningSummaryText(result?.result_summary);
+  if (summary) {
+    summaryText.textContent = `Summary: ${summary}`;
+    summaryText.style.display = "";
+  } else if (!result) {
+    summaryText.textContent = "No screening result is available for your default profile.";
+    summaryText.style.display = "";
+  } else {
+    summaryText.textContent = "";
+    summaryText.style.display = "none";
+  }
+}
+
+async function loadDefaultScreeningResult(dot) {
+  const card = document.getElementById("screening-summary-card");
+  if (!card || !dot) return;
+  try {
+    const res = await fetch(`/api/screening/carriers/${encodeURIComponent(dot)}/default-result`, { credentials: "include" });
+    if (!res.ok) throw new Error(`screening failed (${res.status})`);
+    const data = await res.json().catch(() => null);
+    renderScreeningSummary(data || {});
+  } catch (err) {
+    console.warn("screening summary unavailable", err);
+    card.hidden = true;
+  }
+}
+
 function renderRowActionLink({ href, label }) {
   if (!href) return '<span class="cs-hint">—</span>';
   return `<a class="agreements-link" href="${href}" target="_blank" rel="noopener">${label}</a>`;
@@ -1370,6 +1434,12 @@ if (data && data.source === "cache_stale") {
 
       const me = await getMe();
       applyInsuranceLock(me);
+      if (me) {
+        await loadDefaultScreeningResult(dot);
+      } else {
+        const screeningCard = document.getElementById("screening-summary-card");
+        if (screeningCard) screeningCard.hidden = true;
+      }
       
       // Only load insurance if unlocked (optional)
       if (me?.view_insurance === true) {

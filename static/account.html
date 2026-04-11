@@ -69,6 +69,10 @@
           <span class="rail-dot"></span>
           Agreements
         </button>
+        <button class="rail-item" data-tab="screening">
+          <span class="rail-dot"></span>
+          Screening
+        </button>
         <button class="rail-item" data-tab="api">
           <span class="rail-dot"></span>
           API
@@ -110,6 +114,10 @@
         <button class="rail-item" data-tab="agreements">
           <span class="rail-dot"></span>
           Agreements
+        </button>
+        <button class="rail-item" data-tab="screening">
+          <span class="rail-dot"></span>
+          Screening
         </button>
         <button class="rail-item" data-tab="api">
           <span class="rail-dot"></span>
@@ -369,6 +377,49 @@
               <div class="muted">Loading…</div>
             </div>
             
+          </div>
+        </section>
+
+
+        <!-- SCREENING -->
+        <section class="tab-panel" id="tab-screening">
+          <div class="card">
+            <div class="card-head card-header">
+              <div>
+                <h2>Screening</h2>
+                <p class="muted">Configure carrier screening profiles and choose which one is used by default.</p>
+              </div>
+            </div>
+
+            <div class="row screening-header-row">
+              <div>
+                <div class="row-title">Screening Profiles</div>
+                <div class="row-sub">Choose a default screening profile and configure the criteria that determine carrier status.</div>
+              </div>
+              <div class="row-actions screening-profile-actions">
+                <button class="btn-primary" id="btn-screening-new-profile">New Profile</button>
+                <button class="btn-ghost" id="btn-screening-rename-profile">Rename Profile</button>
+                <button class="btn-ghost" id="btn-screening-delete-profile">Delete Profile</button>
+                <button class="btn-ghost" id="btn-screening-set-default">Set Default</button>
+              </div>
+            </div>
+
+            <div id="screening-profiles-list" class="screening-profiles-list">
+              <div class="muted">Loading profiles…</div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="screening-criteria-wrap">
+              <div class="row-title">Screening Criteria</div>
+              <div id="screening-criteria-list" class="screening-criteria-list">
+                <div class="muted">Select a screening profile to configure criteria.</div>
+              </div>
+            </div>
+
+            <div class="alerts-save-row">
+              <button class="btn-primary" id="btn-screening-save" disabled>Save Changes</button>
+            </div>
           </div>
         </section>
 

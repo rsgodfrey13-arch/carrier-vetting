@@ -263,6 +263,76 @@ body.account-page{
   align-items:center;
 }
 
+.screening-header-row{
+  align-items:flex-start;
+}
+
+.screening-profile-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  justify-content:flex-end;
+}
+
+.screening-profiles-list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-top:10px;
+}
+
+.screening-profile-pill{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  border-radius:999px;
+  border:1px solid rgba(148,163,184,.32);
+  background:rgba(15,23,42,.6);
+  color:#e2e8f0;
+  padding:8px 12px;
+  cursor:pointer;
+}
+
+.screening-profile-pill.is-selected{
+  border-color: rgba(56,189,248,.58);
+  background: linear-gradient(140deg, rgba(56,189,248,.2), rgba(11,17,32,.82));
+}
+
+.screening-profile-pill__name{
+  font-weight:700;
+}
+
+.screening-profile-pill__meta{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.screening-criteria-list{
+  margin-top:10px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.screening-criteria-row{
+  border:1px solid rgba(148,163,184,.22);
+  border-radius:12px;
+  padding:10px 12px;
+}
+
+.screening-criteria-row.is-disabled{
+  opacity:.65;
+}
+
+.screening-criteria-main{
+  flex:1;
+}
+
+.screening-criteria-input{
+  min-width:180px;
+}
+
 /* Buttons: match your pill vibe */
 .pill-btn{
   height:40px;
