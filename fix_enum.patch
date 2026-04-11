@@ -1,0 +1,59 @@
+diff --git a/src/services/carrierScreeningService.js b/src/services/carrierScreeningService.js
+index 3d5964f2a5850a4786619e562697fac253a3d466..b4f1c82505b611efe522ee3f3897fb794480dda1 100644
+--- a/src/services/carrierScreeningService.js
++++ b/src/services/carrierScreeningService.js
+@@ -1,50 +1,50 @@
+ "use strict";
+ 
+ const { pool } = require("../db/pool");
+ 
+ const TRUE_SET = new Set(["Y", "YES", "TRUE", "T", "1", "ACTIVE", "AUTHORIZED"]);
+ const FALSE_SET = new Set(["N", "NO", "FALSE", "F", "0", "INACTIVE", "NOT AUTHORIZED"]);
+ 
+ const SUPPORTED_OPERATORS = new Set([
+   "EQUALS",
+   "NOT_EQUALS",
+   "LESS_THAN",
+   "LESS_THAN_OR_EQUAL",
+   "GREATER_THAN",
+   "GREATER_THAN_OR_EQUAL",
+   "IN",
+   "NOT_IN",
+   "IS_TRUE",
+   "IS_FALSE"
+ ]);
+ 
+-const SAFETY_RATING_ENUM_FIELDS = new Set(["safety_rating"]);
++const SAFETY_RATING_ENUM_FIELDS = new Set(["safetyrating"]);
+ const AUTHORITY_STATUS_ENUM_FIELDS = new Set([
+-  "common_authority_status",
+-  "contract_authority_status",
+-  "broker_authority_status"
++  "commonauthoritystatus",
++  "contractauthoritystatus",
++  "brokerauthoritystatus"
+ ]);
+ 
+ const SAFETY_RATING_CANONICAL_MAP = new Map([
+   ["S", "Satisfactory"],
+   ["SATISFACTORY", "Satisfactory"],
+   ["C", "Conditional"],
+   ["CONDITIONAL", "Conditional"],
+   ["U", "Unsatisfactory"],
+   ["UNSATISFACTORY", "Unsatisfactory"],
+   ["N", "Not Rated"],
+   ["NONE", "Not Rated"],
+   ["NOT RATED", "Not Rated"]
+ ]);
+ 
+ const AUTHORITY_STATUS_CANONICAL_MAP = new Map([
+   ["A", "Active"],
+   ["ACTIVE", "Active"],
+   ["I", "Inactive"],
+   ["INACTIVE", "Inactive"],
+   ["N", "None"],
+   ["NONE", "None"]
+ ]);
+ 
+ function normalizeDot(dotNumber) {
+   return String(dotNumber || "").replace(/\D/g, "");

@@ -18,11 +18,11 @@ const SUPPORTED_OPERATORS = new Set([
   "IS_FALSE"
 ]);
 
-const SAFETY_RATING_ENUM_FIELDS = new Set(["safety_rating"]);
+const SAFETY_RATING_ENUM_FIELDS = new Set(["safetyrating"]);
 const AUTHORITY_STATUS_ENUM_FIELDS = new Set([
-  "common_authority_status",
-  "contract_authority_status",
-  "broker_authority_status"
+  "commonauthoritystatus",
+  "contractauthoritystatus",
+  "brokerauthoritystatus"
 ]);
 
 const SAFETY_RATING_CANONICAL_MAP = new Map([
