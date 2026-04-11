@@ -349,41 +349,138 @@ function getScreeningRatioText(result) {
   return `${passed}/${total} checks passed`;
 }
 
+function prettifyValue(value) {
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (typeof value === "number") return Number.isFinite(value) ? String(value) : "—";
+
+  const text = String(value).trim();
+  if (!text) return "—";
+
+  const aliases = {
+    Y: "Yes",
+    N: "None",
+    A: "Active"
+  };
+  if (aliases[text.toUpperCase()]) return aliases[text.toUpperCase()];
+
+  return text
+    .replaceAll(/[_-]+/g, " ")
+    .replaceAll(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function operatorLabel(operator) {
+  const op = String(operator || "EQUALS").toUpperCase();
+  return {
+    EQUALS: "",
+    NOT_EQUALS: "Not",
+    IN: "One of",
+    NOT_IN: "Not one of",
+    LESS_THAN: "Less than",
+    LESS_THAN_OR_EQUAL: "Less than or equal to",
+    GREATER_THAN: "Greater than",
+    GREATER_THAN_OR_EQUAL: "Greater than or equal to",
+    IS_TRUE: "Yes",
+    IS_FALSE: "No"
+  }[op] || op.replaceAll("_", " ").toLowerCase();
+}
+
+function formatRequirement(item) {
+  if (!item || typeof item !== "object") return "—";
+  const op = String(item.comparison_operator || "EQUALS").toUpperCase();
+  if (op === "IS_TRUE" || op === "IS_FALSE") return operatorLabel(op);
+
+  const expected = item.expected_value || {};
+  const rawExpected =
+    expected.value_text ?? expected.value_number ?? expected.value_date ?? expected.value_bool ?? null;
+
+  if (rawExpected === null || rawExpected === undefined || rawExpected === "") {
+    return "—";
+  }
+
+  if (op === "IN" || op === "NOT_IN") {
+    const tokens = String(rawExpected)
+      .split(",")
+      .map((token) => prettifyValue(token))
+      .filter((token) => token && token !== "—");
+    if (!tokens.length) return "—";
+    const joined = tokens.join(" or ");
+    return op === "IN" ? joined : `Not ${joined}`;
+  }
+
+  const expectedDisplay = prettifyValue(rawExpected);
+  const opDisplay = operatorLabel(op);
+  return opDisplay ? `${opDisplay} ${expectedDisplay}` : expectedDisplay;
+}
+
+function formatCarrierValue(item) {
+  if (!item || typeof item !== "object") return "—";
+
+  if (item.actual_value_normalized !== null && item.actual_value_normalized !== undefined && String(item.actual_value_normalized).trim() !== "") {
+    return prettifyValue(item.actual_value_normalized);
+  }
+
+  if (item.actual_value_raw === null || item.actual_value_raw === undefined || String(item.actual_value_raw).trim() === "") {
+    if (String(item.criteria_key || "").toLowerCase().includes("safety") || String(item.label || "").toLowerCase().includes("safety")) {
+      return "Not Rated";
+    }
+    return "—";
+  }
+
+  return prettifyValue(item.actual_value_raw);
+}
+
 function flattenScreeningDetails(resultSummary) {
   if (!resultSummary || typeof resultSummary !== "object") return [];
 
   const normalizeItem = (item) => {
     if (!item || typeof item !== "object") return null;
-    const label = String(
-      item.label ?? item.criterion ?? item.name ?? item.title ?? item.check ?? ""
-    ).trim();
-    const status = String(
-      item.status ?? item.result ?? item.outcome ?? item.verdict ?? ""
-    ).trim();
-    if (!label || !status) return null;
-    return { label, status: status.toUpperCase() };
+    const check = String(item.label ?? item.criterion ?? item.name ?? item.title ?? item.check ?? "").trim();
+    const status = String(item.status ?? item.result ?? item.outcome ?? item.verdict ?? "").trim().toUpperCase();
+    if (!check || !status) return null;
+    return {
+      check,
+      carrier: formatCarrierValue(item),
+      requirement: formatRequirement(item),
+      status
+    };
+  };
+
+  const dedupeBy = new Set();
+  const dedupePush = (rows, row) => {
+    if (!row) return;
+    const key = `${row.check}::${row.status}`;
+    if (dedupeBy.has(key)) return;
+    dedupeBy.add(key);
+    rows.push(row);
   };
 
   if (Array.isArray(resultSummary)) {
-    return resultSummary.map(normalizeItem).filter(Boolean);
-  }
-
-  const arrayKeys = ["criteria", "checks", "results", "items", "breakdown"];
-  for (const key of arrayKeys) {
-    if (!Array.isArray(resultSummary[key])) continue;
-    const rows = resultSummary[key].map(normalizeItem).filter(Boolean);
-    if (rows.length) return rows;
+    const rows = [];
+    resultSummary.forEach((item) => dedupePush(rows, normalizeItem(item)));
+    return rows;
   }
 
   const rows = [];
-  Object.entries(resultSummary).forEach(([key, value]) => {
-    if (!value || typeof value !== "object") return;
-    const status = String(value.status ?? value.result ?? value.outcome ?? "").trim();
-    if (!status) return;
-    const label = String(value.label ?? value.criterion ?? key).trim();
-    if (!label) return;
-    rows.push({ label, status: status.toUpperCase() });
-  });
+  const candidateArrays = [];
+  if (Array.isArray(resultSummary.criteria)) candidateArrays.push(resultSummary.criteria);
+  if (Array.isArray(resultSummary.standalone_criteria)) candidateArrays.push(resultSummary.standalone_criteria);
+  if (Array.isArray(resultSummary.groups)) {
+    resultSummary.groups.forEach((group) => {
+      if (Array.isArray(group?.criteria)) candidateArrays.push(group.criteria);
+    });
+  }
+
+  if (!candidateArrays.length) {
+    const arrayKeys = ["checks", "results", "items", "breakdown"];
+    for (const key of arrayKeys) {
+      if (Array.isArray(resultSummary[key])) candidateArrays.push(resultSummary[key]);
+    }
+  }
+
+  candidateArrays.flat().forEach((item) => dedupePush(rows, normalizeItem(item)));
   return rows;
 }
 
@@ -413,13 +510,24 @@ function renderScreeningDetailsModal(data) {
   }
 
   const detailRows = details.map((item) => `
-    <div class="screening-detail-row">
-      <div class="screening-detail-label">${escapeHtml(item.label)}</div>
-      <div class="screening-detail-status">${escapeHtml(item.status)}</div>
+    <div class="screening-detail-row" role="row">
+      <div class="screening-detail-cell screening-detail-check" role="cell" data-label="Check">${escapeHtml(item.check)}</div>
+      <div class="screening-detail-cell screening-detail-carrier" role="cell" data-label="Carrier">${escapeHtml(item.carrier)}</div>
+      <div class="screening-detail-cell screening-detail-requirement" role="cell" data-label="Requirement">${escapeHtml(item.requirement)}</div>
+      <div class="screening-detail-cell screening-detail-result" role="cell" data-label="Result"><span class="screening-result-badge screening-result-${escapeHtml(String(item.status || '').toLowerCase())}">${escapeHtml(item.status)}</span></div>
     </div>
   `).join("");
 
-  body.innerHTML = `${metaHtml}<div class="screening-detail-list">${detailRows}</div>`;
+  body.innerHTML = `${metaHtml}
+    <div class="screening-detail-list" role="table" aria-label="Screening detail breakdown">
+      <div class="screening-detail-header" role="row">
+        <div class="screening-detail-head" role="columnheader">Check</div>
+        <div class="screening-detail-head" role="columnheader">Carrier</div>
+        <div class="screening-detail-head" role="columnheader">Requirement</div>
+        <div class="screening-detail-head" role="columnheader">Result</div>
+      </div>
+      ${detailRows}
+    </div>`;
 }
 
 function openScreeningModal() {

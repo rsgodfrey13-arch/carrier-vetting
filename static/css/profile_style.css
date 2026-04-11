@@ -221,11 +221,21 @@ body.carrier-page {
   background:rgba(15,23,42,.38);
 }
 
+.screening-detail-header,
 .screening-detail-row{
-  display:flex;
-  justify-content:space-between;
+  display:grid;
+  grid-template-columns:minmax(170px,1.4fr) minmax(120px,1fr) minmax(180px,1.2fr) minmax(92px,.55fr);
   gap:12px;
-  padding:9px 12px;
+  align-items:center;
+  padding:10px 12px;
+}
+
+.screening-detail-header{
+  border-bottom:1px solid rgba(255,255,255,.08);
+  background:rgba(15,23,42,.7);
+}
+
+.screening-detail-row{
   border-bottom:1px solid rgba(255,255,255,.06);
 }
 
@@ -233,16 +243,74 @@ body.carrier-page {
   border-bottom:0;
 }
 
-.screening-detail-label{
-  color:#e2e8f0;
-  font-size:.85rem;
-}
-
-.screening-detail-status{
-  font-size:.78rem;
+.screening-detail-head{
+  font-size:.71rem;
   letter-spacing:.08em;
   text-transform:uppercase;
+  color:var(--text-muted);
+}
+
+.screening-detail-cell{
+  color:#e2e8f0;
+  font-size:.84rem;
+  line-height:1.35;
+}
+
+.screening-detail-result{
+  justify-self:start;
+}
+
+.screening-result-badge{
+  display:inline-flex;
+  padding:3px 10px;
+  border-radius:999px;
+  font-size:.7rem;
+  font-weight:600;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  border:1px solid rgba(148,163,184,.5);
   color:#cbd5e1;
+  background:rgba(15,23,42,.65);
+}
+
+.screening-result-pass{
+  border-color:rgba(34,197,94,.45);
+  color:#86efac;
+  background:rgba(34,197,94,.12);
+}
+
+.screening-result-fail{
+  border-color:rgba(248,113,113,.45);
+  color:#fca5a5;
+  background:rgba(248,113,113,.12);
+}
+
+.screening-result-review{
+  border-color:rgba(250,204,21,.4);
+  color:#fde68a;
+  background:rgba(250,204,21,.12);
+}
+
+@media (max-width: 900px){
+  .screening-detail-header{
+    display:none;
+  }
+
+  .screening-detail-row{
+    grid-template-columns:1fr;
+    gap:6px;
+    padding:12px;
+  }
+
+  .screening-detail-cell::before{
+    content:attr(data-label);
+    display:block;
+    margin-bottom:2px;
+    font-size:.67rem;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--text-muted);
+  }
 }
 
 .metric-chip {
