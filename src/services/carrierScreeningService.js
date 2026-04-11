@@ -88,15 +88,18 @@ function parseCsvSet(valueText) {
 }
 
 function normalizeEnumCarrierValue({ criterion, rawValue }) {
-  const text = normalizeText(rawValue);
-  if (!text) return null;
-
   const field = String(criterion?.carrier_field || "").trim().toLowerCase();
-  const token = text.toUpperCase();
 
   if (SAFETY_RATING_ENUM_FIELDS.has(field)) {
+    const text = normalizeText(rawValue);
+    if (!text) return "Not Rated";
+    const token = text.toUpperCase();
     return SAFETY_RATING_CANONICAL_MAP.get(token) || null;
   }
+
+  const text = normalizeText(rawValue);
+  if (!text) return null;
+  const token = text.toUpperCase();
 
   if (AUTHORITY_STATUS_ENUM_FIELDS.has(field)) {
     return AUTHORITY_STATUS_CANONICAL_MAP.get(token) || null;
