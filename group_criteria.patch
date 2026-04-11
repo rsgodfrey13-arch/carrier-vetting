@@ -1,0 +1,1727 @@
+diff --git a/src/routes/internal/screening.routes.js b/src/routes/internal/screening.routes.js
+index 4556408da2b7e53f7a29af054d8e16c8338541f5..888ca0e2a542c7b99ed7bafe84656e082f78b1f3 100644
+--- a/src/routes/internal/screening.routes.js
++++ b/src/routes/internal/screening.routes.js
+@@ -62,50 +62,56 @@ function normalizeEnumOptions(raw) {
+     }
+   }
+ 
+   return [];
+ }
+ 
+ function parseBool(value) {
+   if (value === true || value === false) return value;
+   return null;
+ }
+ 
+ function parseNumberOrNull(value) {
+   if (value === null || value === undefined || value === "") return null;
+   const parsed = Number(value);
+   if (!Number.isFinite(parsed)) return null;
+   return parsed;
+ }
+ 
+ function normalizeDateOrNull(value) {
+   if (value === null || value === undefined || value === "") return null;
+   const raw = String(value).trim();
+   if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+   return raw;
+ }
+ 
++function normalizeGroupMatchType(value) {
++  const token = String(value || "").trim().toUpperCase();
++  if (token === "ALL" || token === "ANY") return token;
++  return null;
++}
++
+ function screeningRoutes({ pool } = {}) {
+   const db = pool || globalPool;
+   const router = express.Router();
+ 
+ router.get("/screening/profiles", requireAuth, loadCompanyContext, async (req, res) => {
+   try {
+     const { companyId } = req.companyContext;
+     const { rows } = await db.query(
+       `
+       SELECT id, profile_name, is_default, is_active, created_at, updated_at
+       FROM public.company_screening_profiles
+       WHERE company_id = $1
+       ORDER BY is_default DESC, created_at ASC
+       `,
+       [companyId]
+     );
+ 
+     return res.json({ profiles: rows });
+   } catch (err) {
+     console.error("GET /api/screening/profiles failed:", err);
+     return res.status(500).json({ error: "Failed to load screening profiles" });
+   }
+ });
+ 
+ router.post("/screening/profiles", requireAuth, loadCompanyContext, requireCompanyAdmin, async (req, res) => {
+@@ -308,60 +314,64 @@ router.get("/screening/profiles/:profileId/criteria", requireAuth, loadCompanyCo
+     const profileRes = await db.query(
+       `
+       SELECT id, profile_name, is_default, is_active
+       FROM public.company_screening_profiles
+       WHERE company_id = $1
+         AND id = $2
+       LIMIT 1
+       `,
+       [companyId, profileId]
+     );
+ 
+     if (!profileRes.rows.length) return res.status(404).json({ error: "Profile not found" });
+ 
+     const criteriaRes = await db.query(
+       `
+       SELECT
+         sc.id AS screening_criteria_id,
+         sc.criteria_key,
+         sc.label,
+         sc.description,
+         sc.value_type,
+         sc.carrier_field,
+         sc.category,
+         sc.display_order,
+         sc.enum_options,
++        cspc.id AS profile_criteria_id,
+         COALESCE(cspc.is_enabled, false) AS is_enabled,
+         cspc.comparison_operator,
+         cspc.value_bool,
+         cspc.value_number,
+         cspc.value_date,
+-        cspc.value_text
++        cspc.value_text,
++        gc.group_id
+       FROM public.screening_criteria sc
+       LEFT JOIN public.company_screening_profile_criteria cspc
+         ON cspc.profile_id = $1
+        AND cspc.screening_criteria_id = sc.id
++      LEFT JOIN public.company_screening_profile_group_criteria gc
++        ON gc.profile_criteria_id = cspc.id
+       WHERE sc.is_active = true
+       ORDER BY sc.display_order ASC, sc.id ASC
+       `,
+       [profileId]
+     );
+ 
+     const criteria = criteriaRes.rows.map((row) => ({
+       ...row,
+       enum_options: normalizeEnumOptions(row.enum_options),
+     }));
+ 
+     return res.json({
+       profile: profileRes.rows[0],
+       criteria,
+     });
+   } catch (err) {
+     console.error("GET /api/screening/profiles/:profileId/criteria failed:", err);
+     return res.status(500).json({ error: "Failed to load screening criteria" });
+   }
+ });
+ 
+ router.post("/screening/profiles/:profileId/criteria", requireAuth, loadCompanyContext, requireCompanyAdmin, async (req, res) => {
+   const client = await db.connect();
+   try {
+     const { companyId } = req.companyContext;
+@@ -504,50 +514,435 @@ router.post("/screening/profiles/:profileId/criteria", requireAuth, loadCompanyC
+           value_number = EXCLUDED.value_number,
+           value_date = EXCLUDED.value_date,
+           value_text = EXCLUDED.value_text,
+           updated_at = now()
+         `,
+         [profileId, criteriaId, isEnabled, comparisonOperator, valueBool, valueNumber, valueDate, valueText]
+       );
+     }
+ 
+     await client.query("COMMIT");
+     try {
+       await rescreenTrackedCarriersForCompany({ companyId });
+     } catch (rescreenErr) {
+       console.error("Post criteria-save rescreen failed:", rescreenErr);
+     }
+     return res.json({ ok: true });
+   } catch (err) {
+     await client.query("ROLLBACK");
+     console.error("POST /api/screening/profiles/:profileId/criteria failed:", err);
+     return res.status(500).json({ error: "Failed to save screening criteria" });
+   } finally {
+     client.release();
+   }
+ });
+ 
++router.get("/screening/profiles/:profileId/groups", requireAuth, loadCompanyContext, async (req, res) => {
++  try {
++    const { companyId } = req.companyContext;
++    const { profileId } = req.params;
++
++    const profileRes = await db.query(
++      `
++      SELECT id
++      FROM public.company_screening_profiles
++      WHERE company_id = $1
++        AND id = $2
++      LIMIT 1
++      `,
++      [companyId, profileId]
++    );
++    if (!profileRes.rows.length) return res.status(404).json({ error: "Profile not found" });
++
++    const groupsRes = await db.query(
++      `
++      SELECT id, profile_id, group_name, match_type, display_order, is_active, created_at, updated_at
++      FROM public.company_screening_profile_groups
++      WHERE profile_id = $1
++      ORDER BY display_order ASC, created_at ASC, id ASC
++      `,
++      [profileId]
++    );
++
++    const membersRes = await db.query(
++      `
++      SELECT
++        gc.group_id,
++        gc.profile_criteria_id,
++        gc.display_order,
++        sc.id AS screening_criteria_id,
++        sc.criteria_key,
++        sc.label,
++        cspc.is_enabled
++      FROM public.company_screening_profile_group_criteria gc
++      JOIN public.company_screening_profile_criteria cspc
++        ON cspc.id = gc.profile_criteria_id
++      JOIN public.screening_criteria sc
++        ON sc.id = cspc.screening_criteria_id
++      WHERE cspc.profile_id = $1
++      ORDER BY gc.display_order ASC, gc.created_at ASC, gc.id ASC
++      `,
++      [profileId]
++    );
++
++    const criteriaByGroupId = new Map();
++    for (const row of membersRes.rows) {
++      const key = String(row.group_id);
++      if (!criteriaByGroupId.has(key)) criteriaByGroupId.set(key, []);
++      criteriaByGroupId.get(key).push(row);
++    }
++
++    const groups = groupsRes.rows.map((group) => ({
++      ...group,
++      criteria: criteriaByGroupId.get(String(group.id)) || []
++    }));
++
++    return res.json({ groups });
++  } catch (err) {
++    console.error("GET /api/screening/profiles/:profileId/groups failed:", err);
++    return res.status(500).json({ error: "Failed to load screening rule groups" });
++  }
++});
++
++router.post("/screening/profiles/:profileId/groups", requireAuth, loadCompanyContext, requireCompanyAdmin, async (req, res) => {
++  try {
++    const { companyId } = req.companyContext;
++    const { profileId } = req.params;
++    const groupName = String(req.body?.group_name || "").trim();
++    const matchType = normalizeGroupMatchType(req.body?.match_type || "ALL");
++    const displayOrder = parseNumberOrNull(req.body?.display_order) ?? 0;
++
++    if (!groupName) return res.status(400).json({ error: "group_name is required" });
++    if (!matchType) return res.status(400).json({ error: "match_type must be ALL or ANY" });
++
++    const profileRes = await db.query(
++      `SELECT id FROM public.company_screening_profiles WHERE company_id = $1 AND id = $2 LIMIT 1`,
++      [companyId, profileId]
++    );
++    if (!profileRes.rows.length) return res.status(404).json({ error: "Profile not found" });
++
++    const { rows } = await db.query(
++      `
++      INSERT INTO public.company_screening_profile_groups (profile_id, group_name, match_type, display_order, is_active)
++      VALUES ($1, $2, $3, $4, true)
++      RETURNING id, profile_id, group_name, match_type, display_order, is_active, created_at, updated_at
++      `,
++      [profileId, groupName, matchType, Math.trunc(displayOrder)]
++    );
++
++    try {
++      await rescreenTrackedCarriersForCompany({ companyId });
++    } catch (rescreenErr) {
++      console.error("Post group-create rescreen failed:", rescreenErr);
++    }
++    return res.json({ ok: true, group: rows[0] });
++  } catch (err) {
++    console.error("POST /api/screening/profiles/:profileId/groups failed:", err);
++    return res.status(500).json({ error: "Failed to create screening rule group" });
++  }
++});
++
++router.patch("/screening/profiles/:profileId/groups/:groupId", requireAuth, loadCompanyContext, requireCompanyAdmin, async (req, res) => {
++  try {
++    const { companyId } = req.companyContext;
++    const { profileId, groupId } = req.params;
++
++    const profileRes = await db.query(
++      `SELECT id FROM public.company_screening_profiles WHERE company_id = $1 AND id = $2 LIMIT 1`,
++      [companyId, profileId]
++    );
++    if (!profileRes.rows.length) return res.status(404).json({ error: "Profile not found" });
++
++    const updates = [];
++    const values = [profileId, groupId];
++
++    if (Object.prototype.hasOwnProperty.call(req.body || {}, "group_name")) {
++      const value = String(req.body.group_name || "").trim();
++      if (!value) return res.status(400).json({ error: "group_name cannot be empty" });
++      values.push(value);
++      updates.push(`group_name = $${values.length}`);
++    }
++    if (Object.prototype.hasOwnProperty.call(req.body || {}, "match_type")) {
++      const value = normalizeGroupMatchType(req.body.match_type);
++      if (!value) return res.status(400).json({ error: "match_type must be ALL or ANY" });
++      values.push(value);
++      updates.push(`match_type = $${values.length}`);
++    }
++    if (Object.prototype.hasOwnProperty.call(req.body || {}, "display_order")) {
++      const value = parseNumberOrNull(req.body.display_order);
++      if (value === null) return res.status(400).json({ error: "display_order must be numeric" });
++      values.push(Math.trunc(value));
++      updates.push(`display_order = $${values.length}`);
++    }
++    if (Object.prototype.hasOwnProperty.call(req.body || {}, "is_active")) {
++      const value = parseBool(req.body.is_active);
++      if (value === null) return res.status(400).json({ error: "is_active must be boolean" });
++      values.push(value);
++      updates.push(`is_active = $${values.length}`);
++    }
++    if (!updates.length) return res.status(400).json({ error: "No valid fields to update" });
++
++    updates.push("updated_at = now()");
++    const { rows } = await db.query(
++      `
++      UPDATE public.company_screening_profile_groups
++      SET ${updates.join(", ")}
++      WHERE profile_id = $1
++        AND id = $2
++      RETURNING id, profile_id, group_name, match_type, display_order, is_active, created_at, updated_at
++      `,
++      values
++    );
++    if (!rows.length) return res.status(404).json({ error: "Group not found" });
++
++    try {
++      await rescreenTrackedCarriersForCompany({ companyId });
++    } catch (rescreenErr) {
++      console.error("Post group-update rescreen failed:", rescreenErr);
++    }
++    return res.json({ ok: true, group: rows[0] });
++  } catch (err) {
++    console.error("PATCH /api/screening/profiles/:profileId/groups/:groupId failed:", err);
++    return res.status(500).json({ error: "Failed to update screening rule group" });
++  }
++});
++
++router.delete("/screening/profiles/:profileId/groups/:groupId", requireAuth, loadCompanyContext, requireCompanyAdmin, async (req, res) => {
++  try {
++    const { companyId } = req.companyContext;
++    const { profileId, groupId } = req.params;
++
++    const profileRes = await db.query(
++      `SELECT id FROM public.company_screening_profiles WHERE company_id = $1 AND id = $2 LIMIT 1`,
++      [companyId, profileId]
++    );
++    if (!profileRes.rows.length) return res.status(404).json({ error: "Profile not found" });
++
++    const { rowCount } = await db.query(
++      `DELETE FROM public.company_screening_profile_groups WHERE profile_id = $1 AND id = $2`,
++      [profileId, groupId]
++    );
++    if (!rowCount) return res.status(404).json({ error: "Group not found" });
++
++    try {
++      await rescreenTrackedCarriersForCompany({ companyId });
++    } catch (rescreenErr) {
++      console.error("Post group-delete rescreen failed:", rescreenErr);
++    }
++    return res.json({ ok: true });
++  } catch (err) {
++    console.error("DELETE /api/screening/profiles/:profileId/groups/:groupId failed:", err);
++    return res.status(500).json({ error: "Failed to delete screening rule group" });
++  }
++});
++
++router.post("/screening/profiles/:profileId/groups/:groupId/rules", requireAuth, loadCompanyContext, requireCompanyAdmin, async (req, res) => {
++  const client = await db.connect();
++  try {
++    const { companyId } = req.companyContext;
++    const { profileId, groupId } = req.params;
++    const requestedIds = Array.isArray(req.body?.profile_criteria_ids) ? req.body.profile_criteria_ids : null;
++    if (!requestedIds) return res.status(400).json({ error: "profile_criteria_ids array is required" });
++
++    const normalizedIds = Array.from(
++      new Set(
++        requestedIds
++          .map((value) => parseNumberOrNull(value))
++          .filter((value) => Number.isFinite(value))
++          .map((value) => Math.trunc(value))
++      )
++    );
++
++    await client.query("BEGIN");
++
++    const profileRes = await client.query(
++      `SELECT id FROM public.company_screening_profiles WHERE company_id = $1 AND id = $2 LIMIT 1`,
++      [companyId, profileId]
++    );
++    if (!profileRes.rows.length) {
++      await client.query("ROLLBACK");
++      return res.status(404).json({ error: "Profile not found" });
++    }
++
++    const groupRes = await client.query(
++      `SELECT id FROM public.company_screening_profile_groups WHERE profile_id = $1 AND id = $2 LIMIT 1`,
++      [profileId, groupId]
++    );
++    if (!groupRes.rows.length) {
++      await client.query("ROLLBACK");
++      return res.status(404).json({ error: "Group not found" });
++    }
++
++    if (normalizedIds.length > 0) {
++      const criteriaRes = await client.query(
++        `
++        SELECT id, is_enabled
++        FROM public.company_screening_profile_criteria
++        WHERE profile_id = $1
++          AND id = ANY($2::bigint[])
++        `,
++        [profileId, normalizedIds]
++      );
++
++      if (criteriaRes.rows.length !== normalizedIds.length) {
++        await client.query("ROLLBACK");
++        return res.status(400).json({ error: "All profile_criteria_ids must belong to the profile" });
++      }
++      if (criteriaRes.rows.some((row) => !row.is_enabled)) {
++        await client.query("ROLLBACK");
++        return res.status(400).json({ error: "Only enabled profile criteria can be assigned to groups" });
++      }
++    }
++
++    await client.query(
++      `DELETE FROM public.company_screening_profile_group_criteria WHERE group_id = $1`,
++      [groupId]
++    );
++
++    for (let i = 0; i < normalizedIds.length; i += 1) {
++      await client.query(
++        `
++        INSERT INTO public.company_screening_profile_group_criteria (group_id, profile_criteria_id, display_order)
++        VALUES ($1, $2, $3)
++        `,
++        [groupId, normalizedIds[i], i]
++      );
++    }
++
++    await client.query("COMMIT");
++    try {
++      await rescreenTrackedCarriersForCompany({ companyId });
++    } catch (rescreenErr) {
++      console.error("Post group-rules-save rescreen failed:", rescreenErr);
++    }
++    return res.json({ ok: true });
++  } catch (err) {
++    await client.query("ROLLBACK");
++    console.error("POST /api/screening/profiles/:profileId/groups/:groupId/rules failed:", err);
++    return res.status(500).json({ error: "Failed to update group rule membership" });
++  } finally {
++    client.release();
++  }
++});
++
++router.patch("/screening/profiles/:profileId/criteria/:profileCriteriaId/group", requireAuth, loadCompanyContext, requireCompanyAdmin, async (req, res) => {
++  const client = await db.connect();
++  try {
++    const { companyId } = req.companyContext;
++    const { profileId, profileCriteriaId } = req.params;
++    const rawGroupId = req.body?.group_id;
++    const groupId = rawGroupId === null || rawGroupId === undefined || String(rawGroupId).trim() === ""
++      ? null
++      : String(rawGroupId).trim();
++
++    await client.query("BEGIN");
++
++    const profileRes = await client.query(
++      `SELECT id FROM public.company_screening_profiles WHERE company_id = $1 AND id = $2 LIMIT 1`,
++      [companyId, profileId]
++    );
++    if (!profileRes.rows.length) {
++      await client.query("ROLLBACK");
++      return res.status(404).json({ error: "Profile not found" });
++    }
++
++    const criterionRes = await client.query(
++      `
++      SELECT id, is_enabled
++      FROM public.company_screening_profile_criteria
++      WHERE profile_id = $1
++        AND id = $2::bigint
++      LIMIT 1
++      `,
++      [profileId, profileCriteriaId]
++    );
++    if (!criterionRes.rows.length) {
++      await client.query("ROLLBACK");
++      return res.status(404).json({ error: "Profile criterion not found" });
++    }
++
++    if (groupId) {
++      const groupRes = await client.query(
++        `SELECT id FROM public.company_screening_profile_groups WHERE profile_id = $1 AND id = $2 LIMIT 1`,
++        [profileId, groupId]
++      );
++      if (!groupRes.rows.length) {
++        await client.query("ROLLBACK");
++        return res.status(404).json({ error: "Group not found" });
++      }
++      if (!criterionRes.rows[0].is_enabled) {
++        await client.query("ROLLBACK");
++        return res.status(400).json({ error: "Only enabled profile criteria can be assigned to groups" });
++      }
++    }
++
++    await client.query(
++      `
++      DELETE FROM public.company_screening_profile_group_criteria
++      WHERE profile_criteria_id = $1::bigint
++      `,
++      [profileCriteriaId]
++    );
++
++    if (groupId) {
++      const nextDisplayOrderRes = await client.query(
++        `
++        SELECT COALESCE(MAX(display_order), -1) + 1 AS next_display_order
++        FROM public.company_screening_profile_group_criteria
++        WHERE group_id = $1
++        `,
++        [groupId]
++      );
++      const nextDisplayOrder = Number(nextDisplayOrderRes.rows[0]?.next_display_order || 0);
++
++      await client.query(
++        `
++        INSERT INTO public.company_screening_profile_group_criteria (group_id, profile_criteria_id, display_order)
++        VALUES ($1, $2::bigint, $3)
++        `,
++        [groupId, profileCriteriaId, nextDisplayOrder]
++      );
++    }
++
++    await client.query("COMMIT");
++
++    try {
++      await rescreenTrackedCarriersForCompany({ companyId });
++    } catch (rescreenErr) {
++      console.error("Post criterion-group reassignment rescreen failed:", rescreenErr);
++    }
++
++    return res.json({ ok: true });
++  } catch (err) {
++    await client.query("ROLLBACK");
++    console.error("PATCH /api/screening/profiles/:profileId/criteria/:profileCriteriaId/group failed:", err);
++    return res.status(500).json({ error: "Failed to update criterion group assignment" });
++  } finally {
++    client.release();
++  }
++});
++
+ router.get("/screening/carriers/:dot/default-result", requireAuth, loadCompanyContext, async (req, res) => {
+   try {
+     const { companyId } = req.companyContext;
+     const dot = String(req.params.dot || "").replace(/\D/g, "");
+     if (!dot) return res.status(400).json({ error: "Valid DOT is required" });
+     const maxAgeMinutes = Number(process.env.CARRIER_SCREENING_MAX_AGE_MINUTES || 60);
+     const response = await getOrCreateScreeningResultForCompany({
+       companyId,
+       dotNumber: dot,
+       maxAgeMinutes
+     });
+ 
+     return res.json({
+       has_default_profile: response.hasDefaultProfile,
+       profile: response.profile,
+       result: response.result,
+       source: response.source
+     });
+   } catch (err) {
+     console.error("GET /api/screening/carriers/:dot/default-result failed:", err);
+     return res.status(500).json({ error: "Failed to load screening result" });
+   }
+ });
+ 
+   return router;
+diff --git a/src/services/carrierScreeningService.js b/src/services/carrierScreeningService.js
+index 7ef18534723ef219315154aca999c89f11ed9020..3d5964f2a5850a4786619e562697fac253a3d466 100644
+--- a/src/services/carrierScreeningService.js
++++ b/src/services/carrierScreeningService.js
+@@ -103,76 +103,108 @@ function normalizeEnumCarrierValue({ criterion, rawValue }) {
+   }
+ 
+   return text;
+ }
+ 
+ async function getDefaultActiveProfile({ companyId, client }) {
+   const { rows } = await client.query(
+     `
+     SELECT id, company_id, profile_name
+     FROM public.company_screening_profiles
+     WHERE company_id = $1
+       AND is_default = true
+       AND is_active = true
+     ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST
+     LIMIT 1
+     `,
+     [companyId]
+   );
+   return rows[0] || null;
+ }
+ 
+ async function getEnabledCriteriaForProfile({ profileId, client }) {
+   const { rows } = await client.query(
+     `
+     SELECT
++      cspc.id AS profile_criteria_id,
+       sc.id AS screening_criteria_id,
+       sc.criteria_key,
+       sc.label,
+       sc.description,
+       sc.value_type,
+       sc.carrier_field,
+       sc.category,
+       sc.display_order,
+       cspc.value_bool,
+       cspc.value_number,
+       cspc.value_date,
+       cspc.value_text,
+       COALESCE(cspc.comparison_operator, 'EQUALS') AS comparison_operator
+     FROM public.company_screening_profile_criteria cspc
+     JOIN public.screening_criteria sc
+       ON sc.id = cspc.screening_criteria_id
+     WHERE cspc.profile_id = $1
+       AND cspc.is_enabled = true
+       AND sc.is_active = true
+     ORDER BY sc.display_order ASC, sc.id ASC
+     `,
+     [profileId]
+   );
+   return rows;
+ }
+ 
++async function getActiveGroupsForProfile({ profileId, client }) {
++  const { rows } = await client.query(
++    `
++    SELECT id, group_name, match_type, display_order
++    FROM public.company_screening_profile_groups
++    WHERE profile_id = $1
++      AND is_active = true
++    ORDER BY display_order ASC, created_at ASC, id ASC
++    `,
++    [profileId]
++  );
++  return rows;
++}
++
++async function getGroupMembershipForProfile({ profileId, client }) {
++  const { rows } = await client.query(
++    `
++    SELECT
++      g.id AS group_id,
++      gc.profile_criteria_id
++    FROM public.company_screening_profile_groups g
++    JOIN public.company_screening_profile_group_criteria gc
++      ON gc.group_id = g.id
++    WHERE g.profile_id = $1
++      AND g.is_active = true
++    `,
++    [profileId]
++  );
++  return rows;
++}
++
+ async function getCarrierByDot({ dotNumber, client }) {
+   const { rows } = await client.query(
+     `
+     SELECT *
+     FROM public.carriers
+     WHERE dotnumber::text = $1
+     LIMIT 1
+     `,
+     [dotNumber]
+   );
+   return rows[0] || null;
+ }
+ 
+ async function getExistingResult({ companyId, profileId, dotNumber, client }) {
+   const { rows } = await client.query(
+     `
+     SELECT *
+     FROM public.company_carrier_screening_results
+     WHERE company_id = $1
+       AND profile_id = $2
+       AND carrier_dot = $3
+     LIMIT 1
+     `,
+     [companyId, profileId, dotNumber]
+   );
+@@ -318,50 +350,83 @@ function evaluateCriterion({ criterion, carrierRow }) {
+       value_text: criterion.value_text
+     },
+     actual_value_raw: rawValue,
+     actual_value_normalized: evaluation.actualNormalized,
+     status: evaluation.status,
+     matched: evaluation.matched,
+     reason: evaluation.reason
+   };
+ }
+ 
+ function aggregateResults(criteriaResults) {
+   let failed = 0;
+   let review = 0;
+   let matched = 0;
+ 
+   for (const result of criteriaResults) {
+     if (result.status === "FAIL") failed += 1;
+     else if (result.status === "REVIEW") review += 1;
+     else if (result.status === "PASS") matched += 1;
+   }
+ 
+   const screeningStatus = failed > 0 ? "FAIL" : review > 0 ? "REVIEW" : "PASS";
+   return { screeningStatus, matchedCount: matched, failedCount: failed, reviewCount: review };
+ }
+ 
++function evaluateGroup({ group, criteriaResults }) {
++  const matchType = String(group?.match_type || "ALL").toUpperCase() === "ANY" ? "ANY" : "ALL";
++  if (!Array.isArray(criteriaResults) || criteriaResults.length === 0) {
++    return {
++      group_id: group.id,
++      group_name: group.group_name,
++      match_type: matchType,
++      status: "REVIEW",
++      reason: "Group has no criteria assigned",
++      criteria: []
++    };
++  }
++
++  const hasFail = criteriaResults.some((result) => result.status === "FAIL");
++  const hasReview = criteriaResults.some((result) => result.status === "REVIEW");
++  const hasPass = criteriaResults.some((result) => result.status === "PASS");
++
++  let status = "PASS";
++  if (matchType === "ALL") {
++    status = hasFail ? "FAIL" : hasReview ? "REVIEW" : "PASS";
++  } else {
++    status = hasPass ? "PASS" : hasReview ? "REVIEW" : "FAIL";
++  }
++
++  return {
++    group_id: group.id,
++    group_name: group.group_name,
++    match_type: matchType,
++    status,
++    criteria: criteriaResults
++  };
++}
++
+ async function upsertScreeningResult({ companyId, profileId, dotNumber, aggregate, summary, client }) {
+   const { rows } = await client.query(
+     `
+     INSERT INTO public.company_carrier_screening_results (
+       company_id,
+       profile_id,
+       carrier_dot,
+       screening_status,
+       matched_count,
+       failed_count,
+       review_count,
+       result_summary,
+       evaluated_at,
+       updated_at
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, NOW(), NOW())
+     ON CONFLICT (company_id, profile_id, carrier_dot)
+     DO UPDATE SET
+       screening_status = EXCLUDED.screening_status,
+       matched_count = EXCLUDED.matched_count,
+       failed_count = EXCLUDED.failed_count,
+       review_count = EXCLUDED.review_count,
+       result_summary = EXCLUDED.result_summary,
+       evaluated_at = NOW(),
+       updated_at = NOW()
+@@ -403,55 +468,83 @@ function isResultFresh(result, maxAgeMinutes) {
+   const maxAgeMs = minutes * 60 * 1000;
+   return Date.now() - evalAt <= maxAgeMs;
+ }
+ 
+ async function screenCarrierForCompany({ companyId, dotNumber, client }) {
+   const normalizedDot = normalizeDot(dotNumber);
+   if (!companyId) throw new Error("companyId is required");
+   if (!normalizedDot) throw new Error("dotNumber is required");
+ 
+   const profile = await getDefaultActiveProfile({ companyId, client });
+   if (!profile) {
+     return {
+       hasDefaultProfile: false,
+       profile: null,
+       result: null,
+       status: "NO_PROFILE"
+     };
+   }
+ 
+   const carrier = await getCarrierByDot({ dotNumber: normalizedDot, client });
+   if (!carrier) {
+     throw new Error(`Carrier not found for DOT ${normalizedDot}`);
+   }
+ 
+   const criteria = await getEnabledCriteriaForProfile({ profileId: profile.id, client });
+-  const criteriaResults = criteria.map((criterion) => evaluateCriterion({ criterion, carrierRow: carrier }));
+-  const aggregate = aggregateResults(criteriaResults);
++  const activeGroups = await getActiveGroupsForProfile({ profileId: profile.id, client });
++  const memberships = await getGroupMembershipForProfile({ profileId: profile.id, client });
++
++  const groupIdByProfileCriteriaId = new Map();
++  for (const membership of memberships) {
++    groupIdByProfileCriteriaId.set(String(membership.profile_criteria_id), membership.group_id);
++  }
++
++  const criteriaResults = criteria.map((criterion) => {
++    const result = evaluateCriterion({ criterion, carrierRow: carrier });
++    return {
++      ...result,
++      profile_criteria_id: criterion.profile_criteria_id,
++      group_id: groupIdByProfileCriteriaId.get(String(criterion.profile_criteria_id)) || null
++    };
++  });
++
++  const standaloneCriteriaResults = criteriaResults.filter((result) => !result.group_id);
++  const groupResults = activeGroups.map((group) => {
++    const groupedCriteria = criteriaResults.filter((result) => String(result.group_id) === String(group.id));
++    return evaluateGroup({ group, criteriaResults: groupedCriteria });
++  });
++
++  const aggregateInputs = [
++    ...standaloneCriteriaResults,
++    ...groupResults.map((group) => ({ status: group.status }))
++  ];
++  const aggregate = aggregateResults(aggregateInputs);
+ 
+   const summary = {
+     generated_at: new Date().toISOString(),
++    standalone_criteria: standaloneCriteriaResults,
++    groups: groupResults,
+     criteria: criteriaResults
+   };
+ 
+   const saved = await upsertScreeningResult({
+     companyId,
+     profileId: profile.id,
+     dotNumber: normalizedDot,
+     aggregate,
+     summary,
+     client
+   });
+ 
+   await updateUserCarrierScreeningCache({
+     companyId,
+     profileId: profile.id,
+     dotNumber: normalizedDot,
+     screeningStatus: aggregate.screeningStatus,
+     client
+   });
+ 
+   return {
+     hasDefaultProfile: true,
+     profile,
+     result: saved,
+     status: "SCREENED"
+diff --git a/static/account.html b/static/account.html
+index 85f910d33a9df61c01fa159e78fa0c55dfe1cac6..69c5cc834ba87f5026bb62f4d450ec5c35923bab 100644
+--- a/static/account.html
++++ b/static/account.html
+@@ -395,50 +395,67 @@
+               <div>
+                 <div class="row-title">Screening Profiles</div>
+                 <div class="row-sub">Choose a default screening profile and configure the criteria that determine carrier status.</div>
+               </div>
+               <div class="row-actions screening-profile-actions">
+                 <button class="btn-primary" id="btn-screening-new-profile">New Profile</button>
+                 <button class="btn-ghost" id="btn-screening-rename-profile">Rename Profile</button>
+                 <button class="btn-ghost" id="btn-screening-delete-profile">Delete Profile</button>
+                 <button class="btn-ghost" id="btn-screening-set-default">Set Default</button>
+               </div>
+             </div>
+ 
+             <div id="screening-profiles-list" class="screening-profiles-list">
+               <div class="muted">Loading profiles…</div>
+             </div>
+ 
+             <div class="divider"></div>
+ 
+             <div class="screening-criteria-wrap">
+               <div class="row-title">Screening Criteria</div>
+               <div id="screening-criteria-list" class="screening-criteria-list">
+                 <div class="muted">Select a screening profile to configure criteria.</div>
+               </div>
+             </div>
+ 
++            <div class="divider"></div>
++
++            <div class="screening-groups-wrap">
++              <div class="row screening-groups-head">
++                <div>
++                  <div class="row-title">Rule Groups</div>
++                  <div class="row-sub">Group enabled rules with <strong>All of these</strong> or <strong>Any of these</strong> logic.</div>
++                </div>
++                <div class="row-actions">
++                  <button class="btn-ghost" id="btn-screening-new-group">New Group</button>
++                </div>
++              </div>
++              <div id="screening-groups-list" class="screening-groups-list">
++                <div class="muted">Select a screening profile to configure rule groups.</div>
++              </div>
++            </div>
++
+             <div class="alerts-save-row">
+               <button class="btn-primary" id="btn-screening-save" disabled>Save Changes</button>
+               <span id="screening-save-status" class="screening-save-status" aria-live="polite"></span>
+             </div>
+           </div>
+         </section>
+ 
+         <!-- API -->
+         <section class="tab-panel" id="tab-api">
+           <div class="card">
+             <div class="card-head card-header">
+               <h2>API</h2>
+               <p class="muted">Everything you need to integrate Carrier Shark into your workflow.</p>
+             </div>
+ 
+             <div class="row lock-wrap" id="api-key-row">
+               <div class="lock-main">
+                 <div class="row-title">API Key</div>
+                 <div class="row-sub" id="api-key-masked">—</div>
+               </div>
+             
+               <div class="row-actions">
+                 <button class="btn-ghost" id="btn-copy-key">Copy</button>
+                 <button class="btn-primary" id="btn-rotate-key">Rotate</button>
+               </div>
+diff --git a/static/css/account.css b/static/css/account.css
+index 57190c8c51304331f4baf18fc45a7f5c17d6c2d6..f12cd3138be5154ca70128340a237975b5706d39 100644
+--- a/static/css/account.css
++++ b/static/css/account.css
+@@ -368,50 +368,103 @@ body.account-page{
+ 
+ .screening-rule-card.is-enabled{
+   border-color:rgba(56,189,248,.46);
+   background:linear-gradient(145deg, rgba(56,189,248,.13), rgba(15,23,42,.56));
+   box-shadow:0 0 0 1px rgba(56,189,248,.18) inset, 0 10px 22px rgba(2,6,23,.28);
+ }
+ 
+ .screening-rule-head{
+   display:flex;
+   align-items:center;
+   gap:10px;
+   font-weight:700;
+   color:#f1f5f9;
+ }
+ 
+ .screening-rule-title{
+   font-size:.92rem;
+ }
+ 
+ .screening-criterion-desc{
+   margin:4px 0 0 26px;
+   color:rgba(148,163,184,.92);
+   font-size:.8rem;
+ }
+ 
++.screening-rule-group-assignment {
++  margin-bottom: 8px;
++}
++
++.screening-groups-wrap{
++  margin-top: 10px;
++}
++
++.screening-groups-head{
++  align-items:flex-start;
++}
++
++.screening-groups-list{
++  margin-top:10px;
++  display:flex;
++  flex-direction:column;
++  gap:10px;
++}
++
++.screening-group-card{
++  border:1px solid rgba(148,163,184,.22);
++  border-radius:12px;
++  background:rgba(15,23,42,.38);
++  padding:10px 12px;
++}
++
++.screening-group-card.is-inactive{
++  opacity:.65;
++}
++
++.screening-group-head{
++  display:flex;
++  justify-content:space-between;
++  gap:10px;
++  margin-bottom:8px;
++}
++
++.screening-group-title{
++  font-weight:800;
++}
++
++.screening-group-meta{
++  font-size:.8rem;
++  color:rgba(148,163,184,.95);
++}
++
++.screening-group-criteria{
++  margin:0;
++  padding-left:18px;
++  color:#e2e8f0;
++  font-size:.84rem;
++}
++
+ .screening-rule-body{
+   margin-top:8px;
+   margin-left:26px;
+   display:flex;
+   flex-direction:column;
+   gap:8px;
+ }
+ 
+ .screening-fields{
+   display:grid;
+   grid-template-columns: minmax(180px, 220px) minmax(180px, 240px);
+   gap:10px;
+ }
+ 
+ .screening-field{
+   display:flex;
+   flex-direction:column;
+   gap:5px;
+ }
+ 
+ .screening-field-label{
+   font-size:.68rem;
+   text-transform:uppercase;
+   letter-spacing:.1em;
+   color:rgba(148,163,184,.9);
+diff --git a/static/js/pages/account.js b/static/js/pages/account.js
+index 75c690493a43f5bba2619b794a738f6a6204044d..4397b43d657fb240b1edb3f830339ac11d45259e 100644
+--- a/static/js/pages/account.js
++++ b/static/js/pages/account.js
+@@ -458,50 +458,56 @@ function escapeHtml(str) {
+     .replaceAll("&", "&amp;")
+     .replaceAll("<", "&lt;")
+     .replaceAll(">", "&gt;")
+     .replaceAll('"', "&quot;")
+     .replaceAll("'", "&#039;");
+ }
+ 
+ function fmtDate(ts) {
+   if (!ts) return "—";
+   const d = new Date(ts);
+   return isNaN(d.getTime())
+     ? "—"
+     : d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "2-digit" });
+ }
+ 
+ let agreementsSelectedId = null;
+ let agreementsTemplates = [];
+ let agreementRequirementsOriginal = null;
+ let agreementRequirementsCurrent = null;
+ let agreementDeleteTargetId = null;
+ const AGREEMENT_LIMIT_PER_COMPANY = 5;
+ let screeningProfiles = [];
+ let selectedScreeningProfileId = null;
+ let screeningCriteriaOriginal = [];
+ let screeningCriteriaCurrent = [];
++let screeningRuleGroups = [];
++
++const SCREENING_GROUP_MATCH_LABELS = {
++  ALL: "All of these",
++  ANY: "Any of these",
++};
+ 
+ function normalizeAgreementRequirements(tpl) {
+   return {
+     insurance_required: !!tpl?.insurance_required,
+     w9_required: tpl?.w9_required === undefined || tpl?.w9_required === null ? true : !!tpl.w9_required,
+     ach_required: !!tpl?.ach_required,
+   };
+ }
+ 
+ function getSelectedTemplate() {
+   return agreementsTemplates.find((t) => String(t.id) === String(agreementsSelectedId)) || null;
+ }
+ 
+ function setAgreementRequirementsSaveState() {
+   const btn = document.getElementById("btn-save-agreement-requirements");
+   if (!btn) return;
+   const dirty = JSON.stringify(agreementRequirementsCurrent) !== JSON.stringify(agreementRequirementsOriginal);
+   btn.disabled = !agreementsSelectedId || !dirty;
+ }
+ 
+ function renderAgreementRequirements() {
+   const host = document.getElementById("agreement-requirements");
+   if (!host) return;
+ 
+   const tpl = getSelectedTemplate();
+@@ -1107,58 +1113,74 @@ function screeningRulePreview(row) {
+       : `Carrier is flagged if ${label} is true.`;
+   }
+ 
+   if (type === "NUMBER") {
+     const hasValue = !(row.value_number === null || row.value_number === undefined || row.value_number === "");
+     if (!hasValue) return `Carrier is flagged if ${label} ${opLabel} the selected value. Enter a value to complete this rule.`;
+     return `Carrier is flagged if ${label} ${opLabel} ${formatNumberForDisplay(row, row.value_number)}.`;
+   }
+ 
+   if (type === "DATE") {
+     const value = row.value_date ? String(row.value_date).slice(0, 10) : "the selected date";
+     return `Carrier is flagged if ${label} ${opLabel} ${value}.`;
+   }
+ 
+   if (type === "ENUM") {
+     const selectedValues = parseEnumSelections(row.value_text);
+     const value = selectedValues.length
+       ? selectedValues.map((selectedValue) => getEnumLabelForValue(row, selectedValue)).join(", ")
+       : "the selected value";
+     return `Carrier is flagged if ${label} ${opLabel} ${value}.`;
+   }
+ 
+   return `Carrier is flagged if ${label} matches this rule.`;
+ }
+ 
++function normalizeScreeningMatchType(value) {
++  const token = String(value || "").trim().toUpperCase();
++  return token === "ANY" ? "ANY" : "ALL";
++}
++
++function getScreeningGroupById(groupId) {
++  return (screeningRuleGroups || []).find((group) => String(group.id) === String(groupId)) || null;
++}
++
++function labelForScreeningGroupMatch(group) {
++  const matchType = normalizeScreeningMatchType(group?.match_type);
++  return SCREENING_GROUP_MATCH_LABELS[matchType] || SCREENING_GROUP_MATCH_LABELS.ALL;
++}
++
+ 
+ function normalizeScreeningCriterionForSave(row) {
+   const normalizedNumber = row.value_number === null || row.value_number === undefined || row.value_number === ""
+     ? null
+     : normalizeNumberForCriterion(row, row.value_number);
+   return {
++    profile_criteria_id: row.profile_criteria_id === null || row.profile_criteria_id === undefined ? null : Number(row.profile_criteria_id),
+     screening_criteria_id: Number(row.screening_criteria_id),
+     is_enabled: !!row.is_enabled,
++    group_id: row.group_id ? String(row.group_id) : null,
+     comparison_operator: normalizeOperator(row.comparison_operator),
+     value_bool: row.value_bool === null || row.value_bool === undefined ? null : !!row.value_bool,
+     value_number: normalizedNumber === null
+       ? null
+       : (isIntegerLikeScreeningCriterion(row) ? Math.round(normalizedNumber) : normalizedNumber),
+     value_date: row.value_date ? String(row.value_date).slice(0, 10) : null,
+     value_text: row.value_text === null || row.value_text === undefined || row.value_text === "" ? null : String(row.value_text),
+   };
+ }
+ 
+ function screeningCriteriaDirty() {
+   const a = (screeningCriteriaCurrent || []).map(normalizeScreeningCriterionForSave);
+   const b = (screeningCriteriaOriginal || []).map(normalizeScreeningCriterionForSave);
+   return JSON.stringify(a) !== JSON.stringify(b);
+ }
+ 
+ function updateScreeningSaveState() {
+   const btn = document.getElementById("btn-screening-save");
+   if (!btn) return;
+   const dirty = !!selectedScreeningProfileId && screeningCriteriaDirty();
+   btn.textContent = "Save Changes";
+   btn.disabled = !dirty || screeningSaveUiState === "saving";
+   if (screeningSaveUiState === "saving") {
+     setScreeningSaveFeedback("saving", "Saving...");
+     return;
+@@ -1176,52 +1198,54 @@ function getSelectedScreeningProfile() {
+   return (screeningProfiles || []).find((p) => String(p.id) === String(selectedScreeningProfileId)) || null;
+ }
+ 
+ function setScreeningActionButtonState() {
+   const selected = getSelectedScreeningProfile();
+   const hasSelected = !!selected;
+   const isDefault = !!selected?.is_default;
+ 
+   const renameBtn = document.getElementById("btn-screening-rename-profile");
+   const deleteBtn = document.getElementById("btn-screening-delete-profile");
+   const defaultBtn = document.getElementById("btn-screening-set-default");
+ 
+   if (renameBtn) renameBtn.disabled = !hasSelected;
+   if (deleteBtn) deleteBtn.disabled = !hasSelected || isDefault;
+   if (defaultBtn) defaultBtn.disabled = !hasSelected || isDefault;
+ }
+ 
+ function renderScreeningProfiles() {
+   const host = document.getElementById("screening-profiles-list");
+   if (!host) return;
+ 
+   if (!screeningProfiles.length) {
+     selectedScreeningProfileId = null;
+     screeningCriteriaOriginal = [];
+     screeningCriteriaCurrent = [];
++    screeningRuleGroups = [];
+     host.innerHTML = `<div class="muted">No screening profiles yet. Create one to start.</div>`;
+     renderScreeningCriteria([]);
++    renderScreeningRuleGroups();
+     setScreeningActionButtonState();
+     updateScreeningSaveState();
+     return;
+   }
+ 
+   if (!selectedScreeningProfileId || !screeningProfiles.some((p) => String(p.id) === String(selectedScreeningProfileId))) {
+     const fallback = screeningProfiles.find((p) => p.is_default) || screeningProfiles[0];
+     selectedScreeningProfileId = fallback?.id || null;
+   }
+ 
+   host.innerHTML = screeningProfiles.map((p) => {
+     const isSelected = String(p.id) === String(selectedScreeningProfileId);
+     return `
+       <button class="screening-profile-pill ${isSelected ? "is-selected" : ""}" data-screening-profile-id="${p.id}">
+         <span class="screening-profile-pill__name">${escapeHtml(p.profile_name || "Untitled")}</span>
+         <span class="screening-profile-pill__meta">
+           ${p.is_default ? `<span class="pill-badge pill-badge--on">DEFAULT</span>` : ``}
+           ${p.is_active ? `` : `<span class="pill-badge">INACTIVE</span>`}
+         </span>
+       </button>
+     `;
+   }).join("");
+ 
+   host.querySelectorAll("[data-screening-profile-id]").forEach((btn) => {
+     btn.addEventListener("click", async () => {
+@@ -1245,50 +1269,67 @@ function renderScreeningCriteria(criteria = []) {
+     host.innerHTML = `<div class="muted">Select a screening profile to configure criteria.</div>`;
+     updateScreeningSaveState();
+     return;
+   }
+ 
+   if (!criteria.length) {
+     host.innerHTML = `<div class="muted">No active screening criteria were found.</div>`;
+     updateScreeningSaveState();
+     return;
+   }
+ 
+   const grouped = criteria.reduce((acc, row, idx) => {
+     const category = String(row.category || "Other").trim() || "Other";
+     if (!acc[category]) acc[category] = [];
+     acc[category].push({ row, idx });
+     return acc;
+   }, {});
+ 
+   const sectionHtml = Object.entries(grouped).map(([category, rows]) => {
+     const enabledCount = rows.filter(({ row }) => row.is_enabled).length;
+     const cardsHtml = rows.map(({ row, idx }) => {
+       const type = String(row.value_type || "").toUpperCase();
+       const operatorOptions = operatorOptionsForRow(row);
+       const isEnabled = !!row.is_enabled;
+       const description = row.description ? `<div class="screening-criterion-desc">${escapeHtml(row.description)}</div>` : "";
++      const currentGroupId = row.group_id ? String(row.group_id) : "";
++      const canAssignGroup = !!row.profile_criteria_id;
++      const groupOptions = [`<option value="">None</option>`]
++        .concat(
++          (screeningRuleGroups || []).map((group) => (
++            `<option value="${escapeHtml(group.id)}" ${String(group.id) === currentGroupId ? "selected" : ""}>${escapeHtml(group.group_name || "Untitled Group")}</option>`
++          ))
++        ).join("");
++      const groupSelect = `
++        <label class="screening-field screening-rule-group-assignment">
++          <span class="screening-field-label">Group</span>
++          <select class="api-input screening-select" data-screening-group-id="${idx}" ${canAssignGroup ? "" : "disabled"}>
++            ${groupOptions}
++          </select>
++          ${canAssignGroup ? "" : `<span class="screening-field-note">Save this rule before assigning it to a group.</span>`}
++        </label>
++      `;
+ 
+       const operatorSelect = `
+         <label class="screening-field">
+           <span class="screening-field-label">Operator</span>
+           <select class="api-input screening-select" data-screening-operator="${idx}">
+             ${operatorOptions.map((op) => `<option value="${op}" ${normalizeOperator(row.comparison_operator) === op ? "selected" : ""}>${escapeHtml(OPERATOR_LABELS[op] || op)}</option>`).join("")}
+           </select>
+         </label>
+       `;
+ 
+       let valueControl = "";
+       if (type === "NUMBER") {
+         const needsValue = row.value_number === null || row.value_number === undefined || row.value_number === "";
+         const hasFractionalValue = isIntegerLikeScreeningCriterion(row) && Number.isFinite(Number(row.value_number)) && Number(row.value_number) % 1 !== 0;
+         const numberStep = isIntegerLikeScreeningCriterion(row) ? "1" : "any";
+         valueControl = `
+           <label class="screening-field">
+             <span class="screening-field-label">Value</span>
+             <input class="api-input ${needsValue || hasFractionalValue ? "screening-value-missing" : ""}" type="number" step="${numberStep}" placeholder="Enter value" data-screening-value="value_number" data-idx="${idx}" value="${formatNumberForDisplay(row, row.value_number)}">
+             ${needsValue ? `<span class="screening-field-note">Add a value to complete this rule.</span>` : ""}
+             ${hasFractionalValue ? `<span class="screening-field-note">Whole numbers only.</span>` : ""}
+           </label>
+         `;
+       } else if (type === "DATE") {
+         const value = row.value_date ? String(row.value_date).slice(0, 10) : "";
+@@ -1314,243 +1355,381 @@ function renderScreeningCriteria(criteria = []) {
+               <div class="screening-enum-checklist">${opts}</div>
+               <span class="screening-field-note">Select one or more values.</span>
+             </fieldset>
+           `;
+         } else {
+           const selectedSingle = selectedValues[0] || "";
+           const opts = options.map((opt) => `<option value="${escapeHtml(opt.value)}" ${selectedSingle === String(opt.value) ? "selected" : ""}>${escapeHtml(opt.label)}</option>`).join("");
+           valueControl = `
+             <label class="screening-field">
+               <span class="screening-field-label">Value</span>
+               <select class="api-input screening-select" data-screening-value="value_text" data-idx="${idx}">${opts}</select>
+             </label>
+           `;
+         }
+       }
+ 
+       return `
+         <article class="screening-rule-card ${isEnabled ? "is-enabled" : "is-disabled"}">
+           <label class="screening-rule-head">
+             <input type="checkbox" data-screening-enabled="${idx}" ${isEnabled ? "checked" : ""}>
+             <span class="screening-rule-title">${escapeHtml(row.label || row.criteria_key || "Criterion")}</span>
+           </label>
+           ${description}
+           ${isEnabled ? `
+             <div class="screening-rule-body">
+-              <div class="screening-fields">${operatorSelect}${valueControl}</div>
++              <div class="screening-fields">${groupSelect}${operatorSelect}${valueControl}</div>
+               <div class="screening-preview-label">Rule Preview</div>
+               <div class="screening-rule-preview">${escapeHtml(screeningRulePreview(row))}</div>
+             </div>
+           ` : ""}
+         </article>
+       `;
+     }).join("");
+ 
+     return `
+       <section class="screening-category-section">
+         <header class="screening-category-head">
+           <h3>${escapeHtml(category)}</h3>
+           <span class="screening-category-meta">${enabledCount}/${rows.length} enabled</span>
+         </header>
+         <div class="screening-category-list">${cardsHtml}</div>
+       </section>
+     `;
+   }).join("");
+ 
+   host.innerHTML = sectionHtml;
+ 
+   host.querySelectorAll("[data-screening-enabled]").forEach((el) => {
+     el.addEventListener("change", () => {
+       const idx = Number(el.getAttribute("data-screening-enabled"));
+       const row = screeningCriteriaCurrent[idx];
+       if (!row) return;
+       row.is_enabled = el.checked;
+       if (row.is_enabled) ensureScreeningDefaults(row);
++      if (!row.is_enabled) row.group_id = null;
+       renderScreeningCriteria(screeningCriteriaCurrent);
+       updateScreeningSaveState();
+     });
+   });
+ 
+   host.querySelectorAll("[data-screening-operator]").forEach((el) => {
+     el.addEventListener("change", () => {
+       const idx = Number(el.getAttribute("data-screening-operator"));
+       const row = screeningCriteriaCurrent[idx];
+       if (!row) return;
+       row.comparison_operator = normalizeOperator(el.value);
+       if (String(row.value_type || "").toUpperCase() === "BOOLEAN") {
+         row.value_bool = row.comparison_operator !== "IS_FALSE";
+       } else if (String(row.value_type || "").toUpperCase() === "ENUM") {
+         const selectedValues = parseEnumSelections(row.value_text);
+         if (SCREENING_MULTI_ENUM_OPERATORS.has(row.comparison_operator)) {
+           row.value_text = selectedValues.join(", ");
+         } else {
+           row.value_text = selectedValues[0] || null;
+         }
+       }
+       renderScreeningCriteria(screeningCriteriaCurrent);
+       updateScreeningSaveState();
+     });
+   });
+ 
++  host.querySelectorAll("[data-screening-group-id]").forEach((el) => {
++    el.addEventListener("change", () => {
++      const idx = Number(el.getAttribute("data-screening-group-id"));
++      const row = screeningCriteriaCurrent[idx];
++      if (!row) return;
++      row.group_id = el.value || null;
++      updateScreeningSaveState();
++    });
++  });
++
+   host.querySelectorAll("[data-screening-value]").forEach((el) => {
+     el.addEventListener("input", () => {
+       const idx = Number(el.getAttribute("data-idx"));
+       const key = el.getAttribute("data-screening-value");
+       const row = screeningCriteriaCurrent[idx];
+       if (!row) return;
+       if (key === "value_number") row.value_number = normalizeNumberForCriterion(row, el.value);
+       if (key === "value_date") row.value_date = el.value || null;
+       if (key === "value_text") row.value_text = el.value || null;
+       updateScreeningSaveState();
+       const previewEl = host.querySelector(`.screening-rule-card input[data-screening-enabled="${idx}"]`)?.closest('.screening-rule-card')?.querySelector('.screening-rule-preview');
+       if (previewEl) previewEl.textContent = screeningRulePreview(row);
+     });
+ 
+     el.addEventListener("blur", () => {
+       const idx = Number(el.getAttribute("data-idx"));
+       const key = el.getAttribute("data-screening-value");
+       const row = screeningCriteriaCurrent[idx];
+       if (!row || key !== "value_number" || !isIntegerLikeScreeningCriterion(row)) return;
+       if (row.value_number === null || row.value_number === undefined || row.value_number === "") return;
+       const numeric = Number(row.value_number);
+       if (!Number.isFinite(numeric)) return;
+       if (numeric % 1 !== 0) {
+         row.value_number = Math.round(numeric);
+         renderScreeningCriteria(screeningCriteriaCurrent);
+       }
+     });
+   });
+ 
+   host.querySelectorAll("[data-screening-enum-multi]").forEach((el) => {
+     el.addEventListener("change", () => {
+       const idx = Number(el.getAttribute("data-screening-enum-multi"));
+       const row = screeningCriteriaCurrent[idx];
+       if (!row) return;
+       const checked = Array.from(host.querySelectorAll(`[data-screening-enum-multi="${idx}"]:checked`)).map((input) => input.value).filter(Boolean);
+       row.value_text = checked.length ? checked.join(", ") : null;
+       updateScreeningSaveState();
+       const previewEl = host.querySelector(`.screening-rule-card input[data-screening-enabled="${idx}"]`)?.closest('.screening-rule-card')?.querySelector('.screening-rule-preview');
+       if (previewEl) previewEl.textContent = screeningRulePreview(row);
+     });
+   });
+ 
+   updateScreeningSaveState();
+ }
+ 
++function renderScreeningRuleGroups() {
++  const host = document.getElementById("screening-groups-list");
++  if (!host) return;
++
++  if (!selectedScreeningProfileId) {
++    host.innerHTML = `<div class="muted">Select a screening profile to configure rule groups.</div>`;
++    return;
++  }
++
++  if (!screeningRuleGroups.length) {
++    host.innerHTML = `<div class="muted">No rule groups yet. Create a group to combine rules with ALL/ANY logic.</div>`;
++    return;
++  }
++
++  host.innerHTML = screeningRuleGroups.map((group) => {
++    const criteriaLines = (group.criteria || [])
++      .map((criterion) => `<li>${escapeHtml(criterion.label || criterion.criteria_key || "Criterion")}</li>`)
++      .join("");
++    return `
++      <article class="screening-group-card ${group.is_active ? "" : "is-inactive"}" data-screening-group-card="${group.id}">
++        <div class="screening-group-head">
++          <div>
++            <div class="screening-group-title">${escapeHtml(group.group_name || "Untitled Group")}</div>
++            <div class="screening-group-meta">Match: ${escapeHtml(labelForScreeningGroupMatch(group))}</div>
++          </div>
++          <div class="row-actions">
++            <button class="btn-ghost" data-screening-group-rename="${group.id}">Rename</button>
++            <button class="btn-ghost" data-screening-group-match="${group.id}">Match Type</button>
++            <button class="btn-ghost" data-screening-group-delete="${group.id}">Delete</button>
++          </div>
++        </div>
++        ${criteriaLines ? `<ul class="screening-group-criteria">${criteriaLines}</ul>` : `<div class="muted">No rules assigned yet.</div>`}
++      </article>
++    `;
++  }).join("");
++
++  host.querySelectorAll("[data-screening-group-rename]").forEach((button) => {
++    button.addEventListener("click", async () => {
++      const groupId = button.getAttribute("data-screening-group-rename");
++      const group = getScreeningGroupById(groupId);
++      if (!group || !selectedScreeningProfileId) return;
++      const nextName = prompt("Rename group:", group.group_name || "");
++      if (!nextName || !String(nextName).trim()) return;
++      await apiPatch(`/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/groups/${encodeURIComponent(group.id)}`, {
++        group_name: String(nextName).trim(),
++      });
++      await loadScreeningCriteria(selectedScreeningProfileId);
++    });
++  });
++
++  host.querySelectorAll("[data-screening-group-match]").forEach((button) => {
++    button.addEventListener("click", async () => {
++      const groupId = button.getAttribute("data-screening-group-match");
++      const group = getScreeningGroupById(groupId);
++      if (!group || !selectedScreeningProfileId) return;
++      const current = normalizeScreeningMatchType(group.match_type);
++      const next = current === "ALL" ? "ANY" : "ALL";
++      await apiPatch(`/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/groups/${encodeURIComponent(group.id)}`, {
++        match_type: next,
++      });
++      await loadScreeningCriteria(selectedScreeningProfileId);
++    });
++  });
++
++  host.querySelectorAll("[data-screening-group-delete]").forEach((button) => {
++    button.addEventListener("click", async () => {
++      const groupId = button.getAttribute("data-screening-group-delete");
++      const group = getScreeningGroupById(groupId);
++      if (!group || !selectedScreeningProfileId) return;
++      if (!confirm(`Delete rule group "${group.group_name}"?`)) return;
++      await apiDelete(`/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/groups/${encodeURIComponent(group.id)}`);
++      await loadScreeningCriteria(selectedScreeningProfileId);
++    });
++  });
++}
++
++async function loadScreeningRuleGroups(profileId) {
++  if (!profileId) {
++    screeningRuleGroups = [];
++    renderScreeningRuleGroups();
++    return;
++  }
++  const data = await apiGet(`/api/screening/profiles/${encodeURIComponent(profileId)}/groups`);
++  screeningRuleGroups = Array.isArray(data?.groups) ? data.groups : [];
++  renderScreeningRuleGroups();
++}
++
+ async function loadScreeningProfiles() {
+   const data = await apiGet("/api/screening/profiles");
+   screeningProfiles = Array.isArray(data?.profiles) ? data.profiles : [];
+   renderScreeningProfiles();
+   if (selectedScreeningProfileId) {
+     await loadScreeningCriteria(selectedScreeningProfileId);
+   } else {
+     screeningCriteriaOriginal = [];
+     screeningCriteriaCurrent = [];
++    screeningRuleGroups = [];
+     renderScreeningCriteria([]);
++    renderScreeningRuleGroups();
+   }
+ }
+ 
+ async function loadScreeningCriteria(profileId) {
+   if (!profileId) return;
+   screeningSaveUiState = "idle";
+   setScreeningSaveFeedback("idle", "");
+   const data = await apiGet(`/api/screening/profiles/${encodeURIComponent(profileId)}/criteria`);
+   const rows = Array.isArray(data?.criteria) ? data.criteria : [];
+   screeningCriteriaOriginal = clone(rows);
+   screeningCriteriaCurrent = clone(rows);
+   screeningCriteriaCurrent.forEach((row) => {
+     if (row?.is_enabled) ensureScreeningDefaults(row);
+   });
++  await loadScreeningRuleGroups(profileId);
+   renderScreeningCriteria(screeningCriteriaCurrent);
+ }
+ 
+ async function saveScreeningCriteria() {
+   if (!selectedScreeningProfileId) return;
+   if (screeningSaveUiState === "saving") return;
+   screeningSaveUiState = "saving";
+   const btn = document.getElementById("btn-screening-save");
+   if (btn) btn.textContent = "Saving...";
+   updateScreeningSaveState();
+   try {
++    const desiredGroupByProfileCriteriaId = new Map(
++      screeningCriteriaCurrent
++        .filter((row) => row.profile_criteria_id !== null && row.profile_criteria_id !== undefined)
++        .map((row) => [Number(row.profile_criteria_id), row.group_id || null])
++    );
++
+     const payload = screeningCriteriaCurrent.map((row) => {
+       const norm = normalizeScreeningCriterionForSave(row);
+       if (norm.value_number !== null && Number.isNaN(norm.value_number)) {
+         throw new Error(`Invalid number for ${row.label || row.criteria_key}`);
+       }
+       return norm;
+     });
+ 
+     await apiPost(`/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/criteria`, {
+       criteria: payload,
+     });
+-    screeningCriteriaOriginal = clone(screeningCriteriaCurrent);
++
++    const refreshed = await apiGet(`/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/criteria`);
++    const refreshedRows = Array.isArray(refreshed?.criteria) ? refreshed.criteria : [];
++
++    for (const row of refreshedRows) {
++      if (!row?.profile_criteria_id) continue;
++      const profileCriteriaId = Number(row.profile_criteria_id);
++      const desiredGroupId = row.is_enabled ? (desiredGroupByProfileCriteriaId.get(profileCriteriaId) || null) : null;
++      const currentGroupId = row.group_id || null;
++      if (String(desiredGroupId || "") === String(currentGroupId || "")) continue;
++
++      await apiPatch(
++        `/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/criteria/${encodeURIComponent(row.profile_criteria_id)}/group`,
++        { group_id: desiredGroupId }
++      );
++    }
++
++    await loadScreeningCriteria(selectedScreeningProfileId);
+     screeningSaveUiState = "saved";
+     setScreeningSaveFeedback("saved", "Changes saved");
+   } catch (err) {
+     screeningSaveUiState = "error";
+     setScreeningSaveFeedback("error", "Could not save changes");
+     throw err;
+   } finally {
+     updateScreeningSaveState();
+   }
+ }
+ 
+ async function createScreeningProfile() {
+   const name = prompt("Name your new screening profile:");
+   if (!name || !String(name).trim()) return;
+   await apiPost("/api/screening/profiles", { profile_name: String(name).trim() });
+   await loadScreeningProfiles();
+ }
+ 
+ async function renameScreeningProfile() {
+   const selected = getSelectedScreeningProfile();
+   if (!selected) return;
+   const next = prompt("Rename screening profile:", selected.profile_name || "");
+   if (!next || !String(next).trim()) return;
+   await apiPatch(`/api/screening/profiles/${encodeURIComponent(selected.id)}`, { profile_name: String(next).trim() });
+   await loadScreeningProfiles();
+ }
+ 
+ async function deleteScreeningProfile() {
+   const selected = getSelectedScreeningProfile();
+   if (!selected) return;
+   if (selected.is_default) {
+     alert("Default profile cannot be deleted.");
+     return;
+   }
+   if (!confirm(`Delete screening profile \"${selected.profile_name}\"?`)) return;
+   await apiDelete(`/api/screening/profiles/${encodeURIComponent(selected.id)}`);
+   await loadScreeningProfiles();
+ }
+ 
+ async function setDefaultScreeningProfile() {
+   const selected = getSelectedScreeningProfile();
+   if (!selected) return;
+   await apiPost(`/api/screening/profiles/${encodeURIComponent(selected.id)}/set-default`, {});
+   await loadScreeningProfiles();
+ }
+ 
++async function createScreeningRuleGroup() {
++  if (!selectedScreeningProfileId) return;
++  const groupName = prompt("Name your new rule group:");
++  if (!groupName || !String(groupName).trim()) return;
++  const useAny = confirm("Use 'Any of these' matching?\n\nChoose OK for Any of these, Cancel for All of these.");
++  const matchType = useAny ? "ANY" : "ALL";
++
++  await apiPost(`/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/groups`, {
++    group_name: String(groupName).trim(),
++    match_type: matchType,
++  });
++  await loadScreeningCriteria(selectedScreeningProfileId);
++}
++
+ 
+ 
+   function renderPlans(plan) {
+     const el = $("plan-grid");
+     if (!el) return;
+ 
+     const plans = plan?.available || [
+       { id: "starter", name: "Starter", desc: "Lightweight monitoring for small teams." },
+       { id: "pro", name: "Pro", desc: "More watched carriers, faster refresh, richer alerts." },
+       { id: "team", name: "Team", desc: "Multi-user workflows and shared monitoring." },
+     ];
+ 
+     const current = plan?.current_id;
+ 
+     el.innerHTML = plans
+       .map((p) => {
+         const active = p.id === current;
+         return `
+           <div class="card" style="padding:14px;">
+             <div class="card-head">
+               <h2 style="font-size:.95rem;">${p.name}</h2>
+               ${active ? `<span class="badge">Current</span>` : ``}
+             </div>
+             <div class="muted" style="margin-top:0;">${p.desc}</div>
+             <div style="margin-top:12px;">
+@@ -2340,50 +2519,57 @@ document.getElementById("btn-screening-new-profile")?.addEventListener("click",
+     alert(err?.message || "Failed to create screening profile.");
+   });
+ });
+ 
+ document.getElementById("btn-screening-rename-profile")?.addEventListener("click", () => {
+   renameScreeningProfile().catch((err) => {
+     console.error(err);
+     alert(err?.message || "Failed to rename screening profile.");
+   });
+ });
+ 
+ document.getElementById("btn-screening-delete-profile")?.addEventListener("click", () => {
+   deleteScreeningProfile().catch((err) => {
+     console.error(err);
+     alert(err?.message || "Failed to delete screening profile.");
+   });
+ });
+ 
+ document.getElementById("btn-screening-set-default")?.addEventListener("click", () => {
+   setDefaultScreeningProfile().catch((err) => {
+     console.error(err);
+     alert(err?.message || "Failed to set default screening profile.");
+   });
+ });
+ 
++document.getElementById("btn-screening-new-group")?.addEventListener("click", () => {
++  createScreeningRuleGroup().catch((err) => {
++    console.error(err);
++    alert(err?.message || "Failed to create screening rule group.");
++  });
++});
++
+ document.getElementById("btn-screening-save")?.addEventListener("click", () => {
+   saveScreeningCriteria().catch((err) => {
+     console.error(err);
+   });
+ });
+ 
+ 
+ 
+ document.getElementById("alerts-enabled")?.addEventListener("change", async (e) => {
+   const toggle = e.currentTarget;
+ 
+   try {
+     const r = await fetch("/api/account/email-alerts-enabled", {
+       method: "POST",
+       credentials: "include",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify({ email_alerts_enabled: toggle.checked }),
+     });
+ 
+     if (!r.ok) {
+       const text = await r.text().catch(() => "");
+       throw new Error(`POST failed: ${r.status} ${text}`);
+     }
+ 
+     // ✅ show confirmation only AFTER user toggles

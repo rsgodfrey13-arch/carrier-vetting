@@ -125,6 +125,7 @@ async function getEnabledCriteriaForProfile({ profileId, client }) {
   const { rows } = await client.query(
     `
     SELECT
+      cspc.id AS profile_criteria_id,
       sc.id AS screening_criteria_id,
       sc.criteria_key,
       sc.label,
@@ -145,6 +146,37 @@ async function getEnabledCriteriaForProfile({ profileId, client }) {
       AND cspc.is_enabled = true
       AND sc.is_active = true
     ORDER BY sc.display_order ASC, sc.id ASC
+    `,
+    [profileId]
+  );
+  return rows;
+}
+
+async function getActiveGroupsForProfile({ profileId, client }) {
+  const { rows } = await client.query(
+    `
+    SELECT id, group_name, match_type, display_order
+    FROM public.company_screening_profile_groups
+    WHERE profile_id = $1
+      AND is_active = true
+    ORDER BY display_order ASC, created_at ASC, id ASC
+    `,
+    [profileId]
+  );
+  return rows;
+}
+
+async function getGroupMembershipForProfile({ profileId, client }) {
+  const { rows } = await client.query(
+    `
+    SELECT
+      g.id AS group_id,
+      gc.profile_criteria_id
+    FROM public.company_screening_profile_groups g
+    JOIN public.company_screening_profile_group_criteria gc
+      ON gc.group_id = g.id
+    WHERE g.profile_id = $1
+      AND g.is_active = true
     `,
     [profileId]
   );
@@ -340,6 +372,39 @@ function aggregateResults(criteriaResults) {
   return { screeningStatus, matchedCount: matched, failedCount: failed, reviewCount: review };
 }
 
+function evaluateGroup({ group, criteriaResults }) {
+  const matchType = String(group?.match_type || "ALL").toUpperCase() === "ANY" ? "ANY" : "ALL";
+  if (!Array.isArray(criteriaResults) || criteriaResults.length === 0) {
+    return {
+      group_id: group.id,
+      group_name: group.group_name,
+      match_type: matchType,
+      status: "REVIEW",
+      reason: "Group has no criteria assigned",
+      criteria: []
+    };
+  }
+
+  const hasFail = criteriaResults.some((result) => result.status === "FAIL");
+  const hasReview = criteriaResults.some((result) => result.status === "REVIEW");
+  const hasPass = criteriaResults.some((result) => result.status === "PASS");
+
+  let status = "PASS";
+  if (matchType === "ALL") {
+    status = hasFail ? "FAIL" : hasReview ? "REVIEW" : "PASS";
+  } else {
+    status = hasPass ? "PASS" : hasReview ? "REVIEW" : "FAIL";
+  }
+
+  return {
+    group_id: group.id,
+    group_name: group.group_name,
+    match_type: matchType,
+    status,
+    criteria: criteriaResults
+  };
+}
+
 async function upsertScreeningResult({ companyId, profileId, dotNumber, aggregate, summary, client }) {
   const { rows } = await client.query(
     `
@@ -425,11 +490,39 @@ async function screenCarrierForCompany({ companyId, dotNumber, client }) {
   }
 
   const criteria = await getEnabledCriteriaForProfile({ profileId: profile.id, client });
-  const criteriaResults = criteria.map((criterion) => evaluateCriterion({ criterion, carrierRow: carrier }));
-  const aggregate = aggregateResults(criteriaResults);
+  const activeGroups = await getActiveGroupsForProfile({ profileId: profile.id, client });
+  const memberships = await getGroupMembershipForProfile({ profileId: profile.id, client });
+
+  const groupIdByProfileCriteriaId = new Map();
+  for (const membership of memberships) {
+    groupIdByProfileCriteriaId.set(String(membership.profile_criteria_id), membership.group_id);
+  }
+
+  const criteriaResults = criteria.map((criterion) => {
+    const result = evaluateCriterion({ criterion, carrierRow: carrier });
+    return {
+      ...result,
+      profile_criteria_id: criterion.profile_criteria_id,
+      group_id: groupIdByProfileCriteriaId.get(String(criterion.profile_criteria_id)) || null
+    };
+  });
+
+  const standaloneCriteriaResults = criteriaResults.filter((result) => !result.group_id);
+  const groupResults = activeGroups.map((group) => {
+    const groupedCriteria = criteriaResults.filter((result) => String(result.group_id) === String(group.id));
+    return evaluateGroup({ group, criteriaResults: groupedCriteria });
+  });
+
+  const aggregateInputs = [
+    ...standaloneCriteriaResults,
+    ...groupResults.map((group) => ({ status: group.status }))
+  ];
+  const aggregate = aggregateResults(aggregateInputs);
 
   const summary = {
     generated_at: new Date().toISOString(),
+    standalone_criteria: standaloneCriteriaResults,
+    groups: groupResults,
     criteria: criteriaResults
   };
 

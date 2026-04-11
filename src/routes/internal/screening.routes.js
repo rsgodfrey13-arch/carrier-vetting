@@ -84,6 +84,12 @@ function normalizeDateOrNull(value) {
   return raw;
 }
 
+function normalizeGroupMatchType(value) {
+  const token = String(value || "").trim().toUpperCase();
+  if (token === "ALL" || token === "ANY") return token;
+  return null;
+}
+
 function screeningRoutes({ pool } = {}) {
   const db = pool || globalPool;
   const router = express.Router();
@@ -330,16 +336,20 @@ router.get("/screening/profiles/:profileId/criteria", requireAuth, loadCompanyCo
         sc.category,
         sc.display_order,
         sc.enum_options,
+        cspc.id AS profile_criteria_id,
         COALESCE(cspc.is_enabled, false) AS is_enabled,
         cspc.comparison_operator,
         cspc.value_bool,
         cspc.value_number,
         cspc.value_date,
-        cspc.value_text
+        cspc.value_text,
+        gc.group_id
       FROM public.screening_criteria sc
       LEFT JOIN public.company_screening_profile_criteria cspc
         ON cspc.profile_id = $1
        AND cspc.screening_criteria_id = sc.id
+      LEFT JOIN public.company_screening_profile_group_criteria gc
+        ON gc.profile_criteria_id = cspc.id
       WHERE sc.is_active = true
       ORDER BY sc.display_order ASC, sc.id ASC
       `,
@@ -521,6 +531,391 @@ router.post("/screening/profiles/:profileId/criteria", requireAuth, loadCompanyC
     await client.query("ROLLBACK");
     console.error("POST /api/screening/profiles/:profileId/criteria failed:", err);
     return res.status(500).json({ error: "Failed to save screening criteria" });
+  } finally {
+    client.release();
+  }
+});
+
+router.get("/screening/profiles/:profileId/groups", requireAuth, loadCompanyContext, async (req, res) => {
+  try {
+    const { companyId } = req.companyContext;
+    const { profileId } = req.params;
+
+    const profileRes = await db.query(
+      `
+      SELECT id
+      FROM public.company_screening_profiles
+      WHERE company_id = $1
+        AND id = $2
+      LIMIT 1
+      `,
+      [companyId, profileId]
+    );
+    if (!profileRes.rows.length) return res.status(404).json({ error: "Profile not found" });
+
+    const groupsRes = await db.query(
+      `
+      SELECT id, profile_id, group_name, match_type, display_order, is_active, created_at, updated_at
+      FROM public.company_screening_profile_groups
+      WHERE profile_id = $1
+      ORDER BY display_order ASC, created_at ASC, id ASC
+      `,
+      [profileId]
+    );
+
+    const membersRes = await db.query(
+      `
+      SELECT
+        gc.group_id,
+        gc.profile_criteria_id,
+        gc.display_order,
+        sc.id AS screening_criteria_id,
+        sc.criteria_key,
+        sc.label,
+        cspc.is_enabled
+      FROM public.company_screening_profile_group_criteria gc
+      JOIN public.company_screening_profile_criteria cspc
+        ON cspc.id = gc.profile_criteria_id
+      JOIN public.screening_criteria sc
+        ON sc.id = cspc.screening_criteria_id
+      WHERE cspc.profile_id = $1
+      ORDER BY gc.display_order ASC, gc.created_at ASC, gc.id ASC
+      `,
+      [profileId]
+    );
+
+    const criteriaByGroupId = new Map();
+    for (const row of membersRes.rows) {
+      const key = String(row.group_id);
+      if (!criteriaByGroupId.has(key)) criteriaByGroupId.set(key, []);
+      criteriaByGroupId.get(key).push(row);
+    }
+
+    const groups = groupsRes.rows.map((group) => ({
+      ...group,
+      criteria: criteriaByGroupId.get(String(group.id)) || []
+    }));
+
+    return res.json({ groups });
+  } catch (err) {
+    console.error("GET /api/screening/profiles/:profileId/groups failed:", err);
+    return res.status(500).json({ error: "Failed to load screening rule groups" });
+  }
+});
+
+router.post("/screening/profiles/:profileId/groups", requireAuth, loadCompanyContext, requireCompanyAdmin, async (req, res) => {
+  try {
+    const { companyId } = req.companyContext;
+    const { profileId } = req.params;
+    const groupName = String(req.body?.group_name || "").trim();
+    const matchType = normalizeGroupMatchType(req.body?.match_type || "ALL");
+    const displayOrder = parseNumberOrNull(req.body?.display_order) ?? 0;
+
+    if (!groupName) return res.status(400).json({ error: "group_name is required" });
+    if (!matchType) return res.status(400).json({ error: "match_type must be ALL or ANY" });
+
+    const profileRes = await db.query(
+      `SELECT id FROM public.company_screening_profiles WHERE company_id = $1 AND id = $2 LIMIT 1`,
+      [companyId, profileId]
+    );
+    if (!profileRes.rows.length) return res.status(404).json({ error: "Profile not found" });
+
+    const { rows } = await db.query(
+      `
+      INSERT INTO public.company_screening_profile_groups (profile_id, group_name, match_type, display_order, is_active)
+      VALUES ($1, $2, $3, $4, true)
+      RETURNING id, profile_id, group_name, match_type, display_order, is_active, created_at, updated_at
+      `,
+      [profileId, groupName, matchType, Math.trunc(displayOrder)]
+    );
+
+    try {
+      await rescreenTrackedCarriersForCompany({ companyId });
+    } catch (rescreenErr) {
+      console.error("Post group-create rescreen failed:", rescreenErr);
+    }
+    return res.json({ ok: true, group: rows[0] });
+  } catch (err) {
+    console.error("POST /api/screening/profiles/:profileId/groups failed:", err);
+    return res.status(500).json({ error: "Failed to create screening rule group" });
+  }
+});
+
+router.patch("/screening/profiles/:profileId/groups/:groupId", requireAuth, loadCompanyContext, requireCompanyAdmin, async (req, res) => {
+  try {
+    const { companyId } = req.companyContext;
+    const { profileId, groupId } = req.params;
+
+    const profileRes = await db.query(
+      `SELECT id FROM public.company_screening_profiles WHERE company_id = $1 AND id = $2 LIMIT 1`,
+      [companyId, profileId]
+    );
+    if (!profileRes.rows.length) return res.status(404).json({ error: "Profile not found" });
+
+    const updates = [];
+    const values = [profileId, groupId];
+
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, "group_name")) {
+      const value = String(req.body.group_name || "").trim();
+      if (!value) return res.status(400).json({ error: "group_name cannot be empty" });
+      values.push(value);
+      updates.push(`group_name = $${values.length}`);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, "match_type")) {
+      const value = normalizeGroupMatchType(req.body.match_type);
+      if (!value) return res.status(400).json({ error: "match_type must be ALL or ANY" });
+      values.push(value);
+      updates.push(`match_type = $${values.length}`);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, "display_order")) {
+      const value = parseNumberOrNull(req.body.display_order);
+      if (value === null) return res.status(400).json({ error: "display_order must be numeric" });
+      values.push(Math.trunc(value));
+      updates.push(`display_order = $${values.length}`);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, "is_active")) {
+      const value = parseBool(req.body.is_active);
+      if (value === null) return res.status(400).json({ error: "is_active must be boolean" });
+      values.push(value);
+      updates.push(`is_active = $${values.length}`);
+    }
+    if (!updates.length) return res.status(400).json({ error: "No valid fields to update" });
+
+    updates.push("updated_at = now()");
+    const { rows } = await db.query(
+      `
+      UPDATE public.company_screening_profile_groups
+      SET ${updates.join(", ")}
+      WHERE profile_id = $1
+        AND id = $2
+      RETURNING id, profile_id, group_name, match_type, display_order, is_active, created_at, updated_at
+      `,
+      values
+    );
+    if (!rows.length) return res.status(404).json({ error: "Group not found" });
+
+    try {
+      await rescreenTrackedCarriersForCompany({ companyId });
+    } catch (rescreenErr) {
+      console.error("Post group-update rescreen failed:", rescreenErr);
+    }
+    return res.json({ ok: true, group: rows[0] });
+  } catch (err) {
+    console.error("PATCH /api/screening/profiles/:profileId/groups/:groupId failed:", err);
+    return res.status(500).json({ error: "Failed to update screening rule group" });
+  }
+});
+
+router.delete("/screening/profiles/:profileId/groups/:groupId", requireAuth, loadCompanyContext, requireCompanyAdmin, async (req, res) => {
+  try {
+    const { companyId } = req.companyContext;
+    const { profileId, groupId } = req.params;
+
+    const profileRes = await db.query(
+      `SELECT id FROM public.company_screening_profiles WHERE company_id = $1 AND id = $2 LIMIT 1`,
+      [companyId, profileId]
+    );
+    if (!profileRes.rows.length) return res.status(404).json({ error: "Profile not found" });
+
+    const { rowCount } = await db.query(
+      `DELETE FROM public.company_screening_profile_groups WHERE profile_id = $1 AND id = $2`,
+      [profileId, groupId]
+    );
+    if (!rowCount) return res.status(404).json({ error: "Group not found" });
+
+    try {
+      await rescreenTrackedCarriersForCompany({ companyId });
+    } catch (rescreenErr) {
+      console.error("Post group-delete rescreen failed:", rescreenErr);
+    }
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("DELETE /api/screening/profiles/:profileId/groups/:groupId failed:", err);
+    return res.status(500).json({ error: "Failed to delete screening rule group" });
+  }
+});
+
+router.post("/screening/profiles/:profileId/groups/:groupId/rules", requireAuth, loadCompanyContext, requireCompanyAdmin, async (req, res) => {
+  const client = await db.connect();
+  try {
+    const { companyId } = req.companyContext;
+    const { profileId, groupId } = req.params;
+    const requestedIds = Array.isArray(req.body?.profile_criteria_ids) ? req.body.profile_criteria_ids : null;
+    if (!requestedIds) return res.status(400).json({ error: "profile_criteria_ids array is required" });
+
+    const normalizedIds = Array.from(
+      new Set(
+        requestedIds
+          .map((value) => parseNumberOrNull(value))
+          .filter((value) => Number.isFinite(value))
+          .map((value) => Math.trunc(value))
+      )
+    );
+
+    await client.query("BEGIN");
+
+    const profileRes = await client.query(
+      `SELECT id FROM public.company_screening_profiles WHERE company_id = $1 AND id = $2 LIMIT 1`,
+      [companyId, profileId]
+    );
+    if (!profileRes.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Profile not found" });
+    }
+
+    const groupRes = await client.query(
+      `SELECT id FROM public.company_screening_profile_groups WHERE profile_id = $1 AND id = $2 LIMIT 1`,
+      [profileId, groupId]
+    );
+    if (!groupRes.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Group not found" });
+    }
+
+    if (normalizedIds.length > 0) {
+      const criteriaRes = await client.query(
+        `
+        SELECT id, is_enabled
+        FROM public.company_screening_profile_criteria
+        WHERE profile_id = $1
+          AND id = ANY($2::bigint[])
+        `,
+        [profileId, normalizedIds]
+      );
+
+      if (criteriaRes.rows.length !== normalizedIds.length) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: "All profile_criteria_ids must belong to the profile" });
+      }
+      if (criteriaRes.rows.some((row) => !row.is_enabled)) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: "Only enabled profile criteria can be assigned to groups" });
+      }
+    }
+
+    await client.query(
+      `DELETE FROM public.company_screening_profile_group_criteria WHERE group_id = $1`,
+      [groupId]
+    );
+
+    for (let i = 0; i < normalizedIds.length; i += 1) {
+      await client.query(
+        `
+        INSERT INTO public.company_screening_profile_group_criteria (group_id, profile_criteria_id, display_order)
+        VALUES ($1, $2, $3)
+        `,
+        [groupId, normalizedIds[i], i]
+      );
+    }
+
+    await client.query("COMMIT");
+    try {
+      await rescreenTrackedCarriersForCompany({ companyId });
+    } catch (rescreenErr) {
+      console.error("Post group-rules-save rescreen failed:", rescreenErr);
+    }
+    return res.json({ ok: true });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("POST /api/screening/profiles/:profileId/groups/:groupId/rules failed:", err);
+    return res.status(500).json({ error: "Failed to update group rule membership" });
+  } finally {
+    client.release();
+  }
+});
+
+router.patch("/screening/profiles/:profileId/criteria/:profileCriteriaId/group", requireAuth, loadCompanyContext, requireCompanyAdmin, async (req, res) => {
+  const client = await db.connect();
+  try {
+    const { companyId } = req.companyContext;
+    const { profileId, profileCriteriaId } = req.params;
+    const rawGroupId = req.body?.group_id;
+    const groupId = rawGroupId === null || rawGroupId === undefined || String(rawGroupId).trim() === ""
+      ? null
+      : String(rawGroupId).trim();
+
+    await client.query("BEGIN");
+
+    const profileRes = await client.query(
+      `SELECT id FROM public.company_screening_profiles WHERE company_id = $1 AND id = $2 LIMIT 1`,
+      [companyId, profileId]
+    );
+    if (!profileRes.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Profile not found" });
+    }
+
+    const criterionRes = await client.query(
+      `
+      SELECT id, is_enabled
+      FROM public.company_screening_profile_criteria
+      WHERE profile_id = $1
+        AND id = $2::bigint
+      LIMIT 1
+      `,
+      [profileId, profileCriteriaId]
+    );
+    if (!criterionRes.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Profile criterion not found" });
+    }
+
+    if (groupId) {
+      const groupRes = await client.query(
+        `SELECT id FROM public.company_screening_profile_groups WHERE profile_id = $1 AND id = $2 LIMIT 1`,
+        [profileId, groupId]
+      );
+      if (!groupRes.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "Group not found" });
+      }
+      if (!criterionRes.rows[0].is_enabled) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: "Only enabled profile criteria can be assigned to groups" });
+      }
+    }
+
+    await client.query(
+      `
+      DELETE FROM public.company_screening_profile_group_criteria
+      WHERE profile_criteria_id = $1::bigint
+      `,
+      [profileCriteriaId]
+    );
+
+    if (groupId) {
+      const nextDisplayOrderRes = await client.query(
+        `
+        SELECT COALESCE(MAX(display_order), -1) + 1 AS next_display_order
+        FROM public.company_screening_profile_group_criteria
+        WHERE group_id = $1
+        `,
+        [groupId]
+      );
+      const nextDisplayOrder = Number(nextDisplayOrderRes.rows[0]?.next_display_order || 0);
+
+      await client.query(
+        `
+        INSERT INTO public.company_screening_profile_group_criteria (group_id, profile_criteria_id, display_order)
+        VALUES ($1, $2::bigint, $3)
+        `,
+        [groupId, profileCriteriaId, nextDisplayOrder]
+      );
+    }
+
+    await client.query("COMMIT");
+
+    try {
+      await rescreenTrackedCarriersForCompany({ companyId });
+    } catch (rescreenErr) {
+      console.error("Post criterion-group reassignment rescreen failed:", rescreenErr);
+    }
+
+    return res.json({ ok: true });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("PATCH /api/screening/profiles/:profileId/criteria/:profileCriteriaId/group failed:", err);
+    return res.status(500).json({ error: "Failed to update criterion group assignment" });
   } finally {
     client.release();
   }

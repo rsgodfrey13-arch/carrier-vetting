@@ -480,6 +480,12 @@ let screeningProfiles = [];
 let selectedScreeningProfileId = null;
 let screeningCriteriaOriginal = [];
 let screeningCriteriaCurrent = [];
+let screeningRuleGroups = [];
+
+const SCREENING_GROUP_MATCH_LABELS = {
+  ALL: "All of these",
+  ANY: "Any of these",
+};
 
 function normalizeAgreementRequirements(tpl) {
   return {
@@ -1129,14 +1135,30 @@ function screeningRulePreview(row) {
   return `Carrier is flagged if ${label} matches this rule.`;
 }
 
+function normalizeScreeningMatchType(value) {
+  const token = String(value || "").trim().toUpperCase();
+  return token === "ANY" ? "ANY" : "ALL";
+}
+
+function getScreeningGroupById(groupId) {
+  return (screeningRuleGroups || []).find((group) => String(group.id) === String(groupId)) || null;
+}
+
+function labelForScreeningGroupMatch(group) {
+  const matchType = normalizeScreeningMatchType(group?.match_type);
+  return SCREENING_GROUP_MATCH_LABELS[matchType] || SCREENING_GROUP_MATCH_LABELS.ALL;
+}
+
 
 function normalizeScreeningCriterionForSave(row) {
   const normalizedNumber = row.value_number === null || row.value_number === undefined || row.value_number === ""
     ? null
     : normalizeNumberForCriterion(row, row.value_number);
   return {
+    profile_criteria_id: row.profile_criteria_id === null || row.profile_criteria_id === undefined ? null : Number(row.profile_criteria_id),
     screening_criteria_id: Number(row.screening_criteria_id),
     is_enabled: !!row.is_enabled,
+    group_id: row.group_id ? String(row.group_id) : null,
     comparison_operator: normalizeOperator(row.comparison_operator),
     value_bool: row.value_bool === null || row.value_bool === undefined ? null : !!row.value_bool,
     value_number: normalizedNumber === null
@@ -1198,8 +1220,10 @@ function renderScreeningProfiles() {
     selectedScreeningProfileId = null;
     screeningCriteriaOriginal = [];
     screeningCriteriaCurrent = [];
+    screeningRuleGroups = [];
     host.innerHTML = `<div class="muted">No screening profiles yet. Create one to start.</div>`;
     renderScreeningCriteria([]);
+    renderScreeningRuleGroups();
     setScreeningActionButtonState();
     updateScreeningSaveState();
     return;
@@ -1267,6 +1291,23 @@ function renderScreeningCriteria(criteria = []) {
       const operatorOptions = operatorOptionsForRow(row);
       const isEnabled = !!row.is_enabled;
       const description = row.description ? `<div class="screening-criterion-desc">${escapeHtml(row.description)}</div>` : "";
+      const currentGroupId = row.group_id ? String(row.group_id) : "";
+      const canAssignGroup = !!row.profile_criteria_id;
+      const groupOptions = [`<option value="">None</option>`]
+        .concat(
+          (screeningRuleGroups || []).map((group) => (
+            `<option value="${escapeHtml(group.id)}" ${String(group.id) === currentGroupId ? "selected" : ""}>${escapeHtml(group.group_name || "Untitled Group")}</option>`
+          ))
+        ).join("");
+      const groupSelect = `
+        <label class="screening-field screening-rule-group-assignment">
+          <span class="screening-field-label">Group</span>
+          <select class="api-input screening-select" data-screening-group-id="${idx}" ${canAssignGroup ? "" : "disabled"}>
+            ${groupOptions}
+          </select>
+          ${canAssignGroup ? "" : `<span class="screening-field-note">Save this rule before assigning it to a group.</span>`}
+        </label>
+      `;
 
       const operatorSelect = `
         <label class="screening-field">
@@ -1336,7 +1377,7 @@ function renderScreeningCriteria(criteria = []) {
           ${description}
           ${isEnabled ? `
             <div class="screening-rule-body">
-              <div class="screening-fields">${operatorSelect}${valueControl}</div>
+              <div class="screening-fields">${groupSelect}${operatorSelect}${valueControl}</div>
               <div class="screening-preview-label">Rule Preview</div>
               <div class="screening-rule-preview">${escapeHtml(screeningRulePreview(row))}</div>
             </div>
@@ -1365,6 +1406,7 @@ function renderScreeningCriteria(criteria = []) {
       if (!row) return;
       row.is_enabled = el.checked;
       if (row.is_enabled) ensureScreeningDefaults(row);
+      if (!row.is_enabled) row.group_id = null;
       renderScreeningCriteria(screeningCriteriaCurrent);
       updateScreeningSaveState();
     });
@@ -1387,6 +1429,16 @@ function renderScreeningCriteria(criteria = []) {
         }
       }
       renderScreeningCriteria(screeningCriteriaCurrent);
+      updateScreeningSaveState();
+    });
+  });
+
+  host.querySelectorAll("[data-screening-group-id]").forEach((el) => {
+    el.addEventListener("change", () => {
+      const idx = Number(el.getAttribute("data-screening-group-id"));
+      const row = screeningCriteriaCurrent[idx];
+      if (!row) return;
+      row.group_id = el.value || null;
       updateScreeningSaveState();
     });
   });
@@ -1436,6 +1488,93 @@ function renderScreeningCriteria(criteria = []) {
   updateScreeningSaveState();
 }
 
+function renderScreeningRuleGroups() {
+  const host = document.getElementById("screening-groups-list");
+  if (!host) return;
+
+  if (!selectedScreeningProfileId) {
+    host.innerHTML = `<div class="muted">Select a screening profile to configure rule groups.</div>`;
+    return;
+  }
+
+  if (!screeningRuleGroups.length) {
+    host.innerHTML = `<div class="muted">No rule groups yet. Create a group to combine rules with ALL/ANY logic.</div>`;
+    return;
+  }
+
+  host.innerHTML = screeningRuleGroups.map((group) => {
+    const criteriaLines = (group.criteria || [])
+      .map((criterion) => `<li>${escapeHtml(criterion.label || criterion.criteria_key || "Criterion")}</li>`)
+      .join("");
+    return `
+      <article class="screening-group-card ${group.is_active ? "" : "is-inactive"}" data-screening-group-card="${group.id}">
+        <div class="screening-group-head">
+          <div>
+            <div class="screening-group-title">${escapeHtml(group.group_name || "Untitled Group")}</div>
+            <div class="screening-group-meta">Match: ${escapeHtml(labelForScreeningGroupMatch(group))}</div>
+          </div>
+          <div class="row-actions">
+            <button class="btn-ghost" data-screening-group-rename="${group.id}">Rename</button>
+            <button class="btn-ghost" data-screening-group-match="${group.id}">Match Type</button>
+            <button class="btn-ghost" data-screening-group-delete="${group.id}">Delete</button>
+          </div>
+        </div>
+        ${criteriaLines ? `<ul class="screening-group-criteria">${criteriaLines}</ul>` : `<div class="muted">No rules assigned yet.</div>`}
+      </article>
+    `;
+  }).join("");
+
+  host.querySelectorAll("[data-screening-group-rename]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const groupId = button.getAttribute("data-screening-group-rename");
+      const group = getScreeningGroupById(groupId);
+      if (!group || !selectedScreeningProfileId) return;
+      const nextName = prompt("Rename group:", group.group_name || "");
+      if (!nextName || !String(nextName).trim()) return;
+      await apiPatch(`/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/groups/${encodeURIComponent(group.id)}`, {
+        group_name: String(nextName).trim(),
+      });
+      await loadScreeningCriteria(selectedScreeningProfileId);
+    });
+  });
+
+  host.querySelectorAll("[data-screening-group-match]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const groupId = button.getAttribute("data-screening-group-match");
+      const group = getScreeningGroupById(groupId);
+      if (!group || !selectedScreeningProfileId) return;
+      const current = normalizeScreeningMatchType(group.match_type);
+      const next = current === "ALL" ? "ANY" : "ALL";
+      await apiPatch(`/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/groups/${encodeURIComponent(group.id)}`, {
+        match_type: next,
+      });
+      await loadScreeningCriteria(selectedScreeningProfileId);
+    });
+  });
+
+  host.querySelectorAll("[data-screening-group-delete]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const groupId = button.getAttribute("data-screening-group-delete");
+      const group = getScreeningGroupById(groupId);
+      if (!group || !selectedScreeningProfileId) return;
+      if (!confirm(`Delete rule group "${group.group_name}"?`)) return;
+      await apiDelete(`/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/groups/${encodeURIComponent(group.id)}`);
+      await loadScreeningCriteria(selectedScreeningProfileId);
+    });
+  });
+}
+
+async function loadScreeningRuleGroups(profileId) {
+  if (!profileId) {
+    screeningRuleGroups = [];
+    renderScreeningRuleGroups();
+    return;
+  }
+  const data = await apiGet(`/api/screening/profiles/${encodeURIComponent(profileId)}/groups`);
+  screeningRuleGroups = Array.isArray(data?.groups) ? data.groups : [];
+  renderScreeningRuleGroups();
+}
+
 async function loadScreeningProfiles() {
   const data = await apiGet("/api/screening/profiles");
   screeningProfiles = Array.isArray(data?.profiles) ? data.profiles : [];
@@ -1445,7 +1584,9 @@ async function loadScreeningProfiles() {
   } else {
     screeningCriteriaOriginal = [];
     screeningCriteriaCurrent = [];
+    screeningRuleGroups = [];
     renderScreeningCriteria([]);
+    renderScreeningRuleGroups();
   }
 }
 
@@ -1460,6 +1601,7 @@ async function loadScreeningCriteria(profileId) {
   screeningCriteriaCurrent.forEach((row) => {
     if (row?.is_enabled) ensureScreeningDefaults(row);
   });
+  await loadScreeningRuleGroups(profileId);
   renderScreeningCriteria(screeningCriteriaCurrent);
 }
 
@@ -1471,6 +1613,12 @@ async function saveScreeningCriteria() {
   if (btn) btn.textContent = "Saving...";
   updateScreeningSaveState();
   try {
+    const desiredGroupByProfileCriteriaId = new Map(
+      screeningCriteriaCurrent
+        .filter((row) => row.profile_criteria_id !== null && row.profile_criteria_id !== undefined)
+        .map((row) => [Number(row.profile_criteria_id), row.group_id || null])
+    );
+
     const payload = screeningCriteriaCurrent.map((row) => {
       const norm = normalizeScreeningCriterionForSave(row);
       if (norm.value_number !== null && Number.isNaN(norm.value_number)) {
@@ -1482,7 +1630,24 @@ async function saveScreeningCriteria() {
     await apiPost(`/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/criteria`, {
       criteria: payload,
     });
-    screeningCriteriaOriginal = clone(screeningCriteriaCurrent);
+
+    const refreshed = await apiGet(`/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/criteria`);
+    const refreshedRows = Array.isArray(refreshed?.criteria) ? refreshed.criteria : [];
+
+    for (const row of refreshedRows) {
+      if (!row?.profile_criteria_id) continue;
+      const profileCriteriaId = Number(row.profile_criteria_id);
+      const desiredGroupId = row.is_enabled ? (desiredGroupByProfileCriteriaId.get(profileCriteriaId) || null) : null;
+      const currentGroupId = row.group_id || null;
+      if (String(desiredGroupId || "") === String(currentGroupId || "")) continue;
+
+      await apiPatch(
+        `/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/criteria/${encodeURIComponent(row.profile_criteria_id)}/group`,
+        { group_id: desiredGroupId }
+      );
+    }
+
+    await loadScreeningCriteria(selectedScreeningProfileId);
     screeningSaveUiState = "saved";
     setScreeningSaveFeedback("saved", "Changes saved");
   } catch (err) {
@@ -1527,6 +1692,20 @@ async function setDefaultScreeningProfile() {
   if (!selected) return;
   await apiPost(`/api/screening/profiles/${encodeURIComponent(selected.id)}/set-default`, {});
   await loadScreeningProfiles();
+}
+
+async function createScreeningRuleGroup() {
+  if (!selectedScreeningProfileId) return;
+  const groupName = prompt("Name your new rule group:");
+  if (!groupName || !String(groupName).trim()) return;
+  const useAny = confirm("Use 'Any of these' matching?\n\nChoose OK for Any of these, Cancel for All of these.");
+  const matchType = useAny ? "ANY" : "ALL";
+
+  await apiPost(`/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/groups`, {
+    group_name: String(groupName).trim(),
+    match_type: matchType,
+  });
+  await loadScreeningCriteria(selectedScreeningProfileId);
 }
 
 
@@ -2359,6 +2538,13 @@ document.getElementById("btn-screening-set-default")?.addEventListener("click", 
   setDefaultScreeningProfile().catch((err) => {
     console.error(err);
     alert(err?.message || "Failed to set default screening profile.");
+  });
+});
+
+document.getElementById("btn-screening-new-group")?.addEventListener("click", () => {
+  createScreeningRuleGroup().catch((err) => {
+    console.error(err);
+    alert(err?.message || "Failed to create screening rule group.");
   });
 });
 

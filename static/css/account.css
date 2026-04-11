@@ -390,6 +390,59 @@ body.account-page{
   font-size:.8rem;
 }
 
+.screening-rule-group-assignment {
+  margin-bottom: 8px;
+}
+
+.screening-groups-wrap{
+  margin-top: 10px;
+}
+
+.screening-groups-head{
+  align-items:flex-start;
+}
+
+.screening-groups-list{
+  margin-top:10px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.screening-group-card{
+  border:1px solid rgba(148,163,184,.22);
+  border-radius:12px;
+  background:rgba(15,23,42,.38);
+  padding:10px 12px;
+}
+
+.screening-group-card.is-inactive{
+  opacity:.65;
+}
+
+.screening-group-head{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:8px;
+}
+
+.screening-group-title{
+  font-weight:800;
+}
+
+.screening-group-meta{
+  font-size:.8rem;
+  color:rgba(148,163,184,.95);
+}
+
+.screening-group-criteria{
+  margin:0;
+  padding-left:18px;
+  color:#e2e8f0;
+  font-size:.84rem;
+}
+
 .screening-rule-body{
   margin-top:8px;
   margin-left:26px;
