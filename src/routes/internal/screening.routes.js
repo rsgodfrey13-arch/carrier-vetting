@@ -4,6 +4,23 @@ const express = require("express");
 const { pool: globalPool } = require("../../db/pool");
 const { requireAuth } = require("../../middleware/requireAuth");
 const { loadCompanyContext, requireCompanyAdmin } = require("../../middleware/companyContext");
+const {
+  getOrCreateScreeningResultForCompany,
+  rescreenTrackedCarriersForCompany
+} = require("../../services/carrierScreeningService");
+
+const ALLOWED_COMPARISON_OPERATORS = new Set([
+  "EQUALS",
+  "NOT_EQUALS",
+  "LESS_THAN",
+  "LESS_THAN_OR_EQUAL",
+  "GREATER_THAN",
+  "GREATER_THAN_OR_EQUAL",
+  "IN",
+  "NOT_IN",
+  "IS_TRUE",
+  "IS_FALSE"
+]);
 
 
 function normalizeEnumOptions(raw) {
@@ -205,6 +222,11 @@ router.post("/screening/profiles/:profileId/set-default", requireAuth, loadCompa
     );
 
     await client.query("COMMIT");
+    try {
+      await rescreenTrackedCarriersForCompany({ companyId });
+    } catch (rescreenErr) {
+      console.error("Post default-profile rescreen failed:", rescreenErr);
+    }
     return res.json({ ok: true });
   } catch (err) {
     await client.query("ROLLBACK");
@@ -284,6 +306,7 @@ router.get("/screening/profiles/:profileId/criteria", requireAuth, loadCompanyCo
         sc.display_order,
         sc.enum_options,
         COALESCE(cspc.is_enabled, false) AS is_enabled,
+        cspc.comparison_operator,
         cspc.value_bool,
         cspc.value_number,
         cspc.value_date,
@@ -358,6 +381,16 @@ router.post("/screening/profiles/:profileId/criteria", requireAuth, loadCompanyC
 
       const valueType = String(def.value_type || "").toUpperCase();
       const isEnabled = parseBool(item?.is_enabled) || false;
+      const comparisonOperatorRaw = item?.comparison_operator;
+      const comparisonOperator = comparisonOperatorRaw === null || comparisonOperatorRaw === undefined || String(comparisonOperatorRaw).trim() === ""
+        ? null
+        : String(comparisonOperatorRaw).trim().toUpperCase();
+      if (comparisonOperator && !ALLOWED_COMPARISON_OPERATORS.has(comparisonOperator)) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({
+          error: `Invalid comparison_operator for criteria ${criteriaId}: ${comparisonOperator}`
+        });
+      }
       let valueBool = null;
       let valueNumber = null;
       let valueDate = null;
@@ -408,27 +441,34 @@ router.post("/screening/profiles/:profileId/criteria", requireAuth, loadCompanyC
           profile_id,
           screening_criteria_id,
           is_enabled,
+          comparison_operator,
           value_bool,
           value_number,
           value_date,
           value_text,
           updated_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, now())
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())
         ON CONFLICT (profile_id, screening_criteria_id)
         DO UPDATE SET
           is_enabled = EXCLUDED.is_enabled,
+          comparison_operator = EXCLUDED.comparison_operator,
           value_bool = EXCLUDED.value_bool,
           value_number = EXCLUDED.value_number,
           value_date = EXCLUDED.value_date,
           value_text = EXCLUDED.value_text,
           updated_at = now()
         `,
-        [profileId, criteriaId, isEnabled, valueBool, valueNumber, valueDate, valueText]
+        [profileId, criteriaId, isEnabled, comparisonOperator, valueBool, valueNumber, valueDate, valueText]
       );
     }
 
     await client.query("COMMIT");
+    try {
+      await rescreenTrackedCarriersForCompany({ companyId });
+    } catch (rescreenErr) {
+      console.error("Post criteria-save rescreen failed:", rescreenErr);
+    }
     return res.json({ ok: true });
   } catch (err) {
     await client.query("ROLLBACK");
@@ -444,50 +484,18 @@ router.get("/screening/carriers/:dot/default-result", requireAuth, loadCompanyCo
     const { companyId } = req.companyContext;
     const dot = String(req.params.dot || "").replace(/\D/g, "");
     if (!dot) return res.status(400).json({ error: "Valid DOT is required" });
-
-    const profileRes = await db.query(
-      `
-      SELECT id, profile_name
-      FROM public.company_screening_profiles
-      WHERE company_id = $1
-        AND is_default = true
-      LIMIT 1
-      `,
-      [companyId]
-    );
-
-    const profile = profileRes.rows[0] || null;
-    if (!profile) {
-      return res.json({
-        has_default_profile: false,
-        profile: null,
-        result: null,
-      });
-    }
-
-    const resultRes = await db.query(
-      `
-      SELECT
-        screening_status,
-        matched_count,
-        failed_count,
-        review_count,
-        result_summary,
-        evaluated_at
-      FROM public.company_carrier_screening_results
-      WHERE company_id = $1
-        AND profile_id = $2
-        AND carrier_dot = $3
-      ORDER BY evaluated_at DESC NULLS LAST, updated_at DESC NULLS LAST
-      LIMIT 1
-      `,
-      [companyId, profile.id, dot]
-    );
+    const maxAgeMinutes = Number(process.env.CARRIER_SCREENING_MAX_AGE_MINUTES || 60);
+    const response = await getOrCreateScreeningResultForCompany({
+      companyId,
+      dotNumber: dot,
+      maxAgeMinutes
+    });
 
     return res.json({
-      has_default_profile: true,
-      profile,
-      result: resultRes.rows[0] || null,
+      has_default_profile: response.hasDefaultProfile,
+      profile: response.profile,
+      result: response.result,
+      source: response.source
     });
   } catch (err) {
     console.error("GET /api/screening/carriers/:dot/default-result failed:", err);

@@ -4,6 +4,7 @@ require("./instrument");
 require("../config/bootstrap");
 
 const { startRefreshWorker } = require("../workers/carrierRefreshWorker");
+const { startCarrierScreeningWorker } = require("../workers/carrierScreeningWorker");
 const { pool } = require("../db/pool");
 
 
@@ -60,6 +61,11 @@ const app = createApp({ redisClient });
 // ✅ Start carrier refresh worker (single instance only)
 startRefreshWorker(pool).catch(err => {
   console.error("Carrier refresh worker failed:", err);
+  process.exit(1);
+});
+
+startCarrierScreeningWorker(pool).catch(err => {
+  console.error("Carrier screening worker failed:", err);
   process.exit(1);
 });
 

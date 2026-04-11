@@ -4,6 +4,7 @@ const express = require("express");
 const { pool } = require("../../db/pool");
 const { requireAuth } = require("../../middleware/requireAuth");
 const { loadCompanyContext } = require("../../middleware/companyContext");
+const { screenCarrierForCompany } = require("../../services/carrierScreeningService");
 
 const router = express.Router();
 
@@ -148,6 +149,11 @@ router.post("/my-carriers", requireAuth, loadCompanyContext, async (req, res) =>
     );
 
     await client.query("COMMIT");
+    try {
+      await screenCarrierForCompany({ companyId, dotNumber: dot });
+    } catch (screenErr) {
+      console.error("Post-save screening failed:", screenErr);
+    }
     return res.json({
       ok: true,
       added: true,
@@ -336,6 +342,14 @@ const note =
     : `Added ${Number(s.inserted)} carriers.`;
 
     await client.query("COMMIT");
+
+    for (const dot of insertedDots) {
+      try {
+        await screenCarrierForCompany({ companyId, dotNumber: dot });
+      } catch (screenErr) {
+        console.error(`Bulk post-save screening failed for DOT ${dot}:`, screenErr);
+      }
+    }
 
     return res.json({
       ok: true,
