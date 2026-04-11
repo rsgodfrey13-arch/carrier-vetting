@@ -1,0 +1,695 @@
+diff --git a/static/carrier.html b/static/carrier.html
+index dab19582b80639b42c24436e212c8609dbba579e..0d678d2281138bef338bcbc0a9d8140186b19466 100644
+--- a/static/carrier.html
++++ b/static/carrier.html
+@@ -100,57 +100,56 @@
+               type="button"
+               title="Re-check carrier data"
+               aria-label="Refresh carrier data"
+             >
+               ↻ Refresh
+             </button>
+         
+             <span id="carrier-refresh-status" class="meta-refresh-status" aria-live="polite"></span>
+           </div>
+         </div>
+ 
+       </div>
+     </div> <!-- end .carrier-left -->
+ 
+     <div class="carrier-right">
+       <div class="pill-group">
+         <div id="carrier-status" class="carrier-pill">—</div>
+         <div id="carrier-allowed" class="carrier-pill ghost small" >—</div>
+         <div id="carrier-commonauthoritystatus" class="carrier-pill ghost small" >—</div>
+         <div id="carrier-contractauthoritystatus" class="carrier-pill ghost small" >—</div>
+         <div id="carrier-brokerauthoritystatus" class="carrier-pill ghost small" >—</div>
+         <div id="carrier-safetyrating" class="carrier-pill ghost small" >—</div>
+       </div>
+ 
+       <section id="screening-summary-card" class="carrier-screening-summary glass-card" hidden>
+-        <div class="row-title">Screening</div>
+-        <div style="margin-top:8px;">
++        <div class="carrier-screening-head">
++          <div class="carrier-screening-title">Screening</div>
+           <span id="screening-status-badge" class="carrier-pill ghost small">NOT SCREENED</span>
+         </div>
+-        <div class="row-sub">Profile: <span id="screening-profile-name">—</span></div>
+-        <div class="row-sub">Evaluated: <span id="screening-evaluated-at">—</span></div>
+-        <div class="row-sub" id="screening-summary-text"></div>
++        <div class="carrier-screening-ratio" id="screening-ratio-text">No screening result</div>
++        <button id="screening-view-details" class="carrier-screening-link" type="button">View Details</button>
+       </section>
+ 
+       <!--
+       <div class="quick-metrics">
+         <div class="metric-chip">
+           <span class="metric-label">Safety Rating</span>
+           <span id="field-safetyrating" class="carrier-pill ghost small">—</span>
+         </div>
+       </div>
+       -->
+       <!-- ACTION BUTTONS, SEPARATE ROW -->
+       <div class="carrier-actions">
+         
+         <!-- NEW: Send Contract -->
+         <div class="contract-action-wrap">
+           <button id="btn-send-contract" class="pill-btn pill-contract pill-disabled" type="button">
+             Send Contract
+           </button>
+           <div id="contract-sign-status" class="contract-sign-status" hidden></div>
+         </div>
+         
+         <button id="btn-add-carrier" class="pill-btn pill-add">+ Add Carrier</button>
+         <button id="btn-remove-carrier" class="pill-btn pill-remove pill-disabled">Remove Carrier</button>
+       </div>
+     </div> <!-- end .carrier-right -->
+@@ -524,50 +523,70 @@
+ <div id="feature-gate-modal" class="cs-modal-backdrop" hidden>
+   <div class="cs-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="feature-gate-title">
+ 
+     <div class="cs-modal-header">
+       <div class="cs-modal-headings">
+         <div id="feature-gate-title" class="cs-modal-title">Title</div>
+         <div id="feature-gate-body" class="cs-modal-subtitle">Body</div>
+       </div>
+       <button id="feature-gate-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
+     </div>
+ 
+     <div class="cs-modal-body">
+       <div id="feature-gate-note" class="cs-hint" style="margin-top:-6px;"></div>
+     </div>
+ 
+     <div class="cs-modal-footer">
+       <div class="cs-footer-right">
+         <button id="feature-gate-cancel" class="cs-btn cs-btn-ghost" type="button">Not now</button>
+         <button id="feature-gate-primary" class="cs-btn cs-btn-primary" type="button">Continue</button>
+       </div>
+     </div>
+ 
+   </div>
+ </div>
+ 
++<div id="screening-details-modal" class="cs-modal-backdrop" hidden>
++  <div class="cs-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="screening-details-title">
++    <div class="cs-modal-header">
++      <div class="cs-modal-headings">
++        <div id="screening-details-title" class="cs-modal-title">Screening Details</div>
++        <div class="cs-modal-subtitle">Latest default screening evaluation for this carrier.</div>
++      </div>
++      <button id="screening-details-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
++    </div>
++    <div id="screening-details-body" class="cs-modal-body">
++      <div class="cs-hint">No screening result.</div>
++    </div>
++    <div class="cs-modal-footer">
++      <div class="cs-footer-right">
++        <button id="screening-details-dismiss" class="cs-btn cs-btn-primary" type="button">Done</button>
++      </div>
++    </div>
++  </div>
++</div>
++
+ <div id="add-document-modal" class="cs-modal-backdrop" hidden>
+   <div class="cs-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="add-document-title">
+     <div class="cs-modal-header">
+       <div class="cs-modal-headings">
+         <div id="add-document-title" class="cs-modal-title">Upload Document</div>
+         <div class="cs-modal-subtitle">Attach a document to this carrier profile.</div>
+       </div>
+       <button id="add-document-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
+     </div>
+ 
+     <form id="add-document-form" class="cs-modal-body docs-upload-form">
+       <label class="cs-label" for="document-type">Document Type</label>
+       <select id="document-type" class="cs-input docs-select" required>
+         <option value="w9">W-9</option>
+         <option value="ach">ACH</option>
+         <option value="other">Other</option>
+       </select>
+ 
+       <label class="cs-label" for="document-file" style="margin-top:12px;">File</label>
+       <input id="document-file" class="cs-input docs-file-input" type="file" accept=".pdf,image/*" required>
+ 
+ 
+       <div id="add-document-error" class="cs-hint docs-upload-error" hidden></div>
+     </form>
+ 
+diff --git a/static/css/profile_style.css b/static/css/profile_style.css
+index 77a86c5d4ae9a66b5c0526c17cd0dc046ecb56dd..3e875740942127f31522851de36031cbaf99d830 100644
+--- a/static/css/profile_style.css
++++ b/static/css/profile_style.css
+@@ -117,53 +117,145 @@ body.carrier-page {
+ .meta-value { font-size: .9rem; color: #e5e7eb; }
+ 
+ /* RIGHT: pills + chips + extra bubbles */
+ .carrier-right { flex: 1 1 38%; min-width: 320px; display: flex; flex-direction: column; align-items: flex-end; gap: .6rem; }
+ 
+ .pill-group { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
+ 
+ .carrier-pill {
+   padding: .35rem .9rem; border-radius: 999px;
+   font-size: .78rem; letter-spacing: .08em; text-transform: uppercase;
+   border: 1px solid rgba(148,163,184,.8); color: #e5e7eb;
+   background: radial-gradient(circle at top left, rgba(56,189,248,.21), rgba(15,23,42,.94));
+   box-shadow: 0 0 0 1px rgba(15,23,42,.7);
+ }
+ .carrier-pill.small { font-size: .7rem; padding-inline: .8rem; }
+ .carrier-pill.ghost { background: transparent; }
+ .pill-ok { border-color: #38BDF8; box-shadow: 0 0 14px rgba(56,189,248,.35); }
+ .pill-warn { border-color: var(--accent-warn); box-shadow: 0 0 14px rgba(249,115,22,.45); }
+ .pill-fail { border-color: #ef4444; box-shadow: 0 0 14px rgba(239,68,68,.4); }
+ .pill-purp { border-color: #0B78CF; box-shadow: 0 0 14px rgba(11,120,207,.35); }
+ 
+ .quick-metrics { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
+ 
+ .carrier-screening-summary{
+   width:100%;
+-  max-width:440px;
+-  padding:12px 14px;
++  max-width:320px;
++  padding:10px 12px;
+   border:1px solid rgba(148,163,184,.24);
++  cursor: pointer;
++}
++
++.carrier-screening-summary:focus-visible{
++  outline: 2px solid rgba(56,189,248,.7);
++  outline-offset: 2px;
++}
++
++.carrier-screening-head{
++  display:flex;
++  align-items:center;
++  justify-content:space-between;
++  gap:10px;
++}
++
++.carrier-screening-title{
++  font-size:.75rem;
++  text-transform:uppercase;
++  letter-spacing:.12em;
++  color:var(--text-muted);
++}
++
++.carrier-screening-ratio{
++  margin-top:8px;
++  font-size:.86rem;
++  color:#e5e7eb;
++}
++
++.carrier-screening-link{
++  margin-top:8px;
++  padding:0;
++  border:0;
++  background:transparent;
++  color:var(--accent-1);
++  font-size:.8rem;
++  text-decoration:underline;
++  text-underline-offset:2px;
++  cursor:pointer;
++}
++
++.carrier-screening-link:hover{
++  color:#7dd3fc;
++}
++
++.screening-modal-grid{
++  display:grid;
++  grid-template-columns:minmax(0, 160px) minmax(0, 1fr);
++  gap:8px 12px;
++  margin-bottom:14px;
++}
++
++.screening-modal-key{
++  font-size:.74rem;
++  letter-spacing:.08em;
++  text-transform:uppercase;
++  color:var(--text-muted);
++}
++
++.screening-modal-val{
++  font-size:.9rem;
++  color:#e5e7eb;
++}
++
++.screening-detail-list{
++  border:1px solid rgba(255,255,255,.1);
++  border-radius:12px;
++  overflow:hidden;
++  background:rgba(15,23,42,.38);
++}
++
++.screening-detail-row{
++  display:flex;
++  justify-content:space-between;
++  gap:12px;
++  padding:9px 12px;
++  border-bottom:1px solid rgba(255,255,255,.06);
++}
++
++.screening-detail-row:last-child{
++  border-bottom:0;
++}
++
++.screening-detail-label{
++  color:#e2e8f0;
++  font-size:.85rem;
++}
++
++.screening-detail-status{
++  font-size:.78rem;
++  letter-spacing:.08em;
++  text-transform:uppercase;
++  color:#cbd5e1;
+ }
+ 
+ .metric-chip {
+   min-width: 110px; padding: .4rem .7rem; border-radius: 999px;
+   border: 1px dashed rgba(148,163,184,.6); background: rgba(15,23,42,.8);
+   display: flex; justify-content: space-between; align-items: baseline; gap: .6rem;
+ }
+ .metric-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); }
+ .metric-value { font-size: .86rem; font-weight: 500; color: #e5e7eb; }
+ 
+ .quick-bubbles { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
+ 
+ .hero-accent-line {
+   margin-top: 14px; height: 2px; border-radius: 999px;
+   background: linear-gradient(90deg, transparent, var(--accent-1), var(--accent-2), transparent);
+   opacity: .6;
+ }
+ 
+ /* ========== Main grid ========== */
+ 
+ .card-grid {
+   display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px;
+ }
+ 
+ /* Info cards */
+diff --git a/static/js/pages/carrier.js b/static/js/pages/carrier.js
+index 2a48a81ba861131e0909cddfb75bf47836e4e18c..9e094f106510bf49dec205ce17bc72bd2577498e 100644
+--- a/static/js/pages/carrier.js
++++ b/static/js/pages/carrier.js
+@@ -71,50 +71,51 @@ function showFeatureGate({ title, body, note = "", primaryText = "Continue", onP
+ function fmtSignedDate(d) {
+   if (!d) return "";
+   const parsed = new Date(d);
+   if (Number.isNaN(parsed.getTime())) return "";
+ 
+   return parsed.toLocaleDateString(undefined, {
+     month: "short",
+     day: "numeric",
+     year: "numeric"
+   });
+ }
+   
+   function getDotFromPath() {
+     // take first path segment only, ignore trailing slash / extra segments
+     const seg = window.location.pathname.split("/").filter(Boolean).pop() || "";
+     // DOT should be digits only
+     const digits = decodeURIComponent(seg).replace(/\D/g, "");
+     // strip leading zeros safely (optional)
+     const noLeading = digits.replace(/^0+/, "");
+     return noLeading || (digits ? "0" : "");
+   }
+ 
+   const CURRENT_DOT = getDotFromPath(); 
+   let initButtonsRunning = false;
+   let initButtonsRerun = false; // NEW: queue reruns instead of dropping
++  let screeningResultPayload = null;
+ 
+   
+   function setText(id, value) {
+     const el = document.getElementById(id);
+     if (!el) return;
+     el.textContent =
+       value !== null && value !== undefined && value !== "" ? value : "—";
+   }
+ 
+   function getCarrierMcList(c) {
+     if (Array.isArray(c?.mc_numbers)) {
+       return c.mc_numbers
+         .map(v => String(v ?? "").trim())
+         .filter(Boolean);
+     }
+ 
+     if (typeof c?.mc_numbers === "string") {
+       const raw = c.mc_numbers.trim();
+ 
+       if (raw.startsWith("{") && raw.endsWith("}")) {
+         return raw
+           .slice(1, -1)
+           .split(",")
+           .map(v => String(v ?? "").replace(/^"|"$/g, "").trim())
+           .filter(Boolean);
+@@ -294,110 +295,231 @@ function setContractSignStatus(text = "", show = false) {
+     el.textContent = "";
+     return;
+   }
+ 
+   el.textContent = text;
+   el.hidden = false;
+ }
+   
+ function fmtDateTime(d) {
+   if (!d) return "—";
+   const parsed = new Date(d);
+   if (Number.isNaN(parsed.getTime())) return fmtDate(d);
+   try {
+     return parsed.toLocaleString();
+   } catch {
+     return fmtDate(d);
+   }
+ }
+ 
+ function safeText(value, fallback = "—") {
+   if (value === null || value === undefined) return fallback;
+   const text = String(value).trim();
+   return text || fallback;
+ }
+ 
+-function getScreeningSummaryText(resultSummary) {
+-  if (!resultSummary || typeof resultSummary !== "object") return "";
+-  const keys = ["summary", "message", "text"];
+-  for (const key of keys) {
+-    const value = resultSummary[key];
+-    if (typeof value === "string" && value.trim()) return value.trim();
+-  }
+-  return "";
++function escapeHtml(value) {
++  return String(value ?? "")
++    .replaceAll("&", "&amp;")
++    .replaceAll("<", "&lt;")
++    .replaceAll(">", "&gt;")
++    .replaceAll('"', "&quot;")
++    .replaceAll("'", "&#39;");
+ }
+ 
+ function screeningBadgeClass(status) {
+   const normalized = String(status || "").toUpperCase();
+   if (normalized === "PASS") return "pill-ok";
+   if (normalized === "REVIEW") return "pill-warn";
+   if (normalized === "FAIL") return "pill-fail";
+   return "";
+ }
+ 
++function computeScreeningCounts(result) {
++  const passed = Number(result?.matched_count) || 0;
++  const failed = Number(result?.failed_count) || 0;
++  const review = Number(result?.review_count) || 0;
++  const total = passed + failed + review;
++  return { passed, failed, review, total };
++}
++
++function getScreeningRatioText(result) {
++  if (!result) return "No screening result";
++  const { passed, total } = computeScreeningCounts(result);
++  if (total === 0) return "No checks configured";
++  return `${passed}/${total} checks passed`;
++}
++
++function flattenScreeningDetails(resultSummary) {
++  if (!resultSummary || typeof resultSummary !== "object") return [];
++
++  const normalizeItem = (item) => {
++    if (!item || typeof item !== "object") return null;
++    const label = String(
++      item.label ?? item.criterion ?? item.name ?? item.title ?? item.check ?? ""
++    ).trim();
++    const status = String(
++      item.status ?? item.result ?? item.outcome ?? item.verdict ?? ""
++    ).trim();
++    if (!label || !status) return null;
++    return { label, status: status.toUpperCase() };
++  };
++
++  if (Array.isArray(resultSummary)) {
++    return resultSummary.map(normalizeItem).filter(Boolean);
++  }
++
++  const arrayKeys = ["criteria", "checks", "results", "items", "breakdown"];
++  for (const key of arrayKeys) {
++    if (!Array.isArray(resultSummary[key])) continue;
++    const rows = resultSummary[key].map(normalizeItem).filter(Boolean);
++    if (rows.length) return rows;
++  }
++
++  const rows = [];
++  Object.entries(resultSummary).forEach(([key, value]) => {
++    if (!value || typeof value !== "object") return;
++    const status = String(value.status ?? value.result ?? value.outcome ?? "").trim();
++    if (!status) return;
++    const label = String(value.label ?? value.criterion ?? key).trim();
++    if (!label) return;
++    rows.push({ label, status: status.toUpperCase() });
++  });
++  return rows;
++}
++
++function renderScreeningDetailsModal(data) {
++  const body = document.getElementById("screening-details-body");
++  if (!body) return;
++
++  const profileName = safeText(data?.profile?.profile_name, "Default profile not set");
++  const result = data?.result || null;
++  const status = result?.screening_status ? String(result.screening_status).toUpperCase() : "NOT SCREENED";
++  const evaluated = result?.evaluated_at ? fmtDateTime(result.evaluated_at) : "—";
++  const ratio = getScreeningRatioText(result);
++  const details = flattenScreeningDetails(result?.result_summary);
++
++  const metaHtml = `
++    <div class="screening-modal-grid">
++      <div class="screening-modal-key">Profile</div><div class="screening-modal-val">${escapeHtml(profileName)}</div>
++      <div class="screening-modal-key">Evaluated</div><div class="screening-modal-val">${escapeHtml(evaluated)}</div>
++      <div class="screening-modal-key">Overall status</div><div class="screening-modal-val">${escapeHtml(status)}</div>
++      <div class="screening-modal-key">Passed ratio</div><div class="screening-modal-val">${escapeHtml(ratio)}</div>
++    </div>
++  `;
++
++  if (!details.length) {
++    body.innerHTML = `${metaHtml}<div class="cs-hint">Detailed screening breakdown is not available yet.</div>`;
++    return;
++  }
++
++  const detailRows = details.map((item) => `
++    <div class="screening-detail-row">
++      <div class="screening-detail-label">${escapeHtml(item.label)}</div>
++      <div class="screening-detail-status">${escapeHtml(item.status)}</div>
++    </div>
++  `).join("");
++
++  body.innerHTML = `${metaHtml}<div class="screening-detail-list">${detailRows}</div>`;
++}
++
++function openScreeningModal() {
++  const modal = document.getElementById("screening-details-modal");
++  if (!modal) return;
++  renderScreeningDetailsModal(screeningResultPayload || {});
++  modal.hidden = false;
++}
++
++function closeScreeningModal() {
++  const modal = document.getElementById("screening-details-modal");
++  if (!modal) return;
++  modal.hidden = true;
++}
++
++function wireScreeningModalOnce() {
++  const card = document.getElementById("screening-summary-card");
++  const viewDetails = document.getElementById("screening-view-details");
++  const closeBtn = document.getElementById("screening-details-close");
++  const dismissBtn = document.getElementById("screening-details-dismiss");
++  const backdrop = document.getElementById("screening-details-modal");
++  if (!card || !viewDetails || !closeBtn || !dismissBtn || !backdrop) return;
++
++  card.addEventListener("click", () => {
++    if (card.hidden) return;
++    openScreeningModal();
++  });
++  card.addEventListener("keydown", (e) => {
++    if (e.key === "Enter" || e.key === " ") {
++      e.preventDefault();
++      openScreeningModal();
++    }
++  });
++
++  viewDetails.addEventListener("click", (e) => {
++    e.stopPropagation();
++    openScreeningModal();
++  });
++  closeBtn.addEventListener("click", closeScreeningModal);
++  dismissBtn.addEventListener("click", closeScreeningModal);
++  backdrop.addEventListener("click", (e) => {
++    if (e.target === backdrop) closeScreeningModal();
++  });
++  document.addEventListener("keydown", (e) => {
++    if (e.key === "Escape") closeScreeningModal();
++  });
++}
++
+ function renderScreeningSummary(data) {
+   const card = document.getElementById("screening-summary-card");
+   const badge = document.getElementById("screening-status-badge");
+-  const profileName = document.getElementById("screening-profile-name");
+-  const evaluatedAt = document.getElementById("screening-evaluated-at");
+-  const summaryText = document.getElementById("screening-summary-text");
+-  if (!card || !badge || !profileName || !evaluatedAt || !summaryText) return;
++  const ratioText = document.getElementById("screening-ratio-text");
++  if (!card || !badge || !ratioText) return;
+ 
++  screeningResultPayload = data || {};
+   card.hidden = false;
++  card.setAttribute("role", "button");
++  card.setAttribute("tabindex", "0");
+   const result = data?.result || null;
+   const status = result?.screening_status ? String(result.screening_status).toUpperCase() : "NOT SCREENED";
+   badge.textContent = status;
+   badge.classList.remove("pill-ok", "pill-warn", "pill-purp", "pill-fail");
+   const klass = screeningBadgeClass(status);
+   if (klass) badge.classList.add(klass);
+-
+-  profileName.textContent = safeText(data?.profile?.profile_name, "Default profile not set");
+-  evaluatedAt.textContent = result?.evaluated_at ? fmtDateTime(result.evaluated_at) : "—";
+-
+-  const summary = getScreeningSummaryText(result?.result_summary);
+-  if (summary) {
+-    summaryText.textContent = `Summary: ${summary}`;
+-    summaryText.style.display = "";
+-  } else if (!result) {
+-    summaryText.textContent = "No screening result is available for your default profile.";
+-    summaryText.style.display = "";
+-  } else {
+-    summaryText.textContent = "";
+-    summaryText.style.display = "none";
+-  }
++  ratioText.textContent = getScreeningRatioText(result);
+ }
+ 
+ async function loadDefaultScreeningResult(dot) {
+   const card = document.getElementById("screening-summary-card");
+   if (!card || !dot) return;
+   try {
+     const res = await fetch(`/api/screening/carriers/${encodeURIComponent(dot)}/default-result`, { credentials: "include" });
+     if (!res.ok) throw new Error(`screening failed (${res.status})`);
+     const data = await res.json().catch(() => null);
+     renderScreeningSummary(data || {});
+   } catch (err) {
+     console.warn("screening summary unavailable", err);
++    screeningResultPayload = null;
+     card.hidden = true;
+   }
+ }
+ 
+ function renderRowActionLink({ href, label }) {
+   if (!href) return '<span class="cs-hint">—</span>';
+   return `<a class="agreements-link" href="${href}" target="_blank" rel="noopener">${label}</a>`;
+ }
+ 
+ function fmtMoney(amount, currency) {
+   if (amount === null || amount === undefined || amount === "") return "—";
+   const n = Number(amount);
+   if (Number.isNaN(n)) return String(amount);
+   try {
+     // keep it simple & US-looking (ACORD-style)
+     return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+   } catch {
+     return String(amount);
+   }
+ }
+ 
+ function setRefreshUi(state, message) {
+   const btn = document.getElementById("btn-refresh-carrier");
+   const msg = document.getElementById("carrier-refresh-status");
+ 
+@@ -1416,50 +1538,52 @@ if (data && data.source === "cache_stale") {
+       setLink("field-link_active_for_hire", c.link_active_for_hire);
+       setLink("field-link_self", c.link_self);
+ 
+       // Cargo carried
+       const cargoListEl = document.getElementById("cargo-list");
+       if (cargoListEl) {
+         if (Array.isArray(c.cargo_carried) && c.cargo_carried.length > 0) {
+           cargoListEl.innerHTML = "";
+           c.cargo_carried.forEach((desc) => {
+             if (!desc) return;
+             const li = document.createElement("li");
+             li.textContent = desc;
+             cargoListEl.appendChild(li);
+           });
+         } else {
+           cargoListEl.innerHTML = "<li>—</li>";
+         }
+       }
+ 
+       const me = await getMe();
+       applyInsuranceLock(me);
+       if (me) {
+         await loadDefaultScreeningResult(dot);
+       } else {
+         const screeningCard = document.getElementById("screening-summary-card");
++        screeningResultPayload = null;
++        closeScreeningModal();
+         if (screeningCard) screeningCard.hidden = true;
+       }
+       
+       // Only load insurance if unlocked (optional)
+       if (me?.view_insurance === true) {
+         await loadInsuranceCoverages(dot);
+       } else {
+       const wrap = document.getElementById("ins-coverages-body");
+       if (wrap) wrap.innerHTML = `<div class="cs-hint">—</div>`;
+     }
+       
+       await loadCarrierAgreements(dot);
+       await loadCarrierDocuments(dot);
+       if (opts.manual === true) {
+         setRefreshUi("idle", "Updated just now");
+         setTimeout(() => setRefreshUi("idle", ""), 2200);
+       }
+ 
+ 
+       // Buttons
+       await initCarrierButtons(dot);
+     } catch (err) {
+       console.error("Error fetching carrier:", err);
+       if (opts.manual === true) {
+         setRefreshUi("idle", "Couldn’t refresh");
+@@ -2186,36 +2310,37 @@ if (contractBtn) {
+     if (!btn) return;
+ 
+     const targetId = btn.dataset.target;
+     const el = document.getElementById(targetId);
+     if (!el) return;
+ 
+     const text = (el.textContent || "").trim();
+     if (!text || text === "—") return;
+ 
+     try {
+       await navigator.clipboard.writeText(text);
+       const prev = btn.getAttribute("data-tip") || "Copy";
+       btn.setAttribute("data-tip", "Copied!");
+       setTimeout(() => btn.setAttribute("data-tip", prev), 900);
+     } catch {
+       // ignore
+     }
+   });
+ 
+ 
+   // Run ONCE
+ document.addEventListener("DOMContentLoaded", () => {
+   wireEmailModalOnce();
+   wireSendContractModalOnce(); 
+   wireAddDocumentModalOnce();
++  wireScreeningModalOnce();
+   wireQuickJump();
+   wireBackToOverview();
+   document.getElementById("btn-refresh-carrier")?.addEventListener("click", () => {
+     const dot = CURRENT_DOT;
+     if (!dot) return;
+     manualRefresh(dot);
+   });
+   loadCarrier();
+ });
+ 
+ })();

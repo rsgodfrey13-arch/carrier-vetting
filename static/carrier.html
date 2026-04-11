@@ -122,13 +122,12 @@
       </div>
 
       <section id="screening-summary-card" class="carrier-screening-summary glass-card" hidden>
-        <div class="row-title">Screening</div>
-        <div style="margin-top:8px;">
+        <div class="carrier-screening-head">
+          <div class="carrier-screening-title">Screening</div>
           <span id="screening-status-badge" class="carrier-pill ghost small">NOT SCREENED</span>
         </div>
-        <div class="row-sub">Profile: <span id="screening-profile-name">—</span></div>
-        <div class="row-sub">Evaluated: <span id="screening-evaluated-at">—</span></div>
-        <div class="row-sub" id="screening-summary-text"></div>
+        <div class="carrier-screening-ratio" id="screening-ratio-text">No screening result</div>
+        <button id="screening-view-details" class="carrier-screening-link" type="button">View Details</button>
       </section>
 
       <!--
@@ -543,6 +542,26 @@
       </div>
     </div>
 
+  </div>
+</div>
+
+<div id="screening-details-modal" class="cs-modal-backdrop" hidden>
+  <div class="cs-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="screening-details-title">
+    <div class="cs-modal-header">
+      <div class="cs-modal-headings">
+        <div id="screening-details-title" class="cs-modal-title">Screening Details</div>
+        <div class="cs-modal-subtitle">Latest default screening evaluation for this carrier.</div>
+      </div>
+      <button id="screening-details-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
+    </div>
+    <div id="screening-details-body" class="cs-modal-body">
+      <div class="cs-hint">No screening result.</div>
+    </div>
+    <div class="cs-modal-footer">
+      <div class="cs-footer-right">
+        <button id="screening-details-dismiss" class="cs-btn cs-btn-primary" type="button">Done</button>
+      </div>
+    </div>
   </div>
 </div>
 

@@ -93,6 +93,7 @@ function fmtSignedDate(d) {
   const CURRENT_DOT = getDotFromPath(); 
   let initButtonsRunning = false;
   let initButtonsRerun = false; // NEW: queue reruns instead of dropping
+  let screeningResultPayload = null;
 
   
   function setText(id, value) {
@@ -316,14 +317,13 @@ function safeText(value, fallback = "—") {
   return text || fallback;
 }
 
-function getScreeningSummaryText(resultSummary) {
-  if (!resultSummary || typeof resultSummary !== "object") return "";
-  const keys = ["summary", "message", "text"];
-  for (const key of keys) {
-    const value = resultSummary[key];
-    if (typeof value === "string" && value.trim()) return value.trim();
-  }
-  return "";
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 function screeningBadgeClass(status) {
@@ -334,36 +334,157 @@ function screeningBadgeClass(status) {
   return "";
 }
 
+function computeScreeningCounts(result) {
+  const passed = Number(result?.matched_count) || 0;
+  const failed = Number(result?.failed_count) || 0;
+  const review = Number(result?.review_count) || 0;
+  const total = passed + failed + review;
+  return { passed, failed, review, total };
+}
+
+function getScreeningRatioText(result) {
+  if (!result) return "No screening result";
+  const { passed, total } = computeScreeningCounts(result);
+  if (total === 0) return "No checks configured";
+  return `${passed}/${total} checks passed`;
+}
+
+function flattenScreeningDetails(resultSummary) {
+  if (!resultSummary || typeof resultSummary !== "object") return [];
+
+  const normalizeItem = (item) => {
+    if (!item || typeof item !== "object") return null;
+    const label = String(
+      item.label ?? item.criterion ?? item.name ?? item.title ?? item.check ?? ""
+    ).trim();
+    const status = String(
+      item.status ?? item.result ?? item.outcome ?? item.verdict ?? ""
+    ).trim();
+    if (!label || !status) return null;
+    return { label, status: status.toUpperCase() };
+  };
+
+  if (Array.isArray(resultSummary)) {
+    return resultSummary.map(normalizeItem).filter(Boolean);
+  }
+
+  const arrayKeys = ["criteria", "checks", "results", "items", "breakdown"];
+  for (const key of arrayKeys) {
+    if (!Array.isArray(resultSummary[key])) continue;
+    const rows = resultSummary[key].map(normalizeItem).filter(Boolean);
+    if (rows.length) return rows;
+  }
+
+  const rows = [];
+  Object.entries(resultSummary).forEach(([key, value]) => {
+    if (!value || typeof value !== "object") return;
+    const status = String(value.status ?? value.result ?? value.outcome ?? "").trim();
+    if (!status) return;
+    const label = String(value.label ?? value.criterion ?? key).trim();
+    if (!label) return;
+    rows.push({ label, status: status.toUpperCase() });
+  });
+  return rows;
+}
+
+function renderScreeningDetailsModal(data) {
+  const body = document.getElementById("screening-details-body");
+  if (!body) return;
+
+  const profileName = safeText(data?.profile?.profile_name, "Default profile not set");
+  const result = data?.result || null;
+  const status = result?.screening_status ? String(result.screening_status).toUpperCase() : "NOT SCREENED";
+  const evaluated = result?.evaluated_at ? fmtDateTime(result.evaluated_at) : "—";
+  const ratio = getScreeningRatioText(result);
+  const details = flattenScreeningDetails(result?.result_summary);
+
+  const metaHtml = `
+    <div class="screening-modal-grid">
+      <div class="screening-modal-key">Profile</div><div class="screening-modal-val">${escapeHtml(profileName)}</div>
+      <div class="screening-modal-key">Evaluated</div><div class="screening-modal-val">${escapeHtml(evaluated)}</div>
+      <div class="screening-modal-key">Overall status</div><div class="screening-modal-val">${escapeHtml(status)}</div>
+      <div class="screening-modal-key">Passed ratio</div><div class="screening-modal-val">${escapeHtml(ratio)}</div>
+    </div>
+  `;
+
+  if (!details.length) {
+    body.innerHTML = `${metaHtml}<div class="cs-hint">Detailed screening breakdown is not available yet.</div>`;
+    return;
+  }
+
+  const detailRows = details.map((item) => `
+    <div class="screening-detail-row">
+      <div class="screening-detail-label">${escapeHtml(item.label)}</div>
+      <div class="screening-detail-status">${escapeHtml(item.status)}</div>
+    </div>
+  `).join("");
+
+  body.innerHTML = `${metaHtml}<div class="screening-detail-list">${detailRows}</div>`;
+}
+
+function openScreeningModal() {
+  const modal = document.getElementById("screening-details-modal");
+  if (!modal) return;
+  renderScreeningDetailsModal(screeningResultPayload || {});
+  modal.hidden = false;
+}
+
+function closeScreeningModal() {
+  const modal = document.getElementById("screening-details-modal");
+  if (!modal) return;
+  modal.hidden = true;
+}
+
+function wireScreeningModalOnce() {
+  const card = document.getElementById("screening-summary-card");
+  const viewDetails = document.getElementById("screening-view-details");
+  const closeBtn = document.getElementById("screening-details-close");
+  const dismissBtn = document.getElementById("screening-details-dismiss");
+  const backdrop = document.getElementById("screening-details-modal");
+  if (!card || !viewDetails || !closeBtn || !dismissBtn || !backdrop) return;
+
+  card.addEventListener("click", () => {
+    if (card.hidden) return;
+    openScreeningModal();
+  });
+  card.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openScreeningModal();
+    }
+  });
+
+  viewDetails.addEventListener("click", (e) => {
+    e.stopPropagation();
+    openScreeningModal();
+  });
+  closeBtn.addEventListener("click", closeScreeningModal);
+  dismissBtn.addEventListener("click", closeScreeningModal);
+  backdrop.addEventListener("click", (e) => {
+    if (e.target === backdrop) closeScreeningModal();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeScreeningModal();
+  });
+}
+
 function renderScreeningSummary(data) {
   const card = document.getElementById("screening-summary-card");
   const badge = document.getElementById("screening-status-badge");
-  const profileName = document.getElementById("screening-profile-name");
-  const evaluatedAt = document.getElementById("screening-evaluated-at");
-  const summaryText = document.getElementById("screening-summary-text");
-  if (!card || !badge || !profileName || !evaluatedAt || !summaryText) return;
+  const ratioText = document.getElementById("screening-ratio-text");
+  if (!card || !badge || !ratioText) return;
 
+  screeningResultPayload = data || {};
   card.hidden = false;
+  card.setAttribute("role", "button");
+  card.setAttribute("tabindex", "0");
   const result = data?.result || null;
   const status = result?.screening_status ? String(result.screening_status).toUpperCase() : "NOT SCREENED";
   badge.textContent = status;
   badge.classList.remove("pill-ok", "pill-warn", "pill-purp", "pill-fail");
   const klass = screeningBadgeClass(status);
   if (klass) badge.classList.add(klass);
-
-  profileName.textContent = safeText(data?.profile?.profile_name, "Default profile not set");
-  evaluatedAt.textContent = result?.evaluated_at ? fmtDateTime(result.evaluated_at) : "—";
-
-  const summary = getScreeningSummaryText(result?.result_summary);
-  if (summary) {
-    summaryText.textContent = `Summary: ${summary}`;
-    summaryText.style.display = "";
-  } else if (!result) {
-    summaryText.textContent = "No screening result is available for your default profile.";
-    summaryText.style.display = "";
-  } else {
-    summaryText.textContent = "";
-    summaryText.style.display = "none";
-  }
+  ratioText.textContent = getScreeningRatioText(result);
 }
 
 async function loadDefaultScreeningResult(dot) {
@@ -376,6 +497,7 @@ async function loadDefaultScreeningResult(dot) {
     renderScreeningSummary(data || {});
   } catch (err) {
     console.warn("screening summary unavailable", err);
+    screeningResultPayload = null;
     card.hidden = true;
   }
 }
@@ -1438,6 +1560,8 @@ if (data && data.source === "cache_stale") {
         await loadDefaultScreeningResult(dot);
       } else {
         const screeningCard = document.getElementById("screening-summary-card");
+        screeningResultPayload = null;
+        closeScreeningModal();
         if (screeningCard) screeningCard.hidden = true;
       }
       
@@ -2208,6 +2332,7 @@ document.addEventListener("DOMContentLoaded", () => {
   wireEmailModalOnce();
   wireSendContractModalOnce(); 
   wireAddDocumentModalOnce();
+  wireScreeningModalOnce();
   wireQuickJump();
   wireBackToOverview();
   document.getElementById("btn-refresh-carrier")?.addEventListener("click", () => {
