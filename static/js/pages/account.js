@@ -961,6 +961,39 @@ function parseEnumSelections(valueText) {
   return String(valueText).split(",").map((v) => v.trim()).filter(Boolean);
 }
 
+function getEnumOptionValue(option) {
+  if (option && typeof option === "object" && !Array.isArray(option)) {
+    if (option.value === null || option.value === undefined) return "";
+    return String(option.value);
+  }
+  if (option === null || option === undefined) return "";
+  return String(option);
+}
+
+function getEnumOptionLabel(option) {
+  if (option && typeof option === "object" && !Array.isArray(option)) {
+    if (option.label !== null && option.label !== undefined && String(option.label).trim() !== "") {
+      return String(option.label);
+    }
+    return getEnumOptionValue(option);
+  }
+  return getEnumOptionValue(option);
+}
+
+function normalizeEnumOptions(options) {
+  if (!Array.isArray(options)) return [];
+  return options
+    .map((option) => ({ value: getEnumOptionValue(option), label: getEnumOptionLabel(option) }))
+    .filter((option) => option.value !== "");
+}
+
+function getEnumLabelForValue(row, value) {
+  const rawValue = value === null || value === undefined ? "" : String(value);
+  const options = normalizeEnumOptions(row?.enum_options);
+  const match = options.find((opt) => opt.value === rawValue);
+  return match?.label || rawValue;
+}
+
 function ensureScreeningDefaults(row) {
   const type = String(row?.value_type || "").toUpperCase();
   if (!row) return;
@@ -980,13 +1013,14 @@ function ensureScreeningDefaults(row) {
       row.value_number = normalizeNumberForCriterion(row, row.value_number);
     }
   } else if (type === "ENUM") {
-    const options = Array.isArray(row.enum_options) ? row.enum_options : [];
+    const options = normalizeEnumOptions(row.enum_options);
+    const optionValues = options.map((opt) => opt.value);
     const op = normalizeOperator(row.comparison_operator) || criterionDefaultOperator(row);
-    const selectedValues = parseEnumSelections(row.value_text).filter((val) => !options.length || options.includes(val));
+    const selectedValues = parseEnumSelections(row.value_text).filter((val) => !optionValues.length || optionValues.includes(val));
     if (SCREENING_MULTI_ENUM_OPERATORS.has(op)) {
       row.value_text = selectedValues.length ? selectedValues.join(", ") : null;
     } else if ((row.value_text === null || row.value_text === undefined || row.value_text === "") && options.length) {
-      row.value_text = options[0];
+      row.value_text = options[0].value;
     } else if (selectedValues.length) {
       row.value_text = selectedValues[0];
     }
@@ -1056,7 +1090,9 @@ function screeningRulePreview(row) {
 
   if (type === "ENUM") {
     const selectedValues = parseEnumSelections(row.value_text);
-    const value = selectedValues.length ? selectedValues.join(", ") : "the selected value";
+    const value = selectedValues.length
+      ? selectedValues.map((selectedValue) => getEnumLabelForValue(row, selectedValue)).join(", ")
+      : "the selected value";
     if (op === "IN" || op === "NOT_IN") {
       return `Carrier is flagged if ${label} is ${opLabel} ${value}.`;
     }
@@ -1224,14 +1260,14 @@ function renderScreeningCriteria(criteria = []) {
           </label>
         `;
       } else if (type === "ENUM") {
-        const options = Array.isArray(row.enum_options) ? row.enum_options : [];
+        const options = normalizeEnumOptions(row.enum_options);
         const op = normalizeOperator(row.comparison_operator) || criterionDefaultOperator(row);
         const selectedValues = parseEnumSelections(row.value_text);
         const isMultiSelect = SCREENING_MULTI_ENUM_OPERATORS.has(op);
         if (isMultiSelect) {
           const opts = options.map((opt) => {
-            const checked = selectedValues.includes(opt) ? "checked" : "";
-            return `<label class="screening-enum-check"><input type="checkbox" data-screening-enum-multi="${idx}" value="${escapeHtml(opt)}" ${checked}><span>${escapeHtml(opt)}</span></label>`;
+            const checked = selectedValues.includes(opt.value) ? "checked" : "";
+            return `<label class="screening-enum-check"><input type="checkbox" data-screening-enum-multi="${idx}" value="${escapeHtml(opt.value)}" ${checked}><span>${escapeHtml(opt.label)}</span></label>`;
           }).join("");
           valueControl = `
             <fieldset class="screening-field screening-enum-group">
@@ -1242,7 +1278,7 @@ function renderScreeningCriteria(criteria = []) {
           `;
         } else {
           const selectedSingle = selectedValues[0] || "";
-          const opts = options.map((opt) => `<option value="${escapeHtml(opt)}" ${selectedSingle === String(opt) ? "selected" : ""}>${escapeHtml(opt)}</option>`).join("");
+          const opts = options.map((opt) => `<option value="${escapeHtml(opt.value)}" ${selectedSingle === String(opt.value) ? "selected" : ""}>${escapeHtml(opt.label)}</option>`).join("");
           valueControl = `
             <label class="screening-field">
               <span class="screening-field-label">Value</span>
