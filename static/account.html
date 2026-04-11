@@ -414,7 +414,7 @@
               <div class="row screening-groups-head">
                 <div>
                   <div class="row-title">Rule Groups</div>
-                  <div class="row-sub">Create a group, choose how it matches, then assign rules from the criteria cards below.</div>
+                  <div class="row-sub">Create a group, choose how it matches, then assign rules to it.</div>
                 </div>
                 <div class="row-actions">
                   <button class="btn-ghost" id="btn-screening-new-group">New Group</button>
@@ -1076,6 +1076,28 @@
     <div class="cs-modal-footer">
       <button id="screening-group-rename-modal-cancel" class="btn-ghost" type="button">Cancel</button>
       <button id="screening-group-rename-modal-submit" class="btn-primary" type="submit" form="screening-group-rename-modal-form">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="screening-group-assign-modal" class="cs-modal-backdrop" hidden>
+  <div class="cs-modal glass-card screening-group-assign-modal" role="dialog" aria-modal="true" aria-labelledby="screening-group-assign-modal-title">
+    <div class="cs-modal-header">
+      <div class="cs-modal-headings">
+        <div id="screening-group-assign-modal-title" class="cs-modal-title">Assign Rules</div>
+        <div class="cs-modal-subtitle">Choose which enabled and saved rules belong to this group.</div>
+      </div>
+      <button id="screening-group-assign-modal-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
+    </div>
+
+    <form id="screening-group-assign-modal-form" class="cs-modal-body screening-group-assign-modal-form">
+      <div id="screening-group-assign-modal-list" class="screening-group-assign-list"></div>
+      <div id="screening-group-assign-modal-error" class="error-text" hidden></div>
+    </form>
+
+    <div class="cs-modal-footer">
+      <button id="screening-group-assign-modal-cancel" class="btn-ghost" type="button">Cancel</button>
+      <button id="screening-group-assign-modal-submit" class="btn-primary" type="submit" form="screening-group-assign-modal-form">Save Rules</button>
     </div>
   </div>
 </div>

@@ -390,10 +390,6 @@ body.account-page{
   font-size:.8rem;
 }
 
-.screening-rule-group-assignment {
-  margin-bottom: 8px;
-}
-
 .screening-groups-wrap{
   margin-top: 10px;
 }
@@ -458,6 +454,12 @@ body.account-page{
   font-size:.84rem;
 }
 
+.screening-assigned-group{
+  margin-bottom:4px;
+  font-size:.76rem;
+  color:rgba(148,163,184,.95);
+}
+
 .screening-rule-body{
   margin-top:8px;
   margin-left:26px;
@@ -468,7 +470,7 @@ body.account-page{
 
 .screening-fields{
   display:grid;
-  grid-template-columns: minmax(180px, 220px) minmax(180px, 240px);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 240px));
   gap:10px;
 }
 
@@ -1030,6 +1032,57 @@ body.account-page .page{
   display:flex;
   flex-direction:column;
   gap:12px;
+}
+
+.screening-group-assign-modal{
+  width:min(720px, calc(100vw - 24px));
+}
+
+.screening-group-assign-modal-form{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.screening-group-assign-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  max-height:52vh;
+  overflow:auto;
+  padding-right:4px;
+}
+
+.screening-group-assign-section{
+  border:1px solid rgba(148,163,184,.24);
+  border-radius:12px;
+  background:rgba(2,6,23,.45);
+  padding:10px 12px;
+}
+
+.screening-group-assign-section > header{
+  margin:0 0 8px;
+  font-size:.72rem;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:rgba(148,163,184,.95);
+}
+
+.screening-group-assign-items{
+  display:grid;
+  gap:8px;
+}
+
+.screening-group-assign-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color:#e2e8f0;
+  font-size:.9rem;
+}
+
+.screening-group-assign-item input{
+  accent-color:#2ee6b7;
 }
 
 

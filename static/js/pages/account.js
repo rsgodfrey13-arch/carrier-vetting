@@ -483,6 +483,7 @@ let screeningCriteriaCurrent = [];
 let screeningRuleGroups = [];
 let screeningRuleGroupModalState = { open: false, submitting: false };
 let screeningRuleGroupRenameModalState = { open: false, submitting: false, groupId: null };
+let screeningRuleGroupAssignModalState = { open: false, submitting: false, groupId: null, selectedCriteriaIds: [] };
 
 const SCREENING_GROUP_MATCH_LABELS = {
   ALL: "All of these",
@@ -1252,6 +1253,19 @@ function getScreeningGroupRenameModalEls() {
   };
 }
 
+function getScreeningGroupAssignModalEls() {
+  return {
+    modal: document.getElementById("screening-group-assign-modal"),
+    form: document.getElementById("screening-group-assign-modal-form"),
+    listEl: document.getElementById("screening-group-assign-modal-list"),
+    titleEl: document.getElementById("screening-group-assign-modal-title"),
+    submitBtn: document.getElementById("screening-group-assign-modal-submit"),
+    cancelBtn: document.getElementById("screening-group-assign-modal-cancel"),
+    closeBtn: document.getElementById("screening-group-assign-modal-close"),
+    errorEl: document.getElementById("screening-group-assign-modal-error"),
+  };
+}
+
 function setScreeningGroupRenameModalError(message = "") {
   const { errorEl } = getScreeningGroupRenameModalEls();
   if (!errorEl) return;
@@ -1279,6 +1293,138 @@ function openScreeningRuleGroupRenameModal(group) {
   setScreeningGroupRenameModalError("");
   modal.hidden = false;
   setTimeout(() => nameInput.focus(), 0);
+}
+
+function setScreeningGroupAssignModalError(message = "") {
+  const { errorEl } = getScreeningGroupAssignModalEls();
+  if (!errorEl) return;
+  errorEl.hidden = !message;
+  errorEl.textContent = message || "";
+}
+
+function closeScreeningRuleGroupAssignModal() {
+  const { modal, form, submitBtn, titleEl, listEl } = getScreeningGroupAssignModalEls();
+  if (!modal || !form || !submitBtn || !titleEl || !listEl) return;
+  screeningRuleGroupAssignModalState = { open: false, submitting: false, groupId: null, selectedCriteriaIds: [] };
+  submitBtn.disabled = false;
+  submitBtn.textContent = "Save Rules";
+  titleEl.textContent = "Assign Rules";
+  listEl.innerHTML = "";
+  setScreeningGroupAssignModalError("");
+  form.reset();
+  modal.hidden = true;
+}
+
+function renderScreeningGroupAssignModalList(group) {
+  const { listEl } = getScreeningGroupAssignModalEls();
+  if (!listEl) return;
+
+  const rows = Array.isArray(screeningCriteriaCurrent) ? screeningCriteriaCurrent : [];
+  const assignableRows = rows.filter((row) => !!row?.is_enabled && !!row?.profile_criteria_id);
+
+  if (!assignableRows.length) {
+    listEl.innerHTML = `<div class="muted">No saved and enabled rules are available to assign yet.</div>`;
+    return;
+  }
+
+  const grouped = assignableRows.reduce((acc, row) => {
+    const category = String(row.category || "Other").trim() || "Other";
+    if (!acc[category]) acc[category] = [];
+    acc[category].push(row);
+    return acc;
+  }, {});
+
+  listEl.innerHTML = Object.entries(grouped).map(([category, criteria]) => {
+    const items = criteria.map((row) => {
+      const profileCriteriaId = Number(row.profile_criteria_id);
+      const checked = screeningRuleGroupAssignModalState.selectedCriteriaIds.includes(profileCriteriaId) ? "checked" : "";
+      return `
+        <label class="screening-group-assign-item">
+          <input type="checkbox" data-screening-assign-criteria-id="${profileCriteriaId}" ${checked}>
+          <span>${escapeHtml(row.label || row.criteria_key || "Criterion")}</span>
+        </label>
+      `;
+    }).join("");
+    return `
+      <section class="screening-group-assign-section">
+        <header>${escapeHtml(category)}</header>
+        <div class="screening-group-assign-items">${items}</div>
+      </section>
+    `;
+  }).join("");
+}
+
+function openScreeningRuleGroupAssignModal(group) {
+  if (!group || !selectedScreeningProfileId) return;
+  const { modal, titleEl, submitBtn } = getScreeningGroupAssignModalEls();
+  if (!modal || !titleEl || !submitBtn) return;
+  const selectedIds = (group.criteria || [])
+    .map((criterion) => Number(criterion?.profile_criteria_id))
+    .filter((id) => Number.isFinite(id));
+  screeningRuleGroupAssignModalState = {
+    open: true,
+    submitting: false,
+    groupId: String(group.id),
+    selectedCriteriaIds: selectedIds,
+  };
+  titleEl.textContent = `Assign Rules to ${group.group_name || "Group"}`;
+  submitBtn.disabled = false;
+  submitBtn.textContent = "Save Rules";
+  setScreeningGroupAssignModalError("");
+  renderScreeningGroupAssignModalList(group);
+  modal.hidden = false;
+}
+
+function wireScreeningRuleGroupAssignModalOnce() {
+  const { modal, form, listEl, submitBtn, cancelBtn, closeBtn } = getScreeningGroupAssignModalEls();
+  if (!modal || !form || !listEl || !submitBtn || !cancelBtn || !closeBtn) return;
+  if (modal.dataset.wired === "1") return;
+  modal.dataset.wired = "1";
+
+  closeBtn.addEventListener("click", closeScreeningRuleGroupAssignModal);
+  cancelBtn.addEventListener("click", closeScreeningRuleGroupAssignModal);
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) closeScreeningRuleGroupAssignModal();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && screeningRuleGroupAssignModalState.open) closeScreeningRuleGroupAssignModal();
+  });
+
+  form.addEventListener("change", (event) => {
+    const input = event.target?.closest?.("[data-screening-assign-criteria-id]");
+    if (!input) return;
+    const profileCriteriaId = Number(input.getAttribute("data-screening-assign-criteria-id"));
+    if (!Number.isFinite(profileCriteriaId)) return;
+    const next = new Set(screeningRuleGroupAssignModalState.selectedCriteriaIds || []);
+    if (input.checked) next.add(profileCriteriaId);
+    else next.delete(profileCriteriaId);
+    screeningRuleGroupAssignModalState.selectedCriteriaIds = Array.from(next);
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (screeningRuleGroupAssignModalState.submitting) return;
+    if (!selectedScreeningProfileId || !screeningRuleGroupAssignModalState.groupId) return;
+
+    screeningRuleGroupAssignModalState.submitting = true;
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Saving...";
+    setScreeningGroupAssignModalError("");
+
+    try {
+      await apiPost(
+        `/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/groups/${encodeURIComponent(screeningRuleGroupAssignModalState.groupId)}/rules`,
+        { profile_criteria_ids: screeningRuleGroupAssignModalState.selectedCriteriaIds }
+      );
+      closeScreeningRuleGroupAssignModal();
+      await loadScreeningCriteria(selectedScreeningProfileId);
+    } catch (err) {
+      screeningRuleGroupAssignModalState.submitting = false;
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Save Rules";
+      setScreeningGroupAssignModalError(err?.message || "Failed to save rule assignments.");
+    }
+  });
 }
 
 function wireScreeningRuleGroupRenameModalOnce() {
@@ -1470,23 +1616,10 @@ function renderScreeningCriteria(criteria = []) {
       const operatorOptions = operatorOptionsForRow(row);
       const isEnabled = !!row.is_enabled;
       const description = row.description ? `<div class="screening-criterion-desc">${escapeHtml(row.description)}</div>` : "";
-      const currentGroupId = row.group_id ? String(row.group_id) : "";
-      const canAssignGroup = !!row.profile_criteria_id;
-      const groupOptions = [`<option value="">None</option>`]
-        .concat(
-          (screeningRuleGroups || []).map((group) => (
-            `<option value="${escapeHtml(group.id)}" ${String(group.id) === currentGroupId ? "selected" : ""}>${escapeHtml(group.group_name || "Untitled Group")}</option>`
-          ))
-        ).join("");
-      const groupSelect = `
-        <label class="screening-field screening-rule-group-assignment">
-          <span class="screening-field-label">Rule Group</span>
-          <select class="api-input screening-select" data-screening-group-id="${idx}" ${canAssignGroup ? "" : "disabled"}>
-            ${groupOptions}
-          </select>
-          ${canAssignGroup ? "" : `<span class="screening-field-note">Save this rule before assigning it to a group.</span>`}
-        </label>
-      `;
+      const assignedGroup = row.group_id ? getScreeningGroupById(row.group_id) : null;
+      const groupDisplay = assignedGroup
+        ? `<div class="screening-assigned-group">Assigned Group: ${escapeHtml(assignedGroup.group_name || "Untitled Group")}</div>`
+        : "";
 
       const operatorSelect = `
         <label class="screening-field">
@@ -1556,7 +1689,8 @@ function renderScreeningCriteria(criteria = []) {
           ${description}
           ${isEnabled ? `
             <div class="screening-rule-body">
-              <div class="screening-fields">${groupSelect}${operatorSelect}${valueControl}</div>
+              ${groupDisplay}
+              <div class="screening-fields">${operatorSelect}${valueControl}</div>
               <div class="screening-preview-label">Rule Preview</div>
               <div class="screening-rule-preview">${escapeHtml(screeningRulePreview(row))}</div>
             </div>
@@ -1608,16 +1742,6 @@ function renderScreeningCriteria(criteria = []) {
         }
       }
       renderScreeningCriteria(screeningCriteriaCurrent);
-      updateScreeningSaveState();
-    });
-  });
-
-  host.querySelectorAll("[data-screening-group-id]").forEach((el) => {
-    el.addEventListener("change", () => {
-      const idx = Number(el.getAttribute("data-screening-group-id"));
-      const row = screeningCriteriaCurrent[idx];
-      if (!row) return;
-      row.group_id = el.value || null;
       updateScreeningSaveState();
     });
   });
@@ -1709,6 +1833,7 @@ function renderScreeningRuleGroups() {
               </select>
             </label>
             <div class="row-actions">
+              <button class="btn-primary" data-screening-group-assign="${group.id}">Assign Rules</button>
               <button class="btn-ghost" data-screening-group-rename="${group.id}">Rename</button>
               <button class="btn-ghost" data-screening-group-delete="${group.id}">Delete</button>
             </div>
@@ -1725,6 +1850,15 @@ function renderScreeningRuleGroups() {
       const group = getScreeningGroupById(groupId);
       if (!group || !selectedScreeningProfileId) return;
       openScreeningRuleGroupRenameModal(group);
+    });
+  });
+
+  host.querySelectorAll("[data-screening-group-assign]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const groupId = button.getAttribute("data-screening-group-assign");
+      const group = getScreeningGroupById(groupId);
+      if (!group || !selectedScreeningProfileId) return;
+      openScreeningRuleGroupAssignModal(group);
     });
   });
 
@@ -1802,12 +1936,6 @@ async function saveScreeningCriteria() {
   if (btn) btn.textContent = "Saving...";
   updateScreeningSaveState();
   try {
-    const desiredGroupByProfileCriteriaId = new Map(
-      screeningCriteriaCurrent
-        .filter((row) => row.profile_criteria_id !== null && row.profile_criteria_id !== undefined)
-        .map((row) => [Number(row.profile_criteria_id), row.group_id || null])
-    );
-
     const payload = screeningCriteriaCurrent.map((row) => {
       const norm = normalizeScreeningCriterionForSave(row);
       if (norm.value_number !== null && Number.isNaN(norm.value_number)) {
@@ -1819,22 +1947,6 @@ async function saveScreeningCriteria() {
     await apiPost(`/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/criteria`, {
       criteria: payload,
     });
-
-    const refreshed = await apiGet(`/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/criteria`);
-    const refreshedRows = Array.isArray(refreshed?.criteria) ? refreshed.criteria : [];
-
-    for (const row of refreshedRows) {
-      if (!row?.profile_criteria_id) continue;
-      const profileCriteriaId = Number(row.profile_criteria_id);
-      const desiredGroupId = row.is_enabled ? (desiredGroupByProfileCriteriaId.get(profileCriteriaId) || null) : null;
-      const currentGroupId = row.group_id || null;
-      if (String(desiredGroupId || "") === String(currentGroupId || "")) continue;
-
-      await apiPatch(
-        `/api/screening/profiles/${encodeURIComponent(selectedScreeningProfileId)}/criteria/${encodeURIComponent(row.profile_criteria_id)}/group`,
-        { group_id: desiredGroupId }
-      );
-    }
 
     await loadScreeningCriteria(selectedScreeningProfileId);
     screeningSaveUiState = "saved";
@@ -2921,8 +3033,9 @@ pwSave?.addEventListener("click", async () => {
   .then(() => {
     wireAgreementUploadModalOnce();
     wireAgreementDeleteModalOnce();
-    wireScreeningRuleGroupModalOnce();
-    wireScreeningRuleGroupRenameModalOnce();
+wireScreeningRuleGroupModalOnce();
+wireScreeningRuleGroupRenameModalOnce();
+wireScreeningRuleGroupAssignModalOnce();
   })
   .then(() => {
     if (activeTab === "help") {
