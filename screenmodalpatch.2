@@ -1,0 +1,185 @@
+diff --git a/static/carrier.html b/static/carrier.html
+index 0d678d2281138bef338bcbc0a9d8140186b19466..bd560a5883e119df02c469e728b7cddd33729d15 100644
+--- a/static/carrier.html
++++ b/static/carrier.html
+@@ -102,54 +102,73 @@
+               aria-label="Refresh carrier data"
+             >
+               ↻ Refresh
+             </button>
+         
+             <span id="carrier-refresh-status" class="meta-refresh-status" aria-live="polite"></span>
+           </div>
+         </div>
+ 
+       </div>
+     </div> <!-- end .carrier-left -->
+ 
+     <div class="carrier-right">
+       <div class="pill-group">
+         <div id="carrier-status" class="carrier-pill">—</div>
+         <div id="carrier-allowed" class="carrier-pill ghost small" >—</div>
+         <div id="carrier-commonauthoritystatus" class="carrier-pill ghost small" >—</div>
+         <div id="carrier-contractauthoritystatus" class="carrier-pill ghost small" >—</div>
+         <div id="carrier-brokerauthoritystatus" class="carrier-pill ghost small" >—</div>
+         <div id="carrier-safetyrating" class="carrier-pill ghost small" >—</div>
+       </div>
+ 
+       <section id="screening-summary-card" class="carrier-screening-summary glass-card" hidden>
+         <div class="carrier-screening-head">
+           <div class="carrier-screening-title">Screening</div>
+-          <span id="screening-status-badge" class="carrier-pill ghost small">NOT SCREENED</span>
++
++          <div class="carrier-screening-status-block">
++            <span id="screening-status-badge" class="carrier-pill ghost small">
++              NOT SCREENED
++            </span>
++
++            <button
++              id="screening-view-details"
++              class="carrier-screening-link"
++              type="button"
++            >
++              View Details
++            </button>
++          </div>
++        </div>
++
++        <div
++          id="screening-ratio-text"
++          class="carrier-screening-ratio screening-ratio-hidden"
++          aria-hidden="true"
++        >
++          No screening result
+         </div>
+-        <div class="carrier-screening-ratio" id="screening-ratio-text">No screening result</div>
+-        <button id="screening-view-details" class="carrier-screening-link" type="button">View Details</button>
+       </section>
+ 
+       <!--
+       <div class="quick-metrics">
+         <div class="metric-chip">
+           <span class="metric-label">Safety Rating</span>
+           <span id="field-safetyrating" class="carrier-pill ghost small">—</span>
+         </div>
+       </div>
+       -->
+       <!-- ACTION BUTTONS, SEPARATE ROW -->
+       <div class="carrier-actions">
+         
+         <!-- NEW: Send Contract -->
+         <div class="contract-action-wrap">
+           <button id="btn-send-contract" class="pill-btn pill-contract pill-disabled" type="button">
+             Send Contract
+           </button>
+           <div id="contract-sign-status" class="contract-sign-status" hidden></div>
+         </div>
+         
+         <button id="btn-add-carrier" class="pill-btn pill-add">+ Add Carrier</button>
+         <button id="btn-remove-carrier" class="pill-btn pill-remove pill-disabled">Remove Carrier</button>
+       </div>
+     </div> <!-- end .carrier-right -->
+diff --git a/static/css/profile_style.css b/static/css/profile_style.css
+index 3e875740942127f31522851de36031cbaf99d830..b7ca6785159e09141ff1ceff1ce189042ff7c540 100644
+--- a/static/css/profile_style.css
++++ b/static/css/profile_style.css
+@@ -130,82 +130,91 @@ body.carrier-page {
+ }
+ .carrier-pill.small { font-size: .7rem; padding-inline: .8rem; }
+ .carrier-pill.ghost { background: transparent; }
+ .pill-ok { border-color: #38BDF8; box-shadow: 0 0 14px rgba(56,189,248,.35); }
+ .pill-warn { border-color: var(--accent-warn); box-shadow: 0 0 14px rgba(249,115,22,.45); }
+ .pill-fail { border-color: #ef4444; box-shadow: 0 0 14px rgba(239,68,68,.4); }
+ .pill-purp { border-color: #0B78CF; box-shadow: 0 0 14px rgba(11,120,207,.35); }
+ 
+ .quick-metrics { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
+ 
+ .carrier-screening-summary{
+   width:100%;
+   max-width:320px;
+   padding:10px 12px;
+   border:1px solid rgba(148,163,184,.24);
+   cursor: pointer;
+ }
+ 
+ .carrier-screening-summary:focus-visible{
+   outline: 2px solid rgba(56,189,248,.7);
+   outline-offset: 2px;
+ }
+ 
+ .carrier-screening-head{
+   display:flex;
+-  align-items:center;
++  align-items:flex-start;
+   justify-content:space-between;
+-  gap:10px;
++  gap:16px;
++}
++
++.carrier-screening-status-block{
++  display:flex;
++  flex-direction:column;
++  align-items:flex-end;
++  gap:6px;
+ }
+ 
+ .carrier-screening-title{
+   font-size:.75rem;
+   text-transform:uppercase;
+   letter-spacing:.12em;
+   color:var(--text-muted);
+ }
+ 
+ .carrier-screening-ratio{
+   margin-top:8px;
+   font-size:.86rem;
+   color:#e5e7eb;
+ }
+ 
+ .carrier-screening-link{
+-  margin-top:8px;
+   padding:0;
+   border:0;
+   background:transparent;
+-  color:var(--accent-1);
+-  font-size:.8rem;
+-  text-decoration:underline;
+-  text-underline-offset:2px;
++  font-size:12px;
++  line-height:1;
++  color:#6fb8ff;
+   cursor:pointer;
+ }
+ 
+ .carrier-screening-link:hover{
+-  color:#7dd3fc;
++  text-decoration:underline;
++}
++
++.screening-ratio-hidden{
++  display:none !important;
+ }
+ 
+ .screening-modal-grid{
+   display:grid;
+   grid-template-columns:minmax(0, 160px) minmax(0, 1fr);
+   gap:8px 12px;
+   margin-bottom:14px;
+ }
+ 
+ .screening-modal-key{
+   font-size:.74rem;
+   letter-spacing:.08em;
+   text-transform:uppercase;
+   color:var(--text-muted);
+ }
+ 
+ .screening-modal-val{
+   font-size:.9rem;
+   color:#e5e7eb;
+ }
+ 
+ .screening-detail-list{
+   border:1px solid rgba(255,255,255,.1);
+   border-radius:12px;
+   overflow:hidden;
