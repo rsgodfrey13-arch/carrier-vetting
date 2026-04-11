@@ -498,7 +498,7 @@ function renderScreeningDetailsModal(data) {
   const metaHtml = `
     <div class="screening-modal-grid">
       <div class="screening-modal-key">Profile</div><div class="screening-modal-val">${escapeHtml(profileName)}</div>
-      <div class="screening-modal-key">Evaluated</div><div class="screening-modal-val">${escapeHtml(evaluated)}</div>
+    //  LOGGED IN BUT NOT ALLOWED <div class="screening-modal-key">Evaluated</div><div class="screening-modal-val">${escapeHtml(evaluated)}</div>
       <div class="screening-modal-key">Overall status</div><div class="screening-modal-val">${escapeHtml(status)}</div>
       <div class="screening-modal-key">Passed ratio</div><div class="screening-modal-val">${escapeHtml(ratio)}</div>
     </div>
