@@ -2443,3 +2443,18 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
 .contract-success-close:hover {
   background: rgba(255,255,255,.12);
 }
+
+
+.carrier-screening-head {
+  display: flex;
+  align-items: center; /* changed from flex-start */
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.carrier-screening-status-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* changed from flex-end */
+  gap: 6px;
+}
