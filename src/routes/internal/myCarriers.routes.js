@@ -597,8 +597,8 @@ router.put("/my-carriers/:dot/alerts/email", requireAuth, loadCompanyContext, as
       if (recipients.length > 0) {
         await client.query(
           `
-          INSERT INTO user_carrier_alert_recipients (company_id, user_id, carrier_dot, email)
-          SELECT $1, NULL, $2, UNNEST($3::text[])
+          INSERT INTO user_carrier_alert_recipients (company_id, carrier_dot, email)
+          SELECT $1, $2, UNNEST($3::text[])
           `,
           [companyId, dot, recipients]
         );
