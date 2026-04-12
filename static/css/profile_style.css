@@ -250,8 +250,8 @@ body.carrier-page {
   border-radius:12px;
   overflow:hidden;
   background:rgba(15,23,42,.38);
-  width:max-content;
-  min-width:100%;
+  width:100%;
+  min-width:0;
 }
 
 .screening-detail-scroll{
@@ -262,17 +262,21 @@ body.carrier-page {
   -webkit-overflow-scrolling:touch;
 }
 
+#screening-details-modal .cs-modal{
+  width:min(920px, calc(100vw - 32px));
+}
+
 #screening-details-modal .cs-modal-body{
-  overflow-x:visible;
+  overflow-x:hidden;
 }
 
 .screening-detail-header,
 .screening-detail-row{
   display:grid;
-  grid-template-columns:minmax(145px,1fr) minmax(120px,.95fr) minmax(240px,2.15fr) minmax(130px,.75fr) 96px;
-  gap:10px;
+  grid-template-columns:minmax(120px, .95fr) minmax(96px, .8fr) minmax(180px, 1.75fr) minmax(108px, .8fr) 92px;
+  gap:8px;
   align-items:flex-start;
-  padding:10px 12px;
+  padding:10px 10px;
 }
 
 .screening-detail-header{
@@ -353,7 +357,7 @@ body.carrier-page {
 
 .screening-detail-override{
   justify-self:start;
-  width:96px;
+  width:92px;
 }
 
 .screening-override-toggle{
@@ -400,11 +404,22 @@ body.carrier-page {
 
 .screening-override-modal{
   max-width:600px;
+  max-height:min(86vh, calc(100vh - 32px));
+  display:flex;
+  flex-direction:column;
+}
+
+.screening-override-modal .cs-modal-header,
+.screening-override-modal .cs-modal-footer{
+  flex:0 0 auto;
 }
 
 .screening-override-body{
   display:grid;
   gap:16px;
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
 }
 
 .screening-override-summary{
