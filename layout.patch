@@ -1,0 +1,69 @@
+diff --git a/static/css/profile_style.css b/static/css/profile_style.css
+index 8c87534bc38ee8aa22dc175628da1ffc4c5c39f5..f3b69ae4c2695196b82c5a2786c6d3d97c0343b1 100644
+--- a/static/css/profile_style.css
++++ b/static/css/profile_style.css
+@@ -228,57 +228,64 @@ body.carrier-page {
+ 
+ .screening-profile-tab.is-active{
+   border-color:rgba(56,189,248,.8);
+   color:#ecfeff;
+   background:linear-gradient(120deg, rgba(2,132,199,.34), rgba(8,145,178,.28));
+   box-shadow:0 0 0 1px rgba(56,189,248,.18) inset;
+ }
+ 
+ .screening-modal-key{
+   font-size:.74rem;
+   letter-spacing:.08em;
+   text-transform:uppercase;
+   color:var(--text-muted);
+ }
+ 
+ .screening-modal-val{
+   font-size:.9rem;
+   color:#e5e7eb;
+ }
+ 
+ .screening-detail-list{
+   border:1px solid rgba(255,255,255,.1);
+   border-radius:12px;
+   overflow:hidden;
+   background:rgba(15,23,42,.38);
++  width:max-content;
+   min-width:100%;
+ }
+ 
+ .screening-detail-scroll{
+   overflow-x:auto;
+   overflow-y:hidden;
++  max-width:100%;
+   border-radius:12px;
++  -webkit-overflow-scrolling:touch;
++}
++
++#screening-details-modal .cs-modal-body{
++  overflow-x:visible;
+ }
+ 
+ .screening-detail-header,
+ .screening-detail-row{
+   display:grid;
+   grid-template-columns:minmax(145px,1fr) minmax(120px,.95fr) minmax(240px,2.15fr) minmax(130px,.75fr) 96px;
+   gap:10px;
+   align-items:flex-start;
+   padding:10px 12px;
+ }
+ 
+ .screening-detail-header{
+   border-bottom:1px solid rgba(255,255,255,.08);
+   background:rgba(15,23,42,.7);
+ }
+ 
+ .screening-detail-row{
+   border-bottom:1px solid rgba(255,255,255,.06);
+ }
+ 
+ .screening-detail-row:last-child{
+   border-bottom:0;
+ }
+ 
+ .screening-detail-head{

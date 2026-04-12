@@ -250,13 +250,20 @@ body.carrier-page {
   border-radius:12px;
   overflow:hidden;
   background:rgba(15,23,42,.38);
+  width:max-content;
   min-width:100%;
 }
 
 .screening-detail-scroll{
   overflow-x:auto;
   overflow-y:hidden;
+  max-width:100%;
   border-radius:12px;
+  -webkit-overflow-scrolling:touch;
+}
+
+#screening-details-modal .cs-modal-body{
+  overflow-x:visible;
 }
 
 .screening-detail-header,
