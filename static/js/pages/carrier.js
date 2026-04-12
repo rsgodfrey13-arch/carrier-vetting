@@ -515,11 +515,20 @@ function getResultBadgeClass(item) {
 function buildOverrideActionsHtml(item) {
   if (!isOverrideableRow(item)) return '<span class="cs-hint">—</span>';
 
-  const overrideBtn = `<button type="button" class="cs-btn cs-btn-ghost screening-override-btn" data-override-action="open" data-profile-id="${escapeHtml(String(item.profile_id))}" data-profile-criteria-id="${escapeHtml(String(item.profile_criteria_id))}" data-check="${escapeHtml(item.check)}">${item.is_overridden ? "Override Active" : "Override"}</button>`;
-  const removeBtn = item.is_overridden
-    ? `<button type="button" class="cs-btn cs-btn-ghost screening-override-remove" data-override-action="remove" data-profile-id="${escapeHtml(String(item.profile_id))}" data-profile-criteria-id="${escapeHtml(String(item.profile_criteria_id))}" data-check="${escapeHtml(item.check)}">Remove</button>`
-    : "";
-  return `<div class="screening-override-actions">${overrideBtn}${removeBtn}</div>`;
+  return `
+    <button
+      type="button"
+      class="screening-override-toggle ${item.is_overridden ? "is-active" : ""}"
+      data-override-action="open"
+      data-profile-id="${escapeHtml(String(item.profile_id))}"
+      data-profile-criteria-id="${escapeHtml(String(item.profile_criteria_id))}"
+      data-check="${escapeHtml(item.check)}"
+      aria-pressed="${item.is_overridden ? "true" : "false"}"
+    >
+      <span class="screening-override-dot" aria-hidden="true"></span>
+      <span>${item.is_overridden ? "Active" : "Set"}</span>
+    </button>
+  `;
 }
 
 async function refreshScreeningDataForCurrentDot() {
@@ -530,7 +539,7 @@ async function refreshScreeningDataForCurrentDot() {
 }
 
 async function saveScreeningOverride(context) {
-  const modeSelect = document.getElementById("override-duration-mode");
+  const modeSelect = document.querySelector('input[name="override-duration-mode"]:checked');
   const expiresInput = document.getElementById("override-expires-at");
   const noteInput = document.getElementById("override-note");
   if (!modeSelect || !expiresInput || !noteInput) return;
@@ -587,10 +596,10 @@ function closeOverrideModal() {
 }
 
 function syncOverrideExpiresVisibility() {
-  const modeSelect = document.getElementById("override-duration-mode");
+  const modeSelect = document.querySelector('input[name="override-duration-mode"]:checked');
   const expiresWrap = document.getElementById("override-expires-wrap");
   if (!modeSelect || !expiresWrap) return;
-  const show = String(modeSelect.value || "") === "UNTIL_DATE";
+  const show = String(modeSelect.value || "").toUpperCase() === "UNTIL_DATE";
   expiresWrap.hidden = !show;
 }
 
@@ -602,7 +611,7 @@ function openOverrideModal(context) {
   const profileEl = document.getElementById("override-profile-name");
   const checkEl = document.getElementById("override-check-name");
   const noteEl = document.getElementById("override-note");
-  const modeEl = document.getElementById("override-duration-mode");
+  const modeEls = Array.from(document.querySelectorAll('input[name="override-duration-mode"]'));
   const expiresEl = document.getElementById("override-expires-at");
   const activeEl = document.getElementById("override-current-active");
   const removeEl = document.getElementById("screening-override-remove");
@@ -610,7 +619,10 @@ function openOverrideModal(context) {
   if (profileEl) profileEl.textContent = safeText(context.profile_name, "—");
   if (checkEl) checkEl.textContent = safeText(context.check, "—");
   if (noteEl) noteEl.value = context.override_note || "";
-  if (modeEl) modeEl.value = context.is_overridden && context.override_expires_at ? "UNTIL_DATE" : "INDEFINITE";
+  const nextMode = context.is_overridden && context.override_expires_at ? "UNTIL_DATE" : "INDEFINITE";
+  modeEls.forEach((radio) => {
+    radio.checked = radio.value === nextMode;
+  });
   if (expiresEl) expiresEl.value = context.override_expires_at ? new Date(context.override_expires_at).toISOString().slice(0, 16) : "";
   if (activeEl) activeEl.textContent = context.is_overridden ? `Active override: ${getOverrideExpiresText(context)}` : "No active override";
   if (removeEl) removeEl.hidden = !context.is_overridden;
@@ -690,7 +702,7 @@ function renderScreeningDetailsModal(data) {
         <span class="screening-result-badge ${escapeHtml(getResultBadgeClass(item))}">${escapeHtml(getDisplayStatusForRow(item))}</span>
         ${item.is_overridden ? `<div class="screening-override-indicator">Override${item.override_expires_at ? ` until ${escapeHtml(fmtDate(item.override_expires_at))}` : " active"}</div>` : ""}
       </div>
-      <div class="screening-detail-cell screening-detail-actions" role="cell" data-label="Actions">${buildOverrideActionsHtml(item)}</div>
+      <div class="screening-detail-cell screening-detail-override" role="cell" data-label="Override">${buildOverrideActionsHtml(item)}</div>
     </div>
   `).join("");
 
@@ -701,7 +713,7 @@ function renderScreeningDetailsModal(data) {
         <div class="screening-detail-head" role="columnheader">Carrier</div>
         <div class="screening-detail-head" role="columnheader">Requirement</div>
         <div class="screening-detail-head" role="columnheader">Result</div>
-        <div class="screening-detail-head" role="columnheader">Actions</div>
+        <div class="screening-detail-head" role="columnheader">Override</div>
       </div>
       ${detailRows}
     </div>`;
@@ -746,15 +758,6 @@ function bindScreeningOverrideActions() {
         return;
       }
 
-      if (action === "remove") {
-        if (!confirm("Remove this screening override?")) return;
-        try {
-          await removeScreeningOverride(context);
-          await refreshScreeningDataForCurrentDot();
-        } catch (err) {
-          alert(err.message || "Failed to remove override");
-        }
-      }
     });
   });
 }
@@ -812,12 +815,14 @@ function wireOverrideModalOnce() {
   const cancelBtn = document.getElementById("screening-override-cancel");
   const saveBtn = document.getElementById("screening-override-save");
   const removeBtn = document.getElementById("screening-override-remove");
-  const modeSelect = document.getElementById("override-duration-mode");
-  if (!modal || !closeBtn || !cancelBtn || !saveBtn || !removeBtn || !modeSelect) return;
+  const modeOptions = document.querySelectorAll('input[name="override-duration-mode"]');
+  if (!modal || !closeBtn || !cancelBtn || !saveBtn || !removeBtn || !modeOptions.length) return;
 
   closeBtn.addEventListener("click", closeOverrideModal);
   cancelBtn.addEventListener("click", closeOverrideModal);
-  modeSelect.addEventListener("change", syncOverrideExpiresVisibility);
+  modeOptions.forEach((option) => {
+    option.addEventListener("change", syncOverrideExpiresVisibility);
+  });
   modal.addEventListener("click", (e) => {
     if (e.target === modal) closeOverrideModal();
   });
