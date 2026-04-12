@@ -124,6 +124,20 @@ async function getDefaultActiveProfile({ companyId, client }) {
   return rows[0] || null;
 }
 
+async function getActiveProfilesForCompany({ companyId, client }) {
+  const { rows } = await client.query(
+    `
+    SELECT id, company_id, profile_name, is_default
+    FROM public.company_screening_profiles
+    WHERE company_id = $1
+      AND is_active = true
+    ORDER BY is_default DESC, updated_at DESC NULLS LAST, created_at DESC NULLS LAST, id ASC
+    `,
+    [companyId]
+  );
+  return rows;
+}
+
 async function getEnabledCriteriaForProfile({ profileId, client }) {
   const { rows } = await client.query(
     `
@@ -487,6 +501,19 @@ async function screenCarrierForCompany({ companyId, dotNumber, client }) {
     };
   }
 
+  return screenCarrierForProfile({
+    companyId,
+    dotNumber: normalizedDot,
+    profile,
+    client,
+    updateUserCarrierCache: true
+  });
+}
+
+async function screenCarrierForProfile({ companyId, dotNumber, profile, client, updateUserCarrierCache = false }) {
+  const normalizedDot = normalizeDot(dotNumber);
+  if (!profile?.id) throw new Error("profile is required");
+
   const carrier = await getCarrierByDot({ dotNumber: normalizedDot, client });
   if (!carrier) {
     throw new Error(`Carrier not found for DOT ${normalizedDot}`);
@@ -538,19 +565,81 @@ async function screenCarrierForCompany({ companyId, dotNumber, client }) {
     client
   });
 
-  await updateUserCarrierScreeningCache({
-    companyId,
-    profileId: profile.id,
-    dotNumber: normalizedDot,
-    screeningStatus: aggregate.screeningStatus,
-    client
-  });
+  if (updateUserCarrierCache) {
+    await updateUserCarrierScreeningCache({
+      companyId,
+      profileId: profile.id,
+      dotNumber: normalizedDot,
+      screeningStatus: aggregate.screeningStatus,
+      client
+    });
+  }
 
   return {
     hasDefaultProfile: true,
     profile,
     result: saved,
     status: "SCREENED"
+  };
+}
+
+async function getOrCreateAllActiveProfileResultsForCompany({ companyId, dotNumber, client, maxAgeMinutes = 60 }) {
+  const normalizedDot = normalizeDot(dotNumber);
+  if (!companyId) throw new Error("companyId is required");
+  if (!normalizedDot) throw new Error("dotNumber is required");
+
+  const profiles = await getActiveProfilesForCompany({ companyId, client });
+  const defaultProfile = profiles.find((profile) => profile.is_default) || null;
+
+  if (!profiles.length) {
+    return {
+      hasDefaultProfile: false,
+      defaultProfileId: null,
+      profiles: []
+    };
+  }
+
+  const profileResults = [];
+  for (const profile of profiles) {
+    const existing = await getExistingResult({
+      companyId,
+      profileId: profile.id,
+      dotNumber: normalizedDot,
+      client
+    });
+
+    if (existing && isResultFresh(existing, maxAgeMinutes)) {
+      profileResults.push({
+        profile_id: profile.id,
+        profile_name: profile.profile_name,
+        is_default: !!profile.is_default,
+        result: existing,
+        source: "CACHE_FRESH"
+      });
+      continue;
+    }
+
+    const screened = await screenCarrierForProfile({
+      companyId,
+      dotNumber: normalizedDot,
+      profile,
+      client,
+      updateUserCarrierCache: false
+    });
+
+    profileResults.push({
+      profile_id: profile.id,
+      profile_name: profile.profile_name,
+      is_default: !!profile.is_default,
+      result: screened.result,
+      source: existing ? "CACHE_STALE_RESCREENED" : "CACHE_MISS_SCREENED"
+    });
+  }
+
+  return {
+    hasDefaultProfile: !!defaultProfile,
+    defaultProfileId: defaultProfile?.id || null,
+    profiles: profileResults
   };
 }
 
@@ -743,6 +832,7 @@ module.exports = {
   normalizeNumber,
   screenCarrierForCompany: (args) => (args.client ? screenCarrierForCompany(args) : withClient((client) => screenCarrierForCompany({ ...args, client }))),
   getOrCreateScreeningResultForCompany: (args) => (args.client ? getOrCreateScreeningResultForCompany(args) : withClient((client) => getOrCreateScreeningResultForCompany({ ...args, client }))),
+  getOrCreateAllActiveProfileResultsForCompany: (args) => (args.client ? getOrCreateAllActiveProfileResultsForCompany(args) : withClient((client) => getOrCreateAllActiveProfileResultsForCompany({ ...args, client }))),
   rescreenTrackedCarriersForCompany: (args) => (args.client ? rescreenTrackedCarriersForCompany(args) : withClient((client) => rescreenTrackedCarriersForCompany({ ...args, client }))),
   processDotForWatchingCompanies,
   getWatchingCompanyIdsForDot,

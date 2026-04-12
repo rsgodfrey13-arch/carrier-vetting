@@ -6,6 +6,7 @@ const { requireAuth } = require("../../middleware/requireAuth");
 const { loadCompanyContext, requireCompanyAdmin } = require("../../middleware/companyContext");
 const {
   getOrCreateScreeningResultForCompany,
+  getOrCreateAllActiveProfileResultsForCompany,
   rescreenTrackedCarriersForCompany
 } = require("../../services/carrierScreeningService");
 
@@ -942,6 +943,29 @@ router.get("/screening/carriers/:dot/default-result", requireAuth, loadCompanyCo
   } catch (err) {
     console.error("GET /api/screening/carriers/:dot/default-result failed:", err);
     return res.status(500).json({ error: "Failed to load screening result" });
+  }
+});
+
+router.get("/screening/carriers/:dot/profile-results", requireAuth, loadCompanyContext, async (req, res) => {
+  try {
+    const { companyId } = req.companyContext;
+    const dot = String(req.params.dot || "").replace(/\D/g, "");
+    if (!dot) return res.status(400).json({ error: "Valid DOT is required" });
+    const maxAgeMinutes = Number(process.env.CARRIER_SCREENING_MAX_AGE_MINUTES || 60);
+    const response = await getOrCreateAllActiveProfileResultsForCompany({
+      companyId,
+      dotNumber: dot,
+      maxAgeMinutes
+    });
+
+    return res.json({
+      has_default_profile: response.hasDefaultProfile,
+      default_profile_id: response.defaultProfileId,
+      profiles: response.profiles
+    });
+  } catch (err) {
+    console.error("GET /api/screening/carriers/:dot/profile-results failed:", err);
+    return res.status(500).json({ error: "Failed to load screening profile results" });
   }
 });
 

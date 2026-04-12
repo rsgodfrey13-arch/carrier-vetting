@@ -94,6 +94,7 @@ function fmtSignedDate(d) {
   let initButtonsRunning = false;
   let initButtonsRerun = false; // NEW: queue reruns instead of dropping
   let screeningResultPayload = null;
+  let selectedScreeningProfileId = null;
 
   
   function setText(id, value) {
@@ -488,24 +489,58 @@ function renderScreeningDetailsModal(data) {
   const body = document.getElementById("screening-details-body");
   if (!body) return;
 
-  const profileName = safeText(data?.profile?.profile_name, "Default profile not set");
-  const result = data?.result || null;
+  const profiles = Array.isArray(data?.profiles) ? data.profiles : [];
+  if (!profiles.length) {
+    body.innerHTML = `<div class="cs-hint">No screening profiles are active yet.</div>`;
+    return;
+  }
+
+  const defaultProfileId = data?.default_profile_id ?? null;
+  const fallbackProfile = profiles.find((p) => p?.is_default) || profiles[0];
+  const activeProfile = profiles.find((p) => String(p?.profile_id) === String(selectedScreeningProfileId))
+    || profiles.find((p) => String(p?.profile_id) === String(defaultProfileId))
+    || fallbackProfile;
+  if (!activeProfile) {
+    body.innerHTML = `<div class="cs-hint">No screening result.</div>`;
+    return;
+  }
+
+  selectedScreeningProfileId = activeProfile.profile_id;
+  const profileName = safeText(activeProfile.profile_name, "Unnamed profile");
+  const result = activeProfile.result || null;
   const status = result?.screening_status ? String(result.screening_status).toUpperCase() : "NOT SCREENED";
-  const evaluated = result?.evaluated_at ? fmtDateTime(result.evaluated_at) : "—";
   const ratio = getScreeningRatioText(result);
   const details = flattenScreeningDetails(result?.result_summary);
+  const tabsHtml = `
+    <div class="screening-profile-tabs" role="tablist" aria-label="Screening profiles">
+      ${profiles.map((profile) => {
+    const isSelected = String(profile.profile_id) === String(activeProfile.profile_id);
+    return `
+          <button
+            type="button"
+            class="screening-profile-tab ${isSelected ? "is-active" : ""}"
+            data-screening-profile-tab-id="${escapeHtml(String(profile.profile_id))}"
+            role="tab"
+            aria-selected="${isSelected ? "true" : "false"}"
+          >
+            ${escapeHtml(safeText(profile.profile_name, "Unnamed profile"))}
+          </button>
+        `;
+  }).join("")}
+    </div>
+  `;
 
   const metaHtml = `
     <div class="screening-modal-grid">
       <div class="screening-modal-key">Profile</div><div class="screening-modal-val">${escapeHtml(profileName)}</div>
-   <!-- LOGGED IN BUT NOT ALLOWED <div class="screening-modal-key">Evaluated</div><div class="screening-modal-val">${escapeHtml(evaluated)}</div> -->
       <div class="screening-modal-key">Overall status</div><div class="screening-modal-val">${escapeHtml(status)}</div>
       <div class="screening-modal-key">Passed ratio</div><div class="screening-modal-val">${escapeHtml(ratio)}</div>
     </div>
   `;
 
   if (!details.length) {
-    body.innerHTML = `${metaHtml}<div class="cs-hint">Detailed screening breakdown is not available yet.</div>`;
+    body.innerHTML = `${tabsHtml}${metaHtml}<div class="cs-hint">Detailed screening breakdown is not available yet.</div>`;
+    bindScreeningProfileTabClicks();
     return;
   }
 
@@ -518,7 +553,7 @@ function renderScreeningDetailsModal(data) {
     </div>
   `).join("");
 
-  body.innerHTML = `${metaHtml}
+  body.innerHTML = `${tabsHtml}${metaHtml}
     <div class="screening-detail-list" role="table" aria-label="Screening detail breakdown">
       <div class="screening-detail-header" role="row">
         <div class="screening-detail-head" role="columnheader">Check</div>
@@ -528,11 +563,23 @@ function renderScreeningDetailsModal(data) {
       </div>
       ${detailRows}
     </div>`;
+  bindScreeningProfileTabClicks();
+}
+
+function bindScreeningProfileTabClicks() {
+  const buttons = document.querySelectorAll("[data-screening-profile-tab-id]");
+  buttons.forEach((button) => {
+    button.addEventListener("click", () => {
+      selectedScreeningProfileId = button.getAttribute("data-screening-profile-tab-id");
+      renderScreeningDetailsModal(screeningResultPayload || {});
+    });
+  });
 }
 
 function openScreeningModal() {
   const modal = document.getElementById("screening-details-modal");
   if (!modal) return;
+  selectedScreeningProfileId = screeningResultPayload?.default_profile_id ?? null;
   renderScreeningDetailsModal(screeningResultPayload || {});
   modal.hidden = false;
 }
@@ -586,7 +633,12 @@ function renderScreeningSummary(data) {
   card.hidden = false;
   card.setAttribute("role", "button");
   card.setAttribute("tabindex", "0");
-  const result = data?.result || null;
+  const profiles = Array.isArray(data?.profiles) ? data.profiles : [];
+  const defaultProfileId = data?.default_profile_id ?? null;
+  const defaultProfile = profiles.find((profile) => String(profile?.profile_id) === String(defaultProfileId))
+    || profiles.find((profile) => profile?.is_default)
+    || null;
+  const result = defaultProfile?.result || null;
   const status = result?.screening_status ? String(result.screening_status).toUpperCase() : "NOT SCREENED";
   badge.textContent = status;
   badge.classList.remove("pill-ok", "pill-warn", "pill-purp", "pill-fail");
@@ -599,7 +651,7 @@ async function loadDefaultScreeningResult(dot) {
   const card = document.getElementById("screening-summary-card");
   if (!card || !dot) return;
   try {
-    const res = await fetch(`/api/screening/carriers/${encodeURIComponent(dot)}/default-result`, { credentials: "include" });
+    const res = await fetch(`/api/screening/carriers/${encodeURIComponent(dot)}/profile-results`, { credentials: "include" });
     if (!res.ok) throw new Error(`screening failed (${res.status})`);
     const data = await res.json().catch(() => null);
     renderScreeningSummary(data || {});

@@ -202,6 +202,37 @@ body.carrier-page {
   margin-bottom:14px;
 }
 
+.screening-profile-tabs{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin:0 0 12px;
+}
+
+.screening-profile-tab{
+  border:1px solid rgba(148,163,184,.35);
+  background:rgba(15,23,42,.6);
+  color:#cbd5e1;
+  border-radius:999px;
+  padding:6px 12px;
+  font-size:.78rem;
+  line-height:1.1;
+  cursor:pointer;
+  transition:all .15s ease;
+}
+
+.screening-profile-tab:hover{
+  border-color:rgba(59,130,246,.55);
+  color:#e2e8f0;
+}
+
+.screening-profile-tab.is-active{
+  border-color:rgba(56,189,248,.8);
+  color:#ecfeff;
+  background:linear-gradient(120deg, rgba(2,132,199,.34), rgba(8,145,178,.28));
+  box-shadow:0 0 0 1px rgba(56,189,248,.18) inset;
+}
+
 .screening-modal-key{
   font-size:.74rem;
   letter-spacing:.08em;

@@ -1,0 +1,814 @@
+diff --git a/src/routes/internal/screening.routes.js b/src/routes/internal/screening.routes.js
+index 888ca0e2a542c7b99ed7bafe84656e082f78b1f3..dfd926aa093b3b7edb15e49945f4a0d6f2f98dc9 100644
+--- a/src/routes/internal/screening.routes.js
++++ b/src/routes/internal/screening.routes.js
+@@ -1,33 +1,34 @@
+ "use strict";
+ 
+ const express = require("express");
+ const { pool: globalPool } = require("../../db/pool");
+ const { requireAuth } = require("../../middleware/requireAuth");
+ const { loadCompanyContext, requireCompanyAdmin } = require("../../middleware/companyContext");
+ const {
+   getOrCreateScreeningResultForCompany,
++  getOrCreateAllActiveProfileResultsForCompany,
+   rescreenTrackedCarriersForCompany
+ } = require("../../services/carrierScreeningService");
+ 
+ const ALLOWED_COMPARISON_OPERATORS = new Set([
+   "EQUALS",
+   "NOT_EQUALS",
+   "LESS_THAN",
+   "LESS_THAN_OR_EQUAL",
+   "GREATER_THAN",
+   "GREATER_THAN_OR_EQUAL",
+   "IN",
+   "NOT_IN",
+   "IS_TRUE",
+   "IS_FALSE"
+ ]);
+ 
+ 
+ function normalizeEnumOptions(raw) {
+   if (!raw) return [];
+ 
+   const normalizeOne = (option) => {
+     if (option && typeof option === "object" && !Array.isArray(option)) {
+       const value = option.value === null || option.value === undefined
+         ? ""
+         : String(option.value).trim();
+@@ -923,29 +924,52 @@ router.patch("/screening/profiles/:profileId/criteria/:profileCriteriaId/group",
+ 
+ router.get("/screening/carriers/:dot/default-result", requireAuth, loadCompanyContext, async (req, res) => {
+   try {
+     const { companyId } = req.companyContext;
+     const dot = String(req.params.dot || "").replace(/\D/g, "");
+     if (!dot) return res.status(400).json({ error: "Valid DOT is required" });
+     const maxAgeMinutes = Number(process.env.CARRIER_SCREENING_MAX_AGE_MINUTES || 60);
+     const response = await getOrCreateScreeningResultForCompany({
+       companyId,
+       dotNumber: dot,
+       maxAgeMinutes
+     });
+ 
+     return res.json({
+       has_default_profile: response.hasDefaultProfile,
+       profile: response.profile,
+       result: response.result,
+       source: response.source
+     });
+   } catch (err) {
+     console.error("GET /api/screening/carriers/:dot/default-result failed:", err);
+     return res.status(500).json({ error: "Failed to load screening result" });
+   }
+ });
+ 
++router.get("/screening/carriers/:dot/profile-results", requireAuth, loadCompanyContext, async (req, res) => {
++  try {
++    const { companyId } = req.companyContext;
++    const dot = String(req.params.dot || "").replace(/\D/g, "");
++    if (!dot) return res.status(400).json({ error: "Valid DOT is required" });
++    const maxAgeMinutes = Number(process.env.CARRIER_SCREENING_MAX_AGE_MINUTES || 60);
++    const response = await getOrCreateAllActiveProfileResultsForCompany({
++      companyId,
++      dotNumber: dot,
++      maxAgeMinutes
++    });
++
++    return res.json({
++      has_default_profile: response.hasDefaultProfile,
++      default_profile_id: response.defaultProfileId,
++      profiles: response.profiles
++    });
++  } catch (err) {
++    console.error("GET /api/screening/carriers/:dot/profile-results failed:", err);
++    return res.status(500).json({ error: "Failed to load screening profile results" });
++  }
++});
++
+   return router;
+ }
+ 
+ module.exports = screeningRoutes;
+diff --git a/src/services/carrierScreeningService.js b/src/services/carrierScreeningService.js
+index 5d6bb703dc88e0edb7739a7922be311fda887807..c6a1d73dd7f6358a4c7f5555e024b5dde7fe6e15 100644
+--- a/src/services/carrierScreeningService.js
++++ b/src/services/carrierScreeningService.js
+@@ -102,50 +102,64 @@ function normalizeEnumCarrierValue({ criterion, rawValue }) {
+   const token = text.toUpperCase();
+ 
+   if (AUTHORITY_STATUS_ENUM_FIELDS.has(field)) {
+     return AUTHORITY_STATUS_CANONICAL_MAP.get(token) || null;
+   }
+ 
+   return text;
+ }
+ 
+ async function getDefaultActiveProfile({ companyId, client }) {
+   const { rows } = await client.query(
+     `
+     SELECT id, company_id, profile_name
+     FROM public.company_screening_profiles
+     WHERE company_id = $1
+       AND is_default = true
+       AND is_active = true
+     ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST
+     LIMIT 1
+     `,
+     [companyId]
+   );
+   return rows[0] || null;
+ }
+ 
++async function getActiveProfilesForCompany({ companyId, client }) {
++  const { rows } = await client.query(
++    `
++    SELECT id, company_id, profile_name, is_default
++    FROM public.company_screening_profiles
++    WHERE company_id = $1
++      AND is_active = true
++    ORDER BY is_default DESC, updated_at DESC NULLS LAST, created_at DESC NULLS LAST, id ASC
++    `,
++    [companyId]
++  );
++  return rows;
++}
++
+ async function getEnabledCriteriaForProfile({ profileId, client }) {
+   const { rows } = await client.query(
+     `
+     SELECT
+       cspc.id AS profile_criteria_id,
+       sc.id AS screening_criteria_id,
+       sc.criteria_key,
+       sc.label,
+       sc.description,
+       sc.value_type,
+       sc.carrier_field,
+       sc.category,
+       sc.display_order,
+       cspc.value_bool,
+       cspc.value_number,
+       cspc.value_date,
+       cspc.value_text,
+       COALESCE(cspc.comparison_operator, 'EQUALS') AS comparison_operator
+     FROM public.company_screening_profile_criteria cspc
+     JOIN public.screening_criteria sc
+       ON sc.id = cspc.screening_criteria_id
+     WHERE cspc.profile_id = $1
+       AND cspc.is_enabled = true
+       AND sc.is_active = true
+     ORDER BY sc.display_order ASC, sc.id ASC
+@@ -465,50 +479,63 @@ async function updateUserCarrierScreeningCache({ companyId, profileId, dotNumber
+ 
+ function isResultFresh(result, maxAgeMinutes) {
+   const minutes = Number(maxAgeMinutes);
+   if (!Number.isFinite(minutes) || minutes < 0) return false;
+   const evalAt = result?.evaluated_at ? new Date(result.evaluated_at).getTime() : NaN;
+   if (!Number.isFinite(evalAt)) return false;
+   const maxAgeMs = minutes * 60 * 1000;
+   return Date.now() - evalAt <= maxAgeMs;
+ }
+ 
+ async function screenCarrierForCompany({ companyId, dotNumber, client }) {
+   const normalizedDot = normalizeDot(dotNumber);
+   if (!companyId) throw new Error("companyId is required");
+   if (!normalizedDot) throw new Error("dotNumber is required");
+ 
+   const profile = await getDefaultActiveProfile({ companyId, client });
+   if (!profile) {
+     return {
+       hasDefaultProfile: false,
+       profile: null,
+       result: null,
+       status: "NO_PROFILE"
+     };
+   }
+ 
++  return screenCarrierForProfile({
++    companyId,
++    dotNumber: normalizedDot,
++    profile,
++    client,
++    updateUserCarrierCache: true
++  });
++}
++
++async function screenCarrierForProfile({ companyId, dotNumber, profile, client, updateUserCarrierCache = false }) {
++  const normalizedDot = normalizeDot(dotNumber);
++  if (!profile?.id) throw new Error("profile is required");
++
+   const carrier = await getCarrierByDot({ dotNumber: normalizedDot, client });
+   if (!carrier) {
+     throw new Error(`Carrier not found for DOT ${normalizedDot}`);
+   }
+ 
+   const criteria = await getEnabledCriteriaForProfile({ profileId: profile.id, client });
+   const activeGroups = await getActiveGroupsForProfile({ profileId: profile.id, client });
+   const memberships = await getGroupMembershipForProfile({ profileId: profile.id, client });
+ 
+   const groupIdByProfileCriteriaId = new Map();
+   for (const membership of memberships) {
+     groupIdByProfileCriteriaId.set(String(membership.profile_criteria_id), membership.group_id);
+   }
+ 
+   const criteriaResults = criteria.map((criterion) => {
+     const result = evaluateCriterion({ criterion, carrierRow: carrier });
+     return {
+       ...result,
+       profile_criteria_id: criterion.profile_criteria_id,
+       group_id: groupIdByProfileCriteriaId.get(String(criterion.profile_criteria_id)) || null
+     };
+   });
+ 
+   const standaloneCriteriaResults = criteriaResults.filter((result) => !result.group_id);
+   const groupResults = activeGroups.map((group) => {
+@@ -516,66 +543,128 @@ async function screenCarrierForCompany({ companyId, dotNumber, client }) {
+     return evaluateGroup({ group, criteriaResults: groupedCriteria });
+   });
+ 
+   const aggregateInputs = [
+     ...standaloneCriteriaResults,
+     ...groupResults.map((group) => ({ status: group.status }))
+   ];
+   const aggregate = aggregateResults(aggregateInputs);
+ 
+   const summary = {
+     generated_at: new Date().toISOString(),
+     standalone_criteria: standaloneCriteriaResults,
+     groups: groupResults,
+     criteria: criteriaResults
+   };
+ 
+   const saved = await upsertScreeningResult({
+     companyId,
+     profileId: profile.id,
+     dotNumber: normalizedDot,
+     aggregate,
+     summary,
+     client
+   });
+ 
+-  await updateUserCarrierScreeningCache({
+-    companyId,
+-    profileId: profile.id,
+-    dotNumber: normalizedDot,
+-    screeningStatus: aggregate.screeningStatus,
+-    client
+-  });
++  if (updateUserCarrierCache) {
++    await updateUserCarrierScreeningCache({
++      companyId,
++      profileId: profile.id,
++      dotNumber: normalizedDot,
++      screeningStatus: aggregate.screeningStatus,
++      client
++    });
++  }
+ 
+   return {
+     hasDefaultProfile: true,
+     profile,
+     result: saved,
+     status: "SCREENED"
+   };
+ }
+ 
++async function getOrCreateAllActiveProfileResultsForCompany({ companyId, dotNumber, client, maxAgeMinutes = 60 }) {
++  const normalizedDot = normalizeDot(dotNumber);
++  if (!companyId) throw new Error("companyId is required");
++  if (!normalizedDot) throw new Error("dotNumber is required");
++
++  const profiles = await getActiveProfilesForCompany({ companyId, client });
++  const defaultProfile = profiles.find((profile) => profile.is_default) || null;
++
++  if (!profiles.length) {
++    return {
++      hasDefaultProfile: false,
++      defaultProfileId: null,
++      profiles: []
++    };
++  }
++
++  const profileResults = [];
++  for (const profile of profiles) {
++    const existing = await getExistingResult({
++      companyId,
++      profileId: profile.id,
++      dotNumber: normalizedDot,
++      client
++    });
++
++    if (existing && isResultFresh(existing, maxAgeMinutes)) {
++      profileResults.push({
++        profile_id: profile.id,
++        profile_name: profile.profile_name,
++        is_default: !!profile.is_default,
++        result: existing,
++        source: "CACHE_FRESH"
++      });
++      continue;
++    }
++
++    const screened = await screenCarrierForProfile({
++      companyId,
++      dotNumber: normalizedDot,
++      profile,
++      client,
++      updateUserCarrierCache: false
++    });
++
++    profileResults.push({
++      profile_id: profile.id,
++      profile_name: profile.profile_name,
++      is_default: !!profile.is_default,
++      result: screened.result,
++      source: existing ? "CACHE_STALE_RESCREENED" : "CACHE_MISS_SCREENED"
++    });
++  }
++
++  return {
++    hasDefaultProfile: !!defaultProfile,
++    defaultProfileId: defaultProfile?.id || null,
++    profiles: profileResults
++  };
++}
++
+ async function getOrCreateScreeningResultForCompany({ companyId, dotNumber, client, maxAgeMinutes = 60 }) {
+   const normalizedDot = normalizeDot(dotNumber);
+   if (!companyId) throw new Error("companyId is required");
+   if (!normalizedDot) throw new Error("dotNumber is required");
+ 
+   const profile = await getDefaultActiveProfile({ companyId, client });
+   if (!profile) {
+     return {
+       hasDefaultProfile: false,
+       profile: null,
+       result: null,
+       source: "NO_PROFILE"
+     };
+   }
+ 
+   const existing = await getExistingResult({
+     companyId,
+     profileId: profile.id,
+     dotNumber: normalizedDot,
+     client
+   });
+ 
+   if (existing && isResultFresh(existing, maxAgeMinutes)) {
+     return {
+       hasDefaultProfile: true,
+@@ -721,32 +810,33 @@ async function markQueueRowErrored({ queueIdentifier, queueIdentifierColumn, err
+     SET locked_at = NULL,
+         lock_owner = NULL,
+         last_error = $2,
+         updated_at = NOW()
+     WHERE ${idColumn} = $1
+     `,
+     [queueIdentifier, truncated]
+   );
+ }
+ 
+ async function withClient(fn) {
+   const client = await pool.connect();
+   try {
+     return await fn(client);
+   } finally {
+     client.release();
+   }
+ }
+ 
+ module.exports = {
+   normalizeText,
+   normalizeBoolean,
+   normalizeNumber,
+   screenCarrierForCompany: (args) => (args.client ? screenCarrierForCompany(args) : withClient((client) => screenCarrierForCompany({ ...args, client }))),
+   getOrCreateScreeningResultForCompany: (args) => (args.client ? getOrCreateScreeningResultForCompany(args) : withClient((client) => getOrCreateScreeningResultForCompany({ ...args, client }))),
++  getOrCreateAllActiveProfileResultsForCompany: (args) => (args.client ? getOrCreateAllActiveProfileResultsForCompany(args) : withClient((client) => getOrCreateAllActiveProfileResultsForCompany({ ...args, client }))),
+   rescreenTrackedCarriersForCompany: (args) => (args.client ? rescreenTrackedCarriersForCompany(args) : withClient((client) => rescreenTrackedCarriersForCompany({ ...args, client }))),
+   processDotForWatchingCompanies,
+   getWatchingCompanyIdsForDot,
+   claimScreeningQueueBatch,
+   markQueueRowComplete,
+   markQueueRowErrored
+ };
+diff --git a/static/carrier.html b/static/carrier.html
+index bd560a5883e119df02c469e728b7cddd33729d15..f8da74375e9edb33ac90ceb8c819ddaab1df9071 100644
+--- a/static/carrier.html
++++ b/static/carrier.html
+@@ -547,51 +547,51 @@
+         <div id="feature-gate-title" class="cs-modal-title">Title</div>
+         <div id="feature-gate-body" class="cs-modal-subtitle">Body</div>
+       </div>
+       <button id="feature-gate-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
+     </div>
+ 
+     <div class="cs-modal-body">
+       <div id="feature-gate-note" class="cs-hint" style="margin-top:-6px;"></div>
+     </div>
+ 
+     <div class="cs-modal-footer">
+       <div class="cs-footer-right">
+         <button id="feature-gate-cancel" class="cs-btn cs-btn-ghost" type="button">Not now</button>
+         <button id="feature-gate-primary" class="cs-btn cs-btn-primary" type="button">Continue</button>
+       </div>
+     </div>
+ 
+   </div>
+ </div>
+ 
+ <div id="screening-details-modal" class="cs-modal-backdrop" hidden>
+   <div class="cs-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="screening-details-title">
+     <div class="cs-modal-header">
+       <div class="cs-modal-headings">
+         <div id="screening-details-title" class="cs-modal-title">Screening Details</div>
+-        <div class="cs-modal-subtitle">Latest default screening evaluation for this carrier.</div>
++        <div class="cs-modal-subtitle">Latest screening evaluations for active profiles.</div>
+       </div>
+       <button id="screening-details-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
+     </div>
+     <div id="screening-details-body" class="cs-modal-body">
+       <div class="cs-hint">No screening result.</div>
+     </div>
+     <div class="cs-modal-footer">
+       <div class="cs-footer-right">
+         <button id="screening-details-dismiss" class="cs-btn cs-btn-primary" type="button">Done</button>
+       </div>
+     </div>
+   </div>
+ </div>
+ 
+ <div id="add-document-modal" class="cs-modal-backdrop" hidden>
+   <div class="cs-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="add-document-title">
+     <div class="cs-modal-header">
+       <div class="cs-modal-headings">
+         <div id="add-document-title" class="cs-modal-title">Upload Document</div>
+         <div class="cs-modal-subtitle">Attach a document to this carrier profile.</div>
+       </div>
+       <button id="add-document-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
+     </div>
+ 
+     <form id="add-document-form" class="cs-modal-body docs-upload-form">
+diff --git a/static/css/profile_style.css b/static/css/profile_style.css
+index e39985f24fcb02450e57c14319992f91d76a1ad8..0714bdc2feff9553f2a1af00934fd33eb39f08dc 100644
+--- a/static/css/profile_style.css
++++ b/static/css/profile_style.css
+@@ -180,50 +180,81 @@ body.carrier-page {
+ .carrier-screening-link{
+   padding:0;
+   border:0;
+   background:transparent;
+   font-size:12px;
+   line-height:1;
+   color:#6fb8ff;
+   cursor:pointer;
+ }
+ 
+ .carrier-screening-link:hover{
+   text-decoration:underline;
+ }
+ 
+ .screening-ratio-hidden{
+   display:none !important;
+ }
+ 
+ .screening-modal-grid{
+   display:grid;
+   grid-template-columns:minmax(0, 160px) minmax(0, 1fr);
+   gap:8px 12px;
+   margin-bottom:14px;
+ }
+ 
++.screening-profile-tabs{
++  display:flex;
++  flex-wrap:wrap;
++  gap:8px;
++  margin:0 0 12px;
++}
++
++.screening-profile-tab{
++  border:1px solid rgba(148,163,184,.35);
++  background:rgba(15,23,42,.6);
++  color:#cbd5e1;
++  border-radius:999px;
++  padding:6px 12px;
++  font-size:.78rem;
++  line-height:1.1;
++  cursor:pointer;
++  transition:all .15s ease;
++}
++
++.screening-profile-tab:hover{
++  border-color:rgba(59,130,246,.55);
++  color:#e2e8f0;
++}
++
++.screening-profile-tab.is-active{
++  border-color:rgba(56,189,248,.8);
++  color:#ecfeff;
++  background:linear-gradient(120deg, rgba(2,132,199,.34), rgba(8,145,178,.28));
++  box-shadow:0 0 0 1px rgba(56,189,248,.18) inset;
++}
++
+ .screening-modal-key{
+   font-size:.74rem;
+   letter-spacing:.08em;
+   text-transform:uppercase;
+   color:var(--text-muted);
+ }
+ 
+ .screening-modal-val{
+   font-size:.9rem;
+   color:#e5e7eb;
+ }
+ 
+ .screening-detail-list{
+   border:1px solid rgba(255,255,255,.1);
+   border-radius:12px;
+   overflow:hidden;
+   background:rgba(15,23,42,.38);
+ }
+ 
+ .screening-detail-header,
+ .screening-detail-row{
+   display:grid;
+   grid-template-columns:minmax(170px,1.4fr) minmax(120px,1fr) minmax(180px,1.2fr) minmax(92px,.55fr);
+   gap:12px;
+   align-items:center;
+diff --git a/static/js/pages/carrier.js b/static/js/pages/carrier.js
+index 4b16fff39ec9fb9144c79323834315891e826c4c..af69241ea92d372603990318465c937405e36f67 100644
+--- a/static/js/pages/carrier.js
++++ b/static/js/pages/carrier.js
+@@ -72,50 +72,51 @@ function fmtSignedDate(d) {
+   if (!d) return "";
+   const parsed = new Date(d);
+   if (Number.isNaN(parsed.getTime())) return "";
+ 
+   return parsed.toLocaleDateString(undefined, {
+     month: "short",
+     day: "numeric",
+     year: "numeric"
+   });
+ }
+   
+   function getDotFromPath() {
+     // take first path segment only, ignore trailing slash / extra segments
+     const seg = window.location.pathname.split("/").filter(Boolean).pop() || "";
+     // DOT should be digits only
+     const digits = decodeURIComponent(seg).replace(/\D/g, "");
+     // strip leading zeros safely (optional)
+     const noLeading = digits.replace(/^0+/, "");
+     return noLeading || (digits ? "0" : "");
+   }
+ 
+   const CURRENT_DOT = getDotFromPath(); 
+   let initButtonsRunning = false;
+   let initButtonsRerun = false; // NEW: queue reruns instead of dropping
+   let screeningResultPayload = null;
++  let selectedScreeningProfileId = null;
+ 
+   
+   function setText(id, value) {
+     const el = document.getElementById(id);
+     if (!el) return;
+     el.textContent =
+       value !== null && value !== undefined && value !== "" ? value : "—";
+   }
+ 
+   function getCarrierMcList(c) {
+     if (Array.isArray(c?.mc_numbers)) {
+       return c.mc_numbers
+         .map(v => String(v ?? "").trim())
+         .filter(Boolean);
+     }
+ 
+     if (typeof c?.mc_numbers === "string") {
+       const raw = c.mc_numbers.trim();
+ 
+       if (raw.startsWith("{") && raw.endsWith("}")) {
+         return raw
+           .slice(1, -1)
+           .split(",")
+           .map(v => String(v ?? "").replace(/^"|"$/g, "").trim())
+           .filter(Boolean);
+@@ -466,95 +467,141 @@ function flattenScreeningDetails(resultSummary) {
+   const rows = [];
+   const candidateArrays = [];
+   if (Array.isArray(resultSummary.criteria)) candidateArrays.push(resultSummary.criteria);
+   if (Array.isArray(resultSummary.standalone_criteria)) candidateArrays.push(resultSummary.standalone_criteria);
+   if (Array.isArray(resultSummary.groups)) {
+     resultSummary.groups.forEach((group) => {
+       if (Array.isArray(group?.criteria)) candidateArrays.push(group.criteria);
+     });
+   }
+ 
+   if (!candidateArrays.length) {
+     const arrayKeys = ["checks", "results", "items", "breakdown"];
+     for (const key of arrayKeys) {
+       if (Array.isArray(resultSummary[key])) candidateArrays.push(resultSummary[key]);
+     }
+   }
+ 
+   candidateArrays.flat().forEach((item) => dedupePush(rows, normalizeItem(item)));
+   return rows;
+ }
+ 
+ function renderScreeningDetailsModal(data) {
+   const body = document.getElementById("screening-details-body");
+   if (!body) return;
+ 
+-  const profileName = safeText(data?.profile?.profile_name, "Default profile not set");
+-  const result = data?.result || null;
++  const profiles = Array.isArray(data?.profiles) ? data.profiles : [];
++  if (!profiles.length) {
++    body.innerHTML = `<div class="cs-hint">No screening profiles are active yet.</div>`;
++    return;
++  }
++
++  const defaultProfileId = data?.default_profile_id ?? null;
++  const fallbackProfile = profiles.find((p) => p?.is_default) || profiles[0];
++  const activeProfile = profiles.find((p) => String(p?.profile_id) === String(selectedScreeningProfileId))
++    || profiles.find((p) => String(p?.profile_id) === String(defaultProfileId))
++    || fallbackProfile;
++  if (!activeProfile) {
++    body.innerHTML = `<div class="cs-hint">No screening result.</div>`;
++    return;
++  }
++
++  selectedScreeningProfileId = activeProfile.profile_id;
++  const profileName = safeText(activeProfile.profile_name, "Unnamed profile");
++  const result = activeProfile.result || null;
+   const status = result?.screening_status ? String(result.screening_status).toUpperCase() : "NOT SCREENED";
+-  const evaluated = result?.evaluated_at ? fmtDateTime(result.evaluated_at) : "—";
+   const ratio = getScreeningRatioText(result);
+   const details = flattenScreeningDetails(result?.result_summary);
++  const tabsHtml = `
++    <div class="screening-profile-tabs" role="tablist" aria-label="Screening profiles">
++      ${profiles.map((profile) => {
++    const isSelected = String(profile.profile_id) === String(activeProfile.profile_id);
++    return `
++          <button
++            type="button"
++            class="screening-profile-tab ${isSelected ? "is-active" : ""}"
++            data-screening-profile-tab-id="${escapeHtml(String(profile.profile_id))}"
++            role="tab"
++            aria-selected="${isSelected ? "true" : "false"}"
++          >
++            ${escapeHtml(safeText(profile.profile_name, "Unnamed profile"))}
++          </button>
++        `;
++  }).join("")}
++    </div>
++  `;
+ 
+   const metaHtml = `
+     <div class="screening-modal-grid">
+       <div class="screening-modal-key">Profile</div><div class="screening-modal-val">${escapeHtml(profileName)}</div>
+-   <!-- LOGGED IN BUT NOT ALLOWED <div class="screening-modal-key">Evaluated</div><div class="screening-modal-val">${escapeHtml(evaluated)}</div> -->
+       <div class="screening-modal-key">Overall status</div><div class="screening-modal-val">${escapeHtml(status)}</div>
+       <div class="screening-modal-key">Passed ratio</div><div class="screening-modal-val">${escapeHtml(ratio)}</div>
+     </div>
+   `;
+ 
+   if (!details.length) {
+-    body.innerHTML = `${metaHtml}<div class="cs-hint">Detailed screening breakdown is not available yet.</div>`;
++    body.innerHTML = `${tabsHtml}${metaHtml}<div class="cs-hint">Detailed screening breakdown is not available yet.</div>`;
++    bindScreeningProfileTabClicks();
+     return;
+   }
+ 
+   const detailRows = details.map((item) => `
+     <div class="screening-detail-row" role="row">
+       <div class="screening-detail-cell screening-detail-check" role="cell" data-label="Check">${escapeHtml(item.check)}</div>
+       <div class="screening-detail-cell screening-detail-carrier" role="cell" data-label="Carrier">${escapeHtml(item.carrier)}</div>
+       <div class="screening-detail-cell screening-detail-requirement" role="cell" data-label="Requirement">${escapeHtml(item.requirement)}</div>
+       <div class="screening-detail-cell screening-detail-result" role="cell" data-label="Result"><span class="screening-result-badge screening-result-${escapeHtml(String(item.status || '').toLowerCase())}">${escapeHtml(item.status)}</span></div>
+     </div>
+   `).join("");
+ 
+-  body.innerHTML = `${metaHtml}
++  body.innerHTML = `${tabsHtml}${metaHtml}
+     <div class="screening-detail-list" role="table" aria-label="Screening detail breakdown">
+       <div class="screening-detail-header" role="row">
+         <div class="screening-detail-head" role="columnheader">Check</div>
+         <div class="screening-detail-head" role="columnheader">Carrier</div>
+         <div class="screening-detail-head" role="columnheader">Requirement</div>
+         <div class="screening-detail-head" role="columnheader">Result</div>
+       </div>
+       ${detailRows}
+     </div>`;
++  bindScreeningProfileTabClicks();
++}
++
++function bindScreeningProfileTabClicks() {
++  const buttons = document.querySelectorAll("[data-screening-profile-tab-id]");
++  buttons.forEach((button) => {
++    button.addEventListener("click", () => {
++      selectedScreeningProfileId = button.getAttribute("data-screening-profile-tab-id");
++      renderScreeningDetailsModal(screeningResultPayload || {});
++    });
++  });
+ }
+ 
+ function openScreeningModal() {
+   const modal = document.getElementById("screening-details-modal");
+   if (!modal) return;
++  selectedScreeningProfileId = screeningResultPayload?.default_profile_id ?? null;
+   renderScreeningDetailsModal(screeningResultPayload || {});
+   modal.hidden = false;
+ }
+ 
+ function closeScreeningModal() {
+   const modal = document.getElementById("screening-details-modal");
+   if (!modal) return;
+   modal.hidden = true;
+ }
+ 
+ function wireScreeningModalOnce() {
+   const card = document.getElementById("screening-summary-card");
+   const viewDetails = document.getElementById("screening-view-details");
+   const closeBtn = document.getElementById("screening-details-close");
+   const dismissBtn = document.getElementById("screening-details-dismiss");
+   const backdrop = document.getElementById("screening-details-modal");
+   if (!card || !viewDetails || !closeBtn || !dismissBtn || !backdrop) return;
+ 
+   card.addEventListener("click", () => {
+     if (card.hidden) return;
+     openScreeningModal();
+   });
+   card.addEventListener("keydown", (e) => {
+     if (e.key === "Enter" || e.key === " ") {
+       e.preventDefault();
+@@ -564,64 +611,69 @@ function wireScreeningModalOnce() {
+ 
+   viewDetails.addEventListener("click", (e) => {
+     e.stopPropagation();
+     openScreeningModal();
+   });
+   closeBtn.addEventListener("click", closeScreeningModal);
+   dismissBtn.addEventListener("click", closeScreeningModal);
+   backdrop.addEventListener("click", (e) => {
+     if (e.target === backdrop) closeScreeningModal();
+   });
+   document.addEventListener("keydown", (e) => {
+     if (e.key === "Escape") closeScreeningModal();
+   });
+ }
+ 
+ function renderScreeningSummary(data) {
+   const card = document.getElementById("screening-summary-card");
+   const badge = document.getElementById("screening-status-badge");
+   const ratioText = document.getElementById("screening-ratio-text");
+   if (!card || !badge || !ratioText) return;
+ 
+   screeningResultPayload = data || {};
+   card.hidden = false;
+   card.setAttribute("role", "button");
+   card.setAttribute("tabindex", "0");
+-  const result = data?.result || null;
++  const profiles = Array.isArray(data?.profiles) ? data.profiles : [];
++  const defaultProfileId = data?.default_profile_id ?? null;
++  const defaultProfile = profiles.find((profile) => String(profile?.profile_id) === String(defaultProfileId))
++    || profiles.find((profile) => profile?.is_default)
++    || null;
++  const result = defaultProfile?.result || null;
+   const status = result?.screening_status ? String(result.screening_status).toUpperCase() : "NOT SCREENED";
+   badge.textContent = status;
+   badge.classList.remove("pill-ok", "pill-warn", "pill-purp", "pill-fail");
+   const klass = screeningBadgeClass(status);
+   if (klass) badge.classList.add(klass);
+   ratioText.textContent = getScreeningRatioText(result);
+ }
+ 
+ async function loadDefaultScreeningResult(dot) {
+   const card = document.getElementById("screening-summary-card");
+   if (!card || !dot) return;
+   try {
+-    const res = await fetch(`/api/screening/carriers/${encodeURIComponent(dot)}/default-result`, { credentials: "include" });
++    const res = await fetch(`/api/screening/carriers/${encodeURIComponent(dot)}/profile-results`, { credentials: "include" });
+     if (!res.ok) throw new Error(`screening failed (${res.status})`);
+     const data = await res.json().catch(() => null);
+     renderScreeningSummary(data || {});
+   } catch (err) {
+     console.warn("screening summary unavailable", err);
+     screeningResultPayload = null;
+     card.hidden = true;
+   }
+ }
+ 
+ function renderRowActionLink({ href, label }) {
+   if (!href) return '<span class="cs-hint">—</span>';
+   return `<a class="agreements-link" href="${href}" target="_blank" rel="noopener">${label}</a>`;
+ }
+ 
+ function fmtMoney(amount, currency) {
+   if (amount === null || amount === undefined || amount === "") return "—";
+   const n = Number(amount);
+   if (Number.isNaN(n)) return String(amount);
+   try {
+     // keep it simple & US-looking (ACORD-style)
+     return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+   } catch {
+     return String(amount);
+   }
