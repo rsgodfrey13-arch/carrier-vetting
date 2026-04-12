@@ -85,10 +85,34 @@ function normalizeDateOrNull(value) {
   return raw;
 }
 
+function normalizeIsoDateTimeOrNull(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString();
+}
+
 function normalizeGroupMatchType(value) {
   const token = String(value || "").trim().toUpperCase();
   if (token === "ALL" || token === "ANY") return token;
   return null;
+}
+
+function parseOverrideMode(value) {
+  const mode = String(value || "").trim().toUpperCase();
+  if (mode === "INDEFINITE" || mode === "DAYS_30" || mode === "UNTIL_DATE") return mode;
+  return null;
+}
+
+async function invalidateCachedScreeningResultsForCarrier({ companyId, dot, client }) {
+  await client.query(
+    `
+    DELETE FROM public.company_carrier_screening_results
+    WHERE company_id = $1
+      AND carrier_dot = $2
+    `,
+    [companyId, dot]
+  );
 }
 
 function screeningRoutes({ pool } = {}) {
@@ -917,6 +941,145 @@ router.patch("/screening/profiles/:profileId/criteria/:profileCriteriaId/group",
     await client.query("ROLLBACK");
     console.error("PATCH /api/screening/profiles/:profileId/criteria/:profileCriteriaId/group failed:", err);
     return res.status(500).json({ error: "Failed to update criterion group assignment" });
+  } finally {
+    client.release();
+  }
+});
+
+router.post("/screening/carriers/:dot/profiles/:profileId/criteria/:profileCriteriaId/override", requireAuth, loadCompanyContext, async (req, res) => {
+  const client = await db.connect();
+  try {
+    const { companyId } = req.companyContext;
+    const userId = Number(req.session?.userId) || null;
+    const dot = String(req.params.dot || "").replace(/\D/g, "");
+    const { profileId, profileCriteriaId } = req.params;
+    if (!dot) return res.status(400).json({ error: "Valid DOT is required" });
+
+    const mode = parseOverrideMode(req.body?.mode);
+    if (!mode) return res.status(400).json({ error: "mode must be INDEFINITE, DAYS_30, or UNTIL_DATE" });
+
+    let expiresAt = null;
+    if (mode === "DAYS_30") {
+      const date = new Date();
+      date.setUTCDate(date.getUTCDate() + 30);
+      expiresAt = date.toISOString();
+    } else if (mode === "UNTIL_DATE") {
+      expiresAt = normalizeIsoDateTimeOrNull(req.body?.expires_at);
+      if (!expiresAt) return res.status(400).json({ error: "expires_at must be a valid ISO datetime when mode is UNTIL_DATE" });
+    }
+
+    const noteRaw = req.body?.note;
+    const note = noteRaw === null || noteRaw === undefined ? null : String(noteRaw).trim() || null;
+
+    await client.query("BEGIN");
+
+    const profileRes = await client.query(
+      `
+      SELECT id
+      FROM public.company_screening_profiles
+      WHERE company_id = $1
+        AND id = $2
+      LIMIT 1
+      `,
+      [companyId, profileId]
+    );
+    if (!profileRes.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Profile not found" });
+    }
+
+    const criterionRes = await client.query(
+      `
+      SELECT id
+      FROM public.company_screening_profile_criteria
+      WHERE profile_id = $1
+        AND id = $2::bigint
+      LIMIT 1
+      `,
+      [profileId, profileCriteriaId]
+    );
+    if (!criterionRes.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Profile criterion not found" });
+    }
+
+    await client.query(
+      `
+      INSERT INTO public.company_carrier_screening_overrides (
+        company_id,
+        carrier_dot,
+        profile_id,
+        profile_criteria_id,
+        expires_at,
+        note,
+        created_by,
+        is_active,
+        created_at,
+        updated_at
+      )
+      VALUES ($1, $2, $3, $4::bigint, $5::timestamptz, $6, $7, true, NOW(), NOW())
+      ON CONFLICT (company_id, carrier_dot, profile_id, profile_criteria_id)
+      DO UPDATE SET
+        expires_at = EXCLUDED.expires_at,
+        note = EXCLUDED.note,
+        is_active = true,
+        created_by = COALESCE(public.company_carrier_screening_overrides.created_by, EXCLUDED.created_by),
+        updated_at = NOW()
+      `,
+      [companyId, dot, profileId, profileCriteriaId, expiresAt, note, userId]
+    );
+    await invalidateCachedScreeningResultsForCarrier({ companyId, dot, client });
+
+    await client.query("COMMIT");
+    try {
+      await rescreenTrackedCarriersForCompany({ companyId });
+    } catch (rescreenErr) {
+      console.error("Post override-save rescreen failed:", rescreenErr);
+    }
+    return res.json({ ok: true });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("POST /api/screening/carriers/:dot/profiles/:profileId/criteria/:profileCriteriaId/override failed:", err);
+    return res.status(500).json({ error: "Failed to save screening override" });
+  } finally {
+    client.release();
+  }
+});
+
+router.delete("/screening/carriers/:dot/profiles/:profileId/criteria/:profileCriteriaId/override", requireAuth, loadCompanyContext, async (req, res) => {
+  const client = await db.connect();
+  try {
+    const { companyId } = req.companyContext;
+    const dot = String(req.params.dot || "").replace(/\D/g, "");
+    const { profileId, profileCriteriaId } = req.params;
+    if (!dot) return res.status(400).json({ error: "Valid DOT is required" });
+
+    await client.query("BEGIN");
+    await client.query(
+      `
+      UPDATE public.company_carrier_screening_overrides
+      SET is_active = false,
+          updated_at = NOW()
+      WHERE company_id = $1
+        AND carrier_dot = $2
+        AND profile_id = $3
+        AND profile_criteria_id = $4::bigint
+      `,
+      [companyId, dot, profileId, profileCriteriaId]
+    );
+    await invalidateCachedScreeningResultsForCarrier({ companyId, dot, client });
+    await client.query("COMMIT");
+
+    try {
+      await rescreenTrackedCarriersForCompany({ companyId });
+    } catch (rescreenErr) {
+      console.error("Post override-remove rescreen failed:", rescreenErr);
+    }
+    return res.json({ ok: true });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("DELETE /api/screening/carriers/:dot/profiles/:profileId/criteria/:profileCriteriaId/override failed:", err);
+    return res.status(500).json({ error: "Failed to remove screening override" });
   } finally {
     client.release();
   }

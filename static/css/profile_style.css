@@ -255,7 +255,7 @@ body.carrier-page {
 .screening-detail-header,
 .screening-detail-row{
   display:grid;
-  grid-template-columns:minmax(170px,1.4fr) minmax(120px,1fr) minmax(180px,1.2fr) minmax(92px,.55fr);
+  grid-template-columns:minmax(160px,1.25fr) minmax(120px,1fr) minmax(170px,1.1fr) minmax(96px,.6fr) minmax(140px,.9fr);
   gap:12px;
   align-items:center;
   padding:10px 12px;
@@ -320,6 +320,47 @@ body.carrier-page {
   border-color:rgba(250,204,21,.4);
   color:#fde68a;
   background:rgba(250,204,21,.12);
+}
+
+.screening-result-overridden{
+  border-color:rgba(45,212,191,.5);
+  color:#99f6e4;
+  background:rgba(13,148,136,.2);
+}
+
+.screening-override-indicator{
+  margin-top:4px;
+  font-size:.68rem;
+  color:#99f6e4;
+}
+
+.screening-override-actions{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+}
+
+.screening-override-btn,
+.screening-override-remove{
+  padding:4px 9px;
+  font-size:.68rem;
+}
+
+.screening-override-modal{
+  max-width:560px;
+}
+
+.screening-override-context{
+  margin-bottom:8px;
+}
+
+.screening-override-active{
+  margin-bottom:12px;
+}
+
+.screening-override-note{
+  min-height:84px;
+  resize:vertical;
 }
 
 @media (max-width: 900px){

@@ -95,6 +95,7 @@ function fmtSignedDate(d) {
   let initButtonsRerun = false; // NEW: queue reruns instead of dropping
   let screeningResultPayload = null;
   let selectedScreeningProfileId = null;
+  let selectedOverrideContext = null;
 
   
   function setText(id, value) {
@@ -436,23 +437,29 @@ function formatCarrierValue(item) {
 function flattenScreeningDetails(resultSummary) {
   if (!resultSummary || typeof resultSummary !== "object") return [];
 
-  const normalizeItem = (item) => {
+  const normalizeItem = (item, profileId) => {
     if (!item || typeof item !== "object") return null;
     const check = String(item.label ?? item.criterion ?? item.name ?? item.title ?? item.check ?? "").trim();
     const status = String(item.status ?? item.result ?? item.outcome ?? item.verdict ?? "").trim().toUpperCase();
+    const profileCriteriaId = item.profile_criteria_id ?? null;
     if (!check || !status) return null;
     return {
       check,
       carrier: formatCarrierValue(item),
       requirement: formatRequirement(item),
-      status
+      status,
+      profile_id: profileId || null,
+      profile_criteria_id: profileCriteriaId,
+      is_overridden: item.is_overridden === true,
+      override_expires_at: item.override_expires_at || null,
+      override_note: item.override_note || null
     };
   };
 
   const dedupeBy = new Set();
   const dedupePush = (rows, row) => {
     if (!row) return;
-    const key = `${row.check}::${row.status}`;
+    const key = `${row.profile_criteria_id ?? row.check}::${row.status}`;
     if (dedupeBy.has(key)) return;
     dedupeBy.add(key);
     rows.push(row);
@@ -460,7 +467,7 @@ function flattenScreeningDetails(resultSummary) {
 
   if (Array.isArray(resultSummary)) {
     const rows = [];
-    resultSummary.forEach((item) => dedupePush(rows, normalizeItem(item)));
+    resultSummary.forEach((item) => dedupePush(rows, normalizeItem(item, null)));
     return rows;
   }
 
@@ -481,8 +488,134 @@ function flattenScreeningDetails(resultSummary) {
     }
   }
 
-  candidateArrays.flat().forEach((item) => dedupePush(rows, normalizeItem(item)));
+  candidateArrays.flat().forEach((item) => dedupePush(rows, normalizeItem(item, null)));
   return rows;
+}
+
+function getOverrideExpiresText(row) {
+  if (!row?.override_expires_at) return "Indefinite";
+  return fmtDateTime(row.override_expires_at);
+}
+
+function isOverrideableRow(row) {
+  return !!(row && row.profile_id && row.profile_criteria_id);
+}
+
+function getDisplayStatusForRow(item) {
+  if (item?.is_overridden) return "OVERRIDDEN";
+  return String(item?.status || "").toUpperCase();
+}
+
+function getResultBadgeClass(item) {
+  const status = getDisplayStatusForRow(item).toLowerCase();
+  if (status === "overridden") return "screening-result-overridden";
+  return `screening-result-${status}`;
+}
+
+function buildOverrideActionsHtml(item) {
+  if (!isOverrideableRow(item)) return '<span class="cs-hint">—</span>';
+
+  const overrideBtn = `<button type="button" class="cs-btn cs-btn-ghost screening-override-btn" data-override-action="open" data-profile-id="${escapeHtml(String(item.profile_id))}" data-profile-criteria-id="${escapeHtml(String(item.profile_criteria_id))}" data-check="${escapeHtml(item.check)}">${item.is_overridden ? "Override Active" : "Override"}</button>`;
+  const removeBtn = item.is_overridden
+    ? `<button type="button" class="cs-btn cs-btn-ghost screening-override-remove" data-override-action="remove" data-profile-id="${escapeHtml(String(item.profile_id))}" data-profile-criteria-id="${escapeHtml(String(item.profile_criteria_id))}" data-check="${escapeHtml(item.check)}">Remove</button>`
+    : "";
+  return `<div class="screening-override-actions">${overrideBtn}${removeBtn}</div>`;
+}
+
+async function refreshScreeningDataForCurrentDot() {
+  const dot = CURRENT_DOT;
+  if (!dot) return;
+  await loadDefaultScreeningResult(dot);
+  renderScreeningDetailsModal(screeningResultPayload || {});
+}
+
+async function saveScreeningOverride(context) {
+  const modeSelect = document.getElementById("override-duration-mode");
+  const expiresInput = document.getElementById("override-expires-at");
+  const noteInput = document.getElementById("override-note");
+  if (!modeSelect || !expiresInput || !noteInput) return;
+
+  const mode = String(modeSelect.value || "").trim().toUpperCase();
+  const payload = { mode };
+  if (mode === "UNTIL_DATE") {
+    const rawDate = String(expiresInput.value || "").trim();
+    if (!rawDate) {
+      alert("Please choose an expiration date/time.");
+      return;
+    }
+    const parsed = new Date(rawDate);
+    if (Number.isNaN(parsed.getTime())) {
+      alert("Please provide a valid expiration date/time.");
+      return;
+    }
+    payload.expires_at = parsed.toISOString();
+  }
+
+  const note = String(noteInput.value || "").trim();
+  if (note) payload.note = note;
+
+  const response = await fetch(`/api/screening/carriers/${encodeURIComponent(CURRENT_DOT)}/profiles/${encodeURIComponent(context.profile_id)}/criteria/${encodeURIComponent(context.profile_criteria_id)}/override`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(body?.error || "Failed to save override");
+  }
+}
+
+async function removeScreeningOverride(context) {
+  const response = await fetch(`/api/screening/carriers/${encodeURIComponent(CURRENT_DOT)}/profiles/${encodeURIComponent(context.profile_id)}/criteria/${encodeURIComponent(context.profile_criteria_id)}/override`, {
+    method: "DELETE",
+    credentials: "include"
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(body?.error || "Failed to remove override");
+  }
+}
+
+function closeOverrideModal() {
+  const modal = document.getElementById("screening-override-modal");
+  if (!modal) return;
+  modal.hidden = true;
+  selectedOverrideContext = null;
+}
+
+function syncOverrideExpiresVisibility() {
+  const modeSelect = document.getElementById("override-duration-mode");
+  const expiresWrap = document.getElementById("override-expires-wrap");
+  if (!modeSelect || !expiresWrap) return;
+  const show = String(modeSelect.value || "") === "UNTIL_DATE";
+  expiresWrap.hidden = !show;
+}
+
+function openOverrideModal(context) {
+  selectedOverrideContext = context;
+  const modal = document.getElementById("screening-override-modal");
+  if (!modal) return;
+
+  const profileEl = document.getElementById("override-profile-name");
+  const checkEl = document.getElementById("override-check-name");
+  const noteEl = document.getElementById("override-note");
+  const modeEl = document.getElementById("override-duration-mode");
+  const expiresEl = document.getElementById("override-expires-at");
+  const activeEl = document.getElementById("override-current-active");
+  const removeEl = document.getElementById("screening-override-remove");
+
+  if (profileEl) profileEl.textContent = safeText(context.profile_name, "—");
+  if (checkEl) checkEl.textContent = safeText(context.check, "—");
+  if (noteEl) noteEl.value = context.override_note || "";
+  if (modeEl) modeEl.value = context.is_overridden && context.override_expires_at ? "UNTIL_DATE" : "INDEFINITE";
+  if (expiresEl) expiresEl.value = context.override_expires_at ? new Date(context.override_expires_at).toISOString().slice(0, 16) : "";
+  if (activeEl) activeEl.textContent = context.is_overridden ? `Active override: ${getOverrideExpiresText(context)}` : "No active override";
+  if (removeEl) removeEl.hidden = !context.is_overridden;
+  syncOverrideExpiresVisibility();
+  modal.hidden = false;
 }
 
 function renderScreeningDetailsModal(data) {
@@ -510,7 +643,11 @@ function renderScreeningDetailsModal(data) {
   const result = activeProfile.result || null;
   const status = result?.screening_status ? String(result.screening_status).toUpperCase() : "NOT SCREENED";
   const ratio = getScreeningRatioText(result);
-  const details = flattenScreeningDetails(result?.result_summary);
+  const details = flattenScreeningDetails(result?.result_summary).map((item) => ({
+    ...item,
+    profile_id: activeProfile.profile_id,
+    profile_name: profileName
+  }));
   const tabsHtml = `
     <div class="screening-profile-tabs" role="tablist" aria-label="Screening profiles">
       ${profiles.map((profile) => {
@@ -549,7 +686,11 @@ function renderScreeningDetailsModal(data) {
       <div class="screening-detail-cell screening-detail-check" role="cell" data-label="Check">${escapeHtml(item.check)}</div>
       <div class="screening-detail-cell screening-detail-carrier" role="cell" data-label="Carrier">${escapeHtml(item.carrier)}</div>
       <div class="screening-detail-cell screening-detail-requirement" role="cell" data-label="Requirement">${escapeHtml(item.requirement)}</div>
-      <div class="screening-detail-cell screening-detail-result" role="cell" data-label="Result"><span class="screening-result-badge screening-result-${escapeHtml(String(item.status || '').toLowerCase())}">${escapeHtml(item.status)}</span></div>
+      <div class="screening-detail-cell screening-detail-result" role="cell" data-label="Result">
+        <span class="screening-result-badge ${escapeHtml(getResultBadgeClass(item))}">${escapeHtml(getDisplayStatusForRow(item))}</span>
+        ${item.is_overridden ? `<div class="screening-override-indicator">Override${item.override_expires_at ? ` until ${escapeHtml(fmtDate(item.override_expires_at))}` : " active"}</div>` : ""}
+      </div>
+      <div class="screening-detail-cell screening-detail-actions" role="cell" data-label="Actions">${buildOverrideActionsHtml(item)}</div>
     </div>
   `).join("");
 
@@ -560,10 +701,12 @@ function renderScreeningDetailsModal(data) {
         <div class="screening-detail-head" role="columnheader">Carrier</div>
         <div class="screening-detail-head" role="columnheader">Requirement</div>
         <div class="screening-detail-head" role="columnheader">Result</div>
+        <div class="screening-detail-head" role="columnheader">Actions</div>
       </div>
       ${detailRows}
     </div>`;
   bindScreeningProfileTabClicks();
+  bindScreeningOverrideActions();
 }
 
 function bindScreeningProfileTabClicks() {
@@ -572,6 +715,46 @@ function bindScreeningProfileTabClicks() {
     button.addEventListener("click", () => {
       selectedScreeningProfileId = button.getAttribute("data-screening-profile-tab-id");
       renderScreeningDetailsModal(screeningResultPayload || {});
+    });
+  });
+}
+
+function bindScreeningOverrideActions() {
+  const buttons = document.querySelectorAll("[data-override-action]");
+  buttons.forEach((button) => {
+    button.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      const action = button.getAttribute("data-override-action");
+      const profileId = button.getAttribute("data-profile-id");
+      const profileCriteriaId = button.getAttribute("data-profile-criteria-id");
+      const check = button.getAttribute("data-check");
+      const profile = (screeningResultPayload?.profiles || []).find((item) => String(item.profile_id) === String(profileId));
+      const resultSummary = profile?.result?.result_summary || {};
+      const row = flattenScreeningDetails(resultSummary).find((item) => String(item.profile_criteria_id) === String(profileCriteriaId));
+      const context = {
+        profile_id: profileId,
+        profile_name: profile?.profile_name || "Unnamed profile",
+        profile_criteria_id: profileCriteriaId,
+        check: check || row?.check || "",
+        is_overridden: row?.is_overridden === true,
+        override_expires_at: row?.override_expires_at || null,
+        override_note: row?.override_note || null
+      };
+
+      if (action === "open") {
+        openOverrideModal(context);
+        return;
+      }
+
+      if (action === "remove") {
+        if (!confirm("Remove this screening override?")) return;
+        try {
+          await removeScreeningOverride(context);
+          await refreshScreeningDataForCurrentDot();
+        } catch (err) {
+          alert(err.message || "Failed to remove override");
+        }
+      }
     });
   });
 }
@@ -620,6 +803,49 @@ function wireScreeningModalOnce() {
   });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeScreeningModal();
+  });
+}
+
+function wireOverrideModalOnce() {
+  const modal = document.getElementById("screening-override-modal");
+  const closeBtn = document.getElementById("screening-override-close");
+  const cancelBtn = document.getElementById("screening-override-cancel");
+  const saveBtn = document.getElementById("screening-override-save");
+  const removeBtn = document.getElementById("screening-override-remove");
+  const modeSelect = document.getElementById("override-duration-mode");
+  if (!modal || !closeBtn || !cancelBtn || !saveBtn || !removeBtn || !modeSelect) return;
+
+  closeBtn.addEventListener("click", closeOverrideModal);
+  cancelBtn.addEventListener("click", closeOverrideModal);
+  modeSelect.addEventListener("change", syncOverrideExpiresVisibility);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeOverrideModal();
+  });
+
+  saveBtn.addEventListener("click", async () => {
+    if (!selectedOverrideContext) return;
+    try {
+      await saveScreeningOverride(selectedOverrideContext);
+      closeOverrideModal();
+      await refreshScreeningDataForCurrentDot();
+    } catch (err) {
+      alert(err.message || "Failed to save override");
+    }
+  });
+
+  removeBtn.addEventListener("click", async () => {
+    if (!selectedOverrideContext?.is_overridden) {
+      closeOverrideModal();
+      return;
+    }
+    if (!confirm("Remove this screening override?")) return;
+    try {
+      await removeScreeningOverride(selectedOverrideContext);
+      closeOverrideModal();
+      await refreshScreeningDataForCurrentDot();
+    } catch (err) {
+      alert(err.message || "Failed to remove override");
+    }
   });
 }
 
@@ -2493,6 +2719,7 @@ document.addEventListener("DOMContentLoaded", () => {
   wireSendContractModalOnce(); 
   wireAddDocumentModalOnce();
   wireScreeningModalOnce();
+  wireOverrideModalOnce();
   wireQuickJump();
   wireBackToOverview();
   document.getElementById("btn-refresh-carrier")?.addEventListener("click", () => {

@@ -213,6 +213,30 @@ async function getCarrierByDot({ dotNumber, client }) {
   return rows[0] || null;
 }
 
+async function getActiveCriterionOverridesForProfile({ companyId, dotNumber, profileId, client }) {
+  const { rows } = await client.query(
+    `
+    SELECT profile_criteria_id, expires_at, note
+    FROM public.company_carrier_screening_overrides
+    WHERE company_id = $1
+      AND carrier_dot = $2
+      AND profile_id = $3
+      AND is_active = true
+      AND (expires_at IS NULL OR expires_at > NOW())
+    `,
+    [companyId, dotNumber, profileId]
+  );
+
+  const overrideByProfileCriteriaId = new Map();
+  for (const row of rows) {
+    overrideByProfileCriteriaId.set(String(row.profile_criteria_id), {
+      expires_at: row.expires_at || null,
+      note: normalizeText(row.note)
+    });
+  }
+  return overrideByProfileCriteriaId;
+}
+
 async function getExistingResult({ companyId, profileId, dotNumber, client }) {
   const { rows } = await client.query(
     `
@@ -226,6 +250,27 @@ async function getExistingResult({ companyId, profileId, dotNumber, client }) {
     [companyId, profileId, dotNumber]
   );
   return rows[0] || null;
+}
+
+function buildOverrideReason(override) {
+  const expiresAt = override?.expires_at ? new Date(override.expires_at) : null;
+  if (!expiresAt || Number.isNaN(expiresAt.getTime())) return "Rule overridden";
+  return `Rule overridden until ${expiresAt.toISOString().slice(0, 10)}`;
+}
+
+function applyCriterionOverride({ criterionResult, override }) {
+  if (!criterionResult || !override) return criterionResult;
+  if (criterionResult.status === "PASS") return criterionResult;
+
+  return {
+    ...criterionResult,
+    status: "PASS",
+    matched: true,
+    is_overridden: true,
+    override_expires_at: override.expires_at || null,
+    override_note: override.note || null,
+    reason: buildOverrideReason(override)
+  };
 }
 
 function evaluateBooleanCriterion({ criterion, rawValue }) {
@@ -522,6 +567,12 @@ async function screenCarrierForProfile({ companyId, dotNumber, profile, client, 
   const criteria = await getEnabledCriteriaForProfile({ profileId: profile.id, client });
   const activeGroups = await getActiveGroupsForProfile({ profileId: profile.id, client });
   const memberships = await getGroupMembershipForProfile({ profileId: profile.id, client });
+  const activeOverridesByProfileCriteriaId = await getActiveCriterionOverridesForProfile({
+    companyId,
+    dotNumber: normalizedDot,
+    profileId: profile.id,
+    client
+  });
 
   const groupIdByProfileCriteriaId = new Map();
   for (const membership of memberships) {
@@ -530,8 +581,10 @@ async function screenCarrierForProfile({ companyId, dotNumber, profile, client, 
 
   const criteriaResults = criteria.map((criterion) => {
     const result = evaluateCriterion({ criterion, carrierRow: carrier });
+    const override = activeOverridesByProfileCriteriaId.get(String(criterion.profile_criteria_id)) || null;
+    const overriddenResult = applyCriterionOverride({ criterionResult: result, override });
     return {
-      ...result,
+      ...overriddenResult,
       profile_criteria_id: criterion.profile_criteria_id,
       group_id: groupIdByProfileCriteriaId.get(String(criterion.profile_criteria_id)) || null
     };
