@@ -1,0 +1,845 @@
+diff --git a/src/routes/internal/screening.routes.js b/src/routes/internal/screening.routes.js
+index c27c2b332ad8264a3f8803ef1afd9ef8e6c775b0..89d6674c3a7421fe1477de46692d93d6133c985e 100644
+--- a/src/routes/internal/screening.routes.js
++++ b/src/routes/internal/screening.routes.js
+@@ -93,50 +93,60 @@ function normalizeIsoDateTimeOrNull(value) {
+ }
+ 
+ function normalizeGroupMatchType(value) {
+   const token = String(value || "").trim().toUpperCase();
+   if (token === "ALL" || token === "ANY") return token;
+   return null;
+ }
+ 
+ function parseOverrideMode(value) {
+   const mode = String(value || "").trim().toUpperCase();
+   if (mode === "INDEFINITE" || mode === "DAYS_30" || mode === "UNTIL_DATE") return mode;
+   return null;
+ }
+ 
+ async function invalidateCachedScreeningResultsForCarrier({ companyId, dot, client }) {
+   await client.query(
+     `
+     DELETE FROM public.company_carrier_screening_results
+     WHERE company_id = $1
+       AND carrier_dot = $2
+     `,
+     [companyId, dot]
+   );
+ }
+ 
++function queueTrackedCarrierRescreen(companyId, reason) {
++  setImmediate(async () => {
++    try {
++      await rescreenTrackedCarriersForCompany({ companyId });
++    } catch (rescreenErr) {
++      console.error(`Deferred ${reason} rescreen failed:`, rescreenErr);
++    }
++  });
++}
++
+ function screeningRoutes({ pool } = {}) {
+   const db = pool || globalPool;
+   const router = express.Router();
+ 
+ router.get("/screening/profiles", requireAuth, loadCompanyContext, async (req, res) => {
+   try {
+     const { companyId } = req.companyContext;
+     const { rows } = await db.query(
+       `
+       SELECT id, profile_name, is_default, is_active, created_at, updated_at
+       FROM public.company_screening_profiles
+       WHERE company_id = $1
+       ORDER BY is_default DESC, created_at ASC
+       `,
+       [companyId]
+     );
+ 
+     return res.json({ profiles: rows });
+   } catch (err) {
+     console.error("GET /api/screening/profiles failed:", err);
+     return res.status(500).json({ error: "Failed to load screening profiles" });
+   }
+ });
+ 
+ router.post("/screening/profiles", requireAuth, loadCompanyContext, requireCompanyAdmin, async (req, res) => {
+@@ -1009,95 +1019,88 @@ router.post("/screening/carriers/:dot/profiles/:profileId/criteria/:profileCrite
+         company_id,
+         carrier_dot,
+         profile_id,
+         profile_criteria_id,
+         expires_at,
+         note,
+         created_by,
+         is_active,
+         created_at,
+         updated_at
+       )
+       VALUES ($1, $2, $3, $4::bigint, $5::timestamptz, $6, $7, true, NOW(), NOW())
+       ON CONFLICT (company_id, carrier_dot, profile_id, profile_criteria_id)
+       DO UPDATE SET
+         expires_at = EXCLUDED.expires_at,
+         note = EXCLUDED.note,
+         is_active = true,
+         created_by = COALESCE(public.company_carrier_screening_overrides.created_by, EXCLUDED.created_by),
+         updated_at = NOW()
+       `,
+       [companyId, dot, profileId, profileCriteriaId, expiresAt, note, userId]
+     );
+     await invalidateCachedScreeningResultsForCarrier({ companyId, dot, client });
+ 
+     await client.query("COMMIT");
+-    try {
+-      await rescreenTrackedCarriersForCompany({ companyId });
+-    } catch (rescreenErr) {
+-      console.error("Post override-save rescreen failed:", rescreenErr);
+-    }
+-    return res.json({ ok: true });
++    res.json({ ok: true });
++    queueTrackedCarrierRescreen(companyId, "override-save");
++    return;
+   } catch (err) {
+     await client.query("ROLLBACK");
+     console.error("POST /api/screening/carriers/:dot/profiles/:profileId/criteria/:profileCriteriaId/override failed:", err);
+     return res.status(500).json({ error: "Failed to save screening override" });
+   } finally {
+     client.release();
+   }
+ });
+ 
+ router.delete("/screening/carriers/:dot/profiles/:profileId/criteria/:profileCriteriaId/override", requireAuth, loadCompanyContext, async (req, res) => {
+   const client = await db.connect();
+   try {
+     const { companyId } = req.companyContext;
+     const dot = String(req.params.dot || "").replace(/\D/g, "");
+     const { profileId, profileCriteriaId } = req.params;
+     if (!dot) return res.status(400).json({ error: "Valid DOT is required" });
+ 
+     await client.query("BEGIN");
+     await client.query(
+       `
+       UPDATE public.company_carrier_screening_overrides
+       SET is_active = false,
+           updated_at = NOW()
+       WHERE company_id = $1
+         AND carrier_dot = $2
+         AND profile_id = $3
+         AND profile_criteria_id = $4::bigint
+       `,
+       [companyId, dot, profileId, profileCriteriaId]
+     );
+     await invalidateCachedScreeningResultsForCarrier({ companyId, dot, client });
+     await client.query("COMMIT");
+-
+-    try {
+-      await rescreenTrackedCarriersForCompany({ companyId });
+-    } catch (rescreenErr) {
+-      console.error("Post override-remove rescreen failed:", rescreenErr);
+-    }
+-    return res.json({ ok: true });
++    res.json({ ok: true });
++    queueTrackedCarrierRescreen(companyId, "override-remove");
++    return;
+   } catch (err) {
+     await client.query("ROLLBACK");
+     console.error("DELETE /api/screening/carriers/:dot/profiles/:profileId/criteria/:profileCriteriaId/override failed:", err);
+     return res.status(500).json({ error: "Failed to remove screening override" });
+   } finally {
+     client.release();
+   }
+ });
+ 
+ router.get("/screening/carriers/:dot/default-result", requireAuth, loadCompanyContext, async (req, res) => {
+   try {
+     const { companyId } = req.companyContext;
+     const dot = String(req.params.dot || "").replace(/\D/g, "");
+     if (!dot) return res.status(400).json({ error: "Valid DOT is required" });
+     const maxAgeMinutes = Number(process.env.CARRIER_SCREENING_MAX_AGE_MINUTES || 60);
+     const response = await getOrCreateScreeningResultForCompany({
+       companyId,
+       dotNumber: dot,
+       maxAgeMinutes
+     });
+ 
+     return res.json({
+       has_default_profile: response.hasDefaultProfile,
+       profile: response.profile,
+       result: response.result,
+diff --git a/static/carrier.html b/static/carrier.html
+index 1935c058ce44e06de32bad4e7f422af0436b9e51..a64e9dee258d82a2d48892885d99353dd1f952a1 100644
+--- a/static/carrier.html
++++ b/static/carrier.html
+@@ -609,50 +609,51 @@
+         <div class="cs-label">Override Duration</div>
+         <div class="screening-override-duration-options">
+           <label class="screening-override-radio">
+             <input type="radio" name="override-duration-mode" value="INDEFINITE" checked>
+             <span>Indefinite</span>
+           </label>
+           <label class="screening-override-radio">
+             <input type="radio" name="override-duration-mode" value="DAYS_30">
+             <span>30 Days</span>
+           </label>
+           <label class="screening-override-radio">
+             <input type="radio" name="override-duration-mode" value="UNTIL_DATE">
+             <span>Set Expiration Date</span>
+           </label>
+         </div>
+         <div id="override-expires-wrap" class="screening-override-expiry-input" hidden>
+           <input id="override-expires-at" class="cs-input" type="datetime-local">
+         </div>
+       </div>
+       <div class="screening-override-section">
+         <label class="cs-label" for="override-note">Note (Optional)</label>
+         <textarea id="override-note" class="cs-input screening-override-note" rows="4" placeholder="Optional context for this override"></textarea>
+       </div>
+     </div>
+     <div class="cs-modal-footer">
++      <div id="screening-override-status" class="screening-override-status" aria-live="polite" hidden>Saving override…</div>
+       <div class="cs-footer-right">
+         <button id="screening-override-remove" class="cs-btn cs-btn-ghost" type="button" hidden>Remove Override</button>
+         <button id="screening-override-cancel" class="cs-btn cs-btn-ghost" type="button">Cancel</button>
+         <button id="screening-override-save" class="cs-btn cs-btn-primary" type="button">Save Override</button>
+       </div>
+     </div>
+   </div>
+ </div>
+ 
+ <div id="add-document-modal" class="cs-modal-backdrop" hidden>
+   <div class="cs-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="add-document-title">
+     <div class="cs-modal-header">
+       <div class="cs-modal-headings">
+         <div id="add-document-title" class="cs-modal-title">Upload Document</div>
+         <div class="cs-modal-subtitle">Attach a document to this carrier profile.</div>
+       </div>
+       <button id="add-document-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
+     </div>
+ 
+     <form id="add-document-form" class="cs-modal-body docs-upload-form">
+       <label class="cs-label" for="document-type">Document Type</label>
+       <select id="document-type" class="cs-input docs-select" required>
+         <option value="w9">W-9</option>
+         <option value="ach">ACH</option>
+         <option value="other">Other</option>
+diff --git a/static/css/profile_style.css b/static/css/profile_style.css
+index fe822a132b23c80bf15df6e1521f46d7e9fd7545..8c87534bc38ee8aa22dc175628da1ffc4c5c39f5 100644
+--- a/static/css/profile_style.css
++++ b/static/css/profile_style.css
+@@ -228,86 +228,95 @@ body.carrier-page {
+ 
+ .screening-profile-tab.is-active{
+   border-color:rgba(56,189,248,.8);
+   color:#ecfeff;
+   background:linear-gradient(120deg, rgba(2,132,199,.34), rgba(8,145,178,.28));
+   box-shadow:0 0 0 1px rgba(56,189,248,.18) inset;
+ }
+ 
+ .screening-modal-key{
+   font-size:.74rem;
+   letter-spacing:.08em;
+   text-transform:uppercase;
+   color:var(--text-muted);
+ }
+ 
+ .screening-modal-val{
+   font-size:.9rem;
+   color:#e5e7eb;
+ }
+ 
+ .screening-detail-list{
+   border:1px solid rgba(255,255,255,.1);
+   border-radius:12px;
+   overflow:hidden;
+   background:rgba(15,23,42,.38);
++  min-width:100%;
++}
++
++.screening-detail-scroll{
++  overflow-x:auto;
++  overflow-y:hidden;
++  border-radius:12px;
+ }
+ 
+ .screening-detail-header,
+ .screening-detail-row{
+   display:grid;
+-  grid-template-columns:minmax(150px,1.2fr) minmax(110px,.95fr) minmax(160px,1.05fr) minmax(120px,.75fr) minmax(88px,.45fr);
++  grid-template-columns:minmax(145px,1fr) minmax(120px,.95fr) minmax(240px,2.15fr) minmax(130px,.75fr) 96px;
+   gap:10px;
+-  align-items:center;
++  align-items:flex-start;
+   padding:10px 12px;
+ }
+ 
+ .screening-detail-header{
+   border-bottom:1px solid rgba(255,255,255,.08);
+   background:rgba(15,23,42,.7);
+ }
+ 
+ .screening-detail-row{
+   border-bottom:1px solid rgba(255,255,255,.06);
+ }
+ 
+ .screening-detail-row:last-child{
+   border-bottom:0;
+ }
+ 
+ .screening-detail-head{
+   font-size:.71rem;
+   letter-spacing:.08em;
+   text-transform:uppercase;
+   color:var(--text-muted);
+ }
+ 
+ .screening-detail-cell{
+   color:#e2e8f0;
+   font-size:.84rem;
+   line-height:1.35;
+   min-width:0;
++  overflow-wrap:anywhere;
++  word-break:break-word;
+ }
+ 
+ .screening-detail-result{
+   justify-self:start;
+ }
+ 
+ .screening-result-badge{
+   display:inline-flex;
+   padding:3px 10px;
+   border-radius:999px;
+   font-size:.7rem;
+   font-weight:600;
+   letter-spacing:.08em;
+   text-transform:uppercase;
+   border:1px solid rgba(148,163,184,.5);
+   color:#cbd5e1;
+   background:rgba(15,23,42,.65);
+ }
+ 
+ .screening-result-pass{
+   border-color:rgba(34,197,94,.45);
+   color:#86efac;
+   background:rgba(34,197,94,.12);
+ }
+ 
+@@ -315,64 +324,65 @@ body.carrier-page {
+   border-color:rgba(248,113,113,.45);
+   color:#fca5a5;
+   background:rgba(248,113,113,.12);
+ }
+ 
+ .screening-result-review{
+   border-color:rgba(250,204,21,.4);
+   color:#fde68a;
+   background:rgba(250,204,21,.12);
+ }
+ 
+ .screening-result-overridden{
+   border-color:rgba(45,212,191,.5);
+   color:#99f6e4;
+   background:rgba(13,148,136,.2);
+ }
+ 
+ .screening-override-indicator{
+   margin-top:4px;
+   font-size:.68rem;
+   color:#99f6e4;
+ }
+ 
+ .screening-detail-override{
+   justify-self:start;
++  width:96px;
+ }
+ 
+ .screening-override-toggle{
+   display:inline-flex;
+   align-items:center;
+   gap:7px;
+   border:1px solid rgba(148,163,184,.45);
+   border-radius:999px;
+   background:rgba(15,23,42,.58);
+   color:#cbd5e1;
+   font-size:.72rem;
+   font-weight:600;
+   letter-spacing:.01em;
+-  padding:4px 10px 4px 8px;
++  padding:3px 8px 3px 7px;
+   line-height:1;
+   cursor:pointer;
+   transition:border-color .15s ease, color .15s ease, background .15s ease;
+ }
+ 
+ .screening-override-toggle:hover{
+   border-color:rgba(56,189,248,.65);
+   color:#f8fafc;
+ }
+ 
+ .screening-override-dot{
+   width:10px;
+   height:10px;
+   border-radius:999px;
+   border:1px solid rgba(148,163,184,.8);
+   background:transparent;
+   box-shadow:0 0 0 2px rgba(15,23,42,.8) inset;
+ }
+ 
+ .screening-override-toggle.is-active{
+   border-color:rgba(45,212,191,.6);
+   color:#ccfbf1;
+   background:rgba(13,148,136,.18);
+ }
+ 
+@@ -421,50 +431,73 @@ body.carrier-page {
+ 
+ .screening-override-radio{
+   display:flex;
+   align-items:center;
+   gap:10px;
+   padding:8px 10px;
+   border:1px solid rgba(148,163,184,.24);
+   border-radius:10px;
+   background:rgba(15,23,42,.36);
+ }
+ 
+ .screening-override-radio input{
+   accent-color:#2dd4bf;
+ }
+ 
+ .screening-override-expiry-input{
+   padding-left:34px;
+ }
+ 
+ .screening-override-note{
+   width:100%;
+   min-height:100px;
+   resize:vertical;
+ }
+ 
++.screening-override-status{
++  align-self:center;
++  margin-right:8px;
++  font-size:.78rem;
++  color:#93c5fd;
++}
++
++.screening-override-modal.is-saving .cs-modal-x,
++.screening-override-modal.is-saving .cs-btn,
++.screening-override-modal.is-saving .screening-override-radio input,
++.screening-override-modal.is-saving #override-expires-at,
++.screening-override-modal.is-saving #override-note{
++  pointer-events:none;
++}
++
++.screening-override-modal.is-saving .cs-btn{
++  opacity:.72;
++}
++
++.screening-override-modal.is-saving #screening-override-save{
++  opacity:1;
++}
++
+ @media (max-width: 720px){
+   .screening-override-summary{
+     grid-template-columns:1fr;
+   }
+ 
+   .screening-override-expiry-input{
+     padding-left:0;
+   }
+ }
+ 
+ @media (max-width: 900px){
+   .screening-detail-header{
+     display:none;
+   }
+ 
+   .screening-detail-row{
+     grid-template-columns:1fr;
+     gap:6px;
+     padding:12px;
+   }
+ 
+   .screening-detail-cell::before{
+     content:attr(data-label);
+     display:block;
+     margin-bottom:2px;
+diff --git a/static/js/pages/carrier.js b/static/js/pages/carrier.js
+index c6bdeedcad3f28092002a5bd98693328bbc19cba..934d7d1c95abbb05bdb35f0b7099fde086e17fba 100644
+--- a/static/js/pages/carrier.js
++++ b/static/js/pages/carrier.js
+@@ -74,50 +74,51 @@ function fmtSignedDate(d) {
+   if (Number.isNaN(parsed.getTime())) return "";
+ 
+   return parsed.toLocaleDateString(undefined, {
+     month: "short",
+     day: "numeric",
+     year: "numeric"
+   });
+ }
+   
+   function getDotFromPath() {
+     // take first path segment only, ignore trailing slash / extra segments
+     const seg = window.location.pathname.split("/").filter(Boolean).pop() || "";
+     // DOT should be digits only
+     const digits = decodeURIComponent(seg).replace(/\D/g, "");
+     // strip leading zeros safely (optional)
+     const noLeading = digits.replace(/^0+/, "");
+     return noLeading || (digits ? "0" : "");
+   }
+ 
+   const CURRENT_DOT = getDotFromPath(); 
+   let initButtonsRunning = false;
+   let initButtonsRerun = false; // NEW: queue reruns instead of dropping
+   let screeningResultPayload = null;
+   let selectedScreeningProfileId = null;
+   let selectedOverrideContext = null;
++  let isOverrideSaveInFlight = false;
+ 
+   
+   function setText(id, value) {
+     const el = document.getElementById(id);
+     if (!el) return;
+     el.textContent =
+       value !== null && value !== undefined && value !== "" ? value : "—";
+   }
+ 
+   function getCarrierMcList(c) {
+     if (Array.isArray(c?.mc_numbers)) {
+       return c.mc_numbers
+         .map(v => String(v ?? "").trim())
+         .filter(Boolean);
+     }
+ 
+     if (typeof c?.mc_numbers === "string") {
+       const raw = c.mc_numbers.trim();
+ 
+       if (raw.startsWith("{") && raw.endsWith("}")) {
+         return raw
+           .slice(1, -1)
+           .split(",")
+           .map(v => String(v ?? "").replace(/^"|"$/g, "").trim())
+           .filter(Boolean);
+@@ -520,134 +521,161 @@ function buildOverrideActionsHtml(item) {
+       type="button"
+       class="screening-override-toggle ${item.is_overridden ? "is-active" : ""}"
+       data-override-action="open"
+       data-profile-id="${escapeHtml(String(item.profile_id))}"
+       data-profile-criteria-id="${escapeHtml(String(item.profile_criteria_id))}"
+       data-check="${escapeHtml(item.check)}"
+       aria-pressed="${item.is_overridden ? "true" : "false"}"
+     >
+       <span class="screening-override-dot" aria-hidden="true"></span>
+       <span>${item.is_overridden ? "Active" : "Set"}</span>
+     </button>
+   `;
+ }
+ 
+ async function refreshScreeningDataForCurrentDot() {
+   const dot = CURRENT_DOT;
+   if (!dot) return;
+   await loadDefaultScreeningResult(dot);
+   renderScreeningDetailsModal(screeningResultPayload || {});
+ }
+ 
+ async function saveScreeningOverride(context) {
+   const modeSelect = document.querySelector('input[name="override-duration-mode"]:checked');
+   const expiresInput = document.getElementById("override-expires-at");
+   const noteInput = document.getElementById("override-note");
+-  if (!modeSelect || !expiresInput || !noteInput) return;
++  if (!modeSelect || !expiresInput || !noteInput) {
++    throw new Error("Override form is not available.");
++  }
+ 
+   const mode = String(modeSelect.value || "").trim().toUpperCase();
+   const payload = { mode };
+   if (mode === "UNTIL_DATE") {
+     const rawDate = String(expiresInput.value || "").trim();
+     if (!rawDate) {
+-      alert("Please choose an expiration date/time.");
+-      return;
++      throw new Error("Please choose an expiration date/time.");
+     }
+     const parsed = new Date(rawDate);
+     if (Number.isNaN(parsed.getTime())) {
+-      alert("Please provide a valid expiration date/time.");
+-      return;
++      throw new Error("Please provide a valid expiration date/time.");
+     }
+     payload.expires_at = parsed.toISOString();
+   }
+ 
+   const note = String(noteInput.value || "").trim();
+   if (note) payload.note = note;
+ 
+   const response = await fetch(`/api/screening/carriers/${encodeURIComponent(CURRENT_DOT)}/profiles/${encodeURIComponent(context.profile_id)}/criteria/${encodeURIComponent(context.profile_criteria_id)}/override`, {
+     method: "POST",
+     credentials: "include",
+     headers: { "Content-Type": "application/json" },
+     body: JSON.stringify(payload)
+   });
+ 
+   const body = await response.json().catch(() => ({}));
+   if (!response.ok) {
+     throw new Error(body?.error || "Failed to save override");
+   }
+ }
+ 
+ async function removeScreeningOverride(context) {
+   const response = await fetch(`/api/screening/carriers/${encodeURIComponent(CURRENT_DOT)}/profiles/${encodeURIComponent(context.profile_id)}/criteria/${encodeURIComponent(context.profile_criteria_id)}/override`, {
+     method: "DELETE",
+     credentials: "include"
+   });
+ 
+   const body = await response.json().catch(() => ({}));
+   if (!response.ok) {
+     throw new Error(body?.error || "Failed to remove override");
+   }
+ }
+ 
+-function closeOverrideModal() {
++function closeOverrideModal({ force = false } = {}) {
++  if (isOverrideSaveInFlight && !force) return;
+   const modal = document.getElementById("screening-override-modal");
+   if (!modal) return;
++  setOverrideModalSavingState(false);
+   modal.hidden = true;
+   selectedOverrideContext = null;
+ }
+ 
++function setOverrideModalSavingState(isSaving, { action = "save" } = {}) {
++  isOverrideSaveInFlight = isSaving === true;
++  const modal = document.querySelector("#screening-override-modal .screening-override-modal");
++  const saveBtn = document.getElementById("screening-override-save");
++  const cancelBtn = document.getElementById("screening-override-cancel");
++  const closeBtn = document.getElementById("screening-override-close");
++  const removeBtn = document.getElementById("screening-override-remove");
++  const statusEl = document.getElementById("screening-override-status");
++  if (modal) modal.classList.toggle("is-saving", isOverrideSaveInFlight);
++  if (saveBtn) {
++    saveBtn.disabled = isOverrideSaveInFlight;
++    saveBtn.textContent = isOverrideSaveInFlight
++      ? (action === "remove" ? "Removing..." : "Saving...")
++      : "Save Override";
++  }
++  if (cancelBtn) cancelBtn.disabled = isOverrideSaveInFlight;
++  if (closeBtn) closeBtn.disabled = isOverrideSaveInFlight;
++  if (removeBtn) removeBtn.disabled = isOverrideSaveInFlight;
++  if (statusEl) {
++    statusEl.textContent = action === "remove" ? "Removing override..." : "Saving override…";
++    statusEl.hidden = !isOverrideSaveInFlight;
++  }
++}
++
+ function syncOverrideExpiresVisibility() {
+   const modeSelect = document.querySelector('input[name="override-duration-mode"]:checked');
+   const expiresWrap = document.getElementById("override-expires-wrap");
+   if (!modeSelect || !expiresWrap) return;
+   const show = String(modeSelect.value || "").toUpperCase() === "UNTIL_DATE";
+   expiresWrap.hidden = !show;
+ }
+ 
+ function openOverrideModal(context) {
+   selectedOverrideContext = context;
+   const modal = document.getElementById("screening-override-modal");
+   if (!modal) return;
+ 
+   const profileEl = document.getElementById("override-profile-name");
+   const checkEl = document.getElementById("override-check-name");
+   const noteEl = document.getElementById("override-note");
+   const modeEls = Array.from(document.querySelectorAll('input[name="override-duration-mode"]'));
+   const expiresEl = document.getElementById("override-expires-at");
+   const activeEl = document.getElementById("override-current-active");
+   const removeEl = document.getElementById("screening-override-remove");
+ 
+   if (profileEl) profileEl.textContent = safeText(context.profile_name, "—");
+   if (checkEl) checkEl.textContent = safeText(context.check, "—");
+   if (noteEl) noteEl.value = context.override_note || "";
+   const nextMode = context.is_overridden && context.override_expires_at ? "UNTIL_DATE" : "INDEFINITE";
+   modeEls.forEach((radio) => {
+     radio.checked = radio.value === nextMode;
+   });
+   if (expiresEl) expiresEl.value = context.override_expires_at ? new Date(context.override_expires_at).toISOString().slice(0, 16) : "";
+   if (activeEl) activeEl.textContent = context.is_overridden ? `Active override: ${getOverrideExpiresText(context)}` : "No active override";
+   if (removeEl) removeEl.hidden = !context.is_overridden;
++  setOverrideModalSavingState(false);
+   syncOverrideExpiresVisibility();
+   modal.hidden = false;
+ }
+ 
+ function renderScreeningDetailsModal(data) {
+   const body = document.getElementById("screening-details-body");
+   if (!body) return;
+ 
+   const profiles = Array.isArray(data?.profiles) ? data.profiles : [];
+   if (!profiles.length) {
+     body.innerHTML = `<div class="cs-hint">No screening profiles are active yet.</div>`;
+     return;
+   }
+ 
+   const defaultProfileId = data?.default_profile_id ?? null;
+   const fallbackProfile = profiles.find((p) => p?.is_default) || profiles[0];
+   const activeProfile = profiles.find((p) => String(p?.profile_id) === String(selectedScreeningProfileId))
+     || profiles.find((p) => String(p?.profile_id) === String(defaultProfileId))
+     || fallbackProfile;
+   if (!activeProfile) {
+     body.innerHTML = `<div class="cs-hint">No screening result.</div>`;
+     return;
+   }
+ 
+   selectedScreeningProfileId = activeProfile.profile_id;
+@@ -685,59 +713,61 @@ function renderScreeningDetailsModal(data) {
+       <div class="screening-modal-key">Overall status</div><div class="screening-modal-val">${escapeHtml(status)}</div>
+       <div class="screening-modal-key">Passed ratio</div><div class="screening-modal-val">${escapeHtml(ratio)}</div>
+     </div>
+   `;
+ 
+   if (!details.length) {
+     body.innerHTML = `${tabsHtml}${metaHtml}<div class="cs-hint">Detailed screening breakdown is not available yet.</div>`;
+     bindScreeningProfileTabClicks();
+     return;
+   }
+ 
+   const detailRows = details.map((item) => `
+     <div class="screening-detail-row" role="row">
+       <div class="screening-detail-cell screening-detail-check" role="cell" data-label="Check">${escapeHtml(item.check)}</div>
+       <div class="screening-detail-cell screening-detail-carrier" role="cell" data-label="Carrier">${escapeHtml(item.carrier)}</div>
+       <div class="screening-detail-cell screening-detail-requirement" role="cell" data-label="Requirement">${escapeHtml(item.requirement)}</div>
+       <div class="screening-detail-cell screening-detail-result" role="cell" data-label="Result">
+         <span class="screening-result-badge ${escapeHtml(getResultBadgeClass(item))}">${escapeHtml(getDisplayStatusForRow(item))}</span>
+         ${item.is_overridden ? `<div class="screening-override-indicator">Override${item.override_expires_at ? ` until ${escapeHtml(fmtDate(item.override_expires_at))}` : " active"}</div>` : ""}
+       </div>
+       <div class="screening-detail-cell screening-detail-override" role="cell" data-label="Override">${buildOverrideActionsHtml(item)}</div>
+     </div>
+   `).join("");
+ 
+   body.innerHTML = `${tabsHtml}${metaHtml}
+-    <div class="screening-detail-list" role="table" aria-label="Screening detail breakdown">
+-      <div class="screening-detail-header" role="row">
+-        <div class="screening-detail-head" role="columnheader">Check</div>
+-        <div class="screening-detail-head" role="columnheader">Carrier</div>
+-        <div class="screening-detail-head" role="columnheader">Requirement</div>
+-        <div class="screening-detail-head" role="columnheader">Result</div>
+-        <div class="screening-detail-head" role="columnheader">Override</div>
++    <div class="screening-detail-scroll">
++      <div class="screening-detail-list" role="table" aria-label="Screening detail breakdown">
++        <div class="screening-detail-header" role="row">
++          <div class="screening-detail-head" role="columnheader">Check</div>
++          <div class="screening-detail-head" role="columnheader">Carrier</div>
++          <div class="screening-detail-head" role="columnheader">Requirement</div>
++          <div class="screening-detail-head" role="columnheader">Result</div>
++          <div class="screening-detail-head" role="columnheader">Override</div>
++        </div>
++        ${detailRows}
+       </div>
+-      ${detailRows}
+     </div>`;
+   bindScreeningProfileTabClicks();
+   bindScreeningOverrideActions();
+ }
+ 
+ function bindScreeningProfileTabClicks() {
+   const buttons = document.querySelectorAll("[data-screening-profile-tab-id]");
+   buttons.forEach((button) => {
+     button.addEventListener("click", () => {
+       selectedScreeningProfileId = button.getAttribute("data-screening-profile-tab-id");
+       renderScreeningDetailsModal(screeningResultPayload || {});
+     });
+   });
+ }
+ 
+ function bindScreeningOverrideActions() {
+   const buttons = document.querySelectorAll("[data-override-action]");
+   buttons.forEach((button) => {
+     button.addEventListener("click", async (event) => {
+       event.stopPropagation();
+       const action = button.getAttribute("data-override-action");
+       const profileId = button.getAttribute("data-profile-id");
+       const profileCriteriaId = button.getAttribute("data-profile-criteria-id");
+       const check = button.getAttribute("data-check");
+       const profile = (screeningResultPayload?.profiles || []).find((item) => String(item.profile_id) === String(profileId));
+@@ -802,75 +832,80 @@ function wireScreeningModalOnce() {
+   closeBtn.addEventListener("click", closeScreeningModal);
+   dismissBtn.addEventListener("click", closeScreeningModal);
+   backdrop.addEventListener("click", (e) => {
+     if (e.target === backdrop) closeScreeningModal();
+   });
+   document.addEventListener("keydown", (e) => {
+     if (e.key === "Escape") closeScreeningModal();
+   });
+ }
+ 
+ function wireOverrideModalOnce() {
+   const modal = document.getElementById("screening-override-modal");
+   const closeBtn = document.getElementById("screening-override-close");
+   const cancelBtn = document.getElementById("screening-override-cancel");
+   const saveBtn = document.getElementById("screening-override-save");
+   const removeBtn = document.getElementById("screening-override-remove");
+   const modeOptions = document.querySelectorAll('input[name="override-duration-mode"]');
+   if (!modal || !closeBtn || !cancelBtn || !saveBtn || !removeBtn || !modeOptions.length) return;
+ 
+   closeBtn.addEventListener("click", closeOverrideModal);
+   cancelBtn.addEventListener("click", closeOverrideModal);
+   modeOptions.forEach((option) => {
+     option.addEventListener("change", syncOverrideExpiresVisibility);
+   });
+   modal.addEventListener("click", (e) => {
+-    if (e.target === modal) closeOverrideModal();
++    if (e.target === modal && !isOverrideSaveInFlight) closeOverrideModal();
+   });
+ 
+   saveBtn.addEventListener("click", async () => {
+-    if (!selectedOverrideContext) return;
++    if (!selectedOverrideContext || isOverrideSaveInFlight) return;
++    setOverrideModalSavingState(true);
+     try {
+       await saveScreeningOverride(selectedOverrideContext);
+-      closeOverrideModal();
++      closeOverrideModal({ force: true });
+       await refreshScreeningDataForCurrentDot();
+     } catch (err) {
++      setOverrideModalSavingState(false);
+       alert(err.message || "Failed to save override");
+     }
+   });
+ 
+   removeBtn.addEventListener("click", async () => {
++    if (isOverrideSaveInFlight) return;
+     if (!selectedOverrideContext?.is_overridden) {
+       closeOverrideModal();
+       return;
+     }
+     if (!confirm("Remove this screening override?")) return;
++    setOverrideModalSavingState(true, { action: "remove" });
+     try {
+       await removeScreeningOverride(selectedOverrideContext);
+-      closeOverrideModal();
++      closeOverrideModal({ force: true });
+       await refreshScreeningDataForCurrentDot();
+     } catch (err) {
++      setOverrideModalSavingState(false);
+       alert(err.message || "Failed to remove override");
+     }
+   });
+ }
+ 
+ function renderScreeningSummary(data) {
+   const card = document.getElementById("screening-summary-card");
+   const badge = document.getElementById("screening-status-badge");
+   const ratioText = document.getElementById("screening-ratio-text");
+   if (!card || !badge || !ratioText) return;
+ 
+   screeningResultPayload = data || {};
+   card.hidden = false;
+   card.setAttribute("role", "button");
+   card.setAttribute("tabindex", "0");
+   const profiles = Array.isArray(data?.profiles) ? data.profiles : [];
+   const defaultProfileId = data?.default_profile_id ?? null;
+   const defaultProfile = profiles.find((profile) => String(profile?.profile_id) === String(defaultProfileId))
+     || profiles.find((profile) => profile?.is_default)
+     || null;
+   const result = defaultProfile?.result || null;
+   const status = result?.screening_status ? String(result.screening_status).toUpperCase() : "NOT SCREENED";
+   badge.textContent = status;
+   badge.classList.remove("pill-ok", "pill-warn", "pill-purp", "pill-fail");
+   const klass = screeningBadgeClass(status);

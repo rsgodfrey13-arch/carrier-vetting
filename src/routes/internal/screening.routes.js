@@ -115,6 +115,16 @@ async function invalidateCachedScreeningResultsForCarrier({ companyId, dot, clie
   );
 }
 
+function queueTrackedCarrierRescreen(companyId, reason) {
+  setImmediate(async () => {
+    try {
+      await rescreenTrackedCarriersForCompany({ companyId });
+    } catch (rescreenErr) {
+      console.error(`Deferred ${reason} rescreen failed:`, rescreenErr);
+    }
+  });
+}
+
 function screeningRoutes({ pool } = {}) {
   const db = pool || globalPool;
   const router = express.Router();
@@ -1031,12 +1041,9 @@ router.post("/screening/carriers/:dot/profiles/:profileId/criteria/:profileCrite
     await invalidateCachedScreeningResultsForCarrier({ companyId, dot, client });
 
     await client.query("COMMIT");
-    try {
-      await rescreenTrackedCarriersForCompany({ companyId });
-    } catch (rescreenErr) {
-      console.error("Post override-save rescreen failed:", rescreenErr);
-    }
-    return res.json({ ok: true });
+    res.json({ ok: true });
+    queueTrackedCarrierRescreen(companyId, "override-save");
+    return;
   } catch (err) {
     await client.query("ROLLBACK");
     console.error("POST /api/screening/carriers/:dot/profiles/:profileId/criteria/:profileCriteriaId/override failed:", err);
@@ -1069,13 +1076,9 @@ router.delete("/screening/carriers/:dot/profiles/:profileId/criteria/:profileCri
     );
     await invalidateCachedScreeningResultsForCarrier({ companyId, dot, client });
     await client.query("COMMIT");
-
-    try {
-      await rescreenTrackedCarriersForCompany({ companyId });
-    } catch (rescreenErr) {
-      console.error("Post override-remove rescreen failed:", rescreenErr);
-    }
-    return res.json({ ok: true });
+    res.json({ ok: true });
+    queueTrackedCarrierRescreen(companyId, "override-remove");
+    return;
   } catch (err) {
     await client.query("ROLLBACK");
     console.error("DELETE /api/screening/carriers/:dot/profiles/:profileId/criteria/:profileCriteriaId/override failed:", err);

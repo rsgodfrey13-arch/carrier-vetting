@@ -96,6 +96,7 @@ function fmtSignedDate(d) {
   let screeningResultPayload = null;
   let selectedScreeningProfileId = null;
   let selectedOverrideContext = null;
+  let isOverrideSaveInFlight = false;
 
   
   function setText(id, value) {
@@ -542,20 +543,20 @@ async function saveScreeningOverride(context) {
   const modeSelect = document.querySelector('input[name="override-duration-mode"]:checked');
   const expiresInput = document.getElementById("override-expires-at");
   const noteInput = document.getElementById("override-note");
-  if (!modeSelect || !expiresInput || !noteInput) return;
+  if (!modeSelect || !expiresInput || !noteInput) {
+    throw new Error("Override form is not available.");
+  }
 
   const mode = String(modeSelect.value || "").trim().toUpperCase();
   const payload = { mode };
   if (mode === "UNTIL_DATE") {
     const rawDate = String(expiresInput.value || "").trim();
     if (!rawDate) {
-      alert("Please choose an expiration date/time.");
-      return;
+      throw new Error("Please choose an expiration date/time.");
     }
     const parsed = new Date(rawDate);
     if (Number.isNaN(parsed.getTime())) {
-      alert("Please provide a valid expiration date/time.");
-      return;
+      throw new Error("Please provide a valid expiration date/time.");
     }
     payload.expires_at = parsed.toISOString();
   }
@@ -588,11 +589,37 @@ async function removeScreeningOverride(context) {
   }
 }
 
-function closeOverrideModal() {
+function closeOverrideModal({ force = false } = {}) {
+  if (isOverrideSaveInFlight && !force) return;
   const modal = document.getElementById("screening-override-modal");
   if (!modal) return;
+  setOverrideModalSavingState(false);
   modal.hidden = true;
   selectedOverrideContext = null;
+}
+
+function setOverrideModalSavingState(isSaving, { action = "save" } = {}) {
+  isOverrideSaveInFlight = isSaving === true;
+  const modal = document.querySelector("#screening-override-modal .screening-override-modal");
+  const saveBtn = document.getElementById("screening-override-save");
+  const cancelBtn = document.getElementById("screening-override-cancel");
+  const closeBtn = document.getElementById("screening-override-close");
+  const removeBtn = document.getElementById("screening-override-remove");
+  const statusEl = document.getElementById("screening-override-status");
+  if (modal) modal.classList.toggle("is-saving", isOverrideSaveInFlight);
+  if (saveBtn) {
+    saveBtn.disabled = isOverrideSaveInFlight;
+    saveBtn.textContent = isOverrideSaveInFlight
+      ? (action === "remove" ? "Removing..." : "Saving...")
+      : "Save Override";
+  }
+  if (cancelBtn) cancelBtn.disabled = isOverrideSaveInFlight;
+  if (closeBtn) closeBtn.disabled = isOverrideSaveInFlight;
+  if (removeBtn) removeBtn.disabled = isOverrideSaveInFlight;
+  if (statusEl) {
+    statusEl.textContent = action === "remove" ? "Removing override..." : "Saving override…";
+    statusEl.hidden = !isOverrideSaveInFlight;
+  }
 }
 
 function syncOverrideExpiresVisibility() {
@@ -626,6 +653,7 @@ function openOverrideModal(context) {
   if (expiresEl) expiresEl.value = context.override_expires_at ? new Date(context.override_expires_at).toISOString().slice(0, 16) : "";
   if (activeEl) activeEl.textContent = context.is_overridden ? `Active override: ${getOverrideExpiresText(context)}` : "No active override";
   if (removeEl) removeEl.hidden = !context.is_overridden;
+  setOverrideModalSavingState(false);
   syncOverrideExpiresVisibility();
   modal.hidden = false;
 }
@@ -707,15 +735,17 @@ function renderScreeningDetailsModal(data) {
   `).join("");
 
   body.innerHTML = `${tabsHtml}${metaHtml}
-    <div class="screening-detail-list" role="table" aria-label="Screening detail breakdown">
-      <div class="screening-detail-header" role="row">
-        <div class="screening-detail-head" role="columnheader">Check</div>
-        <div class="screening-detail-head" role="columnheader">Carrier</div>
-        <div class="screening-detail-head" role="columnheader">Requirement</div>
-        <div class="screening-detail-head" role="columnheader">Result</div>
-        <div class="screening-detail-head" role="columnheader">Override</div>
+    <div class="screening-detail-scroll">
+      <div class="screening-detail-list" role="table" aria-label="Screening detail breakdown">
+        <div class="screening-detail-header" role="row">
+          <div class="screening-detail-head" role="columnheader">Check</div>
+          <div class="screening-detail-head" role="columnheader">Carrier</div>
+          <div class="screening-detail-head" role="columnheader">Requirement</div>
+          <div class="screening-detail-head" role="columnheader">Result</div>
+          <div class="screening-detail-head" role="columnheader">Override</div>
+        </div>
+        ${detailRows}
       </div>
-      ${detailRows}
     </div>`;
   bindScreeningProfileTabClicks();
   bindScreeningOverrideActions();
@@ -824,31 +854,36 @@ function wireOverrideModalOnce() {
     option.addEventListener("change", syncOverrideExpiresVisibility);
   });
   modal.addEventListener("click", (e) => {
-    if (e.target === modal) closeOverrideModal();
+    if (e.target === modal && !isOverrideSaveInFlight) closeOverrideModal();
   });
 
   saveBtn.addEventListener("click", async () => {
-    if (!selectedOverrideContext) return;
+    if (!selectedOverrideContext || isOverrideSaveInFlight) return;
+    setOverrideModalSavingState(true);
     try {
       await saveScreeningOverride(selectedOverrideContext);
-      closeOverrideModal();
+      closeOverrideModal({ force: true });
       await refreshScreeningDataForCurrentDot();
     } catch (err) {
+      setOverrideModalSavingState(false);
       alert(err.message || "Failed to save override");
     }
   });
 
   removeBtn.addEventListener("click", async () => {
+    if (isOverrideSaveInFlight) return;
     if (!selectedOverrideContext?.is_overridden) {
       closeOverrideModal();
       return;
     }
     if (!confirm("Remove this screening override?")) return;
+    setOverrideModalSavingState(true, { action: "remove" });
     try {
       await removeScreeningOverride(selectedOverrideContext);
-      closeOverrideModal();
+      closeOverrideModal({ force: true });
       await refreshScreeningDataForCurrentDot();
     } catch (err) {
+      setOverrideModalSavingState(false);
       alert(err.message || "Failed to remove override");
     }
   });
