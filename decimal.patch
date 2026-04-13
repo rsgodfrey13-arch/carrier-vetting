@@ -1,0 +1,81 @@
+diff --git a/static/js/pages/carrier.js b/static/js/pages/carrier.js
+index b16e476851b7b07b857f7a6810f81930fcd8e436..14eef7bb3ecfdeda1a5a9bac5f77e8a436008bd9 100644
+--- a/static/js/pages/carrier.js
++++ b/static/js/pages/carrier.js
+@@ -331,56 +331,74 @@ function escapeHtml(value) {
+ }
+ 
+ function screeningBadgeClass(status) {
+   const normalized = String(status || "").toUpperCase();
+   if (normalized === "PASS") return "pill-ok";
+   if (normalized === "REVIEW") return "pill-warn";
+   if (normalized === "FAIL") return "pill-fail";
+   return "";
+ }
+ 
+ function computeScreeningCounts(result) {
+   const passed = Number(result?.matched_count) || 0;
+   const failed = Number(result?.failed_count) || 0;
+   const review = Number(result?.review_count) || 0;
+   const total = passed + failed + review;
+   return { passed, failed, review, total };
+ }
+ 
+ function getScreeningRatioText(result) {
+   if (!result) return "No screening result";
+   const { passed, total } = computeScreeningCounts(result);
+   if (total === 0) return "No checks configured";
+   return `${passed}/${total} checks passed`;
+ }
+ 
++function normalizeWholeNumberDisplay(value) {
++  if (typeof value === "number") {
++    if (!Number.isFinite(value)) return value;
++    return Number.isInteger(value) ? String(value) : value;
++  }
++
++  const text = String(value ?? "").trim();
++  if (!text) return value;
++
++  const wholeNumberMatch = text.match(/^([+-]?\d+)\.0+$/);
++  if (wholeNumberMatch) return wholeNumberMatch[1];
++
++  return value;
++}
++
+ function prettifyValue(value) {
+   if (value === null || value === undefined) return "—";
+   if (typeof value === "boolean") return value ? "Yes" : "No";
+-  if (typeof value === "number") return Number.isFinite(value) ? String(value) : "—";
++  if (typeof value === "number") {
++    if (!Number.isFinite(value)) return "—";
++    return String(normalizeWholeNumberDisplay(value));
++  }
+ 
+-  const text = String(value).trim();
++  const text = String(normalizeWholeNumberDisplay(value)).trim();
+   if (!text) return "—";
+ 
+   const aliases = {
+     Y: "Yes",
+     N: "None",
+     A: "Active"
+   };
+   if (aliases[text.toUpperCase()]) return aliases[text.toUpperCase()];
+ 
+   return text
+     .replaceAll(/[_-]+/g, " ")
+     .replaceAll(/\s+/g, " ")
+     .trim()
+     .replace(/\b\w/g, (c) => c.toUpperCase());
+ }
+ 
+ function operatorLabel(operator) {
+   const op = String(operator || "EQUALS").toUpperCase();
+   return {
+     EQUALS: "",
+     NOT_EQUALS: "Not",
+     IN: "One of",
+     NOT_IN: "Not one of",
+     LESS_THAN: "Less than",
+     LESS_THAN_OR_EQUAL: "Less than or equal to",

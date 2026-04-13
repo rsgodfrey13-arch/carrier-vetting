@@ -353,12 +353,30 @@ function getScreeningRatioText(result) {
   return `${passed}/${total} checks passed`;
 }
 
+function normalizeWholeNumberDisplay(value) {
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) return value;
+    return Number.isInteger(value) ? String(value) : value;
+  }
+
+  const text = String(value ?? "").trim();
+  if (!text) return value;
+
+  const wholeNumberMatch = text.match(/^([+-]?\d+)\.0+$/);
+  if (wholeNumberMatch) return wholeNumberMatch[1];
+
+  return value;
+}
+
 function prettifyValue(value) {
   if (value === null || value === undefined) return "—";
   if (typeof value === "boolean") return value ? "Yes" : "No";
-  if (typeof value === "number") return Number.isFinite(value) ? String(value) : "—";
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) return "—";
+    return String(normalizeWholeNumberDisplay(value));
+  }
 
-  const text = String(value).trim();
+  const text = String(normalizeWholeNumberDisplay(value)).trim();
   if (!text) return "—";
 
   const aliases = {
