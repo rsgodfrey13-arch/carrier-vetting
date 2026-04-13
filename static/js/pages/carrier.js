@@ -907,8 +907,14 @@ function wireOverrideModalOnce() {
       closeOverrideModal();
       return;
     }
-    const confirmed = await confirmRemoveOverride();
-    if (!confirmed) return;
+const hasCustomRemoveConfirm =
+  !!(removeConfirmModal && removeConfirmCloseBtn && removeConfirmCancelBtn && removeConfirmConfirmBtn);
+
+const confirmed = hasCustomRemoveConfirm
+  ? await confirmRemoveOverride()
+  : window.confirm("Remove this screening override?");
+
+if (!confirmed) return;
     setOverrideModalSavingState(true, { action: "remove" });
     try {
       await removeScreeningOverride(selectedOverrideContext);
