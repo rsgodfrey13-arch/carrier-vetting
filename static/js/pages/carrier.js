@@ -869,7 +869,7 @@ function wireOverrideModalOnce() {
   const removeConfirmCancelBtn = document.getElementById("screening-override-remove-confirm-cancel");
   const removeConfirmConfirmBtn = document.getElementById("screening-override-remove-confirm-confirm");
   const modeOptions = document.querySelectorAll('input[name="override-duration-mode"]');
-  if (!modal || !removeConfirmModal || !closeBtn || !cancelBtn || !saveBtn || !removeBtn || !removeConfirmCloseBtn || !removeConfirmCancelBtn || !removeConfirmConfirmBtn || !modeOptions.length) return;
+  if (!modal || !closeBtn || !cancelBtn || !saveBtn || !removeBtn || !modeOptions.length) return;
 
   closeBtn.addEventListener("click", closeOverrideModal);
   cancelBtn.addEventListener("click", closeOverrideModal);
@@ -879,12 +879,14 @@ function wireOverrideModalOnce() {
   modal.addEventListener("click", (e) => {
     if (e.target === modal && !isOverrideSaveInFlight) closeOverrideModal();
   });
-  removeConfirmCloseBtn.addEventListener("click", () => closeRemoveOverrideConfirmModal(false));
-  removeConfirmCancelBtn.addEventListener("click", () => closeRemoveOverrideConfirmModal(false));
-  removeConfirmConfirmBtn.addEventListener("click", () => closeRemoveOverrideConfirmModal(true));
-  removeConfirmModal.addEventListener("click", (e) => {
-    if (e.target === removeConfirmModal) closeRemoveOverrideConfirmModal(false);
-  });
+  if (removeConfirmModal && removeConfirmCloseBtn && removeConfirmCancelBtn && removeConfirmConfirmBtn) {
+    removeConfirmCloseBtn.addEventListener("click", () => closeRemoveOverrideConfirmModal(false));
+    removeConfirmCancelBtn.addEventListener("click", () => closeRemoveOverrideConfirmModal(false));
+    removeConfirmConfirmBtn.addEventListener("click", () => closeRemoveOverrideConfirmModal(true));
+    removeConfirmModal.addEventListener("click", (e) => {
+      if (e.target === removeConfirmModal) closeRemoveOverrideConfirmModal(false);
+    });
+  }
 
   saveBtn.addEventListener("click", async () => {
     if (!selectedOverrideContext || isOverrideSaveInFlight) return;
@@ -919,7 +921,7 @@ function wireOverrideModalOnce() {
   });
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !removeConfirmModal.hidden) {
+    if (e.key === "Escape" && removeConfirmModal && !removeConfirmModal.hidden) {
       closeRemoveOverrideConfirmModal(false);
     }
   });
