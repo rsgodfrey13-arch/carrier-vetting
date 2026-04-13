@@ -356,7 +356,7 @@ function getScreeningRatioText(result) {
 function normalizeWholeNumberDisplay(value) {
   if (typeof value === "number") {
     if (!Number.isFinite(value)) return value;
-    return Number.isInteger(value) ? String(value) : value;
+    return Number.isInteger(value) ? String(value) : String(value);
   }
 
   const text = String(value ?? "").trim();
@@ -365,9 +365,9 @@ function normalizeWholeNumberDisplay(value) {
   const wholeNumberMatch = text.match(/^([+-]?\d+)\.0+$/);
   if (wholeNumberMatch) return wholeNumberMatch[1];
 
-  return value;
+  return text;
 }
-
+  
 function prettifyValue(value) {
   if (value === null || value === undefined) return "—";
   if (typeof value === "boolean") return value ? "Yes" : "No";
