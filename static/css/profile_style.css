@@ -498,6 +498,15 @@ body.carrier-page {
   opacity:1;
 }
 
+.screening-remove-confirm-modal{
+  width:min(420px, calc(100vw - 32px));
+}
+
+.screening-remove-confirm-copy{
+  margin-top:0;
+  line-height:1.45;
+}
+
 @media (max-width: 720px){
   .screening-override-summary{
     grid-template-columns:1fr;
@@ -1182,6 +1191,16 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
 .cs-btn-primary:hover{
   background: rgba(16,185,129,.24);
   border-color: rgba(16,185,129,.70);
+}
+
+.cs-btn-danger{
+  border-color: rgba(248,113,113,.62);
+  background: rgba(239,68,68,.2);
+  color: rgba(254,226,226,.96);
+}
+.cs-btn-danger:hover{
+  border-color: rgba(248,113,113,.8);
+  background: rgba(239,68,68,.28);
 }
 
 /* Footer */

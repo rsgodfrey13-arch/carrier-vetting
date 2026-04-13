@@ -97,6 +97,7 @@ function fmtSignedDate(d) {
   let selectedScreeningProfileId = null;
   let selectedOverrideContext = null;
   let isOverrideSaveInFlight = false;
+  let removeOverrideConfirmResolver = null;
 
   
   function setText(id, value) {
@@ -598,6 +599,24 @@ function closeOverrideModal({ force = false } = {}) {
   selectedOverrideContext = null;
 }
 
+function closeRemoveOverrideConfirmModal(confirmed = false) {
+  const modal = document.getElementById("screening-override-remove-confirm-modal");
+  if (modal) modal.hidden = true;
+  if (removeOverrideConfirmResolver) {
+    removeOverrideConfirmResolver(Boolean(confirmed));
+    removeOverrideConfirmResolver = null;
+  }
+}
+
+function confirmRemoveOverride() {
+  const modal = document.getElementById("screening-override-remove-confirm-modal");
+  if (!modal) return Promise.resolve(false);
+  modal.hidden = false;
+  return new Promise((resolve) => {
+    removeOverrideConfirmResolver = resolve;
+  });
+}
+
 function setOverrideModalSavingState(isSaving, { action = "save" } = {}) {
   isOverrideSaveInFlight = isSaving === true;
   const modal = document.querySelector("#screening-override-modal .screening-override-modal");
@@ -841,12 +860,16 @@ function wireScreeningModalOnce() {
 
 function wireOverrideModalOnce() {
   const modal = document.getElementById("screening-override-modal");
+  const removeConfirmModal = document.getElementById("screening-override-remove-confirm-modal");
   const closeBtn = document.getElementById("screening-override-close");
   const cancelBtn = document.getElementById("screening-override-cancel");
   const saveBtn = document.getElementById("screening-override-save");
   const removeBtn = document.getElementById("screening-override-remove");
+  const removeConfirmCloseBtn = document.getElementById("screening-override-remove-confirm-close");
+  const removeConfirmCancelBtn = document.getElementById("screening-override-remove-confirm-cancel");
+  const removeConfirmConfirmBtn = document.getElementById("screening-override-remove-confirm-confirm");
   const modeOptions = document.querySelectorAll('input[name="override-duration-mode"]');
-  if (!modal || !closeBtn || !cancelBtn || !saveBtn || !removeBtn || !modeOptions.length) return;
+  if (!modal || !removeConfirmModal || !closeBtn || !cancelBtn || !saveBtn || !removeBtn || !removeConfirmCloseBtn || !removeConfirmCancelBtn || !removeConfirmConfirmBtn || !modeOptions.length) return;
 
   closeBtn.addEventListener("click", closeOverrideModal);
   cancelBtn.addEventListener("click", closeOverrideModal);
@@ -855,6 +878,12 @@ function wireOverrideModalOnce() {
   });
   modal.addEventListener("click", (e) => {
     if (e.target === modal && !isOverrideSaveInFlight) closeOverrideModal();
+  });
+  removeConfirmCloseBtn.addEventListener("click", () => closeRemoveOverrideConfirmModal(false));
+  removeConfirmCancelBtn.addEventListener("click", () => closeRemoveOverrideConfirmModal(false));
+  removeConfirmConfirmBtn.addEventListener("click", () => closeRemoveOverrideConfirmModal(true));
+  removeConfirmModal.addEventListener("click", (e) => {
+    if (e.target === removeConfirmModal) closeRemoveOverrideConfirmModal(false);
   });
 
   saveBtn.addEventListener("click", async () => {
@@ -876,7 +905,8 @@ function wireOverrideModalOnce() {
       closeOverrideModal();
       return;
     }
-    if (!confirm("Remove this screening override?")) return;
+    const confirmed = await confirmRemoveOverride();
+    if (!confirmed) return;
     setOverrideModalSavingState(true, { action: "remove" });
     try {
       await removeScreeningOverride(selectedOverrideContext);
@@ -885,6 +915,12 @@ function wireOverrideModalOnce() {
     } catch (err) {
       setOverrideModalSavingState(false);
       alert(err.message || "Failed to remove override");
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !removeConfirmModal.hidden) {
+      closeRemoveOverrideConfirmModal(false);
     }
   });
 }
