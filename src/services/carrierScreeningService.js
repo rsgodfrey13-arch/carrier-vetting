@@ -213,6 +213,19 @@ async function getCarrierByDot({ dotNumber, client }) {
   return rows[0] || null;
 }
 
+async function getCarrierInsuranceSummary({ dotNumber, client }) {
+  const { rows } = await client.query(
+    `
+    SELECT *
+    FROM public.carrier_insurance_summary
+    WHERE dot_number::text = $1
+    LIMIT 1
+    `,
+    [dotNumber]
+  );
+  return rows[0] || null;
+}
+
 async function getActiveCriterionOverridesForProfile({ companyId, dotNumber, profileId, client }) {
   const { rows } = await client.query(
     `
@@ -563,6 +576,11 @@ async function screenCarrierForProfile({ companyId, dotNumber, profile, client, 
   if (!carrier) {
     throw new Error(`Carrier not found for DOT ${normalizedDot}`);
   }
+  const insuranceSummary = await getCarrierInsuranceSummary({ dotNumber: normalizedDot, client });
+  const screeningCarrierRow = {
+    ...carrier,
+    ...(insuranceSummary || {})
+  };
 
   const criteria = await getEnabledCriteriaForProfile({ profileId: profile.id, client });
   const activeGroups = await getActiveGroupsForProfile({ profileId: profile.id, client });
@@ -580,7 +598,7 @@ async function screenCarrierForProfile({ companyId, dotNumber, profile, client, 
   }
 
   const criteriaResults = criteria.map((criterion) => {
-    const result = evaluateCriterion({ criterion, carrierRow: carrier });
+    const result = evaluateCriterion({ criterion, carrierRow: screeningCarrierRow });
     const override = activeOverridesByProfileCriteriaId.get(String(criterion.profile_criteria_id)) || null;
     const overriddenResult = applyCriterionOverride({ criterionResult: result, override });
     return {

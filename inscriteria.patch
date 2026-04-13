@@ -1,0 +1,143 @@
+diff --git a/src/services/carrierScreeningService.js b/src/services/carrierScreeningService.js
+index 128594e2607198b4dd51f9e4ece74d3e48233866..a28dede03a59ad6f92c8f77ed8ea3833a30a1ecf 100644
+--- a/src/services/carrierScreeningService.js
++++ b/src/services/carrierScreeningService.js
+@@ -191,50 +191,63 @@ async function getGroupMembershipForProfile({ profileId, client }) {
+       gc.profile_criteria_id
+     FROM public.company_screening_profile_groups g
+     JOIN public.company_screening_profile_group_criteria gc
+       ON gc.group_id = g.id
+     WHERE g.profile_id = $1
+       AND g.is_active = true
+     `,
+     [profileId]
+   );
+   return rows;
+ }
+ 
+ async function getCarrierByDot({ dotNumber, client }) {
+   const { rows } = await client.query(
+     `
+     SELECT *
+     FROM public.carriers
+     WHERE dotnumber::text = $1
+     LIMIT 1
+     `,
+     [dotNumber]
+   );
+   return rows[0] || null;
+ }
+ 
++async function getCarrierInsuranceSummary({ dotNumber, client }) {
++  const { rows } = await client.query(
++    `
++    SELECT *
++    FROM public.carrier_insurance_summary
++    WHERE dot_number::text = $1
++    LIMIT 1
++    `,
++    [dotNumber]
++  );
++  return rows[0] || null;
++}
++
+ async function getActiveCriterionOverridesForProfile({ companyId, dotNumber, profileId, client }) {
+   const { rows } = await client.query(
+     `
+     SELECT profile_criteria_id, expires_at, note
+     FROM public.company_carrier_screening_overrides
+     WHERE company_id = $1
+       AND carrier_dot = $2
+       AND profile_id = $3
+       AND is_active = true
+       AND (expires_at IS NULL OR expires_at > NOW())
+     `,
+     [companyId, dotNumber, profileId]
+   );
+ 
+   const overrideByProfileCriteriaId = new Map();
+   for (const row of rows) {
+     overrideByProfileCriteriaId.set(String(row.profile_criteria_id), {
+       expires_at: row.expires_at || null,
+       note: normalizeText(row.note)
+     });
+   }
+   return overrideByProfileCriteriaId;
+ }
+ 
+ async function getExistingResult({ companyId, profileId, dotNumber, client }) {
+@@ -541,68 +554,73 @@ async function screenCarrierForCompany({ companyId, dotNumber, client }) {
+     return {
+       hasDefaultProfile: false,
+       profile: null,
+       result: null,
+       status: "NO_PROFILE"
+     };
+   }
+ 
+   return screenCarrierForProfile({
+     companyId,
+     dotNumber: normalizedDot,
+     profile,
+     client,
+     updateUserCarrierCache: true
+   });
+ }
+ 
+ async function screenCarrierForProfile({ companyId, dotNumber, profile, client, updateUserCarrierCache = false }) {
+   const normalizedDot = normalizeDot(dotNumber);
+   if (!profile?.id) throw new Error("profile is required");
+ 
+   const carrier = await getCarrierByDot({ dotNumber: normalizedDot, client });
+   if (!carrier) {
+     throw new Error(`Carrier not found for DOT ${normalizedDot}`);
+   }
++  const insuranceSummary = await getCarrierInsuranceSummary({ dotNumber: normalizedDot, client });
++  const screeningCarrierRow = {
++    ...carrier,
++    ...(insuranceSummary || {})
++  };
+ 
+   const criteria = await getEnabledCriteriaForProfile({ profileId: profile.id, client });
+   const activeGroups = await getActiveGroupsForProfile({ profileId: profile.id, client });
+   const memberships = await getGroupMembershipForProfile({ profileId: profile.id, client });
+   const activeOverridesByProfileCriteriaId = await getActiveCriterionOverridesForProfile({
+     companyId,
+     dotNumber: normalizedDot,
+     profileId: profile.id,
+     client
+   });
+ 
+   const groupIdByProfileCriteriaId = new Map();
+   for (const membership of memberships) {
+     groupIdByProfileCriteriaId.set(String(membership.profile_criteria_id), membership.group_id);
+   }
+ 
+   const criteriaResults = criteria.map((criterion) => {
+-    const result = evaluateCriterion({ criterion, carrierRow: carrier });
++    const result = evaluateCriterion({ criterion, carrierRow: screeningCarrierRow });
+     const override = activeOverridesByProfileCriteriaId.get(String(criterion.profile_criteria_id)) || null;
+     const overriddenResult = applyCriterionOverride({ criterionResult: result, override });
+     return {
+       ...overriddenResult,
+       profile_criteria_id: criterion.profile_criteria_id,
+       group_id: groupIdByProfileCriteriaId.get(String(criterion.profile_criteria_id)) || null
+     };
+   });
+ 
+   const standaloneCriteriaResults = criteriaResults.filter((result) => !result.group_id);
+   const groupResults = activeGroups.map((group) => {
+     const groupedCriteria = criteriaResults.filter((result) => String(result.group_id) === String(group.id));
+     return evaluateGroup({ group, criteriaResults: groupedCriteria });
+   });
+ 
+   const aggregateInputs = [
+     ...standaloneCriteriaResults,
+     ...groupResults.map((group) => ({ status: group.status }))
+   ];
+   const aggregate = aggregateResults(aggregateInputs);
+ 
+   const summary = {
+     generated_at: new Date().toISOString(),
+     standalone_criteria: standaloneCriteriaResults,
+     groups: groupResults,
