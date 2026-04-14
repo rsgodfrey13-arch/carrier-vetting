@@ -331,16 +331,19 @@
             
             <div class="divider"></div>
 
-<div class="categories-header">
+<div class="categories-header save-row save-row--top">
   <h3 class="section-h3">Categories</h3>
 
-  <button
-    class="btn-primary btn-save-inline"
-    id="btn-save-alert-fields-top"
-    disabled
-  >
-    Save changes
-  </button>
+  <div class="save-row__actions">
+    <button
+      class="btn-primary btn-save-inline"
+      id="btn-save-alert-fields-top"
+      disabled
+    >
+      Save changes
+    </button>
+    <span id="email-save-status" class="save-status" aria-live="polite"></span>
+  </div>
 </div>
 
 
@@ -348,8 +351,10 @@
               <!-- JS will render grouped categories + toggles here -->
             </div>
             
-            <div class="alerts-save-row">
-              <button class="btn-primary" id="btn-save-alert-fields" disabled>Save changes</button>
+            <div class="save-row save-row--bottom save-row--separated">
+              <div class="save-row__actions">
+                <button class="btn-primary" id="btn-save-alert-fields" disabled>Save changes</button>
+              </div>
             </div>
 
           </div>
@@ -363,10 +368,13 @@
               <p class="muted">Pick your default agreement and manage templates.</p>
             </div>
 
-            <div class="row" style="display:flex; gap:10px; flex-wrap:wrap;">
-              <button class="btn-primary" id="btn-upload-agreement">Upload Agreement</button>
-              <button class="btn-primary" id="btn-set-default">Set default</button>
-              <button class="btn-ghost" id="btn-save-agreement-requirements" disabled>Save requirements</button>
+            <div class="row save-row save-row--inline">
+              <div class="save-row__actions save-row__actions--wrap">
+                <button class="btn-primary" id="btn-upload-agreement">Upload Agreement</button>
+                <button class="btn-primary" id="btn-set-default">Set default</button>
+                <button class="btn-ghost" id="btn-save-agreement-requirements" disabled>Save requirements</button>
+                <span id="agreements-save-status" class="save-status" aria-live="polite"></span>
+              </div>
             </div>
 
             <div id="agreement-requirements" class="toggle-grid" style="margin-top:10px; margin-bottom:4px;"></div>
@@ -410,6 +418,13 @@
 
             <div class="divider"></div>
 
+            <div class="save-row save-row--top">
+              <div class="save-row__actions">
+                <button class="btn-primary" id="btn-screening-save-top" disabled>Save Changes</button>
+                <span id="screening-save-status" class="save-status" aria-live="polite"></span>
+              </div>
+            </div>
+
             <div class="screening-groups-wrap">
               <div class="row screening-groups-head">
                 <div>
@@ -434,9 +449,10 @@
               </div>
             </div>
 
-            <div class="alerts-save-row">
-              <button class="btn-primary" id="btn-screening-save" disabled>Save Changes</button>
-              <span id="screening-save-status" class="screening-save-status" aria-live="polite"></span>
+            <div class="save-row save-row--bottom save-row--separated">
+              <div class="save-row__actions">
+                <button class="btn-primary" id="btn-screening-save" disabled>Save Changes</button>
+              </div>
             </div>
           </div>
         </section>

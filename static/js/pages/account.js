@@ -474,6 +474,9 @@ let agreementsSelectedId = null;
 let agreementsTemplates = [];
 let agreementRequirementsOriginal = null;
 let agreementRequirementsCurrent = null;
+let agreementRequirementsTemplateId = null;
+let agreementsSaveUiState = "idle";
+let agreementsSaveStateTimer = null;
 let agreementDeleteTargetId = null;
 const AGREEMENT_LIMIT_PER_COMPANY = 5;
 let screeningProfiles = [];
@@ -505,8 +508,26 @@ function getSelectedTemplate() {
 function setAgreementRequirementsSaveState() {
   const btn = document.getElementById("btn-save-agreement-requirements");
   if (!btn) return;
-  const dirty = JSON.stringify(agreementRequirementsCurrent) !== JSON.stringify(agreementRequirementsOriginal);
-  btn.disabled = !agreementsSelectedId || !dirty;
+  const dirty = !!agreementsSelectedId
+    && agreementRequirementsCurrent
+    && agreementRequirementsOriginal
+    && JSON.stringify(agreementRequirementsCurrent) !== JSON.stringify(agreementRequirementsOriginal);
+  btn.disabled = !dirty || agreementsSaveUiState === "saving";
+  if (agreementsSaveUiState === "saving") {
+    setAgreementsSaveFeedback("saving", "Saving...");
+    return;
+  }
+  if (agreementsSaveUiState === "error") {
+    setAgreementsSaveFeedback("error", "Could not save changes");
+    return;
+  }
+  if (dirty) {
+    setAgreementsSaveFeedback("unsaved", "Unsaved changes");
+    return;
+  }
+  if (agreementsSaveUiState !== "saved" && agreementsSaveUiState !== "error") {
+    setAgreementsSaveFeedback("idle", "");
+  }
 }
 
 function renderAgreementRequirements() {
@@ -518,10 +539,21 @@ function renderAgreementRequirements() {
     host.innerHTML = `<div class="muted">Select an agreement to configure supporting document requirements.</div>`;
     agreementRequirementsOriginal = null;
     agreementRequirementsCurrent = null;
+    agreementRequirementsTemplateId = null;
+    agreementsSaveUiState = "idle";
+    setAgreementsSaveFeedback("idle", "");
     setAgreementRequirementsSaveState();
     return;
   }
 
+  const currentTemplateId = String(tpl.id);
+  const templateChanged = currentTemplateId !== String(agreementRequirementsTemplateId || "");
+  agreementRequirementsTemplateId = currentTemplateId;
+
+  if (templateChanged && agreementsSaveUiState !== "saving") {
+    agreementsSaveUiState = "idle";
+    setAgreementsSaveFeedback("idle", "");
+  }
   agreementRequirementsOriginal = normalizeAgreementRequirements(tpl);
   agreementRequirementsCurrent = { ...agreementRequirementsOriginal };
 
@@ -544,6 +576,7 @@ function renderAgreementRequirements() {
     cb.addEventListener("change", () => {
       const key = cb.getAttribute("data-req-key");
       agreementRequirementsCurrent[key] = cb.checked;
+      if (agreementsSaveUiState !== "saving") agreementsSaveUiState = "idle";
       setAgreementRequirementsSaveState();
     });
   });
@@ -931,6 +964,8 @@ const SCREENING_INTEGER_CRITERIA_KEYS = new Set([
 const SCREENING_MULTI_ENUM_OPERATORS = new Set(["IN", "NOT_IN"]);
 let screeningSaveUiState = "idle";
 let screeningSaveStateTimer = null;
+let emailSaveUiState = "idle";
+let emailSaveStateTimer = null;
 
 function clearScreeningSaveStateTimer() {
   if (!screeningSaveStateTimer) return;
@@ -938,24 +973,63 @@ function clearScreeningSaveStateTimer() {
   screeningSaveStateTimer = null;
 }
 
-function setScreeningSaveFeedback(state = "idle", message = "") {
-  const el = document.getElementById("screening-save-status");
-  if (!el) return;
-  clearScreeningSaveStateTimer();
-  screeningSaveUiState = state;
+function clearEmailSaveStateTimer() {
+  if (!emailSaveStateTimer) return;
+  clearTimeout(emailSaveStateTimer);
+  emailSaveStateTimer = null;
+}
 
+function clearAgreementsSaveStateTimer() {
+  if (!agreementsSaveStateTimer) return;
+  clearTimeout(agreementsSaveStateTimer);
+  agreementsSaveStateTimer = null;
+}
+
+function setSaveStatusFeedback(el, state = "idle", message = "") {
+  if (!el) return;
   el.textContent = message || "";
-  el.className = "screening-save-status";
+  el.className = "save-status";
   if (!message) return;
   el.classList.add("is-visible");
   if (state === "unsaved") el.classList.add("is-unsaved");
   if (state === "saving") el.classList.add("is-saving");
   if (state === "saved") el.classList.add("is-saved");
   if (state === "error") el.classList.add("is-error");
+}
+
+function setScreeningSaveFeedback(state = "idle", message = "") {
+  const el = document.getElementById("screening-save-status");
+  clearScreeningSaveStateTimer();
+  screeningSaveUiState = state;
+  setSaveStatusFeedback(el, state, message);
 
   if (state === "saved") {
     screeningSaveStateTimer = setTimeout(() => {
       setScreeningSaveFeedback("idle", "");
+    }, 2500);
+  }
+}
+
+function setEmailSaveFeedback(state = "idle", message = "") {
+  const el = document.getElementById("email-save-status");
+  clearEmailSaveStateTimer();
+  emailSaveUiState = state;
+  setSaveStatusFeedback(el, state, message);
+  if (state === "saved") {
+    emailSaveStateTimer = setTimeout(() => {
+      setEmailSaveFeedback("idle", "");
+    }, 2500);
+  }
+}
+
+function setAgreementsSaveFeedback(state = "idle", message = "") {
+  const el = document.getElementById("agreements-save-status");
+  clearAgreementsSaveStateTimer();
+  agreementsSaveUiState = state;
+  setSaveStatusFeedback(el, state, message);
+  if (state === "saved") {
+    agreementsSaveStateTimer = setTimeout(() => {
+      setAgreementsSaveFeedback("idle", "");
     }, 2500);
   }
 }
@@ -1501,13 +1575,15 @@ function screeningCriteriaDirty() {
 }
 
 function updateScreeningSaveState() {
-  const btn = document.getElementById("btn-screening-save");
-  if (!btn) return;
   const dirty = !!selectedScreeningProfileId && screeningCriteriaDirty();
-  btn.textContent = "Save Changes";
-  btn.disabled = !dirty || screeningSaveUiState === "saving";
+  setScreeningSaveButtonsLabel(screeningSaveUiState === "saving" ? "Saving..." : "Save Changes");
+  setScreeningSaveButtonsDisabled(!dirty || screeningSaveUiState === "saving");
   if (screeningSaveUiState === "saving") {
     setScreeningSaveFeedback("saving", "Saving...");
+    return;
+  }
+  if (screeningSaveUiState === "error") {
+    setScreeningSaveFeedback("error", "Could not save changes");
     return;
   }
   if (dirty) {
@@ -1517,6 +1593,10 @@ function updateScreeningSaveState() {
   if (screeningSaveUiState !== "saved" && screeningSaveUiState !== "error") {
     setScreeningSaveFeedback("idle", "");
   }
+}
+
+function markScreeningEdited() {
+  if (screeningSaveUiState !== "saving") screeningSaveUiState = "idle";
 }
 
 function getSelectedScreeningProfile() {
@@ -1720,6 +1800,7 @@ function renderScreeningCriteria(criteria = []) {
       row.is_enabled = el.checked;
       if (row.is_enabled) ensureScreeningDefaults(row);
       if (!row.is_enabled) row.group_id = null;
+      markScreeningEdited();
       renderScreeningCriteria(screeningCriteriaCurrent);
       updateScreeningSaveState();
     });
@@ -1741,6 +1822,7 @@ function renderScreeningCriteria(criteria = []) {
           row.value_text = selectedValues[0] || null;
         }
       }
+      markScreeningEdited();
       renderScreeningCriteria(screeningCriteriaCurrent);
       updateScreeningSaveState();
     });
@@ -1755,6 +1837,7 @@ function renderScreeningCriteria(criteria = []) {
       if (key === "value_number") row.value_number = normalizeNumberForCriterion(row, el.value);
       if (key === "value_date") row.value_date = el.value || null;
       if (key === "value_text") row.value_text = el.value || null;
+      markScreeningEdited();
       updateScreeningSaveState();
       const previewEl = host.querySelector(`.screening-rule-card input[data-screening-enabled="${idx}"]`)?.closest('.screening-rule-card')?.querySelector('.screening-rule-preview');
       if (previewEl) previewEl.textContent = screeningRulePreview(row);
@@ -1782,6 +1865,7 @@ function renderScreeningCriteria(criteria = []) {
       if (!row) return;
       const checked = Array.from(host.querySelectorAll(`[data-screening-enum-multi="${idx}"]:checked`)).map((input) => input.value).filter(Boolean);
       row.value_text = checked.length ? checked.join(", ") : null;
+      markScreeningEdited();
       updateScreeningSaveState();
       const previewEl = host.querySelector(`.screening-rule-card input[data-screening-enabled="${idx}"]`)?.closest('.screening-rule-card')?.querySelector('.screening-rule-preview');
       if (previewEl) previewEl.textContent = screeningRulePreview(row);
@@ -1932,8 +2016,6 @@ async function saveScreeningCriteria() {
   if (!selectedScreeningProfileId) return;
   if (screeningSaveUiState === "saving") return;
   screeningSaveUiState = "saving";
-  const btn = document.getElementById("btn-screening-save");
-  if (btn) btn.textContent = "Saving...";
   updateScreeningSaveState();
   try {
     const payload = screeningCriteriaCurrent.map((row) => {
@@ -2053,6 +2135,25 @@ function setSaveButtonsDisabled(disabled) {
   getSaveButtons().forEach((b) => (b.disabled = !!disabled));
 }
 
+function setSaveButtonsLabel(text) {
+  getSaveButtons().forEach((b) => { b.textContent = text; });
+}
+
+function getScreeningSaveButtons() {
+  return [
+    document.getElementById("btn-screening-save"),
+    document.getElementById("btn-screening-save-top"),
+  ].filter(Boolean);
+}
+
+function setScreeningSaveButtonsDisabled(disabled) {
+  getScreeningSaveButtons().forEach((b) => { b.disabled = !!disabled; });
+}
+
+function setScreeningSaveButtonsLabel(text) {
+  getScreeningSaveButtons().forEach((b) => { b.textContent = text; });
+}
+
 
 // -----------------------------
 // Email alert fields (per-user)
@@ -2104,6 +2205,7 @@ function renderEmailAlertFields(fields) {
       const key = cb.getAttribute("data-field-key");
       const row = emailFieldsCurrent.find((x) => x.field_key === key);
       if (row) row.enabled = cb.checked;
+      if (emailSaveUiState !== "saving") emailSaveUiState = "idle";
       updateEmailFieldsSaveState();
     });
   });
@@ -2113,8 +2215,24 @@ function updateEmailFieldsSaveState() {
   const dirty =
     JSON.stringify(emailFieldsCurrent) !== JSON.stringify(emailFieldsOriginal);
 
+  setSaveButtonsLabel(emailSaveUiState === "saving" ? "Saving..." : "Save changes");
   // enable/disable BOTH buttons
-  setSaveButtonsDisabled(!dirty);
+  setSaveButtonsDisabled(!dirty || emailSaveUiState === "saving");
+  if (emailSaveUiState === "saving") {
+    setEmailSaveFeedback("saving", "Saving...");
+    return;
+  }
+  if (emailSaveUiState === "error") {
+    setEmailSaveFeedback("error", "Could not save changes");
+    return;
+  }
+  if (dirty) {
+    setEmailSaveFeedback("unsaved", "Unsaved changes");
+    return;
+  }
+  if (emailSaveUiState !== "saved" && emailSaveUiState !== "error") {
+    setEmailSaveFeedback("idle", "");
+  }
 }
 
 
@@ -2125,14 +2243,18 @@ async function loadEmailAlertFields() {
 
   emailFieldsOriginal = clone(fields);
   emailFieldsCurrent  = clone(fields);
+  emailSaveUiState = "idle";
+  setEmailSaveFeedback("idle", "");
 
   renderEmailAlertFields(emailFieldsCurrent);
   updateEmailFieldsSaveState();
 }
 
 async function saveEmailAlertFields() {
+  if (emailSaveUiState === "saving") return;
+  emailSaveUiState = "saving";
   // disable BOTH while saving
-  setSaveButtonsDisabled(true);
+  updateEmailFieldsSaveState();
 
   // send only changes
   const updates = [];
@@ -2145,14 +2267,22 @@ async function saveEmailAlertFields() {
 
   // nothing to save -> keep disabled
   if (!updates.length) {
+    emailSaveUiState = "idle";
     updateEmailFieldsSaveState();
     return;
   }
-
-  await apiPost("/api/account/email-alert-fields", { updates });
-
-  emailFieldsOriginal = clone(emailFieldsCurrent);
-  updateEmailFieldsSaveState(); // will disable both now (not dirty)
+  try {
+    await apiPost("/api/account/email-alert-fields", { updates });
+    emailFieldsOriginal = clone(emailFieldsCurrent);
+    emailSaveUiState = "saved";
+    setEmailSaveFeedback("saved", "Changes saved");
+  } catch (err) {
+    emailSaveUiState = "error";
+    setEmailSaveFeedback("error", "Could not save changes");
+    throw err;
+  } finally {
+    updateEmailFieldsSaveState(); // will disable both now (not dirty)
+  }
 }
 
 
@@ -2798,16 +2928,20 @@ document.getElementById("btn-set-default")?.addEventListener("click", async () =
 
 document.getElementById("btn-save-agreement-requirements")?.addEventListener("click", async () => {
   if (!agreementsSelectedId || !agreementRequirementsCurrent) return;
-
-  const btn = document.getElementById("btn-save-agreement-requirements");
-  if (btn) btn.disabled = true;
+  if (agreementsSaveUiState === "saving") return;
+  agreementsSaveUiState = "saving";
+  setAgreementRequirementsSaveState();
 
   try {
     await apiPatch(`/api/user-contracts/${encodeURIComponent(agreementsSelectedId)}/requirements`, agreementRequirementsCurrent);
     await loadAgreements();
+    agreementsSaveUiState = "saved";
+    setAgreementsSaveFeedback("saved", "Changes saved");
+    setAgreementRequirementsSaveState();
   } catch (err) {
     console.error(err);
-    alert("Failed to save agreement requirements.");
+    agreementsSaveUiState = "error";
+    setAgreementsSaveFeedback("error", "Could not save changes");
     setAgreementRequirementsSaveState();
   }
 });
@@ -2844,9 +2978,11 @@ document.getElementById("btn-screening-new-group")?.addEventListener("click", ()
   openScreeningRuleGroupModal();
 });
 
-document.getElementById("btn-screening-save")?.addEventListener("click", () => {
-  saveScreeningCriteria().catch((err) => {
-    console.error(err);
+getScreeningSaveButtons().forEach((btn) => {
+  btn.addEventListener("click", () => {
+    saveScreeningCriteria().catch((err) => {
+      console.error(err);
+    });
   });
 });
 

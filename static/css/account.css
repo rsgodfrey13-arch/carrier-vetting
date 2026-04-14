@@ -729,6 +729,8 @@ body.account-page{
   .kv-grid{ grid-template-columns: 1fr; }
   .toggle-grid{ grid-template-columns: 1fr; }
   .plan-grid{ grid-template-columns: 1fr; }
+  .save-row{ align-items:flex-start; flex-direction:column; }
+  .save-row__actions{ width:100%; justify-content:flex-start; margin-left:0; flex-wrap:wrap; }
 }
 
 html, body { margin: 0; padding: 0; }
@@ -964,31 +966,48 @@ body.account-page .page{
   gap: 12px 16px;
 }
 
-/* Space above the Save Changes button */
-.alerts-save-row{
-  margin-top: 24px;          /* separation from last category */
+.save-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.save-row--top{
+  margin: 18px 0 12px;
+}
+
+.save-row--bottom{
+  margin-top: 22px;
   padding-top: 12px;
 }
 
-/* Optional: subtle divider above save row */
-.alerts-save-row::before{
-  content: "";
-  display: block;
-  height: 1px;
-  margin-bottom: 16px;
-  background: linear-gradient(
-    to right,
-    transparent,
-    rgba(255,255,255,.12),
-    transparent
-  );
+.save-row--inline{
+  margin: 8px 0 2px;
 }
 
-.screening-save-status{
+.save-row--separated{
+  border-top: 1px solid rgba(255,255,255,.10);
+}
+
+.save-row__actions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+  margin-left:auto;
+}
+
+.save-row__actions--wrap{
+  flex-wrap:wrap;
+  justify-content:flex-start;
+  margin-left:0;
+}
+
+.save-status{
   display: inline-flex;
   align-items: center;
   min-height: 36px;
-  margin-left: 10px;
   padding: 0 12px;
   border-radius: 999px;
   font-size: .9rem;
@@ -999,30 +1018,30 @@ body.account-page .page{
   transition: opacity .18s ease, transform .18s ease;
 }
 
-.screening-save-status.is-visible{
+.save-status.is-visible{
   opacity: 1;
   transform: translateY(0);
 }
 
-.screening-save-status.is-unsaved{
+.save-status.is-unsaved{
   color: #f5d38b;
   background: rgba(245,211,139,.16);
   border: 1px solid rgba(245,211,139,.42);
 }
 
-.screening-save-status.is-saving{
+.save-status.is-saving{
   color: #9ac8ff;
   background: rgba(154,200,255,.14);
   border: 1px solid rgba(154,200,255,.4);
 }
 
-.screening-save-status.is-saved{
+.save-status.is-saved{
   color: #91e3bc;
   background: rgba(145,227,188,.14);
   border: 1px solid rgba(145,227,188,.38);
 }
 
-.screening-save-status.is-error{
+.save-status.is-error{
   color: #ff9c9c;
   background: rgba(255,156,156,.14);
   border: 1px solid rgba(255,156,156,.4);
@@ -1087,10 +1106,7 @@ body.account-page .page{
 
 
 .categories-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .categories-header .section-h3 {
