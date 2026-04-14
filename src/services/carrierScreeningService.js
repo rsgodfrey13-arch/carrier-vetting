@@ -77,6 +77,35 @@ function normalizeNumber(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function parseCoverageExpirationDate(value) {
+  const text = normalizeText(value);
+  if (!text) return null;
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return {
+    date: parsed,
+    isoDate: parsed.toISOString().slice(0, 10)
+  };
+}
+
+function isCoverageExpired(value) {
+  const parsed = parseCoverageExpirationDate(value);
+  if (!parsed) return null;
+  const today = new Date();
+  const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  const expiryUtc = Date.UTC(parsed.date.getUTCFullYear(), parsed.date.getUTCMonth(), parsed.date.getUTCDate());
+  return {
+    expired: expiryUtc < todayUtc,
+    isoDate: parsed.isoDate
+  };
+}
+
+function getInsuranceExpirationField(carrierField) {
+  const field = normalizeText(carrierField);
+  if (!field || !field.endsWith("_limit")) return null;
+  return field.replace(/_limit$/, "_expiration_date");
+}
+
 function parseCsvSet(valueText) {
   const normalized = normalizeText(valueText);
   if (!normalized) return [];
@@ -313,7 +342,21 @@ function evaluateBooleanCriterion({ criterion, rawValue }) {
   return { status: "REVIEW", matched: null, reason: `Unsupported BOOLEAN operator: ${op}`, actualNormalized: actual };
 }
 
-function evaluateNumberCriterion({ criterion, rawValue }) {
+function evaluateNumberCriterion({ criterion, rawValue, carrierRow }) {
+  const isInsuranceCriterion = String(criterion.category || "").toUpperCase() === "INSURANCE";
+  const expirationField = isInsuranceCriterion ? getInsuranceExpirationField(criterion.carrier_field) : null;
+  if (expirationField) {
+    const expirationCheck = isCoverageExpired(carrierRow?.[expirationField]);
+    if (expirationCheck?.expired) {
+      return {
+        status: "FAIL",
+        matched: false,
+        reason: `Coverage expired on ${expirationCheck.isoDate}`,
+        actualNormalized: "Expired"
+      };
+    }
+  }
+
   const actual = normalizeNumber(rawValue);
   const op = String(criterion.comparison_operator || "EQUALS").toUpperCase();
   const expected = normalizeNumber(criterion.value_number);
@@ -404,7 +447,7 @@ function evaluateCriterion({ criterion, carrierRow }) {
 
   let evaluation;
   if (valueType === "BOOLEAN") evaluation = evaluateBooleanCriterion({ criterion, rawValue });
-  else if (valueType === "NUMBER") evaluation = evaluateNumberCriterion({ criterion, rawValue });
+  else if (valueType === "NUMBER") evaluation = evaluateNumberCriterion({ criterion, rawValue, carrierRow });
   else if (valueType === "ENUM") evaluation = evaluateEnumCriterion({ criterion, rawValue });
   else if (valueType === "DATE") {
     evaluation = { status: "REVIEW", matched: null, reason: "DATE evaluation not supported yet", actualNormalized: normalizeText(rawValue) };

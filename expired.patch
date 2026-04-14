@@ -1,0 +1,204 @@
+diff --git a/src/services/carrierScreeningService.js b/src/services/carrierScreeningService.js
+index a28dede03a59ad6f92c8f77ed8ea3833a30a1ecf..b2c46586bb8dd60657b79f62579e9b053aa03af2 100644
+--- a/src/services/carrierScreeningService.js
++++ b/src/services/carrierScreeningService.js
+@@ -55,50 +55,79 @@ function normalizeText(value) {
+   const trimmed = String(value).trim();
+   return trimmed ? trimmed : null;
+ }
+ 
+ function normalizeBoolean(value) {
+   if (value === true || value === false) return value;
+   const text = normalizeText(value);
+   if (!text) return null;
+   const token = text.toUpperCase();
+   if (TRUE_SET.has(token)) return true;
+   if (FALSE_SET.has(token)) return false;
+   return null;
+ }
+ 
+ function normalizeNumber(value) {
+   if (value === null || value === undefined) return null;
+   if (typeof value === "number" && Number.isFinite(value)) return value;
+   const text = normalizeText(value);
+   if (!text) return null;
+   const cleaned = text.replace(/[%,$\s]/g, "").replace(/,/g, "");
+   if (!cleaned) return null;
+   const parsed = Number(cleaned);
+   return Number.isFinite(parsed) ? parsed : null;
+ }
+ 
++function parseCoverageExpirationDate(value) {
++  const text = normalizeText(value);
++  if (!text) return null;
++  const parsed = new Date(text);
++  if (Number.isNaN(parsed.getTime())) return null;
++  return {
++    date: parsed,
++    isoDate: parsed.toISOString().slice(0, 10)
++  };
++}
++
++function isCoverageExpired(value) {
++  const parsed = parseCoverageExpirationDate(value);
++  if (!parsed) return null;
++  const today = new Date();
++  const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
++  const expiryUtc = Date.UTC(parsed.date.getUTCFullYear(), parsed.date.getUTCMonth(), parsed.date.getUTCDate());
++  return {
++    expired: expiryUtc < todayUtc,
++    isoDate: parsed.isoDate
++  };
++}
++
++function getInsuranceExpirationField(carrierField) {
++  const field = normalizeText(carrierField);
++  if (!field || !field.endsWith("_limit")) return null;
++  return field.replace(/_limit$/, "_expiration_date");
++}
++
+ function parseCsvSet(valueText) {
+   const normalized = normalizeText(valueText);
+   if (!normalized) return [];
+   return normalized
+     .split(",")
+     .map((item) => normalizeText(item))
+     .filter(Boolean)
+     .map((item) => item.toUpperCase());
+ }
+ 
+ function normalizeEnumCarrierValue({ criterion, rawValue }) {
+   const field = String(criterion?.carrier_field || "").trim().toLowerCase();
+ 
+   if (SAFETY_RATING_ENUM_FIELDS.has(field)) {
+     const text = normalizeText(rawValue);
+     if (!text) return "Not Rated";
+     const token = text.toUpperCase();
+     return SAFETY_RATING_CANONICAL_MAP.get(token) || null;
+   }
+ 
+   const text = normalizeText(rawValue);
+   if (!text) return null;
+   const token = text.toUpperCase();
+ 
+   if (AUTHORITY_STATUS_ENUM_FIELDS.has(field)) {
+@@ -291,51 +320,65 @@ function evaluateBooleanCriterion({ criterion, rawValue }) {
+   const op = String(criterion.comparison_operator || "EQUALS").toUpperCase();
+ 
+   if (actual === null) {
+     return { status: "REVIEW", matched: null, reason: "Carrier value is missing or unrecognized", actualNormalized: null };
+   }
+ 
+   if (op === "IS_TRUE") {
+     return { status: actual ? "PASS" : "FAIL", matched: actual, reason: actual ? "Value is true" : "Value is not true", actualNormalized: actual };
+   }
+   if (op === "IS_FALSE") {
+     return { status: !actual ? "PASS" : "FAIL", matched: !actual, reason: !actual ? "Value is false" : "Value is not false", actualNormalized: actual };
+   }
+ 
+   if (op === "EQUALS") {
+     const expected = criterion.value_bool;
+     if (expected === null || expected === undefined) {
+       return { status: "REVIEW", matched: null, reason: "Expected boolean is not configured", actualNormalized: actual };
+     }
+     const matched = actual === expected;
+     return { status: matched ? "PASS" : "FAIL", matched, reason: matched ? "Boolean matched expected value" : "Boolean did not match expected value", actualNormalized: actual };
+   }
+ 
+   return { status: "REVIEW", matched: null, reason: `Unsupported BOOLEAN operator: ${op}`, actualNormalized: actual };
+ }
+ 
+-function evaluateNumberCriterion({ criterion, rawValue }) {
++function evaluateNumberCriterion({ criterion, rawValue, carrierRow }) {
++  const isInsuranceCriterion = String(criterion.category || "").toUpperCase() === "INSURANCE";
++  const expirationField = isInsuranceCriterion ? getInsuranceExpirationField(criterion.carrier_field) : null;
++  if (expirationField) {
++    const expirationCheck = isCoverageExpired(carrierRow?.[expirationField]);
++    if (expirationCheck?.expired) {
++      return {
++        status: "FAIL",
++        matched: false,
++        reason: `Coverage expired on ${expirationCheck.isoDate}`,
++        actualNormalized: "Expired"
++      };
++    }
++  }
++
+   const actual = normalizeNumber(rawValue);
+   const op = String(criterion.comparison_operator || "EQUALS").toUpperCase();
+   const expected = normalizeNumber(criterion.value_number);
+ 
+   if (actual === null) {
+     return { status: "REVIEW", matched: null, reason: "Carrier value is missing or not numeric", actualNormalized: null };
+   }
+   if (expected === null) {
+     return { status: "REVIEW", matched: null, reason: "Expected numeric value is not configured", actualNormalized: actual };
+   }
+ 
+   let matched = null;
+   if (op === "EQUALS") matched = actual === expected;
+   else if (op === "NOT_EQUALS") matched = actual !== expected;
+   else if (op === "LESS_THAN") matched = actual < expected;
+   else if (op === "LESS_THAN_OR_EQUAL") matched = actual <= expected;
+   else if (op === "GREATER_THAN") matched = actual > expected;
+   else if (op === "GREATER_THAN_OR_EQUAL") matched = actual >= expected;
+ 
+   if (matched === null) {
+     return { status: "REVIEW", matched: null, reason: `Unsupported NUMBER operator: ${op}`, actualNormalized: actual };
+   }
+ 
+   return { status: matched ? "PASS" : "FAIL", matched, reason: matched ? "Numeric value matched rule" : "Numeric value did not match rule", actualNormalized: actual };
+ }
+@@ -382,51 +425,51 @@ function evaluateCriterion({ criterion, carrierRow }) {
+   const operator = String(criterion.comparison_operator || "EQUALS").toUpperCase();
+ 
+   if (!SUPPORTED_OPERATORS.has(operator)) {
+     return {
+       criteria_key: criterion.criteria_key,
+       label: criterion.label,
+       category: criterion.category,
+       carrier_field: field,
+       comparison_operator: operator,
+       expected_value: {
+         value_bool: criterion.value_bool,
+         value_number: criterion.value_number,
+         value_date: criterion.value_date,
+         value_text: criterion.value_text
+       },
+       actual_value_raw: rawValue,
+       actual_value_normalized: null,
+       status: "REVIEW",
+       matched: null,
+       reason: `Unsupported operator: ${operator}`
+     };
+   }
+ 
+   let evaluation;
+   if (valueType === "BOOLEAN") evaluation = evaluateBooleanCriterion({ criterion, rawValue });
+-  else if (valueType === "NUMBER") evaluation = evaluateNumberCriterion({ criterion, rawValue });
++  else if (valueType === "NUMBER") evaluation = evaluateNumberCriterion({ criterion, rawValue, carrierRow });
+   else if (valueType === "ENUM") evaluation = evaluateEnumCriterion({ criterion, rawValue });
+   else if (valueType === "DATE") {
+     evaluation = { status: "REVIEW", matched: null, reason: "DATE evaluation not supported yet", actualNormalized: normalizeText(rawValue) };
+   } else {
+     evaluation = { status: "REVIEW", matched: null, reason: `Unsupported criteria value_type: ${valueType || "unknown"}`, actualNormalized: null };
+   }
+ 
+   return {
+     criteria_key: criterion.criteria_key,
+     label: criterion.label,
+     category: criterion.category,
+     carrier_field: field,
+     comparison_operator: operator,
+     expected_value: {
+       value_bool: criterion.value_bool,
+       value_number: criterion.value_number,
+       value_date: criterion.value_date,
+       value_text: criterion.value_text
+     },
+     actual_value_raw: rawValue,
+     actual_value_normalized: evaluation.actualNormalized,
+     status: evaluation.status,
+     matched: evaluation.matched,
+     reason: evaluation.reason
+   };
