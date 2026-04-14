@@ -320,7 +320,7 @@ function evaluateBooleanCriterion({ criterion, rawValue }) {
   const op = String(criterion.comparison_operator || "EQUALS").toUpperCase();
 
   if (actual === null) {
-    return { status: "REVIEW", matched: null, reason: "Carrier value is missing or unrecognized", actualNormalized: null };
+    return { status: "FAIL", matched: false, reason: "Carrier value is missing or unrecognized", actualNormalized: null };
   }
 
   if (op === "IS_TRUE") {
@@ -333,13 +333,13 @@ function evaluateBooleanCriterion({ criterion, rawValue }) {
   if (op === "EQUALS") {
     const expected = criterion.value_bool;
     if (expected === null || expected === undefined) {
-      return { status: "REVIEW", matched: null, reason: "Expected boolean is not configured", actualNormalized: actual };
+      return { status: "FAIL", matched: false, reason: "Expected boolean is not configured", actualNormalized: actual };
     }
     const matched = actual === expected;
     return { status: matched ? "PASS" : "FAIL", matched, reason: matched ? "Boolean matched expected value" : "Boolean did not match expected value", actualNormalized: actual };
   }
 
-  return { status: "REVIEW", matched: null, reason: `Unsupported BOOLEAN operator: ${op}`, actualNormalized: actual };
+  return { status: "FAIL", matched: false, reason: `Unsupported BOOLEAN operator: ${op}`, actualNormalized: actual };
 }
 
 function evaluateNumberCriterion({ criterion, rawValue, carrierRow }) {
@@ -362,10 +362,10 @@ function evaluateNumberCriterion({ criterion, rawValue, carrierRow }) {
   const expected = normalizeNumber(criterion.value_number);
 
   if (actual === null) {
-    return { status: "REVIEW", matched: null, reason: "Carrier value is missing or not numeric", actualNormalized: null };
+    return { status: "FAIL", matched: false, reason: "Carrier value is missing or not numeric", actualNormalized: null };
   }
   if (expected === null) {
-    return { status: "REVIEW", matched: null, reason: "Expected numeric value is not configured", actualNormalized: actual };
+    return { status: "FAIL", matched: false, reason: "Expected numeric value is not configured", actualNormalized: actual };
   }
 
   let matched = null;
@@ -377,7 +377,7 @@ function evaluateNumberCriterion({ criterion, rawValue, carrierRow }) {
   else if (op === "GREATER_THAN_OR_EQUAL") matched = actual >= expected;
 
   if (matched === null) {
-    return { status: "REVIEW", matched: null, reason: `Unsupported NUMBER operator: ${op}`, actualNormalized: actual };
+    return { status: "FAIL", matched: false, reason: `Unsupported NUMBER operator: ${op}`, actualNormalized: actual };
   }
 
   return { status: matched ? "PASS" : "FAIL", matched, reason: matched ? "Numeric value matched rule" : "Numeric value did not match rule", actualNormalized: actual };
@@ -389,18 +389,18 @@ function evaluateEnumCriterion({ criterion, rawValue }) {
   const expectedText = normalizeText(criterion.value_text);
 
   if (!actual) {
-    return { status: "REVIEW", matched: null, reason: "Carrier value is missing", actualNormalized: null };
+    return { status: "FAIL", matched: false, reason: "Carrier value is missing", actualNormalized: null };
   }
 
   const actualUpper = actual.toUpperCase();
   if (op === "EQUALS") {
-    if (!expectedText) return { status: "REVIEW", matched: null, reason: "Expected text value is not configured", actualNormalized: actual };
+    if (!expectedText) return { status: "FAIL", matched: false, reason: "Expected text value is not configured", actualNormalized: actual };
     const matched = actualUpper === expectedText.toUpperCase();
     return { status: matched ? "PASS" : "FAIL", matched, reason: matched ? "Text matched expected value" : "Text did not match expected value", actualNormalized: actual };
   }
 
   if (op === "NOT_EQUALS") {
-    if (!expectedText) return { status: "REVIEW", matched: null, reason: "Expected text value is not configured", actualNormalized: actual };
+    if (!expectedText) return { status: "FAIL", matched: false, reason: "Expected text value is not configured", actualNormalized: actual };
     const matched = actualUpper !== expectedText.toUpperCase();
     return { status: matched ? "PASS" : "FAIL", matched, reason: matched ? "Text differs as expected" : "Text equals excluded value", actualNormalized: actual };
   }
@@ -408,14 +408,14 @@ function evaluateEnumCriterion({ criterion, rawValue }) {
   if (op === "IN" || op === "NOT_IN") {
     const expectedSet = parseCsvSet(criterion.value_text);
     if (!expectedSet.length) {
-      return { status: "REVIEW", matched: null, reason: "Expected IN list is not configured", actualNormalized: actual };
+      return { status: "FAIL", matched: false, reason: "Expected IN list is not configured", actualNormalized: actual };
     }
     const inSet = expectedSet.includes(actualUpper);
     const matched = op === "IN" ? inSet : !inSet;
     return { status: matched ? "PASS" : "FAIL", matched, reason: matched ? "Text matched list rule" : "Text did not match list rule", actualNormalized: actual };
   }
 
-  return { status: "REVIEW", matched: null, reason: `Unsupported ENUM operator: ${op}`, actualNormalized: actual };
+  return { status: "FAIL", matched: false, reason: `Unsupported ENUM operator: ${op}`, actualNormalized: actual };
 }
 
 function evaluateCriterion({ criterion, carrierRow }) {
@@ -439,8 +439,8 @@ function evaluateCriterion({ criterion, carrierRow }) {
       },
       actual_value_raw: rawValue,
       actual_value_normalized: null,
-      status: "REVIEW",
-      matched: null,
+      status: "FAIL",
+      matched: false,
       reason: `Unsupported operator: ${operator}`
     };
   }
@@ -450,9 +450,9 @@ function evaluateCriterion({ criterion, carrierRow }) {
   else if (valueType === "NUMBER") evaluation = evaluateNumberCriterion({ criterion, rawValue, carrierRow });
   else if (valueType === "ENUM") evaluation = evaluateEnumCriterion({ criterion, rawValue });
   else if (valueType === "DATE") {
-    evaluation = { status: "REVIEW", matched: null, reason: "DATE evaluation not supported yet", actualNormalized: normalizeText(rawValue) };
+    evaluation = { status: "FAIL", matched: false, reason: "DATE evaluation not supported yet", actualNormalized: normalizeText(rawValue) };
   } else {
-    evaluation = { status: "REVIEW", matched: null, reason: `Unsupported criteria value_type: ${valueType || "unknown"}`, actualNormalized: null };
+    evaluation = { status: "FAIL", matched: false, reason: `Unsupported criteria value_type: ${valueType || "unknown"}`, actualNormalized: null };
   }
 
   return {
@@ -477,17 +477,15 @@ function evaluateCriterion({ criterion, carrierRow }) {
 
 function aggregateResults(criteriaResults) {
   let failed = 0;
-  let review = 0;
   let matched = 0;
 
   for (const result of criteriaResults) {
     if (result.status === "FAIL") failed += 1;
-    else if (result.status === "REVIEW") review += 1;
     else if (result.status === "PASS") matched += 1;
   }
 
-  const screeningStatus = failed > 0 ? "FAIL" : review > 0 ? "REVIEW" : "PASS";
-  return { screeningStatus, matchedCount: matched, failedCount: failed, reviewCount: review };
+  const screeningStatus = failed > 0 ? "FAIL" : "PASS";
+  return { screeningStatus, matchedCount: matched, failedCount: failed, reviewCount: 0 };
 }
 
 function evaluateGroup({ group, criteriaResults }) {
@@ -497,21 +495,20 @@ function evaluateGroup({ group, criteriaResults }) {
       group_id: group.id,
       group_name: group.group_name,
       match_type: matchType,
-      status: "REVIEW",
+      status: "FAIL",
       reason: "Group has no criteria assigned",
       criteria: []
     };
   }
 
   const hasFail = criteriaResults.some((result) => result.status === "FAIL");
-  const hasReview = criteriaResults.some((result) => result.status === "REVIEW");
   const hasPass = criteriaResults.some((result) => result.status === "PASS");
 
   let status = "PASS";
   if (matchType === "ALL") {
-    status = hasFail ? "FAIL" : hasReview ? "REVIEW" : "PASS";
+    status = hasFail ? "FAIL" : "PASS";
   } else {
-    status = hasPass ? "PASS" : hasReview ? "REVIEW" : "FAIL";
+    status = hasPass ? "PASS" : "FAIL";
   }
 
   return {
