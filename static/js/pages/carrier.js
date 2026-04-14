@@ -1197,6 +1197,8 @@ function renderInsuranceDocumentOnly(doc, dot) {
     const policy = safeText(c.policy_number);
     const eff = fmtDate(c.effective_date);
     const exp = fmtDate(c.expiration_date);
+    const expirationDate = c.expiration_date ? new Date(c.expiration_date) : null;
+    const isExpired = expirationDate && expirationDate < new Date();
     const canViewDocument = c.can_view_document === true;
     const openBtn = c.document_id && canViewDocument
       ? `<button class="ins-open-coi" type="button" data-open-ins-doc="${c.document_id}">View Insurance Certificate</button>`
@@ -1247,12 +1249,15 @@ function renderInsuranceDocumentOnly(doc, dot) {
       : `<div class="cs-hint">No limits parsed.</div>`;
 
     const card = document.createElement("div");
-    card.className = "ins-coverage";
+    card.className = `ins-coverage ${isExpired ? "ins-coverage--expired" : ""}`;
 
     card.innerHTML = `
       <div class="ins-top">
         <div class="ins-title-row">
-          <div class="ins-title">${title}</div>
+          <div class="ins-title-wrap">
+            <div class="ins-title">${title}</div>
+            ${isExpired ? `<span class="ins-expired-badge">Expired</span>` : ``}
+          </div>
           <div class="ins-title-actions">
               ${openBtn}
           </div>
