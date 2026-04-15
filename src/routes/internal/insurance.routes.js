@@ -76,8 +76,8 @@ function normalizeCoverageType(v) {
 
 function normalizeDocumentReviewAction(v) {
   const x = String(v || "").toUpperCase().trim();
-  if (x === "SAVE_COVERAGE" || x === "CLOSE") return x;
-  throw new Error("action must be SAVE_COVERAGE or CLOSE.");
+  if (x === "SAVE_COVERAGES" || x === "SAVE_COVERAGE" || x === "CLOSE") return x;
+  throw new Error("action must be SAVE_COVERAGES, SAVE_COVERAGE, or CLOSE.");
 }
 
 function normalizeCoverageCurrency(v) {
@@ -136,11 +136,6 @@ async function getFunctionArgCounts(client, schema, fnName) {
 
 function hasArgCount(argCounts, count) {
   return Array.isArray(argCounts) && argCounts.includes(count);
-}
-
-function getCoverageIdFromFunctionRow(row) {
-  if (!row || typeof row !== "object") return null;
-  return row.coverage_id || row.id || row.inserted_coverage_id || row.out_coverage_id || null;
 }
 
 async function closeDocumentReviewException(client, exceptionId, closeNotes) {
@@ -225,6 +220,88 @@ async function closeNormalizationException(client, exceptionId, closeNotes) {
   );
 
   return { mode: "update", updatedCount: updated.rowCount };
+}
+
+async function insertManualCoverageAndLimit({
+  client,
+  documentId,
+  coverageArgCounts,
+  coverageLimitArgCounts,
+  coverageInput,
+}) {
+  const coverageType = String(coverageInput?.coverage_type || "").trim();
+  const coverageTypeRaw = blankToNull(coverageInput?.coverage_type_raw) || coverageType;
+  const insurerLetter = blankToNull(coverageInput?.insurer_letter);
+  const insurerName = String(coverageInput?.insurer_name || "").trim();
+  const policyNumber = blankToNull(coverageInput?.policy_number);
+  const effectiveDate = String(coverageInput?.effective_date || "").trim();
+  const expirationDate = String(coverageInput?.expiration_date || "").trim();
+  const limitLabel = blankToNull(coverageInput?.limit_label) || "Amount";
+  const currency = normalizeCoverageCurrency(coverageInput?.currency);
+  const amount = Number(coverageInput?.amount);
+
+  if (!coverageType) throw new Error("coverage_type is required.");
+  if (!insurerName) throw new Error("insurer_name is required.");
+  if (!effectiveDate) throw new Error("effective_date is required.");
+  if (!expirationDate) throw new Error("expiration_date is required.");
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error("amount must be a positive number.");
+
+  const generatedCoverageId = crypto.randomUUID();
+  const coverageIdForLimit = generatedCoverageId;
+
+  if (hasArgCount(coverageArgCounts, 11)) {
+    await client.query(
+      `
+      SELECT *
+      FROM public.manual_insert_insurance_coverage($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
+      `,
+      [
+        documentId,
+        generatedCoverageId,
+        coverageType,
+        coverageTypeRaw,
+        insurerLetter,
+        insurerName,
+        policyNumber,
+        effectiveDate,
+        expirationDate,
+        null,
+        null,
+      ]
+    );
+  } else if (hasArgCount(coverageArgCounts, 7)) {
+    throw new Error(
+      "manual_insert_insurance_coverage(7 args) is no longer supported in document-review save flow because it cannot carry expiration_date."
+    );
+  } else {
+    throw new Error(
+      `Unsupported signature for manual_insert_insurance_coverage. Found arg counts: ${coverageArgCounts.join(", ") || "none"}.`
+    );
+  }
+
+  if (hasArgCount(coverageLimitArgCounts, 9)) {
+    await client.query(
+      `
+      SELECT *
+      FROM public.manual_insert_insurance_coverage_limit($1, $2, $3, $4, $5, $6, $7, $8, $9);
+      `,
+      [coverageIdForLimit, limitLabel, currency, amount, null, null, null, null, 1]
+    );
+  } else if (hasArgCount(coverageLimitArgCounts, 4)) {
+    await client.query(
+      `
+      SELECT *
+      FROM public.manual_insert_insurance_coverage_limit($1, $2, $3, $4);
+      `,
+      [coverageIdForLimit, limitLabel, currency, amount]
+    );
+  } else {
+    throw new Error(
+      `Unsupported signature for manual_insert_insurance_coverage_limit. Found arg counts: ${coverageLimitArgCounts.join(", ") || "none"}.`
+    );
+  }
+
+  return coverageIdForLimit;
 }
 
 /**
@@ -316,101 +393,45 @@ router.post(
         return res.json({ ok: true, action: "CLOSE", close_result: closeResult });
       }
 
-      const coverageType = String(req.body?.coverage_type || "").trim();
-      const coverageTypeRaw = blankToNull(req.body?.coverage_type_raw) || coverageType;
-      const insurerLetter = blankToNull(req.body?.insurer_letter);
-      const insurerName = String(req.body?.insurer_name || "").trim();
-      const policyNumber = blankToNull(req.body?.policy_number);
-      const effectiveDate = String(req.body?.effective_date || "").trim();
-      const expirationDate = String(req.body?.expiration_date || "").trim();
-      const limitLabel = blankToNull(req.body?.limit_label) || "Amount";
-      const currency = normalizeCoverageCurrency(req.body?.currency);
-      const amount = Number(req.body?.amount);
-
-      if (!coverageType) throw new Error("coverage_type is required.");
-      if (!insurerName) throw new Error("insurer_name is required.");
-      if (!effectiveDate) throw new Error("effective_date is required.");
-      if (!expirationDate) throw new Error("expiration_date is required.");
-      if (!Number.isFinite(amount) || amount <= 0) throw new Error("amount must be a positive number.");
-
-      const generatedCoverageId = crypto.randomUUID();
       const coverageArgCounts = await getFunctionArgCounts(client, "public", "manual_insert_insurance_coverage");
       const coverageLimitArgCounts = await getFunctionArgCounts(client, "public", "manual_insert_insurance_coverage_limit");
-      let coverageIdForLimit = generatedCoverageId;
+      const submittedCoverages =
+        action === "SAVE_COVERAGES"
+          ? req.body?.coverages
+          : [
+              {
+                coverage_type: req.body?.coverage_type,
+                coverage_type_raw: req.body?.coverage_type_raw,
+                insurer_letter: req.body?.insurer_letter,
+                insurer_name: req.body?.insurer_name,
+                policy_number: req.body?.policy_number,
+                effective_date: req.body?.effective_date,
+                expiration_date: req.body?.expiration_date,
+                limit_label: req.body?.limit_label,
+                currency: req.body?.currency,
+                amount: req.body?.amount,
+              },
+            ];
+      const coverageDrafts = Array.isArray(submittedCoverages) ? submittedCoverages : [];
+      if (!coverageDrafts.length) throw new Error("coverages must contain at least one coverage.");
 
-      if (hasArgCount(coverageArgCounts, 11)) {
-        await client.query(
-          `
-          SELECT *
-          FROM public.manual_insert_insurance_coverage($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
-          `,
-          [
-            exceptionDoc.rows[0].document_id,
-            generatedCoverageId,
-            coverageType,
-            coverageTypeRaw,
-            insurerLetter,
-            insurerName,
-            policyNumber,
-            effectiveDate,
-            expirationDate,
-            null,
-            null,
-          ]
-        );
-      } else if (hasArgCount(coverageArgCounts, 7)) {
-        const sevenArgInsert = await client.query(
-          `
-          SELECT *
-          FROM public.manual_insert_insurance_coverage($1, $2, $3, $4, $5, $6, $7);
-          `,
-          [
-            exceptionDoc.rows[0].document_id,
-            coverageType,
-            coverageTypeRaw,
-            insurerLetter,
-            insurerName,
-            policyNumber,
-            effectiveDate,
-          ]
-        );
-
-        const insertedCoverageId = getCoverageIdFromFunctionRow(sevenArgInsert.rows?.[0]);
-        if (!insertedCoverageId) {
-          throw new Error(
-            "manual_insert_insurance_coverage(7 args) did not return a usable coverage id, so the limit insert was not attempted."
-          );
+      const insertedCoverageIds = [];
+      for (let i = 0; i < coverageDrafts.length; i += 1) {
+        try {
+          const coverageId = await insertManualCoverageAndLimit({
+            client,
+            documentId: exceptionDoc.rows[0].document_id,
+            coverageArgCounts,
+            coverageLimitArgCounts,
+            coverageInput: coverageDrafts[i],
+          });
+          insertedCoverageIds.push(coverageId);
+        } catch (err) {
+          throw new Error(`Coverage ${i + 1}: ${err.message || "failed to insert coverage."}`);
         }
-        coverageIdForLimit = insertedCoverageId;
-      } else {
-        throw new Error(
-          `Unsupported signature for manual_insert_insurance_coverage. Found arg counts: ${coverageArgCounts.join(", ") || "none"}.`
-        );
       }
 
-      if (hasArgCount(coverageLimitArgCounts, 9)) {
-        await client.query(
-          `
-          SELECT *
-          FROM public.manual_insert_insurance_coverage_limit($1, $2, $3, $4, $5, $6, $7, $8, $9);
-          `,
-          [coverageIdForLimit, limitLabel, currency, amount, null, null, null, null, 1]
-        );
-      } else if (hasArgCount(coverageLimitArgCounts, 4)) {
-        await client.query(
-          `
-          SELECT *
-          FROM public.manual_insert_insurance_coverage_limit($1, $2, $3, $4);
-          `,
-          [coverageIdForLimit, limitLabel, currency, amount]
-        );
-      } else {
-        throw new Error(
-          `Unsupported signature for manual_insert_insurance_coverage_limit. Found arg counts: ${coverageLimitArgCounts.join(", ") || "none"}.`
-        );
-      }
-
-      // Document-review SAVE_COVERAGE flow is intentionally raw-insert-only:
+      // Document-review SAVE_COVERAGES flow is intentionally raw-insert-only:
       // 1) insert raw coverage, 2) insert raw limit, 3) close document-review exception.
       // Normalization is NOT auto-run in this transaction.
       const closeResult = await closeDocumentReviewException(client, exceptionId, "Resolved after manual coverage insert");
@@ -418,8 +439,9 @@ router.post(
       await client.query("COMMIT");
       return res.json({
         ok: true,
-        action: "SAVE_COVERAGE",
-        coverage_id: coverageIdForLimit,
+        action: "SAVE_COVERAGES",
+        inserted_count: insertedCoverageIds.length,
+        coverage_ids: insertedCoverageIds,
         close_result: closeResult,
       });
     } catch (err) {

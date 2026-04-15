@@ -1,0 +1,995 @@
+diff --git a/src/routes/internal/insurance.routes.js b/src/routes/internal/insurance.routes.js
+index 95139fde02dbc8ffb3ee7d669b8201ce37f1e4ff..54f64ea2a8a1d2b1a9d2a747c8de888c4196cf99 100644
+--- a/src/routes/internal/insurance.routes.js
++++ b/src/routes/internal/insurance.routes.js
+@@ -54,52 +54,52 @@ function normalizeUploadedBy(v) {
+ function normalizeDocType(v) {
+   const x = String(v || "COI").toUpperCase().trim();
+   if (x === "COI" || x === "OTHER") return x;
+   throw new Error("document_type must be COI or OTHER.");
+ }
+ 
+ function normalizeCoverageType(v) {
+   const x = String(v || "").toUpperCase().trim();
+   const allowed = new Set([
+     "AUTO_LIABILITY",
+     "CARGO",
+     "GENERAL_LIABILITY",
+     "UMBRELLA_LIABILITY",
+     "WORKERS_COMP",
+     "ERRORS_OMISSIONS",
+     "CONTINGENT_AUTO_LIABILITY",
+   ]);
+   if (!allowed.has(x)) {
+     throw new Error("Invalid coverage_type.");
+   }
+   return x;
+ }
+ 
+ function normalizeDocumentReviewAction(v) {
+   const x = String(v || "").toUpperCase().trim();
+-  if (x === "SAVE_COVERAGE" || x === "CLOSE") return x;
+-  throw new Error("action must be SAVE_COVERAGE or CLOSE.");
++  if (x === "SAVE_COVERAGES" || x === "SAVE_COVERAGE" || x === "CLOSE") return x;
++  throw new Error("action must be SAVE_COVERAGES, SAVE_COVERAGE, or CLOSE.");
+ }
+ 
+ function normalizeCoverageCurrency(v) {
+   const x = String(v || "USD").toUpperCase().trim();
+   if (x === "USD") return "USD";
+   throw new Error("currency must be USD.");
+ }
+ 
+ function blankToNull(v) {
+   const x = String(v ?? "").trim();
+   return x ? x : null;
+ }
+ 
+ function toDocumentBasedOcrError(message, documentId) {
+   const raw = String(message || "").trim();
+   if (!raw) return raw;
+ 
+   if (!raw.toLowerCase().includes("insurance_ocr_jobs")) {
+     return raw;
+   }
+ 
+   const docIdMatch = raw.match(/docupipe_document_id\s*=\s*([^\s,;]+)/i);
+   const id = documentId || docIdMatch?.[1] || "unknown";
+   return `No OCR job row found for document_id=${id}.`;
+ }
+@@ -116,55 +116,50 @@ async function dbFunctionExists(client, schema, fnName) {
+     ) AS exists;
+     `,
+     [schema, fnName]
+   );
+   return rows?.[0]?.exists === true;
+ }
+ 
+ async function getFunctionArgCounts(client, schema, fnName) {
+   const { rows } = await client.query(
+     `
+     SELECT p.pronargs::int AS arg_count
+     FROM pg_proc p
+     JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = $1
+       AND p.proname = $2;
+     `,
+     [schema, fnName]
+   );
+   return rows.map((r) => r.arg_count);
+ }
+ 
+ function hasArgCount(argCounts, count) {
+   return Array.isArray(argCounts) && argCounts.includes(count);
+ }
+ 
+-function getCoverageIdFromFunctionRow(row) {
+-  if (!row || typeof row !== "object") return null;
+-  return row.coverage_id || row.id || row.inserted_coverage_id || row.out_coverage_id || null;
+-}
+-
+ async function closeDocumentReviewException(client, exceptionId, closeNotes) {
+   const hasCloseFunction = await dbFunctionExists(client, "public", "close_insurance_document_review_exception");
+   if (hasCloseFunction) {
+     const argCounts = await getFunctionArgCounts(client, "public", "close_insurance_document_review_exception");
+ 
+     if (hasArgCount(argCounts, 3)) {
+       const { rows } = await client.query(
+         "SELECT * FROM public.close_insurance_document_review_exception($1, $2, $3);",
+         [exceptionId, "RESOLVED", closeNotes]
+       );
+       return { mode: "function", result: rows?.[0] ?? null, arg_count_used: 3 };
+     }
+ 
+     if (hasArgCount(argCounts, 2)) {
+       const { rows } = await client.query(
+         "SELECT * FROM public.close_insurance_document_review_exception($1, $2);",
+         [exceptionId, closeNotes]
+       );
+       return { mode: "function", result: rows?.[0] ?? null, arg_count_used: 2 };
+     }
+ 
+     throw new Error(
+       `Unsupported signature for close_insurance_document_review_exception. Found arg counts: ${argCounts.join(", ") || "none"}.`
+     );
+   }
+@@ -205,50 +200,132 @@ async function closeNormalizationException(client, exceptionId, closeNotes) {
+       );
+       return { mode: "function", result: rows?.[0] ?? null, arg_count_used: 2 };
+     }
+ 
+     throw new Error(
+       `Unsupported signature for close_insurance_exception_manual. Found arg counts: ${argCounts.join(", ") || "none"}.`
+     );
+   }
+ 
+   const updated = await client.query(
+     `
+     UPDATE public.insurance_normalization_exceptions
+     SET status = 'RESOLVED',
+         resolution_notes = $2,
+         resolved_at = NOW()
+     WHERE id = $1
+       AND status = 'OPEN'
+     RETURNING id;
+     `,
+     [exceptionId, closeNotes]
+   );
+ 
+   return { mode: "update", updatedCount: updated.rowCount };
+ }
+ 
++async function insertManualCoverageAndLimit({
++  client,
++  documentId,
++  coverageArgCounts,
++  coverageLimitArgCounts,
++  coverageInput,
++}) {
++  const coverageType = String(coverageInput?.coverage_type || "").trim();
++  const coverageTypeRaw = blankToNull(coverageInput?.coverage_type_raw) || coverageType;
++  const insurerLetter = blankToNull(coverageInput?.insurer_letter);
++  const insurerName = String(coverageInput?.insurer_name || "").trim();
++  const policyNumber = blankToNull(coverageInput?.policy_number);
++  const effectiveDate = String(coverageInput?.effective_date || "").trim();
++  const expirationDate = String(coverageInput?.expiration_date || "").trim();
++  const limitLabel = blankToNull(coverageInput?.limit_label) || "Amount";
++  const currency = normalizeCoverageCurrency(coverageInput?.currency);
++  const amount = Number(coverageInput?.amount);
++
++  if (!coverageType) throw new Error("coverage_type is required.");
++  if (!insurerName) throw new Error("insurer_name is required.");
++  if (!effectiveDate) throw new Error("effective_date is required.");
++  if (!expirationDate) throw new Error("expiration_date is required.");
++  if (!Number.isFinite(amount) || amount <= 0) throw new Error("amount must be a positive number.");
++
++  const generatedCoverageId = crypto.randomUUID();
++  const coverageIdForLimit = generatedCoverageId;
++
++  if (hasArgCount(coverageArgCounts, 11)) {
++    await client.query(
++      `
++      SELECT *
++      FROM public.manual_insert_insurance_coverage($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
++      `,
++      [
++        documentId,
++        generatedCoverageId,
++        coverageType,
++        coverageTypeRaw,
++        insurerLetter,
++        insurerName,
++        policyNumber,
++        effectiveDate,
++        expirationDate,
++        null,
++        null,
++      ]
++    );
++  } else if (hasArgCount(coverageArgCounts, 7)) {
++    throw new Error(
++      "manual_insert_insurance_coverage(7 args) is no longer supported in document-review save flow because it cannot carry expiration_date."
++    );
++  } else {
++    throw new Error(
++      `Unsupported signature for manual_insert_insurance_coverage. Found arg counts: ${coverageArgCounts.join(", ") || "none"}.`
++    );
++  }
++
++  if (hasArgCount(coverageLimitArgCounts, 9)) {
++    await client.query(
++      `
++      SELECT *
++      FROM public.manual_insert_insurance_coverage_limit($1, $2, $3, $4, $5, $6, $7, $8, $9);
++      `,
++      [coverageIdForLimit, limitLabel, currency, amount, null, null, null, null, 1]
++    );
++  } else if (hasArgCount(coverageLimitArgCounts, 4)) {
++    await client.query(
++      `
++      SELECT *
++      FROM public.manual_insert_insurance_coverage_limit($1, $2, $3, $4);
++      `,
++      [coverageIdForLimit, limitLabel, currency, amount]
++    );
++  } else {
++    throw new Error(
++      `Unsupported signature for manual_insert_insurance_coverage_limit. Found arg counts: ${coverageLimitArgCounts.join(", ") || "none"}.`
++    );
++  }
++
++  return coverageIdForLimit;
++}
++
+ /**
+  * GET /api/admin/insurance/document-review-exceptions
+  */
+ router.get(
+   "/admin/insurance/document-review-exceptions",
+   requireAuth,
+   loadCompanyContext,
+   requireCompanyAdmin,
+   async (req, res) => {
+     try {
+       const companyId = req.companyContext?.companyId || req.company_id || req.companyId;
+       if (!companyId) throw new Error("Missing company context.");
+ 
+       const { rows } = await pool.query(
+         `
+         SELECT
+           e.id AS exception_id,
+           e.document_id,
+           e.dot_number,
+           e.exception_type,
+           e.exception_reason,
+           d.uploaded_at,
+           COALESCE(c.legalname, c.dbaname) AS carrier_name
+         FROM public.insurance_document_review_exceptions e
+         JOIN public.insurance_documents d
+@@ -294,154 +371,99 @@ router.post(
+ 
+       const exceptionDoc = await client.query(
+         `
+         SELECT e.id, e.document_id
+         FROM public.insurance_document_review_exceptions e
+         JOIN public.insurance_documents d
+           ON d.id = e.document_id
+         WHERE e.id = $1
+           AND d.company_id = $2
+         LIMIT 1;
+         `,
+         [exceptionId, companyId]
+       );
+ 
+       if (!exceptionDoc.rowCount) {
+         throw new Error("Document review exception not found for this company.");
+       }
+       resolveDocumentId = exceptionDoc.rows[0].document_id;
+ 
+       if (action === "CLOSE") {
+         const closeResult = await closeDocumentReviewException(client, exceptionId, closeNotes);
+         await client.query("COMMIT");
+         return res.json({ ok: true, action: "CLOSE", close_result: closeResult });
+       }
+ 
+-      const coverageType = String(req.body?.coverage_type || "").trim();
+-      const coverageTypeRaw = blankToNull(req.body?.coverage_type_raw) || coverageType;
+-      const insurerLetter = blankToNull(req.body?.insurer_letter);
+-      const insurerName = String(req.body?.insurer_name || "").trim();
+-      const policyNumber = blankToNull(req.body?.policy_number);
+-      const effectiveDate = String(req.body?.effective_date || "").trim();
+-      const expirationDate = String(req.body?.expiration_date || "").trim();
+-      const limitLabel = blankToNull(req.body?.limit_label) || "Amount";
+-      const currency = normalizeCoverageCurrency(req.body?.currency);
+-      const amount = Number(req.body?.amount);
+-
+-      if (!coverageType) throw new Error("coverage_type is required.");
+-      if (!insurerName) throw new Error("insurer_name is required.");
+-      if (!effectiveDate) throw new Error("effective_date is required.");
+-      if (!expirationDate) throw new Error("expiration_date is required.");
+-      if (!Number.isFinite(amount) || amount <= 0) throw new Error("amount must be a positive number.");
+-
+-      const generatedCoverageId = crypto.randomUUID();
+       const coverageArgCounts = await getFunctionArgCounts(client, "public", "manual_insert_insurance_coverage");
+       const coverageLimitArgCounts = await getFunctionArgCounts(client, "public", "manual_insert_insurance_coverage_limit");
+-      let coverageIdForLimit = generatedCoverageId;
+-
+-      if (hasArgCount(coverageArgCounts, 11)) {
+-        await client.query(
+-          `
+-          SELECT *
+-          FROM public.manual_insert_insurance_coverage($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
+-          `,
+-          [
+-            exceptionDoc.rows[0].document_id,
+-            generatedCoverageId,
+-            coverageType,
+-            coverageTypeRaw,
+-            insurerLetter,
+-            insurerName,
+-            policyNumber,
+-            effectiveDate,
+-            expirationDate,
+-            null,
+-            null,
+-          ]
+-        );
+-      } else if (hasArgCount(coverageArgCounts, 7)) {
+-        const sevenArgInsert = await client.query(
+-          `
+-          SELECT *
+-          FROM public.manual_insert_insurance_coverage($1, $2, $3, $4, $5, $6, $7);
+-          `,
+-          [
+-            exceptionDoc.rows[0].document_id,
+-            coverageType,
+-            coverageTypeRaw,
+-            insurerLetter,
+-            insurerName,
+-            policyNumber,
+-            effectiveDate,
+-          ]
+-        );
+-
+-        const insertedCoverageId = getCoverageIdFromFunctionRow(sevenArgInsert.rows?.[0]);
+-        if (!insertedCoverageId) {
+-          throw new Error(
+-            "manual_insert_insurance_coverage(7 args) did not return a usable coverage id, so the limit insert was not attempted."
+-          );
++      const submittedCoverages =
++        action === "SAVE_COVERAGES"
++          ? req.body?.coverages
++          : [
++              {
++                coverage_type: req.body?.coverage_type,
++                coverage_type_raw: req.body?.coverage_type_raw,
++                insurer_letter: req.body?.insurer_letter,
++                insurer_name: req.body?.insurer_name,
++                policy_number: req.body?.policy_number,
++                effective_date: req.body?.effective_date,
++                expiration_date: req.body?.expiration_date,
++                limit_label: req.body?.limit_label,
++                currency: req.body?.currency,
++                amount: req.body?.amount,
++              },
++            ];
++      const coverageDrafts = Array.isArray(submittedCoverages) ? submittedCoverages : [];
++      if (!coverageDrafts.length) throw new Error("coverages must contain at least one coverage.");
++
++      const insertedCoverageIds = [];
++      for (let i = 0; i < coverageDrafts.length; i += 1) {
++        try {
++          const coverageId = await insertManualCoverageAndLimit({
++            client,
++            documentId: exceptionDoc.rows[0].document_id,
++            coverageArgCounts,
++            coverageLimitArgCounts,
++            coverageInput: coverageDrafts[i],
++          });
++          insertedCoverageIds.push(coverageId);
++        } catch (err) {
++          throw new Error(`Coverage ${i + 1}: ${err.message || "failed to insert coverage."}`);
+         }
+-        coverageIdForLimit = insertedCoverageId;
+-      } else {
+-        throw new Error(
+-          `Unsupported signature for manual_insert_insurance_coverage. Found arg counts: ${coverageArgCounts.join(", ") || "none"}.`
+-        );
+       }
+ 
+-      if (hasArgCount(coverageLimitArgCounts, 9)) {
+-        await client.query(
+-          `
+-          SELECT *
+-          FROM public.manual_insert_insurance_coverage_limit($1, $2, $3, $4, $5, $6, $7, $8, $9);
+-          `,
+-          [coverageIdForLimit, limitLabel, currency, amount, null, null, null, null, 1]
+-        );
+-      } else if (hasArgCount(coverageLimitArgCounts, 4)) {
+-        await client.query(
+-          `
+-          SELECT *
+-          FROM public.manual_insert_insurance_coverage_limit($1, $2, $3, $4);
+-          `,
+-          [coverageIdForLimit, limitLabel, currency, amount]
+-        );
+-      } else {
+-        throw new Error(
+-          `Unsupported signature for manual_insert_insurance_coverage_limit. Found arg counts: ${coverageLimitArgCounts.join(", ") || "none"}.`
+-        );
+-      }
+-
+-      // Document-review SAVE_COVERAGE flow is intentionally raw-insert-only:
++      // Document-review SAVE_COVERAGES flow is intentionally raw-insert-only:
+       // 1) insert raw coverage, 2) insert raw limit, 3) close document-review exception.
+       // Normalization is NOT auto-run in this transaction.
+       const closeResult = await closeDocumentReviewException(client, exceptionId, "Resolved after manual coverage insert");
+ 
+       await client.query("COMMIT");
+       return res.json({
+         ok: true,
+-        action: "SAVE_COVERAGE",
+-        coverage_id: coverageIdForLimit,
++        action: "SAVE_COVERAGES",
++        inserted_count: insertedCoverageIds.length,
++        coverage_ids: insertedCoverageIds,
+         close_result: closeResult,
+       });
+     } catch (err) {
+       try {
+         await client.query("ROLLBACK");
+       } catch {}
+       const surfacedError = toDocumentBasedOcrError(err?.message, resolveDocumentId);
+       return res.status(400).json({ ok: false, error: surfacedError || "Resolve failed." });
+     } finally {
+       client.release();
+     }
+   }
+ );
+ 
+ 
+ /**
+  * GET /api/admin/insurance/normalization-exceptions
+  */
+ router.get(
+   "/admin/insurance/normalization-exceptions",
+   requireAuth,
+   loadCompanyContext,
+   requireCompanyAdmin,
+   async (req, res) => {
+     try {
+diff --git a/static/css/admin-insurance-document-review.css b/static/css/admin-insurance-document-review.css
+index 5ea9a026aa558cff96e368a166a8e73fbda8d152..a494b8684b293517affdfb2b81b33db63475cb37 100644
+--- a/static/css/admin-insurance-document-review.css
++++ b/static/css/admin-insurance-document-review.css
+@@ -157,50 +157,76 @@
+ }
+ 
+ .form-grid input,
+ .form-grid select,
+ .form-grid textarea {
+   width: 100%;
+   border-radius: 10px;
+   border: 1px solid rgba(124, 146, 196, 0.3);
+   background: rgba(8, 18, 36, 0.8);
+   color: #e7eefb;
+   padding: 9px 10px;
+   font-size: 14px;
+ }
+ 
+ .form-grid textarea {
+   min-height: 74px;
+   resize: vertical;
+ }
+ 
+ .panel-actions {
+   margin-top: 10px;
+   display: flex;
+   gap: 10px;
+ }
+ 
++.coverage-list {
++  display: grid;
++  gap: 12px;
++  margin-bottom: 10px;
++}
++
++.coverage-block {
++  border: 1px solid rgba(124, 146, 196, 0.2);
++  border-radius: 12px;
++  background: rgba(7, 18, 34, 0.6);
++  padding: 12px;
++}
++
++.coverage-block-header {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  margin-bottom: 10px;
++}
++
++.coverage-block-header h4 {
++  margin: 0;
++  font-size: 14px;
++  color: #e7eefb;
++}
++
+ .empty-state {
+   color: #9eb0d3;
+   padding: 22px 14px;
+   text-align: center;
+ }
+ 
+ .review-table .muted {
+   color: #9eb0d3;
+   font-size: 12px;
+ }
+ 
+ 
+ @media (max-width: 1180px) {
+   .doc-form-grid {
+     grid-template-columns: repeat(3, minmax(0, 1fr));
+   }
+ }
+ 
+ @media (max-width: 760px) {
+   .doc-form-grid {
+     grid-template-columns: repeat(2, minmax(0, 1fr));
+   }
+ }
+ 
+ @media (max-width: 520px) {
+diff --git a/static/js/pages/admin-insurance-document-review.js b/static/js/pages/admin-insurance-document-review.js
+index 7f49583887ddac5e83819a2ec3a6b43a64138d71..72956d7c7a2333f37f51a2e7b5f9f9adea88243b 100644
+--- a/static/js/pages/admin-insurance-document-review.js
++++ b/static/js/pages/admin-insurance-document-review.js
+@@ -1,46 +1,48 @@
+ (() => {
+   const NORMALIZED_COVERAGE_TYPES = [
+     "AUTO_LIABILITY",
+     "CARGO",
+     "GENERAL_LIABILITY",
+     "UMBRELLA_LIABILITY",
+     "WORKERS_COMP",
+     "ERRORS_OMISSIONS",
+     "CONTINGENT_AUTO_LIABILITY",
+   ];
+ 
+   const state = {
+     activeTab: "document-review",
+     loading: {
+       "document-review": false,
+       normalization: false,
+     },
+     documentReview: {
+       rows: [],
+       expandedExceptionId: null,
+       loaded: false,
++      draftsByExceptionId: {},
++      submittingByExceptionId: {},
+     },
+     normalization: {
+       rows: [],
+       expandedExceptionId: null,
+       loaded: false,
+     },
+   };
+ 
+   const tabButtons = Array.from(document.querySelectorAll(".tab-btn"));
+   const tabSections = Array.from(document.querySelectorAll(".tab-section"));
+   const refreshBtn = document.getElementById("refresh-btn");
+   const statusBanner = document.getElementById("status-banner");
+ 
+   const docQueueBody = document.getElementById("doc-queue-body");
+   const docEmptyState = document.getElementById("doc-empty-state");
+ 
+   const normQueueBody = document.getElementById("norm-queue-body");
+   const normEmptyState = document.getElementById("norm-empty-state");
+ 
+   const escapeHtml = (value) =>
+     String(value ?? "")
+       .replaceAll("&", "&amp;")
+       .replaceAll("<", "&lt;")
+       .replaceAll(">", "&gt;")
+       .replaceAll('"', "&quot;")
+@@ -78,108 +80,156 @@
+     const payload = await response.json().catch(() => ({}));
+     if (!response.ok || payload.ok === false) {
+       throw new Error(payload.error || `Request failed: ${response.status}`);
+     }
+     return payload;
+   }
+ 
+   function formatDate(value) {
+     if (!value) return "—";
+     return new Date(value).toLocaleString();
+   }
+ 
+   function renderTabs() {
+     tabButtons.forEach((btn) => {
+       const tab = btn.getAttribute("data-tab");
+       const active = tab === state.activeTab;
+       btn.classList.toggle("is-active", active);
+       btn.setAttribute("aria-selected", active ? "true" : "false");
+     });
+ 
+     tabSections.forEach((section) => {
+       section.hidden = section.getAttribute("data-tab-section") !== state.activeTab;
+     });
+   }
+ 
++  function createBlankDocumentCoverageDraft() {
++    return {
++      coverage_type: "AUTO LIABILITY",
++      insurer_name: "",
++      amount: "",
++      insurer_letter: "",
++      policy_number: "",
++      effective_date: "",
++      expiration_date: "",
++      currency: "USD",
++      coverage_type_raw: "",
++      limit_label: "",
++    };
++  }
++
++  function ensureDocumentDrafts(exceptionId) {
++    if (!Array.isArray(state.documentReview.draftsByExceptionId[exceptionId])) {
++      state.documentReview.draftsByExceptionId[exceptionId] = [createBlankDocumentCoverageDraft()];
++    }
++    if (!state.documentReview.draftsByExceptionId[exceptionId].length) {
++      state.documentReview.draftsByExceptionId[exceptionId] = [createBlankDocumentCoverageDraft()];
++    }
++    return state.documentReview.draftsByExceptionId[exceptionId];
++  }
++
++  function docCoverageBlockHtml(row, draft, index, totalCount) {
++    return `
++      <section class="coverage-block">
++        <div class="coverage-block-header">
++          <h4>Coverage ${index + 1}</h4>
++          ${
++            totalCount > 1
++              ? `<button class="btn-inline is-danger" type="button" data-doc-remove-coverage="${row.exception_id}" data-draft-index="${index}">Remove</button>`
++              : ""
++          }
++        </div>
++        <div class="form-grid doc-form-grid">
++          <div>
++            <label>Coverage Type</label>
++            <select name="coverage_type" data-doc-field="coverage_type" data-draft-index="${index}" required>
++              <option value="AUTO LIABILITY" ${draft.coverage_type === "AUTO LIABILITY" ? "selected" : ""}>AUTO LIABILITY</option>
++              <option value="CARGO" ${draft.coverage_type === "CARGO" ? "selected" : ""}>CARGO</option>
++              <option value="GENERAL LIABILITY" ${draft.coverage_type === "GENERAL LIABILITY" ? "selected" : ""}>GENERAL LIABILITY</option>
++              <option value="UMBRELLA LIAB" ${draft.coverage_type === "UMBRELLA LIAB" ? "selected" : ""}>UMBRELLA LIAB</option>
++              <option value="WORKERS COMP" ${draft.coverage_type === "WORKERS COMP" ? "selected" : ""}>WORKERS COMP</option>
++              <option value="ERRORS & OMISSIONS" ${draft.coverage_type === "ERRORS & OMISSIONS" ? "selected" : ""}>ERRORS & OMISSIONS</option>
++            </select>
++          </div>
++          <div>
++            <label>Insurer Name</label>
++            <input name="insurer_name" data-doc-field="insurer_name" data-draft-index="${index}" type="text" value="${escapeHtml(draft.insurer_name)}" required />
++          </div>
++          <div>
++            <label>Amount</label>
++            <input name="amount" data-doc-field="amount" data-draft-index="${index}" type="number" min="0" step="0.01" value="${escapeHtml(draft.amount)}" required />
++          </div>
++          <div>
++            <label>Insurer Letter</label>
++            <input name="insurer_letter" data-doc-field="insurer_letter" data-draft-index="${index}" type="text" maxlength="2" value="${escapeHtml(draft.insurer_letter)}" />
++          </div>
++          <div>
++            <label>Policy Number</label>
++            <input name="policy_number" data-doc-field="policy_number" data-draft-index="${index}" type="text" value="${escapeHtml(draft.policy_number)}" />
++          </div>
++        </div>
++        <div class="form-grid doc-form-grid">
++          <div>
++            <label>Effective Date</label>
++            <input name="effective_date" data-doc-field="effective_date" data-draft-index="${index}" type="date" value="${escapeHtml(draft.effective_date)}" required />
++          </div>
++          <div>
++            <label>Expiration Date</label>
++            <input name="expiration_date" data-doc-field="expiration_date" data-draft-index="${index}" type="date" value="${escapeHtml(draft.expiration_date)}" required />
++          </div>
++          <div>
++            <label>Currency</label>
++            <select name="currency" data-doc-field="currency" data-draft-index="${index}" required>
++              <option value="USD" selected>USD</option>
++            </select>
++          </div>
++          <div>
++            <label>Coverage Type Raw</label>
++            <input name="coverage_type_raw" data-doc-field="coverage_type_raw" data-draft-index="${index}" type="text" value="${escapeHtml(draft.coverage_type_raw)}" />
++          </div>
++          <div>
++            <label>Limit Label</label>
++            <input name="limit_label" data-doc-field="limit_label" data-draft-index="${index}" type="text" value="${escapeHtml(draft.limit_label)}" />
++          </div>
++        </div>
++      </section>
++    `;
++  }
++
+   function docResolveFormHtml(row) {
++    const drafts = ensureDocumentDrafts(row.exception_id);
++    const isSubmitting = state.documentReview.submittingByExceptionId[row.exception_id] === true;
+     return `
+       <div class="resolve-panel">
+         <form class="doc-resolve-form" data-exception-id="${row.exception_id}">
+-          <div class="form-grid doc-form-grid">
+-            <div>
+-              <label>Coverage Type</label>
+-              <select name="coverage_type" required>
+-                <option value="AUTO LIABILITY">AUTO LIABILITY</option>
+-                <option value="CARGO">CARGO</option>
+-                <option value="GENERAL LIABILITY">GENERAL LIABILITY</option>
+-                <option value="UMBRELLA LIAB">UMBRELLA LIAB</option>
+-                <option value="WORKERS COMP">WORKERS COMP</option>
+-                <option value="ERRORS & OMISSIONS">ERRORS & OMISSIONS</option>
+-              </select>
+-            </div>
+-            <div>
+-              <label>Insurer Name</label>
+-              <input name="insurer_name" type="text" required />
+-            </div>
+-            <div>
+-              <label>Amount</label>
+-              <input name="amount" type="number" min="0" step="0.01" required />
+-            </div>
+-            <div>
+-              <label>Insurer Letter</label>
+-              <input name="insurer_letter" type="text" maxlength="2" />
+-            </div>
+-            <div>
+-              <label>Policy Number</label>
+-              <input name="policy_number" type="text" />
+-            </div>
+-            <div>
+-              <label>Effective Date</label>
+-              <input name="effective_date" type="date" required />
+-            </div>
+-            <div>
+-              <label>Expiration Date</label>
+-              <input name="expiration_date" type="date" required />
+-            </div>
+-            <div>
+-              <label>Currency</label>
+-              <select name="currency" required>
+-                <option value="USD" selected>USD</option>
+-              </select>
+-            </div>
+-            <div>
+-              <label>Coverage Type Raw</label>
+-              <input name="coverage_type_raw" type="text" />
+-            </div>
+-            <div>
+-              <label>Limit Label</label>
+-              <input name="limit_label" type="text" />
+-            </div>
++          <div class="coverage-list">
++            ${drafts.map((draft, index) => docCoverageBlockHtml(row, draft, index, drafts.length)).join("")}
+           </div>
++          <button class="btn-inline" type="button" data-doc-add-coverage="${row.exception_id}" ${isSubmitting ? "disabled" : ""}>Add Coverage</button>
+           <div class="panel-actions">
+-            <button class="btn-inline" type="submit">Save Coverage</button>
+-            <button class="btn-inline" type="button" data-doc-close-resolve="${row.exception_id}">Cancel</button>
++            <button class="btn-inline" type="submit" ${isSubmitting ? "disabled" : ""}>Save and Resolve</button>
++            <button class="btn-inline" type="button" data-doc-close-resolve="${row.exception_id}" ${isSubmitting ? "disabled" : ""}>Cancel</button>
+           </div>
+         </form>
+       </div>
+     `;
+   }
+ 
+   function normResolveFormHtml(row) {
+     const coverageOptions = NORMALIZED_COVERAGE_TYPES.map((v) => `<option value="${v}">${v}</option>`).join("");
+ 
+     return `
+       <div class="resolve-panel">
+         <form class="norm-resolve-form" data-exception-id="${row.exception_id}">
+           <div class="form-grid">
+             <div>
+               <label>Coverage Type</label>
+               <select name="normalized_coverage_type" required>${coverageOptions}</select>
+             </div>
+             <div>
+               <label>Amount</label>
+               <input name="selected_limit_amount" type="number" min="0" step="0.01" required />
+             </div>
+           </div>
+           <div class="panel-actions">
+             <button class="btn-inline" type="submit">Resolve</button>
+             <button class="btn-inline" type="button" data-norm-close-resolve="${row.exception_id}">Cancel</button>
+@@ -268,65 +318,109 @@
+     }
+   }
+ 
+   async function openPdf(documentId) {
+     if (!documentId) throw new Error("No document available for this exception.");
+     const data = await apiGet(`/api/insurance/documents/${encodeURIComponent(documentId)}/signed-url`);
+     if (!data?.signedUrl) throw new Error("Signed URL not returned.");
+     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+   }
+ 
+   function wireHandlers() {
+     document.querySelectorAll("[data-open-pdf]").forEach((btn) => {
+       btn.addEventListener("click", async () => {
+         clearStatus();
+         try {
+           await openPdf(btn.getAttribute("data-open-pdf"));
+         } catch (error) {
+           showStatus(error.message || "Failed to open PDF.");
+         }
+       });
+     });
+ 
+     document.querySelectorAll("[data-doc-toggle-resolve]").forEach((btn) => {
+       btn.addEventListener("click", () => {
+         const exceptionId = btn.getAttribute("data-doc-toggle-resolve");
+-        state.documentReview.expandedExceptionId =
+-          state.documentReview.expandedExceptionId === exceptionId ? null : exceptionId;
++        if (state.documentReview.expandedExceptionId === exceptionId) {
++          state.documentReview.expandedExceptionId = null;
++        } else {
++          state.documentReview.expandedExceptionId = exceptionId;
++          ensureDocumentDrafts(exceptionId);
++        }
+         renderDocumentReviewRows();
+         wireHandlers();
+       });
+     });
+ 
+     document.querySelectorAll("[data-doc-close-resolve]").forEach((btn) => {
+       btn.addEventListener("click", () => {
++        const exceptionId = btn.getAttribute("data-doc-close-resolve");
++        delete state.documentReview.draftsByExceptionId[exceptionId];
+         state.documentReview.expandedExceptionId = null;
+         renderDocumentReviewRows();
+         wireHandlers();
+       });
+     });
+ 
++    document.querySelectorAll("[data-doc-add-coverage]").forEach((btn) => {
++      btn.addEventListener("click", () => {
++        const exceptionId = btn.getAttribute("data-doc-add-coverage");
++        const drafts = ensureDocumentDrafts(exceptionId);
++        drafts.push(createBlankDocumentCoverageDraft());
++        renderDocumentReviewRows();
++        wireHandlers();
++      });
++    });
++
++    document.querySelectorAll("[data-doc-remove-coverage]").forEach((btn) => {
++      btn.addEventListener("click", () => {
++        const exceptionId = btn.getAttribute("data-doc-remove-coverage");
++        const index = Number(btn.getAttribute("data-draft-index"));
++        const drafts = ensureDocumentDrafts(exceptionId);
++        if (!Number.isInteger(index) || index < 0 || index >= drafts.length) return;
++        drafts.splice(index, 1);
++        if (!drafts.length) drafts.push(createBlankDocumentCoverageDraft());
++        renderDocumentReviewRows();
++        wireHandlers();
++      });
++    });
++
++    document.querySelectorAll("[data-doc-field]").forEach((input) => {
++      const syncDraftValue = () => {
++        const exceptionId = input.closest("form")?.getAttribute("data-exception-id");
++        const field = input.getAttribute("data-doc-field");
++        const index = Number(input.getAttribute("data-draft-index"));
++        if (!exceptionId || !field || !Number.isInteger(index)) return;
++        const drafts = ensureDocumentDrafts(exceptionId);
++        if (!drafts[index]) return;
++        drafts[index][field] = input.value;
++      };
++
++      input.addEventListener("input", syncDraftValue);
++      input.addEventListener("change", syncDraftValue);
++    });
++
+     document.querySelectorAll("[data-doc-close]").forEach((btn) => {
+       btn.addEventListener("click", async () => {
+         const exceptionId = btn.getAttribute("data-doc-close");
+         btn.disabled = true;
+         clearStatus();
+         try {
+           await apiPost(`/api/admin/insurance/document-review-exceptions/${encodeURIComponent(exceptionId)}/resolve`, {
+             action: "CLOSE",
+           });
+           showStatus("Document review exception closed.", "success");
+           await loadDocumentReviewQueue(true);
+         } catch (error) {
+           showStatus(error.message || "Failed to close exception.");
+         } finally {
+           btn.disabled = false;
+         }
+       });
+     });
+ 
+     document.querySelectorAll("[data-norm-toggle-resolve]").forEach((btn) => {
+       btn.addEventListener("click", () => {
+         const exceptionId = btn.getAttribute("data-norm-toggle-resolve");
+         state.normalization.expandedExceptionId =
+           state.normalization.expandedExceptionId === exceptionId ? null : exceptionId;
+         renderNormalizationRows();
+@@ -345,77 +439,82 @@
+     document.querySelectorAll("[data-norm-close]").forEach((btn) => {
+       btn.addEventListener("click", async () => {
+         const exceptionId = btn.getAttribute("data-norm-close");
+         btn.disabled = true;
+         clearStatus();
+         try {
+           await apiPost(`/api/admin/insurance/normalization-exceptions/${encodeURIComponent(exceptionId)}/resolve`, {
+             action: "CLOSE",
+           });
+           showStatus("Normalization exception closed.", "success");
+           await loadNormalizationQueue(true);
+         } catch (error) {
+           showStatus(error.message || "Failed to close exception.");
+         } finally {
+           btn.disabled = false;
+         }
+       });
+     });
+ 
+     document.querySelectorAll(".doc-resolve-form").forEach((form) => {
+       form.addEventListener("submit", async (event) => {
+         event.preventDefault();
+         clearStatus();
+ 
+         const exceptionId = form.getAttribute("data-exception-id");
+-        const submitBtn = form.querySelector("button[type='submit']");
+-        submitBtn.disabled = true;
+-
+-        const fd = new FormData(form);
++        const drafts = ensureDocumentDrafts(exceptionId);
+         const payload = {
+-          action: "SAVE_COVERAGE",
+-          coverage_type: String(fd.get("coverage_type") || ""),
+-          coverage_type_raw: String(fd.get("coverage_type_raw") || ""),
+-          insurer_letter: String(fd.get("insurer_letter") || ""),
+-          insurer_name: String(fd.get("insurer_name") || ""),
+-          policy_number: String(fd.get("policy_number") || ""),
+-          effective_date: String(fd.get("effective_date") || ""),
+-          expiration_date: String(fd.get("expiration_date") || ""),
+-          limit_label: String(fd.get("limit_label") || ""),
+-          currency: String(fd.get("currency") || "USD"),
+-          amount: Number(fd.get("amount") || "0"),
++          action: "SAVE_COVERAGES",
++          coverages: drafts.map((draft) => ({
++            coverage_type: String(draft.coverage_type || ""),
++            coverage_type_raw: String(draft.coverage_type_raw || ""),
++            insurer_letter: String(draft.insurer_letter || ""),
++            insurer_name: String(draft.insurer_name || ""),
++            policy_number: String(draft.policy_number || ""),
++            effective_date: String(draft.effective_date || ""),
++            expiration_date: String(draft.expiration_date || ""),
++            limit_label: String(draft.limit_label || ""),
++            currency: String(draft.currency || "USD"),
++            amount: Number(draft.amount || "0"),
++          })),
+         };
++        state.documentReview.submittingByExceptionId[exceptionId] = true;
++        renderDocumentReviewRows();
++        wireHandlers();
+ 
+         try {
+           await apiPost(`/api/admin/insurance/document-review-exceptions/${encodeURIComponent(exceptionId)}/resolve`, payload);
+-          showStatus("Coverage inserted and document review exception resolved.", "success");
++          showStatus("Coverages inserted and document review exception resolved.", "success");
++          delete state.documentReview.draftsByExceptionId[exceptionId];
+           state.documentReview.expandedExceptionId = null;
+           await loadDocumentReviewQueue(true);
+         } catch (error) {
+           showStatus(error.message || "Failed to save coverage.");
+         } finally {
+-          submitBtn.disabled = false;
++          delete state.documentReview.submittingByExceptionId[exceptionId];
++          renderDocumentReviewRows();
++          wireHandlers();
+         }
+       });
+     });
+ 
+     document.querySelectorAll(".norm-resolve-form").forEach((form) => {
+       form.addEventListener("submit", async (event) => {
+         event.preventDefault();
+         clearStatus();
+ 
+         const exceptionId = form.getAttribute("data-exception-id");
+         const submitBtn = form.querySelector("button[type='submit']");
+         submitBtn.disabled = true;
+ 
+         const fd = new FormData(form);
+         const payload = {
+           action: "SAVE_COVERAGE",
+           normalized_coverage_type: String(fd.get("normalized_coverage_type") || ""),
+           selected_limit_amount: Number(fd.get("selected_limit_amount") || "0"),
+         };
+ 
+         try {
+           const response = await apiPost(
+             `/api/admin/insurance/normalization-exceptions/${encodeURIComponent(exceptionId)}/resolve`,
+             payload
+           );

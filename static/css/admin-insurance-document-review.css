@@ -179,6 +179,32 @@
   gap: 10px;
 }
 
+.coverage-list {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.coverage-block {
+  border: 1px solid rgba(124, 146, 196, 0.2);
+  border-radius: 12px;
+  background: rgba(7, 18, 34, 0.6);
+  padding: 12px;
+}
+
+.coverage-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.coverage-block-header h4 {
+  margin: 0;
+  font-size: 14px;
+  color: #e7eefb;
+}
+
 .empty-state {
   color: #9eb0d3;
   padding: 22px 14px;

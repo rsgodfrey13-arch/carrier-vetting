@@ -19,6 +19,8 @@
       rows: [],
       expandedExceptionId: null,
       loaded: false,
+      draftsByExceptionId: {},
+      submittingByExceptionId: {},
     },
     normalization: {
       rows: [],
@@ -100,64 +102,112 @@
     });
   }
 
+  function createBlankDocumentCoverageDraft() {
+    return {
+      coverage_type: "AUTO LIABILITY",
+      insurer_name: "",
+      amount: "",
+      insurer_letter: "",
+      policy_number: "",
+      effective_date: "",
+      expiration_date: "",
+      currency: "USD",
+      coverage_type_raw: "",
+      limit_label: "",
+    };
+  }
+
+  function ensureDocumentDrafts(exceptionId) {
+    if (!Array.isArray(state.documentReview.draftsByExceptionId[exceptionId])) {
+      state.documentReview.draftsByExceptionId[exceptionId] = [createBlankDocumentCoverageDraft()];
+    }
+    if (!state.documentReview.draftsByExceptionId[exceptionId].length) {
+      state.documentReview.draftsByExceptionId[exceptionId] = [createBlankDocumentCoverageDraft()];
+    }
+    return state.documentReview.draftsByExceptionId[exceptionId];
+  }
+
+  function docCoverageBlockHtml(row, draft, index, totalCount) {
+    return `
+      <section class="coverage-block">
+        <div class="coverage-block-header">
+          <h4>Coverage ${index + 1}</h4>
+          ${
+            totalCount > 1
+              ? `<button class="btn-inline is-danger" type="button" data-doc-remove-coverage="${row.exception_id}" data-draft-index="${index}">Remove</button>`
+              : ""
+          }
+        </div>
+        <div class="form-grid doc-form-grid">
+          <div>
+            <label>Coverage Type</label>
+            <select name="coverage_type" data-doc-field="coverage_type" data-draft-index="${index}" required>
+              <option value="AUTO LIABILITY" ${draft.coverage_type === "AUTO LIABILITY" ? "selected" : ""}>AUTO LIABILITY</option>
+              <option value="CARGO" ${draft.coverage_type === "CARGO" ? "selected" : ""}>CARGO</option>
+              <option value="GENERAL LIABILITY" ${draft.coverage_type === "GENERAL LIABILITY" ? "selected" : ""}>GENERAL LIABILITY</option>
+              <option value="UMBRELLA LIAB" ${draft.coverage_type === "UMBRELLA LIAB" ? "selected" : ""}>UMBRELLA LIAB</option>
+              <option value="WORKERS COMP" ${draft.coverage_type === "WORKERS COMP" ? "selected" : ""}>WORKERS COMP</option>
+              <option value="ERRORS & OMISSIONS" ${draft.coverage_type === "ERRORS & OMISSIONS" ? "selected" : ""}>ERRORS & OMISSIONS</option>
+            </select>
+          </div>
+          <div>
+            <label>Insurer Name</label>
+            <input name="insurer_name" data-doc-field="insurer_name" data-draft-index="${index}" type="text" value="${escapeHtml(draft.insurer_name)}" required />
+          </div>
+          <div>
+            <label>Amount</label>
+            <input name="amount" data-doc-field="amount" data-draft-index="${index}" type="number" min="0" step="0.01" value="${escapeHtml(draft.amount)}" required />
+          </div>
+          <div>
+            <label>Insurer Letter</label>
+            <input name="insurer_letter" data-doc-field="insurer_letter" data-draft-index="${index}" type="text" maxlength="2" value="${escapeHtml(draft.insurer_letter)}" />
+          </div>
+          <div>
+            <label>Policy Number</label>
+            <input name="policy_number" data-doc-field="policy_number" data-draft-index="${index}" type="text" value="${escapeHtml(draft.policy_number)}" />
+          </div>
+        </div>
+        <div class="form-grid doc-form-grid">
+          <div>
+            <label>Effective Date</label>
+            <input name="effective_date" data-doc-field="effective_date" data-draft-index="${index}" type="date" value="${escapeHtml(draft.effective_date)}" required />
+          </div>
+          <div>
+            <label>Expiration Date</label>
+            <input name="expiration_date" data-doc-field="expiration_date" data-draft-index="${index}" type="date" value="${escapeHtml(draft.expiration_date)}" required />
+          </div>
+          <div>
+            <label>Currency</label>
+            <select name="currency" data-doc-field="currency" data-draft-index="${index}" required>
+              <option value="USD" selected>USD</option>
+            </select>
+          </div>
+          <div>
+            <label>Coverage Type Raw</label>
+            <input name="coverage_type_raw" data-doc-field="coverage_type_raw" data-draft-index="${index}" type="text" value="${escapeHtml(draft.coverage_type_raw)}" />
+          </div>
+          <div>
+            <label>Limit Label</label>
+            <input name="limit_label" data-doc-field="limit_label" data-draft-index="${index}" type="text" value="${escapeHtml(draft.limit_label)}" />
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
   function docResolveFormHtml(row) {
+    const drafts = ensureDocumentDrafts(row.exception_id);
+    const isSubmitting = state.documentReview.submittingByExceptionId[row.exception_id] === true;
     return `
       <div class="resolve-panel">
         <form class="doc-resolve-form" data-exception-id="${row.exception_id}">
-          <div class="form-grid doc-form-grid">
-            <div>
-              <label>Coverage Type</label>
-              <select name="coverage_type" required>
-                <option value="AUTO LIABILITY">AUTO LIABILITY</option>
-                <option value="CARGO">CARGO</option>
-                <option value="GENERAL LIABILITY">GENERAL LIABILITY</option>
-                <option value="UMBRELLA LIAB">UMBRELLA LIAB</option>
-                <option value="WORKERS COMP">WORKERS COMP</option>
-                <option value="ERRORS & OMISSIONS">ERRORS & OMISSIONS</option>
-              </select>
-            </div>
-            <div>
-              <label>Insurer Name</label>
-              <input name="insurer_name" type="text" required />
-            </div>
-            <div>
-              <label>Amount</label>
-              <input name="amount" type="number" min="0" step="0.01" required />
-            </div>
-            <div>
-              <label>Insurer Letter</label>
-              <input name="insurer_letter" type="text" maxlength="2" />
-            </div>
-            <div>
-              <label>Policy Number</label>
-              <input name="policy_number" type="text" />
-            </div>
-            <div>
-              <label>Effective Date</label>
-              <input name="effective_date" type="date" required />
-            </div>
-            <div>
-              <label>Expiration Date</label>
-              <input name="expiration_date" type="date" required />
-            </div>
-            <div>
-              <label>Currency</label>
-              <select name="currency" required>
-                <option value="USD" selected>USD</option>
-              </select>
-            </div>
-            <div>
-              <label>Coverage Type Raw</label>
-              <input name="coverage_type_raw" type="text" />
-            </div>
-            <div>
-              <label>Limit Label</label>
-              <input name="limit_label" type="text" />
-            </div>
+          <div class="coverage-list">
+            ${drafts.map((draft, index) => docCoverageBlockHtml(row, draft, index, drafts.length)).join("")}
           </div>
+          <button class="btn-inline" type="button" data-doc-add-coverage="${row.exception_id}" ${isSubmitting ? "disabled" : ""}>Add Coverage</button>
           <div class="panel-actions">
-            <button class="btn-inline" type="submit">Save Coverage</button>
-            <button class="btn-inline" type="button" data-doc-close-resolve="${row.exception_id}">Cancel</button>
+            <button class="btn-inline" type="submit" ${isSubmitting ? "disabled" : ""}>Save and Resolve</button>
+            <button class="btn-inline" type="button" data-doc-close-resolve="${row.exception_id}" ${isSubmitting ? "disabled" : ""}>Cancel</button>
           </div>
         </form>
       </div>
@@ -290,8 +340,12 @@
     document.querySelectorAll("[data-doc-toggle-resolve]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const exceptionId = btn.getAttribute("data-doc-toggle-resolve");
-        state.documentReview.expandedExceptionId =
-          state.documentReview.expandedExceptionId === exceptionId ? null : exceptionId;
+        if (state.documentReview.expandedExceptionId === exceptionId) {
+          state.documentReview.expandedExceptionId = null;
+        } else {
+          state.documentReview.expandedExceptionId = exceptionId;
+          ensureDocumentDrafts(exceptionId);
+        }
         renderDocumentReviewRows();
         wireHandlers();
       });
@@ -299,10 +353,50 @@
 
     document.querySelectorAll("[data-doc-close-resolve]").forEach((btn) => {
       btn.addEventListener("click", () => {
+        const exceptionId = btn.getAttribute("data-doc-close-resolve");
+        delete state.documentReview.draftsByExceptionId[exceptionId];
         state.documentReview.expandedExceptionId = null;
         renderDocumentReviewRows();
         wireHandlers();
       });
+    });
+
+    document.querySelectorAll("[data-doc-add-coverage]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const exceptionId = btn.getAttribute("data-doc-add-coverage");
+        const drafts = ensureDocumentDrafts(exceptionId);
+        drafts.push(createBlankDocumentCoverageDraft());
+        renderDocumentReviewRows();
+        wireHandlers();
+      });
+    });
+
+    document.querySelectorAll("[data-doc-remove-coverage]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const exceptionId = btn.getAttribute("data-doc-remove-coverage");
+        const index = Number(btn.getAttribute("data-draft-index"));
+        const drafts = ensureDocumentDrafts(exceptionId);
+        if (!Number.isInteger(index) || index < 0 || index >= drafts.length) return;
+        drafts.splice(index, 1);
+        if (!drafts.length) drafts.push(createBlankDocumentCoverageDraft());
+        renderDocumentReviewRows();
+        wireHandlers();
+      });
+    });
+
+    document.querySelectorAll("[data-doc-field]").forEach((input) => {
+      const syncDraftValue = () => {
+        const exceptionId = input.closest("form")?.getAttribute("data-exception-id");
+        const field = input.getAttribute("data-doc-field");
+        const index = Number(input.getAttribute("data-draft-index"));
+        if (!exceptionId || !field || !Number.isInteger(index)) return;
+        const drafts = ensureDocumentDrafts(exceptionId);
+        if (!drafts[index]) return;
+        drafts[index][field] = input.value;
+      };
+
+      input.addEventListener("input", syncDraftValue);
+      input.addEventListener("change", syncDraftValue);
     });
 
     document.querySelectorAll("[data-doc-close]").forEach((btn) => {
@@ -367,33 +461,38 @@
         clearStatus();
 
         const exceptionId = form.getAttribute("data-exception-id");
-        const submitBtn = form.querySelector("button[type='submit']");
-        submitBtn.disabled = true;
-
-        const fd = new FormData(form);
+        const drafts = ensureDocumentDrafts(exceptionId);
         const payload = {
-          action: "SAVE_COVERAGE",
-          coverage_type: String(fd.get("coverage_type") || ""),
-          coverage_type_raw: String(fd.get("coverage_type_raw") || ""),
-          insurer_letter: String(fd.get("insurer_letter") || ""),
-          insurer_name: String(fd.get("insurer_name") || ""),
-          policy_number: String(fd.get("policy_number") || ""),
-          effective_date: String(fd.get("effective_date") || ""),
-          expiration_date: String(fd.get("expiration_date") || ""),
-          limit_label: String(fd.get("limit_label") || ""),
-          currency: String(fd.get("currency") || "USD"),
-          amount: Number(fd.get("amount") || "0"),
+          action: "SAVE_COVERAGES",
+          coverages: drafts.map((draft) => ({
+            coverage_type: String(draft.coverage_type || ""),
+            coverage_type_raw: String(draft.coverage_type_raw || ""),
+            insurer_letter: String(draft.insurer_letter || ""),
+            insurer_name: String(draft.insurer_name || ""),
+            policy_number: String(draft.policy_number || ""),
+            effective_date: String(draft.effective_date || ""),
+            expiration_date: String(draft.expiration_date || ""),
+            limit_label: String(draft.limit_label || ""),
+            currency: String(draft.currency || "USD"),
+            amount: Number(draft.amount || "0"),
+          })),
         };
+        state.documentReview.submittingByExceptionId[exceptionId] = true;
+        renderDocumentReviewRows();
+        wireHandlers();
 
         try {
           await apiPost(`/api/admin/insurance/document-review-exceptions/${encodeURIComponent(exceptionId)}/resolve`, payload);
-          showStatus("Coverage inserted and document review exception resolved.", "success");
+          showStatus("Coverages inserted and document review exception resolved.", "success");
+          delete state.documentReview.draftsByExceptionId[exceptionId];
           state.documentReview.expandedExceptionId = null;
           await loadDocumentReviewQueue(true);
         } catch (error) {
           showStatus(error.message || "Failed to save coverage.");
         } finally {
-          submitBtn.disabled = false;
+          delete state.documentReview.submittingByExceptionId[exceptionId];
+          renderDocumentReviewRows();
+          wireHandlers();
         }
       });
     });
