@@ -1,0 +1,1337 @@
+diff --git a/src/routes/internal/insurance.routes.js b/src/routes/internal/insurance.routes.js
+index b98d6c4506fad0fc5728d066875ebad55a3c9c65..524941bf6e2ccfd70bccc4553030f08e51ec72a4 100644
+--- a/src/routes/internal/insurance.routes.js
++++ b/src/routes/internal/insurance.routes.js
+@@ -52,50 +52,392 @@ function normalizeUploadedBy(v) {
+ }
+ 
+ function normalizeDocType(v) {
+   const x = String(v || "COI").toUpperCase().trim();
+   if (x === "COI" || x === "OTHER") return x;
+   throw new Error("document_type must be COI or OTHER.");
+ }
+ 
+ function normalizeCoverageType(v) {
+   const x = String(v || "").toUpperCase().trim();
+   const allowed = new Set([
+     "AUTO_LIABILITY",
+     "CARGO",
+     "GENERAL_LIABILITY",
+     "UMBRELLA_LIABILITY",
+     "WORKERS_COMP",
+     "ERRORS_OMISSIONS",
+     "CONTINGENT_AUTO_LIABILITY",
+   ]);
+   if (!allowed.has(x)) {
+     throw new Error("Invalid coverage_type.");
+   }
+   return x;
+ }
+ 
++function normalizeDocumentReviewAction(v) {
++  const x = String(v || "").toUpperCase().trim();
++  if (x === "SAVE_COVERAGE" || x === "CLOSE") return x;
++  throw new Error("action must be SAVE_COVERAGE or CLOSE.");
++}
++
++function normalizeCoverageCurrency(v) {
++  const x = String(v || "USD").toUpperCase().trim();
++  if (x === "USD") return "USD";
++  throw new Error("currency must be USD.");
++}
++
++async function dbFunctionExists(client, schema, fnName) {
++  const { rows } = await client.query(
++    `
++    SELECT EXISTS (
++      SELECT 1
++      FROM pg_proc p
++      JOIN pg_namespace n ON n.oid = p.pronamespace
++      WHERE n.nspname = $1
++        AND p.proname = $2
++    ) AS exists;
++    `,
++    [schema, fnName]
++  );
++  return rows?.[0]?.exists === true;
++}
++
++async function getFunctionArgCounts(client, schema, fnName) {
++  const { rows } = await client.query(
++    `
++    SELECT p.pronargs::int AS arg_count
++    FROM pg_proc p
++    JOIN pg_namespace n ON n.oid = p.pronamespace
++    WHERE n.nspname = $1
++      AND p.proname = $2;
++    `,
++    [schema, fnName]
++  );
++  return rows.map((r) => r.arg_count);
++}
++
++function hasArgCount(argCounts, count) {
++  return Array.isArray(argCounts) && argCounts.includes(count);
++}
++
++function getCoverageIdFromFunctionRow(row) {
++  if (!row || typeof row !== "object") return null;
++  return row.coverage_id || row.id || row.inserted_coverage_id || row.out_coverage_id || null;
++}
++
++async function closeDocumentReviewException(client, exceptionId, closeNotes) {
++  const hasCloseFunction = await dbFunctionExists(client, "public", "close_insurance_document_review_exception");
++  if (hasCloseFunction) {
++    const argCounts = await getFunctionArgCounts(client, "public", "close_insurance_document_review_exception");
++
++    if (hasArgCount(argCounts, 3)) {
++      const { rows } = await client.query(
++        "SELECT * FROM public.close_insurance_document_review_exception($1, $2, $3);",
++        [exceptionId, "RESOLVED", closeNotes]
++      );
++      return { mode: "function", result: rows?.[0] ?? null, arg_count_used: 3 };
++    }
++
++    if (hasArgCount(argCounts, 2)) {
++      const { rows } = await client.query(
++        "SELECT * FROM public.close_insurance_document_review_exception($1, $2);",
++        [exceptionId, closeNotes]
++      );
++      return { mode: "function", result: rows?.[0] ?? null, arg_count_used: 2 };
++    }
++
++    throw new Error(
++      `Unsupported signature for close_insurance_document_review_exception. Found arg counts: ${argCounts.join(", ") || "none"}.`
++    );
++  }
++
++  const updated = await client.query(
++    `
++    UPDATE public.insurance_document_review_exceptions
++    SET status = 'RESOLVED',
++        resolution_notes = $2,
++        resolved_at = NOW()
++    WHERE id = $1
++      AND status = 'OPEN'
++    RETURNING id;
++    `,
++    [exceptionId, closeNotes]
++  );
++
++  return { mode: "update", updatedCount: updated.rowCount };
++}
++
++async function closeNormalizationException(client, exceptionId, closeNotes) {
++  const hasCloseFunction = await dbFunctionExists(client, "public", "close_insurance_exception_manual");
++  if (hasCloseFunction) {
++    const argCounts = await getFunctionArgCounts(client, "public", "close_insurance_exception_manual");
++
++    if (hasArgCount(argCounts, 3)) {
++      const { rows } = await client.query(
++        "SELECT * FROM public.close_insurance_exception_manual($1, $2, $3);",
++        [exceptionId, "RESOLVED", closeNotes]
++      );
++      return { mode: "function", result: rows?.[0] ?? null, arg_count_used: 3 };
++    }
++
++    if (hasArgCount(argCounts, 2)) {
++      const { rows } = await client.query(
++        "SELECT * FROM public.close_insurance_exception_manual($1, $2);",
++        [exceptionId, closeNotes]
++      );
++      return { mode: "function", result: rows?.[0] ?? null, arg_count_used: 2 };
++    }
++
++    throw new Error(
++      `Unsupported signature for close_insurance_exception_manual. Found arg counts: ${argCounts.join(", ") || "none"}.`
++    );
++  }
++
++  const updated = await client.query(
++    `
++    UPDATE public.insurance_normalization_exceptions
++    SET status = 'RESOLVED',
++        resolution_notes = $2,
++        resolved_at = NOW()
++    WHERE id = $1
++      AND status = 'OPEN'
++    RETURNING id;
++    `,
++    [exceptionId, closeNotes]
++  );
++
++  return { mode: "update", updatedCount: updated.rowCount };
++}
++
++/**
++ * GET /api/admin/insurance/document-review-exceptions
++ */
++router.get(
++  "/admin/insurance/document-review-exceptions",
++  requireAuth,
++  loadCompanyContext,
++  requireCompanyAdmin,
++  async (req, res) => {
++    try {
++      const companyId = req.companyContext?.companyId || req.company_id || req.companyId;
++      if (!companyId) throw new Error("Missing company context.");
++
++      const { rows } = await pool.query(
++        `
++        SELECT
++          e.id AS exception_id,
++          e.document_id,
++          e.dot_number,
++          e.exception_type,
++          e.exception_reason,
++          d.uploaded_at,
++          COALESCE(c.legalname, c.dbaname) AS carrier_name
++        FROM public.insurance_document_review_exceptions e
++        JOIN public.insurance_documents d
++          ON d.id = e.document_id
++        LEFT JOIN public.carriers c
++          ON c.dotnumber = e.dot_number
++        WHERE e.status = 'OPEN'
++          AND d.company_id = $1
++        ORDER BY e.created_at ASC;
++        `,
++        [companyId]
++      );
++
++      return res.json({ ok: true, rows });
++    } catch (err) {
++      return res.status(400).json({ ok: false, error: err.message || "Failed to load document review queue." });
++    }
++  }
++);
++
++/**
++ * POST /api/admin/insurance/document-review-exceptions/:exceptionId/resolve
++ */
++router.post(
++  "/admin/insurance/document-review-exceptions/:exceptionId/resolve",
++  requireAuth,
++  loadCompanyContext,
++  requireCompanyAdmin,
++  async (req, res) => {
++    const client = await pool.connect();
++
++    try {
++      const companyId = req.companyContext?.companyId || req.company_id || req.companyId;
++      const exceptionId = String(req.params.exceptionId || "").trim();
++      const action = normalizeDocumentReviewAction(req.body?.action);
++      const closeNotes = String(req.body?.resolution_notes || "").trim() || "Closed manually";
++
++      if (!companyId) throw new Error("Missing company context.");
++      if (!exceptionId) throw new Error("exceptionId is required.");
++
++      await client.query("BEGIN");
++
++      const exceptionDoc = await client.query(
++        `
++        SELECT e.id, e.document_id
++        FROM public.insurance_document_review_exceptions e
++        JOIN public.insurance_documents d
++          ON d.id = e.document_id
++        WHERE e.id = $1
++          AND d.company_id = $2
++        LIMIT 1;
++        `,
++        [exceptionId, companyId]
++      );
++
++      if (!exceptionDoc.rowCount) {
++        throw new Error("Document review exception not found for this company.");
++      }
++
++      if (action === "CLOSE") {
++        const closeResult = await closeDocumentReviewException(client, exceptionId, closeNotes);
++        await client.query("COMMIT");
++        return res.json({ ok: true, action: "CLOSE", close_result: closeResult });
++      }
++
++      const coverageType = String(req.body?.coverage_type || "").trim();
++      const coverageTypeRaw = String(req.body?.coverage_type_raw || "").trim();
++      const insurerLetter = String(req.body?.insurer_letter || "").trim() || null;
++      const insurerName = String(req.body?.insurer_name || "").trim();
++      const policyNumber = String(req.body?.policy_number || "").trim();
++      const effectiveDate = String(req.body?.effective_date || "").trim();
++      const expirationDate = String(req.body?.expiration_date || "").trim();
++      const limitLabel = String(req.body?.limit_label || "").trim();
++      const currency = normalizeCoverageCurrency(req.body?.currency);
++      const amount = Number(req.body?.amount);
++
++      if (!coverageType) throw new Error("coverage_type is required.");
++      if (!coverageTypeRaw) throw new Error("coverage_type_raw is required.");
++      if (!insurerName) throw new Error("insurer_name is required.");
++      if (!policyNumber) throw new Error("policy_number is required.");
++      if (!effectiveDate) throw new Error("effective_date is required.");
++      if (!expirationDate) throw new Error("expiration_date is required.");
++      if (!limitLabel) throw new Error("limit_label is required.");
++      if (!Number.isFinite(amount) || amount <= 0) throw new Error("amount must be a positive number.");
++
++      const generatedCoverageId = crypto.randomUUID();
++      const coverageArgCounts = await getFunctionArgCounts(client, "public", "manual_insert_insurance_coverage");
++      const coverageLimitArgCounts = await getFunctionArgCounts(client, "public", "manual_insert_insurance_coverage_limit");
++      let coverageIdForLimit = generatedCoverageId;
++
++      if (hasArgCount(coverageArgCounts, 11)) {
++        await client.query(
++          `
++          SELECT *
++          FROM public.manual_insert_insurance_coverage($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
++          `,
++          [
++            exceptionDoc.rows[0].document_id,
++            generatedCoverageId,
++            coverageType,
++            coverageTypeRaw,
++            insurerLetter,
++            insurerName,
++            policyNumber,
++            effectiveDate,
++            expirationDate,
++            null,
++            null,
++          ]
++        );
++      } else if (hasArgCount(coverageArgCounts, 7)) {
++        const sevenArgInsert = await client.query(
++          `
++          SELECT *
++          FROM public.manual_insert_insurance_coverage($1, $2, $3, $4, $5, $6, $7);
++          `,
++          [
++            exceptionDoc.rows[0].document_id,
++            coverageType,
++            coverageTypeRaw,
++            insurerLetter,
++            insurerName,
++            policyNumber,
++            effectiveDate,
++          ]
++        );
++
++        const insertedCoverageId = getCoverageIdFromFunctionRow(sevenArgInsert.rows?.[0]);
++        if (!insertedCoverageId) {
++          throw new Error(
++            "manual_insert_insurance_coverage(7 args) did not return a usable coverage id, so the limit insert was not attempted."
++          );
++        }
++        coverageIdForLimit = insertedCoverageId;
++      } else {
++        throw new Error(
++          `Unsupported signature for manual_insert_insurance_coverage. Found arg counts: ${coverageArgCounts.join(", ") || "none"}.`
++        );
++      }
++
++      if (hasArgCount(coverageLimitArgCounts, 9)) {
++        await client.query(
++          `
++          SELECT *
++          FROM public.manual_insert_insurance_coverage_limit($1, $2, $3, $4, $5, $6, $7, $8, $9);
++          `,
++          [coverageIdForLimit, limitLabel, currency, amount, null, null, null, null, 1]
++        );
++      } else if (hasArgCount(coverageLimitArgCounts, 4)) {
++        await client.query(
++          `
++          SELECT *
++          FROM public.manual_insert_insurance_coverage_limit($1, $2, $3, $4);
++          `,
++          [coverageIdForLimit, limitLabel, currency, amount]
++        );
++      } else {
++        throw new Error(
++          `Unsupported signature for manual_insert_insurance_coverage_limit. Found arg counts: ${coverageLimitArgCounts.join(", ") || "none"}.`
++        );
++      }
++
++      // Document-review SAVE_COVERAGE flow is intentionally raw-insert-only:
++      // 1) insert raw coverage, 2) insert raw limit, 3) close document-review exception.
++      // Normalization is NOT auto-run in this transaction.
++      const closeResult = await closeDocumentReviewException(client, exceptionId, "Resolved after manual coverage insert");
++
++      await client.query("COMMIT");
++      return res.json({
++        ok: true,
++        action: "SAVE_COVERAGE",
++        coverage_id: coverageIdForLimit,
++        close_result: closeResult,
++      });
++    } catch (err) {
++      try {
++        await client.query("ROLLBACK");
++      } catch {}
++      return res.status(400).json({ ok: false, error: err.message || "Resolve failed." });
++    } finally {
++      client.release();
++    }
++  }
++);
++
+ 
+ /**
+  * GET /api/admin/insurance/normalization-exceptions
+  */
+ router.get(
+   "/admin/insurance/normalization-exceptions",
+   requireAuth,
+   loadCompanyContext,
+   requireCompanyAdmin,
+   async (req, res) => {
+     try {
+       const companyId = req.companyContext?.companyId || req.company_id || req.companyId;
+       if (!companyId) throw new Error("Missing company context.");
+ 
+       const { rows } = await pool.query(
+         `
+         SELECT
+           e.id AS exception_id,
+           e.document_id,
+           e.dot_number,
+           e.exception_type,
+           e.exception_reason,
+           e.source_coverage_type,
+           e.source_coverage_type_raw,
+           d.uploaded_at,
+@@ -112,94 +454,82 @@ router.get(
+         [companyId]
+       );
+ 
+       return res.json({ ok: true, rows });
+     } catch (err) {
+       return res.status(400).json({ ok: false, error: err.message || "Failed to load queue." });
+     }
+   }
+ );
+ 
+ /**
+  * POST /api/admin/insurance/normalization-exceptions/:exceptionId/resolve
+  */
+ router.post(
+   "/admin/insurance/normalization-exceptions/:exceptionId/resolve",
+   requireAuth,
+   loadCompanyContext,
+   requireCompanyAdmin,
+   async (req, res) => {
+     const client = await pool.connect();
+ 
+     try {
+       const companyId = req.companyContext?.companyId || req.company_id || req.companyId;
+       const exceptionId = String(req.params.exceptionId || "").trim();
+       const action = String(req.body?.action || "").toUpperCase().trim();
+-      const resolutionNotes = String(req.body?.resolution_notes || "").trim() || "Ignored manually";
++      const resolutionNotes = String(req.body?.resolution_notes || "").trim() || "Closed manually";
+ 
+       if (!companyId) throw new Error("Missing company context.");
+       if (!exceptionId) throw new Error("exceptionId is required.");
+-      if (action !== "SAVE_COVERAGE" && action !== "IGNORE") {
+-        throw new Error("action must be SAVE_COVERAGE or IGNORE.");
++      if (action !== "SAVE_COVERAGE" && action !== "CLOSE") {
++        throw new Error("action must be SAVE_COVERAGE or CLOSE.");
+       }
+ 
+       await client.query("BEGIN");
+ 
+       const exceptionDoc = await client.query(
+         `
+         SELECT e.id, e.document_id
+         FROM public.insurance_normalization_exceptions e
+         JOIN public.insurance_documents d
+           ON d.id = e.document_id
+         WHERE e.id = $1
+           AND d.company_id = $2
+         LIMIT 1;
+         `,
+         [exceptionId, companyId]
+       );
+ 
+       if (!exceptionDoc.rowCount) throw new Error("Normalization exception not found for this company.");
+ 
+-      if (action === "IGNORE") {
+-        const ignored = await client.query(
+-          `
+-          UPDATE public.insurance_normalization_exceptions
+-          SET status = 'RESOLVED',
+-              resolution_notes = $2,
+-              resolved_at = NOW()
+-          WHERE id = $1
+-            AND status = 'OPEN'
+-          RETURNING id;
+-          `,
+-          [exceptionId, resolutionNotes]
+-        );
+-
++      if (action === "CLOSE") {
++        const closeResult = await closeNormalizationException(client, exceptionId, resolutionNotes);
+         await client.query("COMMIT");
+         return res.json({
+           ok: true,
+-          action: "IGNORE",
+-          ignored_count: ignored.rowCount,
++          action: "CLOSE",
++          close_result: closeResult,
+         });
+       }
+ 
+       const normalizedCoverageType = normalizeCoverageType(req.body?.normalized_coverage_type);
+       const selectedLimitAmount = Number(req.body?.selected_limit_amount);
+ 
+       if (!Number.isFinite(selectedLimitAmount) || selectedLimitAmount <= 0) {
+         throw new Error("selected_limit_amount must be a positive number.");
+       }
+ 
+       const fnResult = await client.query(
+         `
+         SELECT *
+         FROM public.resolve_insurance_exception_manual($1, $2, $3);
+         `,
+         [exceptionId, normalizedCoverageType, selectedLimitAmount]
+       );
+ 
+       await client.query("COMMIT");
+ 
+       return res.json({
+         ok: true,
+         action: "SAVE_COVERAGE",
+         result: fnResult.rows?.[0] ?? null,
+       });
+diff --git a/src/routes/public/adminInsuranceDocumentReview.routes.js b/src/routes/public/adminInsuranceDocumentReview.routes.js
+index e52bcca6d0972d8d22e0d8d0fe6fa15de86a9b31..25f4333adf8364d8f8171d420092b771de6b9d6c 100644
+--- a/src/routes/public/adminInsuranceDocumentReview.routes.js
++++ b/src/routes/public/adminInsuranceDocumentReview.routes.js
+@@ -1,15 +1,19 @@
+ "use strict";
+ 
+ const express = require("express");
+ const path = require("path");
+ 
+ const { requireAuth } = require("../../middleware/requireAuth");
+ const { loadCompanyContext, requireCompanyAdmin } = require("../../middleware/companyContext");
+ 
+ const router = express.Router();
+ 
+-router.get("/admin/insurance-document-review", requireAuth, loadCompanyContext, requireCompanyAdmin, (req, res) => {
++router.get("/admin/insurance-exceptions", requireAuth, loadCompanyContext, requireCompanyAdmin, (req, res) => {
+   res.sendFile(path.join(__dirname, "../../../static", "admin-insurance-document-review.html"));
+ });
+ 
++router.get("/admin/insurance-document-review", requireAuth, loadCompanyContext, requireCompanyAdmin, (req, res) => {
++  res.redirect(302, "/admin/insurance-exceptions");
++});
++
+ module.exports = router;
+diff --git a/static/admin-insurance-document-review.html b/static/admin-insurance-document-review.html
+index 9211ea51d8896fea03fff06bd4dd4de18ca10b50..e69e27351e747c1b6dec922f5d9cd298e3e9afd1 100644
+--- a/static/admin-insurance-document-review.html
++++ b/static/admin-insurance-document-review.html
+@@ -1,51 +1,82 @@
+ <!DOCTYPE html>
+ <html lang="en">
+ <head>
+   <meta charset="UTF-8" />
+   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+-  <title>Insurance Normalization Exceptions | Carrier Shark</title>
++  <title>Insurance Exceptions | Carrier Shark</title>
+   <link rel="stylesheet" href="/static/css/base.css" />
+   <link rel="stylesheet" href="/static/css/style1.css" />
+   <link rel="stylesheet" href="/static/css/admin-insurance-document-review.css" />
+   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+ </head>
+ <body class="carrier-list">
+   <div class="bg-gradient"></div>
+   <div class="bg-grid"></div>
+   <div id="site-header"></div>
+ 
+   <main class="review-shell">
+     <header class="review-header">
+       <div>
+-        <h1>Insurance Normalization Exceptions</h1>
+-        <p>Resolve open insurance normalization exceptions from the admin queue.</p>
++        <h1>Insurance Exceptions</h1>
++        <p>Manage open document review and normalization insurance exceptions.</p>
+       </div>
+       <button id="refresh-btn" class="btn-ghost" type="button">Refresh</button>
+     </header>
+ 
+     <section class="review-card">
+       <div id="status-banner" class="status-banner" hidden></div>
+-      <div class="table-wrap">
+-        <table class="review-table">
+-          <thead>
+-            <tr>
+-              <th>DOT</th>
+-              <th>Carrier</th>
+-              <th>Errors</th>
+-              <th>Uploaded</th>
+-              <th>PDF</th>
+-              <th>Actions</th>
+-            </tr>
+-          </thead>
+-          <tbody id="queue-body"></tbody>
+-        </table>
++
++      <div class="tab-bar" role="tablist" aria-label="Insurance exception workflows">
++        <button class="tab-btn is-active" type="button" role="tab" aria-selected="true" data-tab="document-review">
++          Document Review
++        </button>
++        <button class="tab-btn" type="button" role="tab" aria-selected="false" data-tab="normalization">
++          Normalization
++        </button>
+       </div>
+-      <div id="empty-state" class="empty-state" hidden>No open insurance normalization exceptions.</div>
++
++      <section class="tab-section" data-tab-section="document-review">
++        <div class="table-wrap">
++          <table class="review-table">
++            <thead>
++              <tr>
++                <th>DOT</th>
++                <th>Carrier</th>
++                <th>Errors</th>
++                <th>Uploaded</th>
++                <th>PDF</th>
++                <th>Actions</th>
++              </tr>
++            </thead>
++            <tbody id="doc-queue-body"></tbody>
++          </table>
++        </div>
++        <div id="doc-empty-state" class="empty-state" hidden>No open document review exceptions.</div>
++      </section>
++
++      <section class="tab-section" data-tab-section="normalization" hidden>
++        <div class="table-wrap">
++          <table class="review-table">
++            <thead>
++              <tr>
++                <th>DOT</th>
++                <th>Carrier</th>
++                <th>Errors</th>
++                <th>Uploaded</th>
++                <th>PDF</th>
++                <th>Actions</th>
++              </tr>
++            </thead>
++            <tbody id="norm-queue-body"></tbody>
++          </table>
++        </div>
++        <div id="norm-empty-state" class="empty-state" hidden>No open normalization exceptions.</div>
++      </section>
+     </section>
+   </main>
+ 
+   <script src="/static/js/shared/sentry.js"></script>
+   <script src="/static/js/shared/shared.js"></script>
+   <script src="/static/js/pages/admin-insurance-document-review.js"></script>
+ </body>
+ </html>
+diff --git a/static/css/admin-insurance-document-review.css b/static/css/admin-insurance-document-review.css
+index 3ef254c7f8cbaf4bddd30e357eb0405a148e0d9a..d958642c7307f1c96f49452d3f30a0d7c127aa30 100644
+--- a/static/css/admin-insurance-document-review.css
++++ b/static/css/admin-insurance-document-review.css
+@@ -29,50 +29,73 @@
+ 
+ .review-card {
+   background: rgba(8, 18, 36, 0.86);
+   border: 1px solid rgba(124, 146, 196, 0.18);
+   border-radius: 16px;
+   backdrop-filter: blur(8px);
+   overflow: hidden;
+ }
+ 
+ .status-banner {
+   padding: 11px 14px;
+   font-size: 14px;
+   border-bottom: 1px solid rgba(124, 146, 196, 0.2);
+ }
+ 
+ .status-banner.is-error {
+   color: #ffd5d5;
+   background: rgba(190, 42, 56, 0.25);
+ }
+ 
+ .status-banner.is-success {
+   color: #d4f8e9;
+   background: rgba(28, 136, 87, 0.22);
+ }
+ 
++.tab-bar {
++  display: flex;
++  gap: 10px;
++  padding: 14px;
++  border-bottom: 1px solid rgba(124, 146, 196, 0.2);
++}
++
++.tab-btn {
++  border: 1px solid rgba(124, 146, 196, 0.24);
++  background: rgba(13, 28, 52, 0.55);
++  color: #9eb0d3;
++  border-radius: 10px;
++  padding: 8px 12px;
++  cursor: pointer;
++  font-size: 13px;
++}
++
++.tab-btn.is-active {
++  color: #e7eefb;
++  border-color: rgba(124, 146, 196, 0.6);
++  background: rgba(24, 45, 82, 0.8);
++}
++
+ .table-wrap {
+   overflow-x: auto;
+ }
+ 
+ .review-table {
+   width: 100%;
+   border-collapse: collapse;
+ }
+ 
+ .review-table th,
+ .review-table td {
+   padding: 12px 14px;
+   text-align: left;
+   vertical-align: top;
+   border-bottom: 1px solid rgba(124, 146, 196, 0.14);
+ }
+ 
+ .review-table th {
+   color: #9eb0d3;
+   font-size: 12px;
+   letter-spacing: 0.04em;
+   text-transform: uppercase;
+ }
+ 
+ .review-table td {
+@@ -133,41 +156,40 @@
+   border-radius: 10px;
+   border: 1px solid rgba(124, 146, 196, 0.3);
+   background: rgba(8, 18, 36, 0.8);
+   color: #e7eefb;
+   padding: 9px 10px;
+   font-size: 14px;
+ }
+ 
+ .form-grid textarea {
+   min-height: 74px;
+   resize: vertical;
+ }
+ 
+ .panel-actions {
+   margin-top: 10px;
+   display: flex;
+   gap: 10px;
+ }
+ 
+ .empty-state {
+   color: #9eb0d3;
+   padding: 22px 14px;
+   text-align: center;
+ }
+ 
++.review-table .muted {
++  color: #9eb0d3;
++  font-size: 12px;
++}
++
+ @media (max-width: 860px) {
+   .review-shell {
+     width: calc(100% - 20px);
+   }
+ 
+   .review-header {
+     flex-direction: column;
+     align-items: flex-start;
+   }
+ }
+-
+-
+-.review-table .muted {
+-  color: #9eb0d3;
+-  font-size: 12px;
+-}
+diff --git a/static/js/pages/admin-insurance-document-review.js b/static/js/pages/admin-insurance-document-review.js
+index b9ba817f7003533013a8133ef45e7da16efe32b5..3c6fcfc8b2019ed9db568543c7d12b00e86f8284 100644
+--- a/static/js/pages/admin-insurance-document-review.js
++++ b/static/js/pages/admin-insurance-document-review.js
+@@ -1,262 +1,518 @@
+ (() => {
+-  const COVERAGE_TYPES = [
++  const NORMALIZED_COVERAGE_TYPES = [
+     "AUTO_LIABILITY",
+     "CARGO",
+     "GENERAL_LIABILITY",
+     "UMBRELLA_LIABILITY",
+     "WORKERS_COMP",
+     "ERRORS_OMISSIONS",
+     "CONTINGENT_AUTO_LIABILITY",
+   ];
+ 
+   const state = {
+-    rows: [],
+-    expandedExceptionId: null,
+-    loading: false,
++    activeTab: "document-review",
++    loading: {
++      "document-review": false,
++      normalization: false,
++    },
++    documentReview: {
++      rows: [],
++      expandedExceptionId: null,
++      loaded: false,
++    },
++    normalization: {
++      rows: [],
++      expandedExceptionId: null,
++      loaded: false,
++    },
+   };
+ 
+-  const queueBody = document.getElementById("queue-body");
+-  const emptyState = document.getElementById("empty-state");
+-  const statusBanner = document.getElementById("status-banner");
++  const tabButtons = Array.from(document.querySelectorAll(".tab-btn"));
++  const tabSections = Array.from(document.querySelectorAll(".tab-section"));
+   const refreshBtn = document.getElementById("refresh-btn");
++  const statusBanner = document.getElementById("status-banner");
++
++  const docQueueBody = document.getElementById("doc-queue-body");
++  const docEmptyState = document.getElementById("doc-empty-state");
++
++  const normQueueBody = document.getElementById("norm-queue-body");
++  const normEmptyState = document.getElementById("norm-empty-state");
+ 
+   const escapeHtml = (value) =>
+     String(value ?? "")
+       .replaceAll("&", "&amp;")
+       .replaceAll("<", "&lt;")
+       .replaceAll(">", "&gt;")
+       .replaceAll('"', "&quot;")
+       .replaceAll("'", "&#039;");
+ 
+   function showStatus(message, type = "error") {
+     statusBanner.hidden = false;
+     statusBanner.classList.toggle("is-error", type === "error");
+     statusBanner.classList.toggle("is-success", type === "success");
+     statusBanner.textContent = message;
+   }
+ 
+   function clearStatus() {
+     statusBanner.hidden = true;
+     statusBanner.classList.remove("is-error", "is-success");
+     statusBanner.textContent = "";
+   }
+ 
+   async function apiGet(url) {
+     const response = await fetch(url, { credentials: "include" });
+     const payload = await response.json().catch(() => ({}));
+     if (!response.ok || payload.ok === false) {
+       throw new Error(payload.error || `Request failed: ${response.status}`);
+     }
+     return payload;
+   }
+ 
+   async function apiPost(url, body) {
+     const response = await fetch(url, {
+       method: "POST",
+       credentials: "include",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify(body),
+     });
+     const payload = await response.json().catch(() => ({}));
+     if (!response.ok || payload.ok === false) {
+       throw new Error(payload.error || `Request failed: ${response.status}`);
+     }
+     return payload;
+   }
+ 
+   function formatDate(value) {
+     if (!value) return "—";
+     return new Date(value).toLocaleString();
+   }
+ 
+-  function getResolveFormHtml(row) {
+-    const coverageOptions = COVERAGE_TYPES.map((v) => `<option value="${v}">${v}</option>`).join("");
++  function renderTabs() {
++    tabButtons.forEach((btn) => {
++      const tab = btn.getAttribute("data-tab");
++      const active = tab === state.activeTab;
++      btn.classList.toggle("is-active", active);
++      btn.setAttribute("aria-selected", active ? "true" : "false");
++    });
++
++    tabSections.forEach((section) => {
++      section.hidden = section.getAttribute("data-tab-section") !== state.activeTab;
++    });
++  }
++
++  function docResolveFormHtml(row) {
++    return `
++      <div class="resolve-panel">
++        <form class="doc-resolve-form" data-exception-id="${row.exception_id}">
++          <div class="form-grid">
++            <div>
++              <label>Coverage Type</label>
++              <input name="coverage_type" type="text" required />
++            </div>
++            <div>
++              <label>Coverage Type Raw</label>
++              <input name="coverage_type_raw" type="text" required />
++            </div>
++            <div>
++              <label>Insurer Letter</label>
++              <input name="insurer_letter" type="text" maxlength="2" />
++            </div>
++            <div>
++              <label>Insurer Name</label>
++              <input name="insurer_name" type="text" required />
++            </div>
++            <div>
++              <label>Policy Number</label>
++              <input name="policy_number" type="text" required />
++            </div>
++            <div>
++              <label>Effective Date</label>
++              <input name="effective_date" type="date" required />
++            </div>
++            <div>
++              <label>Expiration Date</label>
++              <input name="expiration_date" type="date" required />
++            </div>
++            <div>
++              <label>Limit Label</label>
++              <input name="limit_label" type="text" required />
++            </div>
++            <div>
++              <label>Currency</label>
++              <select name="currency" required>
++                <option value="USD" selected>USD</option>
++              </select>
++            </div>
++            <div>
++              <label>Amount</label>
++              <input name="amount" type="number" min="0" step="0.01" required />
++            </div>
++          </div>
++          <div class="panel-actions">
++            <button class="btn-inline" type="submit">Save Coverage</button>
++            <button class="btn-inline" type="button" data-doc-close-resolve="${row.exception_id}">Cancel</button>
++          </div>
++        </form>
++      </div>
++    `;
++  }
++
++  function normResolveFormHtml(row) {
++    const coverageOptions = NORMALIZED_COVERAGE_TYPES.map((v) => `<option value="${v}">${v}</option>`).join("");
+ 
+     return `
+       <div class="resolve-panel">
+-        <form class="resolve-form" data-exception-id="${row.exception_id}">
++        <form class="norm-resolve-form" data-exception-id="${row.exception_id}">
+           <div class="form-grid">
+             <div>
+               <label>Coverage Type</label>
+               <select name="normalized_coverage_type" required>${coverageOptions}</select>
+             </div>
+             <div>
+               <label>Amount</label>
+               <input name="selected_limit_amount" type="number" min="0" step="0.01" required />
+             </div>
+           </div>
+           <div class="panel-actions">
+-            <button class="btn-inline" type="submit">Save Coverage</button>
+-            <button class="btn-inline" type="button" data-close-resolve="${row.exception_id}">Cancel</button>
++            <button class="btn-inline" type="submit">Resolve</button>
++            <button class="btn-inline" type="button" data-norm-close-resolve="${row.exception_id}">Cancel</button>
+           </div>
+         </form>
+       </div>
+     `;
+   }
+ 
+-  function renderRows() {
+-    queueBody.innerHTML = "";
++  function renderDocumentReviewRows() {
++    docQueueBody.innerHTML = "";
++
++    if (!state.documentReview.rows.length) {
++      docEmptyState.hidden = false;
++      return;
++    }
++
++    docEmptyState.hidden = true;
++
++    for (const row of state.documentReview.rows) {
++      const tr = document.createElement("tr");
++      tr.innerHTML = `
++        <td>${escapeHtml(row.dot_number)}</td>
++        <td>${escapeHtml(row.carrier_name || "—")}</td>
++        <td>
++          <div><strong>${escapeHtml(row.exception_type || "—")}</strong></div>
++          <div>${escapeHtml(row.exception_reason || "—")}</div>
++        </td>
++        <td>${escapeHtml(formatDate(row.uploaded_at))}</td>
++        <td><button class="btn-inline" type="button" data-open-pdf="${row.document_id}">Open PDF</button></td>
++        <td>
++          <div class="actions">
++            <button class="btn-inline" type="button" data-doc-toggle-resolve="${row.exception_id}">Resolve</button>
++            <button class="btn-inline is-danger" type="button" data-doc-close="${row.exception_id}">Close</button>
++          </div>
++        </td>
++      `;
++      docQueueBody.appendChild(tr);
++
++      if (state.documentReview.expandedExceptionId === row.exception_id) {
++        const resolveRow = document.createElement("tr");
++        resolveRow.className = "resolve-row";
++        resolveRow.innerHTML = `<td colspan="6">${docResolveFormHtml(row)}</td>`;
++        docQueueBody.appendChild(resolveRow);
++      }
++    }
++  }
++
++  function renderNormalizationRows() {
++    normQueueBody.innerHTML = "";
+ 
+-    if (!state.rows.length) {
+-      emptyState.hidden = false;
++    if (!state.normalization.rows.length) {
++      normEmptyState.hidden = false;
+       return;
+     }
+ 
+-    emptyState.hidden = true;
++    normEmptyState.hidden = true;
+ 
+-    for (const row of state.rows) {
++    for (const row of state.normalization.rows) {
+       const tr = document.createElement("tr");
+       tr.innerHTML = `
+         <td>${escapeHtml(row.dot_number)}</td>
+         <td>${escapeHtml(row.carrier_name || "—")}</td>
+         <td>
+           <div><strong>${escapeHtml(row.exception_type || "—")}</strong></div>
+           <div>${escapeHtml(row.exception_reason || "—")}</div>
+           <div class="muted">Source: ${escapeHtml(row.source_coverage_type || "—")} / ${escapeHtml(row.source_coverage_type_raw || "—")}</div>
+         </td>
+         <td>${escapeHtml(formatDate(row.uploaded_at))}</td>
+         <td><button class="btn-inline" type="button" data-open-pdf="${row.document_id}">Open PDF</button></td>
+         <td>
+           <div class="actions">
+-            <button class="btn-inline" type="button" data-toggle-resolve="${row.exception_id}">Resolve</button>
+-            <button class="btn-inline is-danger" type="button" data-ignore="${row.exception_id}">Ignore</button>
++            <button class="btn-inline" type="button" data-norm-toggle-resolve="${row.exception_id}">Resolve</button>
++            <button class="btn-inline is-danger" type="button" data-norm-close="${row.exception_id}">Close</button>
+           </div>
+         </td>
+       `;
+-      queueBody.appendChild(tr);
++      normQueueBody.appendChild(tr);
+ 
+-      if (state.expandedExceptionId === row.exception_id) {
++      if (state.normalization.expandedExceptionId === row.exception_id) {
+         const resolveRow = document.createElement("tr");
+         resolveRow.className = "resolve-row";
+-        resolveRow.innerHTML = `<td colspan="6">${getResolveFormHtml(row)}</td>`;
+-        queueBody.appendChild(resolveRow);
++        resolveRow.innerHTML = `<td colspan="6">${normResolveFormHtml(row)}</td>`;
++        normQueueBody.appendChild(resolveRow);
+       }
+     }
++  }
+ 
+-    wireRowHandlers();
++  async function openPdf(documentId) {
++    if (!documentId) throw new Error("No document available for this exception.");
++    const data = await apiGet(`/api/insurance/documents/${encodeURIComponent(documentId)}/signed-url`);
++    if (!data?.signedUrl) throw new Error("Signed URL not returned.");
++    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+   }
+ 
+-  function wireRowHandlers() {
+-    queueBody.querySelectorAll("[data-open-pdf]").forEach((btn) => {
++  function wireHandlers() {
++    document.querySelectorAll("[data-open-pdf]").forEach((btn) => {
+       btn.addEventListener("click", async () => {
+         clearStatus();
+-        const documentId = btn.getAttribute("data-open-pdf");
+         try {
+-          if (!documentId) throw new Error("No document available for this exception.");
+-          const data = await apiGet(`/api/insurance/documents/${encodeURIComponent(documentId)}/signed-url`);
+-          if (!data?.signedUrl) throw new Error("Signed URL not returned.");
+-          window.open(data.signedUrl, "_blank", "noopener,noreferrer");
++          await openPdf(btn.getAttribute("data-open-pdf"));
+         } catch (error) {
+           showStatus(error.message || "Failed to open PDF.");
+         }
+       });
+     });
+ 
+-    queueBody.querySelectorAll("[data-toggle-resolve]").forEach((btn) => {
++    document.querySelectorAll("[data-doc-toggle-resolve]").forEach((btn) => {
++      btn.addEventListener("click", () => {
++        const exceptionId = btn.getAttribute("data-doc-toggle-resolve");
++        state.documentReview.expandedExceptionId =
++          state.documentReview.expandedExceptionId === exceptionId ? null : exceptionId;
++        renderDocumentReviewRows();
++        wireHandlers();
++      });
++    });
++
++    document.querySelectorAll("[data-doc-close-resolve]").forEach((btn) => {
++      btn.addEventListener("click", () => {
++        state.documentReview.expandedExceptionId = null;
++        renderDocumentReviewRows();
++        wireHandlers();
++      });
++    });
++
++    document.querySelectorAll("[data-doc-close]").forEach((btn) => {
++      btn.addEventListener("click", async () => {
++        const exceptionId = btn.getAttribute("data-doc-close");
++        btn.disabled = true;
++        clearStatus();
++        try {
++          await apiPost(`/api/admin/insurance/document-review-exceptions/${encodeURIComponent(exceptionId)}/resolve`, {
++            action: "CLOSE",
++          });
++          showStatus("Document review exception closed.", "success");
++          await loadDocumentReviewQueue(true);
++        } catch (error) {
++          showStatus(error.message || "Failed to close exception.");
++        } finally {
++          btn.disabled = false;
++        }
++      });
++    });
++
++    document.querySelectorAll("[data-norm-toggle-resolve]").forEach((btn) => {
+       btn.addEventListener("click", () => {
+-        const exceptionId = btn.getAttribute("data-toggle-resolve");
+-        state.expandedExceptionId = state.expandedExceptionId === exceptionId ? null : exceptionId;
+-        renderRows();
++        const exceptionId = btn.getAttribute("data-norm-toggle-resolve");
++        state.normalization.expandedExceptionId =
++          state.normalization.expandedExceptionId === exceptionId ? null : exceptionId;
++        renderNormalizationRows();
++        wireHandlers();
+       });
+     });
+ 
+-    queueBody.querySelectorAll("[data-close-resolve]").forEach((btn) => {
++    document.querySelectorAll("[data-norm-close-resolve]").forEach((btn) => {
+       btn.addEventListener("click", () => {
+-        state.expandedExceptionId = null;
+-        renderRows();
++        state.normalization.expandedExceptionId = null;
++        renderNormalizationRows();
++        wireHandlers();
+       });
+     });
+ 
+-    queueBody.querySelectorAll("[data-ignore]").forEach((btn) => {
++    document.querySelectorAll("[data-norm-close]").forEach((btn) => {
+       btn.addEventListener("click", async () => {
+-        const exceptionId = btn.getAttribute("data-ignore");
++        const exceptionId = btn.getAttribute("data-norm-close");
+         btn.disabled = true;
+         clearStatus();
+         try {
+           await apiPost(`/api/admin/insurance/normalization-exceptions/${encodeURIComponent(exceptionId)}/resolve`, {
+-            action: "IGNORE",
++            action: "CLOSE",
+           });
+-          showStatus("Normalization exception ignored.", "success");
+-          await loadQueue();
++          showStatus("Normalization exception closed.", "success");
++          await loadNormalizationQueue(true);
+         } catch (error) {
+-          showStatus(error.message || "Failed to ignore exception.");
++          showStatus(error.message || "Failed to close exception.");
+         } finally {
+           btn.disabled = false;
+         }
+       });
+     });
+ 
+-    queueBody.querySelectorAll(".resolve-form").forEach((form) => {
++    document.querySelectorAll(".doc-resolve-form").forEach((form) => {
++      form.addEventListener("submit", async (event) => {
++        event.preventDefault();
++        clearStatus();
++
++        const exceptionId = form.getAttribute("data-exception-id");
++        const submitBtn = form.querySelector("button[type='submit']");
++        submitBtn.disabled = true;
++
++        const fd = new FormData(form);
++        const payload = {
++          action: "SAVE_COVERAGE",
++          coverage_type: String(fd.get("coverage_type") || ""),
++          coverage_type_raw: String(fd.get("coverage_type_raw") || ""),
++          insurer_letter: String(fd.get("insurer_letter") || ""),
++          insurer_name: String(fd.get("insurer_name") || ""),
++          policy_number: String(fd.get("policy_number") || ""),
++          effective_date: String(fd.get("effective_date") || ""),
++          expiration_date: String(fd.get("expiration_date") || ""),
++          limit_label: String(fd.get("limit_label") || ""),
++          currency: String(fd.get("currency") || "USD"),
++          amount: Number(fd.get("amount") || "0"),
++        };
++
++        try {
++          await apiPost(`/api/admin/insurance/document-review-exceptions/${encodeURIComponent(exceptionId)}/resolve`, payload);
++          showStatus("Coverage inserted and document review exception resolved.", "success");
++          state.documentReview.expandedExceptionId = null;
++          await loadDocumentReviewQueue(true);
++        } catch (error) {
++          showStatus(error.message || "Failed to save coverage.");
++        } finally {
++          submitBtn.disabled = false;
++        }
++      });
++    });
++
++    document.querySelectorAll(".norm-resolve-form").forEach((form) => {
+       form.addEventListener("submit", async (event) => {
+         event.preventDefault();
+         clearStatus();
+ 
+         const exceptionId = form.getAttribute("data-exception-id");
+         const submitBtn = form.querySelector("button[type='submit']");
+         submitBtn.disabled = true;
+ 
+         const fd = new FormData(form);
+         const payload = {
+           action: "SAVE_COVERAGE",
+           normalized_coverage_type: String(fd.get("normalized_coverage_type") || ""),
+           selected_limit_amount: Number(fd.get("selected_limit_amount") || "0"),
+         };
+ 
+         try {
+           const response = await apiPost(
+             `/api/admin/insurance/normalization-exceptions/${encodeURIComponent(exceptionId)}/resolve`,
+             payload
+           );
+ 
+           const fnResult = response?.result;
+           if (!fnResult) {
+             showStatus("Coverage saved, but resolve result was empty.", "success");
+           } else if (fnResult.out_result_status && fnResult.out_result_status !== "RESOLVED") {
+             showStatus(
+               `Resolve returned ${fnResult.out_result_status}: ${fnResult.out_message || "No message."}`,
+               "error"
+             );
+           } else {
+             showStatus(fnResult.out_message || "Coverage saved.", "success");
+           }
+ 
+-          state.expandedExceptionId = null;
+-          await loadQueue();
++          state.normalization.expandedExceptionId = null;
++          await loadNormalizationQueue(true);
+         } catch (error) {
+           showStatus(error.message || "Failed to save coverage.");
+         } finally {
+           submitBtn.disabled = false;
+         }
+       });
+     });
+   }
+ 
+-  async function loadQueue() {
+-    if (state.loading) return;
+-    state.loading = true;
++  async function loadDocumentReviewQueue(force = false) {
++    if (state.loading["document-review"]) return;
++    if (state.documentReview.loaded && !force) return;
++
++    state.loading["document-review"] = true;
++    refreshBtn.disabled = true;
++
++    try {
++      const payload = await apiGet("/api/admin/insurance/document-review-exceptions");
++      state.documentReview.rows = Array.isArray(payload.rows) ? payload.rows : [];
++      state.documentReview.loaded = true;
++      renderDocumentReviewRows();
++      wireHandlers();
++    } catch (error) {
++      state.documentReview.rows = [];
++      renderDocumentReviewRows();
++      showStatus(error.message || "Failed to load document review queue.");
++    } finally {
++      state.loading["document-review"] = false;
++      refreshBtn.disabled = false;
++    }
++  }
++
++  async function loadNormalizationQueue(force = false) {
++    if (state.loading.normalization) return;
++    if (state.normalization.loaded && !force) return;
++
++    state.loading.normalization = true;
+     refreshBtn.disabled = true;
+ 
+     try {
+       const payload = await apiGet("/api/admin/insurance/normalization-exceptions");
+-      state.rows = Array.isArray(payload.rows) ? payload.rows : [];
+-      renderRows();
++      state.normalization.rows = Array.isArray(payload.rows) ? payload.rows : [];
++      state.normalization.loaded = true;
++      renderNormalizationRows();
++      wireHandlers();
+     } catch (error) {
+-      state.rows = [];
+-      renderRows();
+-      showStatus(error.message || "Failed to load queue.");
++      state.normalization.rows = [];
++      renderNormalizationRows();
++      showStatus(error.message || "Failed to load normalization queue.");
+     } finally {
+-      state.loading = false;
++      state.loading.normalization = false;
+       refreshBtn.disabled = false;
+     }
+   }
+ 
+-  refreshBtn.addEventListener("click", () => {
++  async function onTabChange(tab) {
++    state.activeTab = tab;
++    renderTabs();
++
++    if (tab === "document-review") {
++      await loadDocumentReviewQueue();
++      return;
++    }
++
++    await loadNormalizationQueue();
++  }
++
++  tabButtons.forEach((btn) => {
++    btn.addEventListener("click", async () => {
++      clearStatus();
++      await onTabChange(btn.getAttribute("data-tab"));
++    });
++  });
++
++  refreshBtn.addEventListener("click", async () => {
+     clearStatus();
+-    loadQueue();
++    if (state.activeTab === "document-review") {
++      await loadDocumentReviewQueue(true);
++      return;
++    }
++    await loadNormalizationQueue(true);
+   });
+ 
+   window.addEventListener("DOMContentLoaded", async () => {
+     await loadHeader();
+-    await loadQueue();
++    renderTabs();
++    await loadDocumentReviewQueue(true);
+   });
+ })();

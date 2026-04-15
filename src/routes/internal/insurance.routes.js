@@ -74,6 +74,348 @@ function normalizeCoverageType(v) {
   return x;
 }
 
+function normalizeDocumentReviewAction(v) {
+  const x = String(v || "").toUpperCase().trim();
+  if (x === "SAVE_COVERAGE" || x === "CLOSE") return x;
+  throw new Error("action must be SAVE_COVERAGE or CLOSE.");
+}
+
+function normalizeCoverageCurrency(v) {
+  const x = String(v || "USD").toUpperCase().trim();
+  if (x === "USD") return "USD";
+  throw new Error("currency must be USD.");
+}
+
+async function dbFunctionExists(client, schema, fnName) {
+  const { rows } = await client.query(
+    `
+    SELECT EXISTS (
+      SELECT 1
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = $1
+        AND p.proname = $2
+    ) AS exists;
+    `,
+    [schema, fnName]
+  );
+  return rows?.[0]?.exists === true;
+}
+
+async function getFunctionArgCounts(client, schema, fnName) {
+  const { rows } = await client.query(
+    `
+    SELECT p.pronargs::int AS arg_count
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = $1
+      AND p.proname = $2;
+    `,
+    [schema, fnName]
+  );
+  return rows.map((r) => r.arg_count);
+}
+
+function hasArgCount(argCounts, count) {
+  return Array.isArray(argCounts) && argCounts.includes(count);
+}
+
+function getCoverageIdFromFunctionRow(row) {
+  if (!row || typeof row !== "object") return null;
+  return row.coverage_id || row.id || row.inserted_coverage_id || row.out_coverage_id || null;
+}
+
+async function closeDocumentReviewException(client, exceptionId, closeNotes) {
+  const hasCloseFunction = await dbFunctionExists(client, "public", "close_insurance_document_review_exception");
+  if (hasCloseFunction) {
+    const argCounts = await getFunctionArgCounts(client, "public", "close_insurance_document_review_exception");
+
+    if (hasArgCount(argCounts, 3)) {
+      const { rows } = await client.query(
+        "SELECT * FROM public.close_insurance_document_review_exception($1, $2, $3);",
+        [exceptionId, "RESOLVED", closeNotes]
+      );
+      return { mode: "function", result: rows?.[0] ?? null, arg_count_used: 3 };
+    }
+
+    if (hasArgCount(argCounts, 2)) {
+      const { rows } = await client.query(
+        "SELECT * FROM public.close_insurance_document_review_exception($1, $2);",
+        [exceptionId, closeNotes]
+      );
+      return { mode: "function", result: rows?.[0] ?? null, arg_count_used: 2 };
+    }
+
+    throw new Error(
+      `Unsupported signature for close_insurance_document_review_exception. Found arg counts: ${argCounts.join(", ") || "none"}.`
+    );
+  }
+
+  const updated = await client.query(
+    `
+    UPDATE public.insurance_document_review_exceptions
+    SET status = 'RESOLVED',
+        resolution_notes = $2,
+        resolved_at = NOW()
+    WHERE id = $1
+      AND status = 'OPEN'
+    RETURNING id;
+    `,
+    [exceptionId, closeNotes]
+  );
+
+  return { mode: "update", updatedCount: updated.rowCount };
+}
+
+async function closeNormalizationException(client, exceptionId, closeNotes) {
+  const hasCloseFunction = await dbFunctionExists(client, "public", "close_insurance_exception_manual");
+  if (hasCloseFunction) {
+    const argCounts = await getFunctionArgCounts(client, "public", "close_insurance_exception_manual");
+
+    if (hasArgCount(argCounts, 3)) {
+      const { rows } = await client.query(
+        "SELECT * FROM public.close_insurance_exception_manual($1, $2, $3);",
+        [exceptionId, "RESOLVED", closeNotes]
+      );
+      return { mode: "function", result: rows?.[0] ?? null, arg_count_used: 3 };
+    }
+
+    if (hasArgCount(argCounts, 2)) {
+      const { rows } = await client.query(
+        "SELECT * FROM public.close_insurance_exception_manual($1, $2);",
+        [exceptionId, closeNotes]
+      );
+      return { mode: "function", result: rows?.[0] ?? null, arg_count_used: 2 };
+    }
+
+    throw new Error(
+      `Unsupported signature for close_insurance_exception_manual. Found arg counts: ${argCounts.join(", ") || "none"}.`
+    );
+  }
+
+  const updated = await client.query(
+    `
+    UPDATE public.insurance_normalization_exceptions
+    SET status = 'RESOLVED',
+        resolution_notes = $2,
+        resolved_at = NOW()
+    WHERE id = $1
+      AND status = 'OPEN'
+    RETURNING id;
+    `,
+    [exceptionId, closeNotes]
+  );
+
+  return { mode: "update", updatedCount: updated.rowCount };
+}
+
+/**
+ * GET /api/admin/insurance/document-review-exceptions
+ */
+router.get(
+  "/admin/insurance/document-review-exceptions",
+  requireAuth,
+  loadCompanyContext,
+  requireCompanyAdmin,
+  async (req, res) => {
+    try {
+      const companyId = req.companyContext?.companyId || req.company_id || req.companyId;
+      if (!companyId) throw new Error("Missing company context.");
+
+      const { rows } = await pool.query(
+        `
+        SELECT
+          e.id AS exception_id,
+          e.document_id,
+          e.dot_number,
+          e.exception_type,
+          e.exception_reason,
+          d.uploaded_at,
+          COALESCE(c.legalname, c.dbaname) AS carrier_name
+        FROM public.insurance_document_review_exceptions e
+        JOIN public.insurance_documents d
+          ON d.id = e.document_id
+        LEFT JOIN public.carriers c
+          ON c.dotnumber = e.dot_number
+        WHERE e.status = 'OPEN'
+          AND d.company_id = $1
+        ORDER BY e.created_at ASC;
+        `,
+        [companyId]
+      );
+
+      return res.json({ ok: true, rows });
+    } catch (err) {
+      return res.status(400).json({ ok: false, error: err.message || "Failed to load document review queue." });
+    }
+  }
+);
+
+/**
+ * POST /api/admin/insurance/document-review-exceptions/:exceptionId/resolve
+ */
+router.post(
+  "/admin/insurance/document-review-exceptions/:exceptionId/resolve",
+  requireAuth,
+  loadCompanyContext,
+  requireCompanyAdmin,
+  async (req, res) => {
+    const client = await pool.connect();
+
+    try {
+      const companyId = req.companyContext?.companyId || req.company_id || req.companyId;
+      const exceptionId = String(req.params.exceptionId || "").trim();
+      const action = normalizeDocumentReviewAction(req.body?.action);
+      const closeNotes = String(req.body?.resolution_notes || "").trim() || "Closed manually";
+
+      if (!companyId) throw new Error("Missing company context.");
+      if (!exceptionId) throw new Error("exceptionId is required.");
+
+      await client.query("BEGIN");
+
+      const exceptionDoc = await client.query(
+        `
+        SELECT e.id, e.document_id
+        FROM public.insurance_document_review_exceptions e
+        JOIN public.insurance_documents d
+          ON d.id = e.document_id
+        WHERE e.id = $1
+          AND d.company_id = $2
+        LIMIT 1;
+        `,
+        [exceptionId, companyId]
+      );
+
+      if (!exceptionDoc.rowCount) {
+        throw new Error("Document review exception not found for this company.");
+      }
+
+      if (action === "CLOSE") {
+        const closeResult = await closeDocumentReviewException(client, exceptionId, closeNotes);
+        await client.query("COMMIT");
+        return res.json({ ok: true, action: "CLOSE", close_result: closeResult });
+      }
+
+      const coverageType = String(req.body?.coverage_type || "").trim();
+      const coverageTypeRaw = String(req.body?.coverage_type_raw || "").trim();
+      const insurerLetter = String(req.body?.insurer_letter || "").trim() || null;
+      const insurerName = String(req.body?.insurer_name || "").trim();
+      const policyNumber = String(req.body?.policy_number || "").trim();
+      const effectiveDate = String(req.body?.effective_date || "").trim();
+      const expirationDate = String(req.body?.expiration_date || "").trim();
+      const limitLabel = String(req.body?.limit_label || "").trim();
+      const currency = normalizeCoverageCurrency(req.body?.currency);
+      const amount = Number(req.body?.amount);
+
+      if (!coverageType) throw new Error("coverage_type is required.");
+      if (!coverageTypeRaw) throw new Error("coverage_type_raw is required.");
+      if (!insurerName) throw new Error("insurer_name is required.");
+      if (!policyNumber) throw new Error("policy_number is required.");
+      if (!effectiveDate) throw new Error("effective_date is required.");
+      if (!expirationDate) throw new Error("expiration_date is required.");
+      if (!limitLabel) throw new Error("limit_label is required.");
+      if (!Number.isFinite(amount) || amount <= 0) throw new Error("amount must be a positive number.");
+
+      const generatedCoverageId = crypto.randomUUID();
+      const coverageArgCounts = await getFunctionArgCounts(client, "public", "manual_insert_insurance_coverage");
+      const coverageLimitArgCounts = await getFunctionArgCounts(client, "public", "manual_insert_insurance_coverage_limit");
+      let coverageIdForLimit = generatedCoverageId;
+
+      if (hasArgCount(coverageArgCounts, 11)) {
+        await client.query(
+          `
+          SELECT *
+          FROM public.manual_insert_insurance_coverage($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
+          `,
+          [
+            exceptionDoc.rows[0].document_id,
+            generatedCoverageId,
+            coverageType,
+            coverageTypeRaw,
+            insurerLetter,
+            insurerName,
+            policyNumber,
+            effectiveDate,
+            expirationDate,
+            null,
+            null,
+          ]
+        );
+      } else if (hasArgCount(coverageArgCounts, 7)) {
+        const sevenArgInsert = await client.query(
+          `
+          SELECT *
+          FROM public.manual_insert_insurance_coverage($1, $2, $3, $4, $5, $6, $7);
+          `,
+          [
+            exceptionDoc.rows[0].document_id,
+            coverageType,
+            coverageTypeRaw,
+            insurerLetter,
+            insurerName,
+            policyNumber,
+            effectiveDate,
+          ]
+        );
+
+        const insertedCoverageId = getCoverageIdFromFunctionRow(sevenArgInsert.rows?.[0]);
+        if (!insertedCoverageId) {
+          throw new Error(
+            "manual_insert_insurance_coverage(7 args) did not return a usable coverage id, so the limit insert was not attempted."
+          );
+        }
+        coverageIdForLimit = insertedCoverageId;
+      } else {
+        throw new Error(
+          `Unsupported signature for manual_insert_insurance_coverage. Found arg counts: ${coverageArgCounts.join(", ") || "none"}.`
+        );
+      }
+
+      if (hasArgCount(coverageLimitArgCounts, 9)) {
+        await client.query(
+          `
+          SELECT *
+          FROM public.manual_insert_insurance_coverage_limit($1, $2, $3, $4, $5, $6, $7, $8, $9);
+          `,
+          [coverageIdForLimit, limitLabel, currency, amount, null, null, null, null, 1]
+        );
+      } else if (hasArgCount(coverageLimitArgCounts, 4)) {
+        await client.query(
+          `
+          SELECT *
+          FROM public.manual_insert_insurance_coverage_limit($1, $2, $3, $4);
+          `,
+          [coverageIdForLimit, limitLabel, currency, amount]
+        );
+      } else {
+        throw new Error(
+          `Unsupported signature for manual_insert_insurance_coverage_limit. Found arg counts: ${coverageLimitArgCounts.join(", ") || "none"}.`
+        );
+      }
+
+      // Document-review SAVE_COVERAGE flow is intentionally raw-insert-only:
+      // 1) insert raw coverage, 2) insert raw limit, 3) close document-review exception.
+      // Normalization is NOT auto-run in this transaction.
+      const closeResult = await closeDocumentReviewException(client, exceptionId, "Resolved after manual coverage insert");
+
+      await client.query("COMMIT");
+      return res.json({
+        ok: true,
+        action: "SAVE_COVERAGE",
+        coverage_id: coverageIdForLimit,
+        close_result: closeResult,
+      });
+    } catch (err) {
+      try {
+        await client.query("ROLLBACK");
+      } catch {}
+      return res.status(400).json({ ok: false, error: err.message || "Resolve failed." });
+    } finally {
+      client.release();
+    }
+  }
+);
+
 
 /**
  * GET /api/admin/insurance/normalization-exceptions
@@ -134,12 +476,12 @@ router.post(
       const companyId = req.companyContext?.companyId || req.company_id || req.companyId;
       const exceptionId = String(req.params.exceptionId || "").trim();
       const action = String(req.body?.action || "").toUpperCase().trim();
-      const resolutionNotes = String(req.body?.resolution_notes || "").trim() || "Ignored manually";
+      const resolutionNotes = String(req.body?.resolution_notes || "").trim() || "Closed manually";
 
       if (!companyId) throw new Error("Missing company context.");
       if (!exceptionId) throw new Error("exceptionId is required.");
-      if (action !== "SAVE_COVERAGE" && action !== "IGNORE") {
-        throw new Error("action must be SAVE_COVERAGE or IGNORE.");
+      if (action !== "SAVE_COVERAGE" && action !== "CLOSE") {
+        throw new Error("action must be SAVE_COVERAGE or CLOSE.");
       }
 
       await client.query("BEGIN");
@@ -159,25 +501,13 @@ router.post(
 
       if (!exceptionDoc.rowCount) throw new Error("Normalization exception not found for this company.");
 
-      if (action === "IGNORE") {
-        const ignored = await client.query(
-          `
-          UPDATE public.insurance_normalization_exceptions
-          SET status = 'RESOLVED',
-              resolution_notes = $2,
-              resolved_at = NOW()
-          WHERE id = $1
-            AND status = 'OPEN'
-          RETURNING id;
-          `,
-          [exceptionId, resolutionNotes]
-        );
-
+      if (action === "CLOSE") {
+        const closeResult = await closeNormalizationException(client, exceptionId, resolutionNotes);
         await client.query("COMMIT");
         return res.json({
           ok: true,
-          action: "IGNORE",
-          ignored_count: ignored.rowCount,
+          action: "CLOSE",
+          close_result: closeResult,
         });
       }
 

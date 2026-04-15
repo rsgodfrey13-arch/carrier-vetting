@@ -51,6 +51,29 @@
   background: rgba(28, 136, 87, 0.22);
 }
 
+.tab-bar {
+  display: flex;
+  gap: 10px;
+  padding: 14px;
+  border-bottom: 1px solid rgba(124, 146, 196, 0.2);
+}
+
+.tab-btn {
+  border: 1px solid rgba(124, 146, 196, 0.24);
+  background: rgba(13, 28, 52, 0.55);
+  color: #9eb0d3;
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.tab-btn.is-active {
+  color: #e7eefb;
+  border-color: rgba(124, 146, 196, 0.6);
+  background: rgba(24, 45, 82, 0.8);
+}
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -155,6 +178,11 @@
   text-align: center;
 }
 
+.review-table .muted {
+  color: #9eb0d3;
+  font-size: 12px;
+}
+
 @media (max-width: 860px) {
   .review-shell {
     width: calc(100% - 20px);
@@ -164,10 +192,4 @@
     flex-direction: column;
     align-items: flex-start;
   }
-}
-
-
-.review-table .muted {
-  color: #9eb0d3;
-  font-size: 12px;
 }
