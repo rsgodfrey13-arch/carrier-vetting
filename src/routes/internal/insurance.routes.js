@@ -86,6 +86,24 @@ function normalizeCoverageCurrency(v) {
   throw new Error("currency must be USD.");
 }
 
+function blankToNull(v) {
+  const x = String(v ?? "").trim();
+  return x ? x : null;
+}
+
+function toDocumentBasedOcrError(message, documentId) {
+  const raw = String(message || "").trim();
+  if (!raw) return raw;
+
+  if (!raw.toLowerCase().includes("insurance_ocr_jobs")) {
+    return raw;
+  }
+
+  const docIdMatch = raw.match(/docupipe_document_id\s*=\s*([^\s,;]+)/i);
+  const id = documentId || docIdMatch?.[1] || "unknown";
+  return `No OCR job row found for document_id=${id}.`;
+}
+
 async function dbFunctionExists(client, schema, fnName) {
   const { rows } = await client.query(
     `
@@ -261,6 +279,7 @@ router.post(
   requireCompanyAdmin,
   async (req, res) => {
     const client = await pool.connect();
+    let resolveDocumentId = null;
 
     try {
       const companyId = req.companyContext?.companyId || req.company_id || req.companyId;
@@ -289,6 +308,7 @@ router.post(
       if (!exceptionDoc.rowCount) {
         throw new Error("Document review exception not found for this company.");
       }
+      resolveDocumentId = exceptionDoc.rows[0].document_id;
 
       if (action === "CLOSE") {
         const closeResult = await closeDocumentReviewException(client, exceptionId, closeNotes);
@@ -297,23 +317,20 @@ router.post(
       }
 
       const coverageType = String(req.body?.coverage_type || "").trim();
-      const coverageTypeRaw = String(req.body?.coverage_type_raw || "").trim();
-      const insurerLetter = String(req.body?.insurer_letter || "").trim() || null;
+      const coverageTypeRaw = blankToNull(req.body?.coverage_type_raw) || coverageType;
+      const insurerLetter = blankToNull(req.body?.insurer_letter);
       const insurerName = String(req.body?.insurer_name || "").trim();
-      const policyNumber = String(req.body?.policy_number || "").trim();
+      const policyNumber = blankToNull(req.body?.policy_number);
       const effectiveDate = String(req.body?.effective_date || "").trim();
       const expirationDate = String(req.body?.expiration_date || "").trim();
-      const limitLabel = String(req.body?.limit_label || "").trim();
+      const limitLabel = blankToNull(req.body?.limit_label) || "Amount";
       const currency = normalizeCoverageCurrency(req.body?.currency);
       const amount = Number(req.body?.amount);
 
       if (!coverageType) throw new Error("coverage_type is required.");
-      if (!coverageTypeRaw) throw new Error("coverage_type_raw is required.");
       if (!insurerName) throw new Error("insurer_name is required.");
-      if (!policyNumber) throw new Error("policy_number is required.");
       if (!effectiveDate) throw new Error("effective_date is required.");
       if (!expirationDate) throw new Error("expiration_date is required.");
-      if (!limitLabel) throw new Error("limit_label is required.");
       if (!Number.isFinite(amount) || amount <= 0) throw new Error("amount must be a positive number.");
 
       const generatedCoverageId = crypto.randomUUID();
@@ -409,7 +426,8 @@ router.post(
       try {
         await client.query("ROLLBACK");
       } catch {}
-      return res.status(400).json({ ok: false, error: err.message || "Resolve failed." });
+      const surfacedError = toDocumentBasedOcrError(err?.message, resolveDocumentId);
+      return res.status(400).json({ ok: false, error: surfacedError || "Resolve failed." });
     } finally {
       client.release();
     }
