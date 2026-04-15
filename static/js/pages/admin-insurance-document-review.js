@@ -289,6 +289,17 @@
     normEmptyState.hidden = true;
 
     for (const row of state.normalization.rows) {
+      const sourceCoverageTypeRaw = row.source_coverage_type_raw || "";
+      const sourceCoverageType = row.source_coverage_type || "";
+      const sourceValue = sourceCoverageTypeRaw || sourceCoverageType || "—";
+      const sourceMeta =
+        sourceCoverageTypeRaw && sourceCoverageType
+          ? `Type: ${sourceCoverageType}`
+          : sourceCoverageTypeRaw
+            ? "Raw value"
+            : sourceCoverageType
+              ? "Source type"
+              : "Not provided";
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td>${escapeHtml(row.dot_number)}</td>
@@ -296,7 +307,12 @@
         <td>
           <div><strong>${escapeHtml(row.exception_type || "—")}</strong></div>
           <div>${escapeHtml(row.exception_reason || "—")}</div>
-          <div class="muted">Source: ${escapeHtml(row.source_coverage_type || "—")} / ${escapeHtml(row.source_coverage_type_raw || "—")}</div>
+        </td>
+        <td>
+          <div class="source-value">
+            <div class="source-value-main">${escapeHtml(sourceValue)}</div>
+            <div class="source-value-meta">${escapeHtml(sourceMeta)}</div>
+          </div>
         </td>
         <td>${escapeHtml(formatDate(row.uploaded_at))}</td>
         <td><button class="btn-inline" type="button" data-open-pdf="${row.document_id}">Open PDF</button></td>
@@ -312,7 +328,7 @@
       if (state.normalization.expandedExceptionId === row.exception_id) {
         const resolveRow = document.createElement("tr");
         resolveRow.className = "resolve-row";
-        resolveRow.innerHTML = `<td colspan="6">${normResolveFormHtml(row)}</td>`;
+        resolveRow.innerHTML = `<td colspan="7">${normResolveFormHtml(row)}</td>`;
         normQueueBody.appendChild(resolveRow);
       }
     }
