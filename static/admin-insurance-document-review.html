@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Insurance Normalization Exceptions | Carrier Shark</title>
+  <link rel="stylesheet" href="/static/css/base.css" />
+  <link rel="stylesheet" href="/static/css/style1.css" />
+  <link rel="stylesheet" href="/static/css/admin-insurance-document-review.css" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+</head>
+<body class="account-page insurance-review-page">
+  <div class="bg-gradient"></div>
+  <div class="bg-grid"></div>
+  <div id="site-header"></div>
+
+  <main class="review-shell">
+    <header class="review-header">
+      <div>
+        <h1>Insurance Normalization Exceptions</h1>
+        <p>Resolve open insurance normalization exceptions from the admin queue.</p>
+      </div>
+      <button id="refresh-btn" class="btn-ghost" type="button">Refresh</button>
+    </header>
+
+    <section class="review-card">
+      <div id="status-banner" class="status-banner" hidden></div>
+      <div class="table-wrap">
+        <table class="review-table">
+          <thead>
+            <tr>
+              <th>DOT</th>
+              <th>Carrier</th>
+              <th>Errors</th>
+              <th>Uploaded</th>
+              <th>PDF</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="queue-body"></tbody>
+        </table>
+      </div>
+      <div id="empty-state" class="empty-state" hidden>No open insurance normalization exceptions.</div>
+    </section>
+  </main>
+
+  <script src="/static/js/shared/sentry.js"></script>
+  <script src="/static/js/shared/shared.js"></script>
+  <script src="/static/js/pages/admin-insurance-document-review.js"></script>
+</body>
+</html>

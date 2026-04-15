@@ -30,6 +30,7 @@ const securityRoutes = require("./security.routes");
 const termsRoutes = require("./terms.routes");
 const trackRoutes = require("./track");
 const resetPasswordRoutes = require("./resetPassword.routes");
+const adminInsuranceDocumentReviewRoutes = require("./adminInsuranceDocumentReview.routes");
 
 function publicRoutes() {
   const router = express.Router();
@@ -39,6 +40,7 @@ function publicRoutes() {
   router.use(trackRoutes);
   router.use(accountRoutes);
   router.use(resetPasswordRoutes);
+  router.use(adminInsuranceDocumentReviewRoutes);
   router.use(loginRoutes);
   router.use(acceptableRoutes);
   router.use(demoRoutes);

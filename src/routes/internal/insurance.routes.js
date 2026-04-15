@@ -14,7 +14,10 @@ const { ocrPdfBufferWithTextract } = require("../../../ocr/textractPdf");
 
 // ✅ add these (adjust paths if your middleware lives elsewhere)
 const { requireAuth } = require("../../middleware/requireAuth");
-const { loadCompanyContext } = require("../../middleware/companyContext");
+const {
+  loadCompanyContext,
+  requireCompanyAdmin,
+} = require("../../middleware/companyContext");
 
 const router = express.Router();
 
@@ -53,6 +56,163 @@ function normalizeDocType(v) {
   if (x === "COI" || x === "OTHER") return x;
   throw new Error("document_type must be COI or OTHER.");
 }
+
+function normalizeCoverageType(v) {
+  const x = String(v || "").toUpperCase().trim();
+  const allowed = new Set([
+    "AUTO_LIABILITY",
+    "CARGO",
+    "GENERAL_LIABILITY",
+    "UMBRELLA_LIABILITY",
+    "WORKERS_COMP",
+    "ERRORS_OMISSIONS",
+    "CONTINGENT_AUTO_LIABILITY",
+  ]);
+  if (!allowed.has(x)) {
+    throw new Error("Invalid coverage_type.");
+  }
+  return x;
+}
+
+
+/**
+ * GET /api/admin/insurance/normalization-exceptions
+ */
+router.get(
+  "/admin/insurance/normalization-exceptions",
+  requireAuth,
+  loadCompanyContext,
+  requireCompanyAdmin,
+  async (req, res) => {
+    try {
+      const companyId = req.companyContext?.companyId || req.company_id || req.companyId;
+      if (!companyId) throw new Error("Missing company context.");
+
+      const { rows } = await pool.query(
+        `
+        SELECT
+          e.id AS exception_id,
+          e.document_id,
+          e.dot_number,
+          e.exception_type,
+          e.exception_reason,
+          e.source_coverage_type,
+          e.source_coverage_type_raw,
+          d.uploaded_at,
+          COALESCE(c.legalname, c.dbaname) AS carrier_name
+        FROM public.insurance_normalization_exceptions e
+        JOIN public.insurance_documents d
+          ON d.id = e.document_id
+        LEFT JOIN public.carriers c
+          ON c.dotnumber = e.dot_number
+        WHERE e.status = 'OPEN'
+          AND d.company_id = $1
+        ORDER BY e.created_at ASC;
+        `,
+        [companyId]
+      );
+
+      return res.json({ ok: true, rows });
+    } catch (err) {
+      return res.status(400).json({ ok: false, error: err.message || "Failed to load queue." });
+    }
+  }
+);
+
+/**
+ * POST /api/admin/insurance/normalization-exceptions/:exceptionId/resolve
+ */
+router.post(
+  "/admin/insurance/normalization-exceptions/:exceptionId/resolve",
+  requireAuth,
+  loadCompanyContext,
+  requireCompanyAdmin,
+  async (req, res) => {
+    const client = await pool.connect();
+
+    try {
+      const companyId = req.companyContext?.companyId || req.company_id || req.companyId;
+      const exceptionId = String(req.params.exceptionId || "").trim();
+      const action = String(req.body?.action || "").toUpperCase().trim();
+      const resolutionNotes = String(req.body?.resolution_notes || "").trim() || "Ignored manually";
+
+      if (!companyId) throw new Error("Missing company context.");
+      if (!exceptionId) throw new Error("exceptionId is required.");
+      if (action !== "SAVE_COVERAGE" && action !== "IGNORE") {
+        throw new Error("action must be SAVE_COVERAGE or IGNORE.");
+      }
+
+      await client.query("BEGIN");
+
+      const exceptionDoc = await client.query(
+        `
+        SELECT e.id, e.document_id
+        FROM public.insurance_normalization_exceptions e
+        JOIN public.insurance_documents d
+          ON d.id = e.document_id
+        WHERE e.id = $1
+          AND d.company_id = $2
+        LIMIT 1;
+        `,
+        [exceptionId, companyId]
+      );
+
+      if (!exceptionDoc.rowCount) throw new Error("Normalization exception not found for this company.");
+
+      if (action === "IGNORE") {
+        const ignored = await client.query(
+          `
+          UPDATE public.insurance_normalization_exceptions
+          SET status = 'RESOLVED',
+              resolution_notes = $2,
+              resolved_at = NOW()
+          WHERE id = $1
+            AND status = 'OPEN'
+          RETURNING id;
+          `,
+          [exceptionId, resolutionNotes]
+        );
+
+        await client.query("COMMIT");
+        return res.json({
+          ok: true,
+          action: "IGNORE",
+          ignored_count: ignored.rowCount,
+        });
+      }
+
+      const normalizedCoverageType = normalizeCoverageType(req.body?.normalized_coverage_type);
+      const selectedLimitAmount = Number(req.body?.selected_limit_amount);
+
+      if (!Number.isFinite(selectedLimitAmount) || selectedLimitAmount <= 0) {
+        throw new Error("selected_limit_amount must be a positive number.");
+      }
+
+      const fnResult = await client.query(
+        `
+        SELECT *
+        FROM public.resolve_insurance_exception_manual($1, $2, $3);
+        `,
+        [exceptionId, normalizedCoverageType, selectedLimitAmount]
+      );
+
+      await client.query("COMMIT");
+
+      return res.json({
+        ok: true,
+        action: "SAVE_COVERAGE",
+        result: fnResult.rows?.[0] ?? null,
+      });
+    } catch (err) {
+      try {
+        await client.query("ROLLBACK");
+      } catch {}
+      return res.status(400).json({ ok: false, error: err.message || "Resolve failed." });
+    } finally {
+      client.release();
+    }
+  }
+);
 
 /**
  * GET /api/insurance/latest?dot=123
