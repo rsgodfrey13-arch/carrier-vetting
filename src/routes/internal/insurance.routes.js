@@ -480,6 +480,7 @@ router.get(
           e.exception_reason,
           e.source_coverage_type,
           e.source_coverage_type_raw,
+          amt.current_amount,
           d.uploaded_at,
           COALESCE(c.legalname, c.dbaname) AS carrier_name
         FROM public.insurance_normalization_exceptions e
@@ -487,6 +488,39 @@ router.get(
           ON d.id = e.document_id
         LEFT JOIN public.carriers c
           ON c.dotnumber = e.dot_number
+        LEFT JOIN LATERAL (
+          SELECT
+            COALESCE(l.amount, l.amount_primary, l.amount_secondary) AS current_amount
+          FROM public.insurance_coverages ic
+          JOIN public.insurance_coverage_limits l
+            ON l.coverage_id = ic.id
+          WHERE ic.document_id = e.document_id
+            AND (
+              (
+                NULLIF(BTRIM(e.source_coverage_type_raw), '') IS NOT NULL
+                AND LOWER(BTRIM(ic.coverage_type_raw)) = LOWER(BTRIM(e.source_coverage_type_raw))
+              )
+              OR (
+                NULLIF(BTRIM(e.source_coverage_type), '') IS NOT NULL
+                AND LOWER(BTRIM(ic.coverage_type)) = LOWER(BTRIM(e.source_coverage_type))
+              )
+            )
+            AND COALESCE(l.amount, l.amount_primary, l.amount_secondary) > 0
+          ORDER BY
+            CASE
+              WHEN NULLIF(BTRIM(e.source_coverage_type_raw), '') IS NOT NULL
+                AND LOWER(BTRIM(ic.coverage_type_raw)) = LOWER(BTRIM(e.source_coverage_type_raw)) THEN 0
+              WHEN NULLIF(BTRIM(e.source_coverage_type), '') IS NOT NULL
+                AND LOWER(BTRIM(ic.coverage_type)) = LOWER(BTRIM(e.source_coverage_type)) THEN 1
+              ELSE 2
+            END,
+            (l.sort_order IS NULL) ASC,
+            l.sort_order ASC,
+            l.amount DESC NULLS LAST,
+            l.amount_primary DESC NULLS LAST,
+            l.amount_secondary DESC NULLS LAST
+          LIMIT 1
+        ) amt ON true
         WHERE e.status = 'OPEN'
           AND d.company_id = $1
         ORDER BY e.created_at ASC;
@@ -552,7 +586,49 @@ router.post(
       }
 
       const normalizedCoverageType = normalizeCoverageType(req.body?.normalized_coverage_type);
-      const selectedLimitAmount = Number(req.body?.selected_limit_amount);
+      let selectedLimitAmount = Number(req.body?.selected_limit_amount);
+
+      if (!Number.isFinite(selectedLimitAmount) || selectedLimitAmount <= 0) {
+        const amountResult = await client.query(
+          `
+          SELECT
+            COALESCE(l.amount, l.amount_primary, l.amount_secondary) AS current_amount
+          FROM public.insurance_normalization_exceptions e
+          JOIN public.insurance_coverages ic
+            ON ic.document_id = e.document_id
+          JOIN public.insurance_coverage_limits l
+            ON l.coverage_id = ic.id
+          WHERE e.id = $1
+            AND (
+              (
+                NULLIF(BTRIM(e.source_coverage_type_raw), '') IS NOT NULL
+                AND LOWER(BTRIM(ic.coverage_type_raw)) = LOWER(BTRIM(e.source_coverage_type_raw))
+              )
+              OR (
+                NULLIF(BTRIM(e.source_coverage_type), '') IS NOT NULL
+                AND LOWER(BTRIM(ic.coverage_type)) = LOWER(BTRIM(e.source_coverage_type))
+              )
+            )
+            AND COALESCE(l.amount, l.amount_primary, l.amount_secondary) > 0
+          ORDER BY
+            CASE
+              WHEN NULLIF(BTRIM(e.source_coverage_type_raw), '') IS NOT NULL
+                AND LOWER(BTRIM(ic.coverage_type_raw)) = LOWER(BTRIM(e.source_coverage_type_raw)) THEN 0
+              WHEN NULLIF(BTRIM(e.source_coverage_type), '') IS NOT NULL
+                AND LOWER(BTRIM(ic.coverage_type)) = LOWER(BTRIM(e.source_coverage_type)) THEN 1
+              ELSE 2
+            END,
+            (l.sort_order IS NULL) ASC,
+            l.sort_order ASC,
+            l.amount DESC NULLS LAST,
+            l.amount_primary DESC NULLS LAST,
+            l.amount_secondary DESC NULLS LAST
+          LIMIT 1;
+          `,
+          [exceptionId]
+        );
+        selectedLimitAmount = Number(amountResult.rows?.[0]?.current_amount);
+      }
 
       if (!Number.isFinite(selectedLimitAmount) || selectedLimitAmount <= 0) {
         throw new Error("selected_limit_amount must be a positive number.");

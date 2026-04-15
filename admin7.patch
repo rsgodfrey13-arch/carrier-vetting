@@ -1,0 +1,609 @@
+diff --git a/src/routes/internal/insurance.routes.js b/src/routes/internal/insurance.routes.js
+index 54f64ea2a8a1d2b1a9d2a747c8de888c4196cf99..e46c730a742cde645dad7399e1c0b2f6eed71a0d 100644
+--- a/src/routes/internal/insurance.routes.js
++++ b/src/routes/internal/insurance.routes.js
+@@ -458,57 +458,91 @@ router.post(
+ 
+ 
+ /**
+  * GET /api/admin/insurance/normalization-exceptions
+  */
+ router.get(
+   "/admin/insurance/normalization-exceptions",
+   requireAuth,
+   loadCompanyContext,
+   requireCompanyAdmin,
+   async (req, res) => {
+     try {
+       const companyId = req.companyContext?.companyId || req.company_id || req.companyId;
+       if (!companyId) throw new Error("Missing company context.");
+ 
+       const { rows } = await pool.query(
+         `
+         SELECT
+           e.id AS exception_id,
+           e.document_id,
+           e.dot_number,
+           e.exception_type,
+           e.exception_reason,
+           e.source_coverage_type,
+           e.source_coverage_type_raw,
++          amt.current_amount,
+           d.uploaded_at,
+           COALESCE(c.legalname, c.dbaname) AS carrier_name
+         FROM public.insurance_normalization_exceptions e
+         JOIN public.insurance_documents d
+           ON d.id = e.document_id
+         LEFT JOIN public.carriers c
+           ON c.dotnumber = e.dot_number
++        LEFT JOIN LATERAL (
++          SELECT
++            COALESCE(l.amount, l.amount_primary, l.amount_secondary) AS current_amount
++          FROM public.insurance_coverages ic
++          JOIN public.insurance_coverage_limits l
++            ON l.coverage_id = ic.id
++          WHERE ic.document_id = e.document_id
++            AND (
++              (
++                NULLIF(BTRIM(e.source_coverage_type_raw), '') IS NOT NULL
++                AND LOWER(BTRIM(ic.coverage_type_raw)) = LOWER(BTRIM(e.source_coverage_type_raw))
++              )
++              OR (
++                NULLIF(BTRIM(e.source_coverage_type), '') IS NOT NULL
++                AND LOWER(BTRIM(ic.coverage_type)) = LOWER(BTRIM(e.source_coverage_type))
++              )
++            )
++            AND COALESCE(l.amount, l.amount_primary, l.amount_secondary) > 0
++          ORDER BY
++            CASE
++              WHEN NULLIF(BTRIM(e.source_coverage_type_raw), '') IS NOT NULL
++                AND LOWER(BTRIM(ic.coverage_type_raw)) = LOWER(BTRIM(e.source_coverage_type_raw)) THEN 0
++              WHEN NULLIF(BTRIM(e.source_coverage_type), '') IS NOT NULL
++                AND LOWER(BTRIM(ic.coverage_type)) = LOWER(BTRIM(e.source_coverage_type)) THEN 1
++              ELSE 2
++            END,
++            (l.sort_order IS NULL) ASC,
++            l.sort_order ASC,
++            l.amount DESC NULLS LAST,
++            l.amount_primary DESC NULLS LAST,
++            l.amount_secondary DESC NULLS LAST
++          LIMIT 1
++        ) amt ON true
+         WHERE e.status = 'OPEN'
+           AND d.company_id = $1
+         ORDER BY e.created_at ASC;
+         `,
+         [companyId]
+       );
+ 
+       return res.json({ ok: true, rows });
+     } catch (err) {
+       return res.status(400).json({ ok: false, error: err.message || "Failed to load queue." });
+     }
+   }
+ );
+ 
+ /**
+  * POST /api/admin/insurance/normalization-exceptions/:exceptionId/resolve
+  */
+ router.post(
+   "/admin/insurance/normalization-exceptions/:exceptionId/resolve",
+   requireAuth,
+   loadCompanyContext,
+   requireCompanyAdmin,
+   async (req, res) => {
+     const client = await pool.connect();
+ 
+@@ -530,51 +564,93 @@ router.post(
+         `
+         SELECT e.id, e.document_id
+         FROM public.insurance_normalization_exceptions e
+         JOIN public.insurance_documents d
+           ON d.id = e.document_id
+         WHERE e.id = $1
+           AND d.company_id = $2
+         LIMIT 1;
+         `,
+         [exceptionId, companyId]
+       );
+ 
+       if (!exceptionDoc.rowCount) throw new Error("Normalization exception not found for this company.");
+ 
+       if (action === "CLOSE") {
+         const closeResult = await closeNormalizationException(client, exceptionId, resolutionNotes);
+         await client.query("COMMIT");
+         return res.json({
+           ok: true,
+           action: "CLOSE",
+           close_result: closeResult,
+         });
+       }
+ 
+       const normalizedCoverageType = normalizeCoverageType(req.body?.normalized_coverage_type);
+-      const selectedLimitAmount = Number(req.body?.selected_limit_amount);
++      let selectedLimitAmount = Number(req.body?.selected_limit_amount);
++
++      if (!Number.isFinite(selectedLimitAmount) || selectedLimitAmount <= 0) {
++        const amountResult = await client.query(
++          `
++          SELECT
++            COALESCE(l.amount, l.amount_primary, l.amount_secondary) AS current_amount
++          FROM public.insurance_normalization_exceptions e
++          JOIN public.insurance_coverages ic
++            ON ic.document_id = e.document_id
++          JOIN public.insurance_coverage_limits l
++            ON l.coverage_id = ic.id
++          WHERE e.id = $1
++            AND (
++              (
++                NULLIF(BTRIM(e.source_coverage_type_raw), '') IS NOT NULL
++                AND LOWER(BTRIM(ic.coverage_type_raw)) = LOWER(BTRIM(e.source_coverage_type_raw))
++              )
++              OR (
++                NULLIF(BTRIM(e.source_coverage_type), '') IS NOT NULL
++                AND LOWER(BTRIM(ic.coverage_type)) = LOWER(BTRIM(e.source_coverage_type))
++              )
++            )
++            AND COALESCE(l.amount, l.amount_primary, l.amount_secondary) > 0
++          ORDER BY
++            CASE
++              WHEN NULLIF(BTRIM(e.source_coverage_type_raw), '') IS NOT NULL
++                AND LOWER(BTRIM(ic.coverage_type_raw)) = LOWER(BTRIM(e.source_coverage_type_raw)) THEN 0
++              WHEN NULLIF(BTRIM(e.source_coverage_type), '') IS NOT NULL
++                AND LOWER(BTRIM(ic.coverage_type)) = LOWER(BTRIM(e.source_coverage_type)) THEN 1
++              ELSE 2
++            END,
++            (l.sort_order IS NULL) ASC,
++            l.sort_order ASC,
++            l.amount DESC NULLS LAST,
++            l.amount_primary DESC NULLS LAST,
++            l.amount_secondary DESC NULLS LAST
++          LIMIT 1;
++          `,
++          [exceptionId]
++        );
++        selectedLimitAmount = Number(amountResult.rows?.[0]?.current_amount);
++      }
+ 
+       if (!Number.isFinite(selectedLimitAmount) || selectedLimitAmount <= 0) {
+         throw new Error("selected_limit_amount must be a positive number.");
+       }
+ 
+       const fnResult = await client.query(
+         `
+         SELECT *
+         FROM public.resolve_insurance_exception_manual($1, $2, $3);
+         `,
+         [exceptionId, normalizedCoverageType, selectedLimitAmount]
+       );
+ 
+       await client.query("COMMIT");
+ 
+       return res.json({
+         ok: true,
+         action: "SAVE_COVERAGE",
+         result: fnResult.rows?.[0] ?? null,
+       });
+     } catch (err) {
+       try {
+         await client.query("ROLLBACK");
+       } catch {}
+       return res.status(400).json({ ok: false, error: err.message || "Resolve failed." });
+diff --git a/static/admin-insurance-document-review.html b/static/admin-insurance-document-review.html
+index 2864e16b309d16acdb9e807ccebc22498f466e28..dad25b402867a93cca9fb46cf608e04d86ce9be0 100644
+--- a/static/admin-insurance-document-review.html
++++ b/static/admin-insurance-document-review.html
+@@ -39,45 +39,45 @@
+         <div class="table-wrap">
+           <table class="review-table">
+             <thead>
+               <tr>
+                 <th>DOT</th>
+                 <th>Carrier</th>
+                 <th>Errors</th>
+                 <th>Uploaded</th>
+                 <th>PDF</th>
+                 <th>Actions</th>
+               </tr>
+             </thead>
+             <tbody id="doc-queue-body"></tbody>
+           </table>
+         </div>
+         <div id="doc-empty-state" class="empty-state" hidden>No open document review exceptions.</div>
+       </section>
+ 
+       <section class="tab-section" data-tab-section="normalization" hidden>
+         <div class="table-wrap">
+           <table class="review-table normalization-table">
+             <thead>
+               <tr>
+                 <th>DOT</th>
+                 <th>Carrier</th>
+-                <th>Errors</th>
+                 <th>Source Value</th>
++                <th>Current Amount</th>
+                 <th>Uploaded</th>
+                 <th>PDF</th>
+                 <th>Actions</th>
+               </tr>
+             </thead>
+             <tbody id="norm-queue-body"></tbody>
+           </table>
+         </div>
+         <div id="norm-empty-state" class="empty-state" hidden>No open normalization exceptions.</div>
+       </section>
+     </section>
+   </main>
+ 
+   <script src="/static/js/shared/sentry.js"></script>
+   <script src="/static/js/shared/shared.js"></script>
+   <script src="/static/js/pages/admin-insurance-document-review.js"></script>
+ </body>
+ </html>
+diff --git a/static/css/admin-insurance-document-review.css b/static/css/admin-insurance-document-review.css
+index e99e8a753be204953cb0744a94af084000daa1c7..c1d689dfb13611ed72c1520fbe1cbd827c2c3118 100644
+--- a/static/css/admin-insurance-document-review.css
++++ b/static/css/admin-insurance-document-review.css
+@@ -169,98 +169,150 @@
+   color: #e7eefb;
+   padding: 9px 10px;
+   font-size: 14px;
+ }
+ 
+ .form-grid textarea {
+   min-height: 74px;
+   resize: vertical;
+ }
+ 
+ .panel-actions {
+   margin-top: 10px;
+   display: flex;
+   flex-wrap: wrap;
+   gap: 10px;
+ }
+ 
+ .normalization-table .resolve-panel .form-grid {
+   grid-template-columns: repeat(2, minmax(0, 1fr));
+   gap: 12px;
+ }
+ 
+ .source-value {
+   display: grid;
+   gap: 4px;
++  white-space: normal;
++  overflow-wrap: anywhere;
++  word-break: break-word;
+ }
+ 
+ .source-value-main {
+   font-weight: 600;
+ }
+ 
+ .source-value-meta {
+   font-size: 12px;
+   color: #9eb0d3;
+ }
+ 
+ .coverage-list {
+   display: grid;
+   gap: 12px;
+   margin-bottom: 10px;
+ }
+ 
+ .coverage-block {
+   border: 1px solid rgba(124, 146, 196, 0.2);
+   border-radius: 12px;
+   background: rgba(7, 18, 34, 0.6);
+   padding: 12px;
+ }
+ 
+ .coverage-block-header {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   margin-bottom: 10px;
+ }
+ 
+ .coverage-block-header h4 {
+   margin: 0;
+   font-size: 14px;
+   color: #e7eefb;
+ }
+ 
+ .empty-state {
+   color: #9eb0d3;
+   padding: 22px 14px;
+   text-align: center;
+ }
+ 
+ .review-table .muted {
+   color: #9eb0d3;
+   font-size: 12px;
+ }
+ 
++.normalization-table {
++  table-layout: fixed;
++}
++
++.normalization-table th:nth-child(1),
++.normalization-table td:nth-child(1) {
++  width: 90px;
++}
++
++.normalization-table th:nth-child(2),
++.normalization-table td:nth-child(2) {
++  width: 200px;
++  white-space: normal;
++  overflow-wrap: anywhere;
++  word-break: break-word;
++}
++
++.normalization-table th:nth-child(3),
++.normalization-table td:nth-child(3) {
++  width: auto;
++  min-width: 300px;
++}
++
++.normalization-table th:nth-child(4),
++.normalization-table td:nth-child(4) {
++  width: 130px;
++}
++
++.normalization-table th:nth-child(5),
++.normalization-table td:nth-child(5),
++.normalization-table th:nth-child(6),
++.normalization-table td:nth-child(6),
++.normalization-table th:nth-child(7),
++.normalization-table td:nth-child(7) {
++  width: 110px;
++}
++
++.amount-context .amount-readonly {
++  border-radius: 10px;
++  border: 1px solid rgba(124, 146, 196, 0.3);
++  background: rgba(8, 18, 36, 0.8);
++  color: #e7eefb;
++  padding: 9px 10px;
++  font-size: 14px;
++  min-height: 40px;
++  display: flex;
++  align-items: center;
++}
++
+ 
+ @media (max-width: 1180px) {
+   .doc-form-grid {
+     grid-template-columns: repeat(3, minmax(0, 1fr));
+   }
+ }
+ 
+ @media (max-width: 760px) {
+   .doc-form-grid {
+     grid-template-columns: repeat(2, minmax(0, 1fr));
+   }
+ }
+ 
+ @media (max-width: 520px) {
+   .doc-form-grid {
+     grid-template-columns: 1fr;
+   }
+ }
+ 
+ @media (max-width: 860px) {
+   .review-shell {
+     width: calc(100% - 20px);
+   }
+ 
+   .review-header {
+diff --git a/static/js/pages/admin-insurance-document-review.js b/static/js/pages/admin-insurance-document-review.js
+index 3cee529a9e15b92bd9ff300d7dd777b9d98ddd4a..0db2179e02a374057a12b93c04ee26e62c88be6e 100644
+--- a/static/js/pages/admin-insurance-document-review.js
++++ b/static/js/pages/admin-insurance-document-review.js
+@@ -194,63 +194,70 @@
+       </section>
+     `;
+   }
+ 
+   function docResolveFormHtml(row) {
+     const drafts = ensureDocumentDrafts(row.exception_id);
+     const isSubmitting = state.documentReview.submittingByExceptionId[row.exception_id] === true;
+     return `
+       <div class="resolve-panel">
+         <form class="doc-resolve-form" data-exception-id="${row.exception_id}">
+           <div class="coverage-list">
+             ${drafts.map((draft, index) => docCoverageBlockHtml(row, draft, index, drafts.length)).join("")}
+           </div>
+           <button class="btn-inline" type="button" data-doc-add-coverage="${row.exception_id}" ${isSubmitting ? "disabled" : ""}>Add Coverage</button>
+           <div class="panel-actions">
+             <button class="btn-inline" type="submit" ${isSubmitting ? "disabled" : ""}>Save and Resolve</button>
+             <button class="btn-inline" type="button" data-doc-close-resolve="${row.exception_id}" ${isSubmitting ? "disabled" : ""}>Cancel</button>
+           </div>
+         </form>
+       </div>
+     `;
+   }
+ 
+   function normResolveFormHtml(row) {
+     const coverageOptions = NORMALIZED_COVERAGE_TYPES.map((v) => `<option value="${v}">${v}</option>`).join("");
++    const existingAmount = Number(row.current_amount);
++    const hasExistingAmount = Number.isFinite(existingAmount) && existingAmount > 0;
++    const existingAmountText = hasExistingAmount ? existingAmount.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—";
+ 
+     return `
+       <div class="resolve-panel">
+         <form class="norm-resolve-form" data-exception-id="${row.exception_id}">
+           <div class="form-grid">
+             <div>
+               <label>Coverage Type</label>
+               <select name="normalized_coverage_type" required>${coverageOptions}</select>
+             </div>
+-            <div>
+-              <label>Amount</label>
+-              <input name="selected_limit_amount" type="number" min="0" step="0.01" required />
+-            </div>
++            ${
++              hasExistingAmount
++                ? `<div class="amount-context"><label>Current Amount</label><div class="amount-readonly">${escapeHtml(existingAmountText)}</div></div>`
++                : `<div>
++                    <label>Amount (fallback)</label>
++                    <input name="selected_limit_amount" type="number" min="0" step="0.01" required />
++                  </div>`
++            }
+           </div>
+           <div class="panel-actions">
+             <button class="btn-inline" type="submit">Resolve</button>
+             <button class="btn-inline" type="button" data-norm-close-resolve="${row.exception_id}">Cancel</button>
+           </div>
+         </form>
+       </div>
+     `;
+   }
+ 
+   function renderDocumentReviewRows() {
+     docQueueBody.innerHTML = "";
+ 
+     if (!state.documentReview.rows.length) {
+       docEmptyState.hidden = false;
+       return;
+     }
+ 
+     docEmptyState.hidden = true;
+ 
+     for (const row of state.documentReview.rows) {
+       const tr = document.createElement("tr");
+       tr.innerHTML = `
+         <td>${escapeHtml(row.dot_number)}</td>
+         <td>${escapeHtml(row.carrier_name || "—")}</td>
+@@ -270,72 +277,62 @@
+       docQueueBody.appendChild(tr);
+ 
+       if (state.documentReview.expandedExceptionId === row.exception_id) {
+         const resolveRow = document.createElement("tr");
+         resolveRow.className = "resolve-row";
+         resolveRow.innerHTML = `<td colspan="6">${docResolveFormHtml(row)}</td>`;
+         docQueueBody.appendChild(resolveRow);
+       }
+     }
+   }
+ 
+   function renderNormalizationRows() {
+     normQueueBody.innerHTML = "";
+ 
+     if (!state.normalization.rows.length) {
+       normEmptyState.hidden = false;
+       return;
+     }
+ 
+     normEmptyState.hidden = true;
+ 
+     for (const row of state.normalization.rows) {
+       const sourceCoverageTypeRaw = row.source_coverage_type_raw || "";
+       const sourceCoverageType = row.source_coverage_type || "";
+       const sourceValue = sourceCoverageTypeRaw || sourceCoverageType || "—";
+-      const sourceMeta =
+-        sourceCoverageTypeRaw && sourceCoverageType
+-          ? `Type: ${sourceCoverageType}`
+-          : sourceCoverageTypeRaw
+-            ? "Raw value"
+-            : sourceCoverageType
+-              ? "Source type"
+-              : "Not provided";
++      const currentAmount = Number(row.current_amount);
++      const hasCurrentAmount = Number.isFinite(currentAmount) && currentAmount > 0;
+       const tr = document.createElement("tr");
+       tr.innerHTML = `
+         <td>${escapeHtml(row.dot_number)}</td>
+         <td>${escapeHtml(row.carrier_name || "—")}</td>
+-        <td>
+-          <div><strong>${escapeHtml(row.exception_type || "—")}</strong></div>
+-          <div>${escapeHtml(row.exception_reason || "—")}</div>
+-        </td>
+         <td>
+           <div class="source-value">
+             <div class="source-value-main">${escapeHtml(sourceValue)}</div>
+-            <div class="source-value-meta">${escapeHtml(sourceMeta)}</div>
+           </div>
+         </td>
++        <td>${hasCurrentAmount ? escapeHtml(currentAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })) : '<span class="muted">—</span>'}</td>
+         <td>${escapeHtml(formatDate(row.uploaded_at))}</td>
+         <td><button class="btn-inline" type="button" data-open-pdf="${row.document_id}">Open PDF</button></td>
+         <td>
+           <div class="actions">
+             <button class="btn-inline" type="button" data-norm-toggle-resolve="${row.exception_id}">Resolve</button>
+             <button class="btn-inline is-danger" type="button" data-norm-close="${row.exception_id}">Close</button>
+           </div>
+         </td>
+       `;
+       normQueueBody.appendChild(tr);
+ 
+       if (state.normalization.expandedExceptionId === row.exception_id) {
+         const resolveRow = document.createElement("tr");
+         resolveRow.className = "resolve-row";
+         resolveRow.innerHTML = `<td colspan="7">${normResolveFormHtml(row)}</td>`;
+         normQueueBody.appendChild(resolveRow);
+       }
+     }
+   }
+ 
+   async function openPdf(documentId) {
+     if (!documentId) throw new Error("No document available for this exception.");
+     const data = await apiGet(`/api/insurance/documents/${encodeURIComponent(documentId)}/signed-url`);
+     if (!data?.signedUrl) throw new Error("Signed URL not returned.");
+     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+@@ -504,52 +501,55 @@
+           state.documentReview.expandedExceptionId = null;
+           await loadDocumentReviewQueue(true);
+         } catch (error) {
+           showStatus(error.message || "Failed to save coverage.");
+         } finally {
+           delete state.documentReview.submittingByExceptionId[exceptionId];
+           renderDocumentReviewRows();
+           wireHandlers();
+         }
+       });
+     });
+ 
+     document.querySelectorAll(".norm-resolve-form").forEach((form) => {
+       form.addEventListener("submit", async (event) => {
+         event.preventDefault();
+         clearStatus();
+ 
+         const exceptionId = form.getAttribute("data-exception-id");
+         const submitBtn = form.querySelector("button[type='submit']");
+         submitBtn.disabled = true;
+ 
+         const fd = new FormData(form);
+         const payload = {
+           action: "SAVE_COVERAGE",
+           normalized_coverage_type: String(fd.get("normalized_coverage_type") || ""),
+-          selected_limit_amount: Number(fd.get("selected_limit_amount") || "0"),
+         };
++        const selectedLimitAmount = Number(fd.get("selected_limit_amount"));
++        if (Number.isFinite(selectedLimitAmount) && selectedLimitAmount > 0) {
++          payload.selected_limit_amount = selectedLimitAmount;
++        }
+ 
+         try {
+           const response = await apiPost(
+             `/api/admin/insurance/normalization-exceptions/${encodeURIComponent(exceptionId)}/resolve`,
+             payload
+           );
+ 
+           const fnResult = response?.result;
+           if (!fnResult) {
+             showStatus("Coverage saved, but resolve result was empty.", "success");
+           } else if (fnResult.out_result_status && fnResult.out_result_status !== "RESOLVED") {
+             showStatus(
+               `Resolve returned ${fnResult.out_result_status}: ${fnResult.out_message || "No message."}`,
+               "error"
+             );
+           } else {
+             showStatus(fnResult.out_message || "Coverage saved.", "success");
+           }
+ 
+           state.normalization.expandedExceptionId = null;
+           await loadNormalizationQueue(true);
+         } catch (error) {
+           showStatus(error.message || "Failed to save coverage.");
+         } finally {
+           submitBtn.disabled = false;

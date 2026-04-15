@@ -216,6 +216,9 @@
 
   function normResolveFormHtml(row) {
     const coverageOptions = NORMALIZED_COVERAGE_TYPES.map((v) => `<option value="${v}">${v}</option>`).join("");
+    const existingAmount = Number(row.current_amount);
+    const hasExistingAmount = Number.isFinite(existingAmount) && existingAmount > 0;
+    const existingAmountText = hasExistingAmount ? existingAmount.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—";
 
     return `
       <div class="resolve-panel">
@@ -225,10 +228,14 @@
               <label>Coverage Type</label>
               <select name="normalized_coverage_type" required>${coverageOptions}</select>
             </div>
-            <div>
-              <label>Amount</label>
-              <input name="selected_limit_amount" type="number" min="0" step="0.01" required />
-            </div>
+            ${
+              hasExistingAmount
+                ? `<div class="amount-context"><label>Current Amount</label><div class="amount-readonly">${escapeHtml(existingAmountText)}</div></div>`
+                : `<div>
+                    <label>Amount (fallback)</label>
+                    <input name="selected_limit_amount" type="number" min="0" step="0.01" required />
+                  </div>`
+            }
           </div>
           <div class="panel-actions">
             <button class="btn-inline" type="submit">Resolve</button>
@@ -292,28 +299,18 @@
       const sourceCoverageTypeRaw = row.source_coverage_type_raw || "";
       const sourceCoverageType = row.source_coverage_type || "";
       const sourceValue = sourceCoverageTypeRaw || sourceCoverageType || "—";
-      const sourceMeta =
-        sourceCoverageTypeRaw && sourceCoverageType
-          ? `Type: ${sourceCoverageType}`
-          : sourceCoverageTypeRaw
-            ? "Raw value"
-            : sourceCoverageType
-              ? "Source type"
-              : "Not provided";
+      const currentAmount = Number(row.current_amount);
+      const hasCurrentAmount = Number.isFinite(currentAmount) && currentAmount > 0;
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td>${escapeHtml(row.dot_number)}</td>
         <td>${escapeHtml(row.carrier_name || "—")}</td>
         <td>
-          <div><strong>${escapeHtml(row.exception_type || "—")}</strong></div>
-          <div>${escapeHtml(row.exception_reason || "—")}</div>
-        </td>
-        <td>
           <div class="source-value">
             <div class="source-value-main">${escapeHtml(sourceValue)}</div>
-            <div class="source-value-meta">${escapeHtml(sourceMeta)}</div>
           </div>
         </td>
+        <td>${hasCurrentAmount ? escapeHtml(currentAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })) : '<span class="muted">—</span>'}</td>
         <td>${escapeHtml(formatDate(row.uploaded_at))}</td>
         <td><button class="btn-inline" type="button" data-open-pdf="${row.document_id}">Open PDF</button></td>
         <td>
@@ -526,8 +523,11 @@
         const payload = {
           action: "SAVE_COVERAGE",
           normalized_coverage_type: String(fd.get("normalized_coverage_type") || ""),
-          selected_limit_amount: Number(fd.get("selected_limit_amount") || "0"),
         };
+        const selectedLimitAmount = Number(fd.get("selected_limit_amount"));
+        if (Number.isFinite(selectedLimitAmount) && selectedLimitAmount > 0) {
+          payload.selected_limit_amount = selectedLimitAmount;
+        }
 
         try {
           const response = await apiPost(
