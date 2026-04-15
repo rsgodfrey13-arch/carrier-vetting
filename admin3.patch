@@ -1,0 +1,237 @@
+diff --git a/static/css/admin-insurance-document-review.css b/static/css/admin-insurance-document-review.css
+index d958642c7307f1c96f49452d3f30a0d7c127aa30..5ea9a026aa558cff96e368a166a8e73fbda8d152 100644
+--- a/static/css/admin-insurance-document-review.css
++++ b/static/css/admin-insurance-document-review.css
+@@ -110,86 +110,112 @@
+ }
+ 
+ .btn-inline {
+   border: 1px solid rgba(124, 146, 196, 0.3);
+   background: rgba(13, 28, 52, 0.7);
+   color: #e7eefb;
+   border-radius: 10px;
+   padding: 6px 10px;
+   font-size: 13px;
+   cursor: pointer;
+ }
+ 
+ .btn-inline:hover {
+   border-color: rgba(124, 146, 196, 0.65);
+ }
+ 
+ .btn-inline.is-danger {
+   border-color: rgba(209, 80, 102, 0.45);
+   color: #ffd2dc;
+ }
+ 
+ .resolve-row td {
+   background: rgba(13, 26, 48, 0.65);
+ }
+ 
++
+ .resolve-panel {
+-  padding: 6px 2px;
++  padding: 10px 6px;
++  overflow-x: clip;
++}
++
++.doc-form-grid {
++  grid-template-columns: repeat(5, minmax(0, 1fr));
++  gap: 12px;
+ }
+ 
+ .form-grid {
+   display: grid;
+   gap: 10px;
+   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+ }
+ 
+ .form-grid label {
+   display: block;
+   font-size: 12px;
+   color: #9eb0d3;
+   margin-bottom: 5px;
+ }
+ 
+ .form-grid input,
+ .form-grid select,
+ .form-grid textarea {
+   width: 100%;
+   border-radius: 10px;
+   border: 1px solid rgba(124, 146, 196, 0.3);
+   background: rgba(8, 18, 36, 0.8);
+   color: #e7eefb;
+   padding: 9px 10px;
+   font-size: 14px;
+ }
+ 
+ .form-grid textarea {
+   min-height: 74px;
+   resize: vertical;
+ }
+ 
+ .panel-actions {
+   margin-top: 10px;
+   display: flex;
+   gap: 10px;
+ }
+ 
+ .empty-state {
+   color: #9eb0d3;
+   padding: 22px 14px;
+   text-align: center;
+ }
+ 
+ .review-table .muted {
+   color: #9eb0d3;
+   font-size: 12px;
+ }
+ 
++
++@media (max-width: 1180px) {
++  .doc-form-grid {
++    grid-template-columns: repeat(3, minmax(0, 1fr));
++  }
++}
++
++@media (max-width: 760px) {
++  .doc-form-grid {
++    grid-template-columns: repeat(2, minmax(0, 1fr));
++  }
++}
++
++@media (max-width: 520px) {
++  .doc-form-grid {
++    grid-template-columns: 1fr;
++  }
++}
++
+ @media (max-width: 860px) {
+   .review-shell {
+     width: calc(100% - 20px);
+   }
+ 
+   .review-header {
+     flex-direction: column;
+     align-items: flex-start;
+   }
+ }
+diff --git a/static/js/pages/admin-insurance-document-review.js b/static/js/pages/admin-insurance-document-review.js
+index 3c6fcfc8b2019ed9db568543c7d12b00e86f8284..7f49583887ddac5e83819a2ec3a6b43a64138d71 100644
+--- a/static/js/pages/admin-insurance-document-review.js
++++ b/static/js/pages/admin-insurance-document-review.js
+@@ -82,92 +82,99 @@
+     return payload;
+   }
+ 
+   function formatDate(value) {
+     if (!value) return "—";
+     return new Date(value).toLocaleString();
+   }
+ 
+   function renderTabs() {
+     tabButtons.forEach((btn) => {
+       const tab = btn.getAttribute("data-tab");
+       const active = tab === state.activeTab;
+       btn.classList.toggle("is-active", active);
+       btn.setAttribute("aria-selected", active ? "true" : "false");
+     });
+ 
+     tabSections.forEach((section) => {
+       section.hidden = section.getAttribute("data-tab-section") !== state.activeTab;
+     });
+   }
+ 
+   function docResolveFormHtml(row) {
+     return `
+       <div class="resolve-panel">
+         <form class="doc-resolve-form" data-exception-id="${row.exception_id}">
+-          <div class="form-grid">
++          <div class="form-grid doc-form-grid">
+             <div>
+               <label>Coverage Type</label>
+-              <input name="coverage_type" type="text" required />
++              <select name="coverage_type" required>
++                <option value="AUTO LIABILITY">AUTO LIABILITY</option>
++                <option value="CARGO">CARGO</option>
++                <option value="GENERAL LIABILITY">GENERAL LIABILITY</option>
++                <option value="UMBRELLA LIAB">UMBRELLA LIAB</option>
++                <option value="WORKERS COMP">WORKERS COMP</option>
++                <option value="ERRORS & OMISSIONS">ERRORS & OMISSIONS</option>
++              </select>
+             </div>
+             <div>
+-              <label>Coverage Type Raw</label>
+-              <input name="coverage_type_raw" type="text" required />
++              <label>Insurer Name</label>
++              <input name="insurer_name" type="text" required />
+             </div>
+             <div>
+-              <label>Insurer Letter</label>
+-              <input name="insurer_letter" type="text" maxlength="2" />
++              <label>Amount</label>
++              <input name="amount" type="number" min="0" step="0.01" required />
+             </div>
+             <div>
+-              <label>Insurer Name</label>
+-              <input name="insurer_name" type="text" required />
++              <label>Insurer Letter</label>
++              <input name="insurer_letter" type="text" maxlength="2" />
+             </div>
+             <div>
+               <label>Policy Number</label>
+-              <input name="policy_number" type="text" required />
++              <input name="policy_number" type="text" />
+             </div>
+             <div>
+               <label>Effective Date</label>
+               <input name="effective_date" type="date" required />
+             </div>
+             <div>
+               <label>Expiration Date</label>
+               <input name="expiration_date" type="date" required />
+             </div>
+-            <div>
+-              <label>Limit Label</label>
+-              <input name="limit_label" type="text" required />
+-            </div>
+             <div>
+               <label>Currency</label>
+               <select name="currency" required>
+                 <option value="USD" selected>USD</option>
+               </select>
+             </div>
+             <div>
+-              <label>Amount</label>
+-              <input name="amount" type="number" min="0" step="0.01" required />
++              <label>Coverage Type Raw</label>
++              <input name="coverage_type_raw" type="text" />
++            </div>
++            <div>
++              <label>Limit Label</label>
++              <input name="limit_label" type="text" />
+             </div>
+           </div>
+           <div class="panel-actions">
+             <button class="btn-inline" type="submit">Save Coverage</button>
+             <button class="btn-inline" type="button" data-doc-close-resolve="${row.exception_id}">Cancel</button>
+           </div>
+         </form>
+       </div>
+     `;
+   }
+ 
+   function normResolveFormHtml(row) {
+     const coverageOptions = NORMALIZED_COVERAGE_TYPES.map((v) => `<option value="${v}">${v}</option>`).join("");
+ 
+     return `
+       <div class="resolve-panel">
+         <form class="norm-resolve-form" data-exception-id="${row.exception_id}">
+           <div class="form-grid">
+             <div>
+               <label>Coverage Type</label>
+               <select name="normalized_coverage_type" required>${coverageOptions}</select>
+             </div>
+             <div>
+               <label>Amount</label>
+               <input name="selected_limit_amount" type="number" min="0" step="0.01" required />

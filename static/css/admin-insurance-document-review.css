@@ -132,8 +132,15 @@
   background: rgba(13, 26, 48, 0.65);
 }
 
+
 .resolve-panel {
-  padding: 6px 2px;
+  padding: 10px 6px;
+  overflow-x: clip;
+}
+
+.doc-form-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .form-grid {
@@ -181,6 +188,25 @@
 .review-table .muted {
   color: #9eb0d3;
   font-size: 12px;
+}
+
+
+@media (max-width: 1180px) {
+  .doc-form-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .doc-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .doc-form-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 860px) {

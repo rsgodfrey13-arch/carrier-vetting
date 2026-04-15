@@ -104,26 +104,33 @@
     return `
       <div class="resolve-panel">
         <form class="doc-resolve-form" data-exception-id="${row.exception_id}">
-          <div class="form-grid">
+          <div class="form-grid doc-form-grid">
             <div>
               <label>Coverage Type</label>
-              <input name="coverage_type" type="text" required />
-            </div>
-            <div>
-              <label>Coverage Type Raw</label>
-              <input name="coverage_type_raw" type="text" required />
-            </div>
-            <div>
-              <label>Insurer Letter</label>
-              <input name="insurer_letter" type="text" maxlength="2" />
+              <select name="coverage_type" required>
+                <option value="AUTO LIABILITY">AUTO LIABILITY</option>
+                <option value="CARGO">CARGO</option>
+                <option value="GENERAL LIABILITY">GENERAL LIABILITY</option>
+                <option value="UMBRELLA LIAB">UMBRELLA LIAB</option>
+                <option value="WORKERS COMP">WORKERS COMP</option>
+                <option value="ERRORS & OMISSIONS">ERRORS & OMISSIONS</option>
+              </select>
             </div>
             <div>
               <label>Insurer Name</label>
               <input name="insurer_name" type="text" required />
             </div>
             <div>
+              <label>Amount</label>
+              <input name="amount" type="number" min="0" step="0.01" required />
+            </div>
+            <div>
+              <label>Insurer Letter</label>
+              <input name="insurer_letter" type="text" maxlength="2" />
+            </div>
+            <div>
               <label>Policy Number</label>
-              <input name="policy_number" type="text" required />
+              <input name="policy_number" type="text" />
             </div>
             <div>
               <label>Effective Date</label>
@@ -134,18 +141,18 @@
               <input name="expiration_date" type="date" required />
             </div>
             <div>
-              <label>Limit Label</label>
-              <input name="limit_label" type="text" required />
-            </div>
-            <div>
               <label>Currency</label>
               <select name="currency" required>
                 <option value="USD" selected>USD</option>
               </select>
             </div>
             <div>
-              <label>Amount</label>
-              <input name="amount" type="number" min="0" step="0.01" required />
+              <label>Coverage Type Raw</label>
+              <input name="coverage_type_raw" type="text" />
+            </div>
+            <div>
+              <label>Limit Label</label>
+              <input name="limit_label" type="text" />
             </div>
           </div>
           <div class="panel-actions">
