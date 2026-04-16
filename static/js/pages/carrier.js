@@ -98,6 +98,9 @@ function fmtSignedDate(d) {
   let selectedOverrideContext = null;
   let isOverrideSaveInFlight = false;
   let removeOverrideConfirmResolver = null;
+  let showAdminInsuranceActions = false;
+  let selectedInsuranceCoverageDelete = null;
+  let insuranceDeleteInFlight = false;
 
   
   function setText(id, value) {
@@ -951,6 +954,22 @@ if (!confirmed) return;
   });
 }
 
+function wireInsuranceDeleteModalOnce() {
+  const modal = document.getElementById("insurance-delete-confirm-modal");
+  const closeBtn = document.getElementById("insurance-delete-confirm-close");
+  const cancelBtn = document.getElementById("insurance-delete-confirm-cancel");
+  const confirmBtn = document.getElementById("insurance-delete-confirm-confirm");
+  if (!modal || !closeBtn || !cancelBtn || !confirmBtn) return;
+
+  closeBtn.addEventListener("click", closeInsuranceDeleteConfirmModal);
+  cancelBtn.addEventListener("click", closeInsuranceDeleteConfirmModal);
+  confirmBtn.addEventListener("click", confirmDeleteInsuranceCoverage);
+
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeInsuranceDeleteConfirmModal();
+  });
+}
+
 function renderScreeningSummary(data) {
   const card = document.getElementById("screening-summary-card");
   const badge = document.getElementById("screening-status-badge");
@@ -1128,6 +1147,91 @@ function safeText(v) {
   return s ? s : "—";
 }
 
+function isCompanyAdminUser(me) {
+  // /api/me includes chosen.company_role in src/routes/internal/auth.routes.js.
+  const role = String(me?.company_role || me?.user?.company_role || "").trim().toUpperCase();
+  return role === "OWNER" || role === "ADMIN";
+}
+
+function updateInsuranceDeleteConfirmUi() {
+  const confirmBtn = document.getElementById("insurance-delete-confirm-confirm");
+  const closeBtn = document.getElementById("insurance-delete-confirm-close");
+  const cancelBtn = document.getElementById("insurance-delete-confirm-cancel");
+
+  if (confirmBtn) {
+    confirmBtn.disabled = insuranceDeleteInFlight;
+    confirmBtn.textContent = insuranceDeleteInFlight ? "Deleting…" : "Delete Coverage";
+  }
+  if (closeBtn) closeBtn.disabled = insuranceDeleteInFlight;
+  if (cancelBtn) cancelBtn.disabled = insuranceDeleteInFlight;
+}
+
+function openInsuranceDeleteConfirmModal({ coverageId, title }) {
+  const modal = document.getElementById("insurance-delete-confirm-modal");
+  const titleEl = document.getElementById("insurance-delete-confirm-title");
+  const errorEl = document.getElementById("insurance-delete-confirm-error");
+  if (!modal || !titleEl) return;
+
+  selectedInsuranceCoverageDelete = {
+    coverageId: String(coverageId || "").trim(),
+    title: String(title || "").trim() || "this coverage",
+  };
+  insuranceDeleteInFlight = false;
+  titleEl.textContent = `Delete Coverage: ${selectedInsuranceCoverageDelete.title}`;
+  if (errorEl) {
+    errorEl.hidden = true;
+    errorEl.textContent = "";
+  }
+  updateInsuranceDeleteConfirmUi();
+  modal.hidden = false;
+}
+
+function closeInsuranceDeleteConfirmModal() {
+  const modal = document.getElementById("insurance-delete-confirm-modal");
+  if (!modal || insuranceDeleteInFlight) return;
+  modal.hidden = true;
+  selectedInsuranceCoverageDelete = null;
+}
+
+async function confirmDeleteInsuranceCoverage() {
+  const errorEl = document.getElementById("insurance-delete-confirm-error");
+  if (!selectedInsuranceCoverageDelete?.coverageId || insuranceDeleteInFlight) return;
+
+  insuranceDeleteInFlight = true;
+  if (errorEl) {
+    errorEl.hidden = true;
+    errorEl.textContent = "";
+  }
+  updateInsuranceDeleteConfirmUi();
+
+  try {
+    const coverageId = selectedInsuranceCoverageDelete.coverageId;
+    const res = await fetch(`/api/admin/insurance/coverages/${encodeURIComponent(coverageId)}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data?.ok !== true) {
+      throw new Error(data?.error || "Unable to delete coverage.");
+    }
+
+    const modal = document.getElementById("insurance-delete-confirm-modal");
+    if (modal) modal.hidden = true;
+    selectedInsuranceCoverageDelete = null;
+    await loadInsuranceCoverages(CURRENT_DOT);
+  } catch (err) {
+    if (errorEl) {
+      errorEl.textContent = err?.message || "Delete failed.";
+      errorEl.hidden = false;
+    } else {
+      alert(err?.message || "Delete failed.");
+    }
+  } finally {
+    insuranceDeleteInFlight = false;
+    updateInsuranceDeleteConfirmUi();
+  }
+}
+
 function renderInsuranceDocumentOnly(doc, dot) {
   const wrap = document.getElementById("ins-coverages-body");
   if (!wrap) return;
@@ -1203,6 +1307,9 @@ function renderInsuranceDocumentOnly(doc, dot) {
     const openBtn = c.document_id && canViewDocument
       ? `<button class="ins-open-coi" type="button" data-open-ins-doc="${c.document_id}">View Insurance Certificate</button>`
       : ``;
+    const deleteBtn = showAdminInsuranceActions && c.id
+      ? `<button class="ins-delete-coverage" type="button" data-delete-ins-coverage="${c.id}" data-delete-ins-title="${escapeHtml(title)}">Delete Coverage</button>`
+      : ``;
     const privateHint = c.document_id && !canViewDocument
       ? `<div class="cs-hint" style="margin-top:10px;">Source certificate is private to the company that uploaded or requested it.</div>`
       : ``;
@@ -1260,6 +1367,7 @@ function renderInsuranceDocumentOnly(doc, dot) {
           </div>
           <div class="ins-title-actions">
               ${openBtn}
+              ${deleteBtn}
           </div>
         </div>
 
@@ -1292,6 +1400,17 @@ function renderInsuranceDocumentOnly(doc, dot) {
           "_blank",
           "noopener"
         );
+      });
+    });
+
+    wrap.querySelectorAll("[data-delete-ins-coverage]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (!showAdminInsuranceActions || insuranceDeleteInFlight) return;
+        const coverageId = btn.getAttribute("data-delete-ins-coverage");
+        const title = btn.getAttribute("data-delete-ins-title") || "Coverage";
+        if (!coverageId) return;
+        openInsuranceDeleteConfirmModal({ coverageId, title });
       });
     });
 }
@@ -2048,6 +2167,7 @@ if (data && data.source === "cache_stale") {
       }
 
       const me = await getMe();
+      showAdminInsuranceActions = isCompanyAdminUser(me);
       applyInsuranceLock(me);
       if (me) {
         await loadDefaultScreeningResult(dot);
@@ -2827,6 +2947,7 @@ document.addEventListener("DOMContentLoaded", () => {
   wireAddDocumentModalOnce();
   wireScreeningModalOnce();
   wireOverrideModalOnce();
+  wireInsuranceDeleteModalOnce();
   wireQuickJump();
   wireBackToOverview();
   document.getElementById("btn-refresh-carrier")?.addEventListener("click", () => {

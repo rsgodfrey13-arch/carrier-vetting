@@ -347,6 +347,99 @@ router.get(
 );
 
 /**
+ * DELETE /api/admin/insurance/coverages/:coverageId
+ */
+router.delete(
+  "/admin/insurance/coverages/:coverageId",
+  requireAuth,
+  loadCompanyContext,
+  requireCompanyAdmin,
+  async (req, res) => {
+    const client = await pool.connect();
+    try {
+      const companyId = req.companyContext?.companyId || req.company_id || req.companyId;
+      const coverageId = String(req.params.coverageId || "").trim();
+
+      if (!companyId) {
+        return res.status(400).json({ ok: false, error: "Missing company context." });
+      }
+      if (!coverageId) {
+        return res.status(400).json({ ok: false, error: "coverageId is required." });
+      }
+
+      await client.query("BEGIN");
+
+      const verifiedCoverage = await client.query(
+        `
+        SELECT
+          ic.id,
+          ic.document_id,
+          ic.dot_number
+        FROM public.insurance_coverages ic
+        JOIN public.insurance_documents d
+          ON d.id = ic.document_id
+        WHERE ic.id = $1
+          AND d.company_id = $2
+        LIMIT 1;
+        `,
+        [coverageId, companyId]
+      );
+
+      if (!verifiedCoverage.rowCount) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ ok: false, error: "Coverage not found for this company." });
+      }
+
+      const verifiedRow = verifiedCoverage.rows[0];
+
+      await client.query(
+        `
+        DELETE FROM public.insurance_normalization_exceptions
+        WHERE coverage_id = $1;
+        `,
+        [coverageId]
+      );
+
+      await client.query(
+        `
+        DELETE FROM public.insurance_normalization_queue
+        WHERE coverage_id = $1;
+        `,
+        [coverageId]
+      );
+
+      const deletedCoverage = await client.query(
+        `
+        DELETE FROM public.insurance_coverages
+        WHERE id = $1
+        RETURNING id;
+        `,
+        [coverageId]
+      );
+
+      if (!deletedCoverage.rowCount) {
+        throw new Error("Coverage delete failed.");
+      }
+
+      await client.query("COMMIT");
+      return res.json({
+        ok: true,
+        deleted_coverage_id: coverageId,
+        dot_number: verifiedRow.dot_number,
+        document_id: verifiedRow.document_id,
+      });
+    } catch (err) {
+      try {
+        await client.query("ROLLBACK");
+      } catch {}
+      return res.status(400).json({ ok: false, error: err.message || "Failed to delete coverage." });
+    } finally {
+      client.release();
+    }
+  }
+);
+
+/**
  * POST /api/admin/insurance/document-review-exceptions/:exceptionId/resolve
  */
 router.post(

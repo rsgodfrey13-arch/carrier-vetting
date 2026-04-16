@@ -661,6 +661,25 @@
   </div>
 </div>
 
+<div id="insurance-delete-confirm-modal" class="cs-modal-backdrop" hidden>
+  <div class="cs-modal glass-card screening-remove-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="insurance-delete-confirm-title">
+    <div class="cs-modal-header">
+      <div class="cs-modal-headings">
+        <div id="insurance-delete-confirm-title" class="cs-modal-title">Delete Coverage</div>
+      </div>
+      <button id="insurance-delete-confirm-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
+    </div>
+    <div class="cs-modal-body">
+      <p>Delete this coverage and related normalization records? This cannot be undone.</p>
+      <div id="insurance-delete-confirm-error" class="cs-hint" hidden></div>
+    </div>
+    <div class="cs-modal-footer">
+      <button id="insurance-delete-confirm-cancel" class="cs-btn cs-btn-ghost" type="button">Cancel</button>
+      <button id="insurance-delete-confirm-confirm" class="cs-btn cs-btn-danger" type="button">Delete Coverage</button>
+    </div>
+  </div>
+</div>
+
 <div id="add-document-modal" class="cs-modal-backdrop" hidden>
   <div class="cs-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="add-document-title">
     <div class="cs-modal-header">

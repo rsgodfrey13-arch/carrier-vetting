@@ -2226,6 +2226,32 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   text-align: center;
 }
 
+.ins-delete-coverage{
+  border: 1px solid rgba(248, 113, 113, .45);
+  background: rgba(127, 29, 29, .22);
+  color: #fecaca;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-size: .66rem;
+  padding: 9px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background .12s ease, border-color .12s ease, transform .12s ease;
+}
+
+.ins-delete-coverage:hover{
+  background: rgba(153, 27, 27, .35);
+  border-color: rgba(252, 165, 165, .78);
+  transform: translateY(-1px);
+}
+
+.ins-delete-coverage:disabled{
+  opacity: .65;
+  cursor: not-allowed;
+  transform: none;
+}
+
 #ins-coverages-card { position: relative; }
 
 #insurance-locked.alerts-lock-overlay{
