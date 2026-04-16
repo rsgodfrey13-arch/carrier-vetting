@@ -75,7 +75,7 @@
 }
 
 .table-wrap {
-  overflow-x: auto;
+  overflow-x: hidden;
 }
 
 .review-table {
@@ -107,6 +107,33 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.errors-cell {
+  min-width: 0;
+}
+
+.exception-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.exception-title,
+.exception-detail {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+.exception-title {
+  font-weight: 700;
+}
+
+.exception-detail {
+  opacity: 0.9;
 }
 
 .btn-inline {

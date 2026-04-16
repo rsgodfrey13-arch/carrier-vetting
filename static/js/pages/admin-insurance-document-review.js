@@ -267,9 +267,11 @@
       tr.innerHTML = `
         <td>${carrierProfileLinkHtml(row.dot_number)}</td>
         <td>${escapeHtml(row.carrier_name || "—")}</td>
-        <td>
-          <div><strong>${escapeHtml(row.exception_type || "—")}</strong></div>
-          <div>${escapeHtml(row.exception_reason || "—")}</div>
+        <td class="errors-cell">
+          <div class="exception-copy">
+            <div class="exception-title">${escapeHtml(row.exception_type || "—")}</div>
+            <div class="exception-detail">${escapeHtml(row.exception_reason || "—")}</div>
+          </div>
         </td>
         <td>${escapeHtml(formatDate(row.uploaded_at))}</td>
         <td><button class="btn-inline" type="button" data-open-pdf="${row.document_id}">Open PDF</button></td>
@@ -311,9 +313,9 @@
       tr.innerHTML = `
         <td>${carrierProfileLinkHtml(row.dot_number)}</td>
         <td>${escapeHtml(row.carrier_name || "—")}</td>
-        <td>
-          <div class="source-value">
-            <div class="source-value-main">${escapeHtml(sourceValue)}</div>
+        <td class="errors-cell">
+          <div class="exception-copy">
+            <div class="exception-detail">${escapeHtml(sourceValue)}</div>
           </div>
         </td>
         <td>${hasCurrentAmount ? escapeHtml(currentAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })) : '<span class="muted">—</span>'}</td>
