@@ -7,6 +7,8 @@
     "WORKERS_COMP",
     "ERRORS_OMISSIONS",
     "CONTINGENT_AUTO_LIABILITY",
+    "PHYSICAL_DAMAGE",
+    "TRAILER_INTERCHANGE",
   ];
 
   const state = {
@@ -154,6 +156,8 @@
               <option value="UMBRELLA LIAB" ${draft.coverage_type === "UMBRELLA LIAB" ? "selected" : ""}>UMBRELLA LIAB</option>
               <option value="WORKERS COMP" ${draft.coverage_type === "WORKERS COMP" ? "selected" : ""}>WORKERS COMP</option>
               <option value="ERRORS & OMISSIONS" ${draft.coverage_type === "ERRORS & OMISSIONS" ? "selected" : ""}>ERRORS & OMISSIONS</option>
+              <option value="PHYSICAL DAMAGE" ${draft.coverage_type === "PHYSICAL DAMAGE" ? "selected" : ""}>PHYSICAL DAMAGE</option>
+              <option value="TRAILER INTERCHANGE" ${draft.coverage_type === "TRAILER INTERCHANGE" ? "selected" : ""}>TRAILER INTERCHANGE</option>
             </select>
           </div>
           <div>
