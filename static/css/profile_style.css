@@ -586,6 +586,40 @@ body.carrier-page {
   border: 1px solid rgba(148,163,184,.7); color: var(--text-muted);
 }
 
+.ins-coverages-header-actions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.ins-raise-doc-review-btn{
+  border: 1px solid rgba(251, 191, 36, .45);
+  background: rgba(120, 53, 15, .22);
+  color: #fde68a;
+  font-weight: 800;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  font-size: .64rem;
+  padding: 7px 11px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background .12s ease, border-color .12s ease, transform .12s ease;
+}
+
+.ins-raise-doc-review-btn:hover{
+  background: rgba(146, 64, 14, .35);
+  border-color: rgba(252, 211, 77, .75);
+  transform: translateY(-1px);
+}
+
+.ins-raise-doc-review-btn:disabled{
+  opacity: .65;
+  cursor: not-allowed;
+  transform: none;
+}
+
 /* Definition rows */
 
 .info-card dl { margin: 0; }
@@ -2250,6 +2284,11 @@ dd { margin: 0; font-size: .9rem; color: #e5e7eb; text-align: right; }
   opacity: .65;
   cursor: not-allowed;
   transform: none;
+}
+
+.insurance-document-review-success{
+  margin-top: 10px;
+  color: #86efac;
 }
 
 #ins-coverages-card { position: relative; }

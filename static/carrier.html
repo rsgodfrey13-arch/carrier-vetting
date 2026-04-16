@@ -413,7 +413,17 @@
 <article class="info-card glass-card" id="ins-coverages-card">
   <div class="card-header">
     <h2>Insurance Coverages</h2>
-    <span class="card-tag">COI</span>
+    <div class="ins-coverages-header-actions">
+      <button
+        id="btn-raise-insurance-document-review"
+        class="ins-raise-doc-review-btn"
+        type="button"
+        hidden
+      >
+        Raise Document Exception
+      </button>
+      <span class="card-tag">COI</span>
+    </div>
   </div>
 
     <!-- NEW: Insurance lock overlay -->
@@ -676,6 +686,29 @@
     <div class="cs-modal-footer">
       <button id="insurance-delete-confirm-cancel" class="cs-btn cs-btn-ghost" type="button">Cancel</button>
       <button id="insurance-delete-confirm-confirm" class="cs-btn cs-btn-danger" type="button">Delete Coverage</button>
+    </div>
+  </div>
+</div>
+
+<div id="insurance-document-review-modal" class="cs-modal-backdrop" hidden>
+  <div class="cs-modal glass-card screening-remove-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="insurance-document-review-title">
+    <div class="cs-modal-header">
+      <div class="cs-modal-headings">
+        <div id="insurance-document-review-title" class="cs-modal-title">Raise Document Exception</div>
+      </div>
+      <button id="insurance-document-review-close" class="cs-modal-x" type="button" aria-label="Close">×</button>
+    </div>
+    <div class="cs-modal-body">
+      <p>
+        Escalate this carrier’s insurance document to document review for follow-up.
+        Existing coverage rows will remain unchanged.
+      </p>
+      <div id="insurance-document-review-success" class="cs-hint insurance-document-review-success" hidden></div>
+      <div id="insurance-document-review-error" class="cs-hint" hidden></div>
+    </div>
+    <div class="cs-modal-footer">
+      <button id="insurance-document-review-cancel" class="cs-btn cs-btn-ghost" type="button">Cancel</button>
+      <button id="insurance-document-review-confirm" class="cs-btn cs-btn-primary" type="button">Raise Exception</button>
     </div>
   </div>
 </div>

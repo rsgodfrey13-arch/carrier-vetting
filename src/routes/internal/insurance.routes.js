@@ -681,6 +681,99 @@ router.post(
   }
 );
 
+/**
+ * POST /api/admin/insurance/documents/:dotNumber/raise-document-review
+ */
+router.post(
+  "/admin/insurance/documents/:dotNumber/raise-document-review",
+  requireAuth,
+  loadCompanyContext,
+  requireCompanyAdmin,
+  async (req, res) => {
+    const client = await pool.connect();
+
+    try {
+      const companyId = req.companyContext?.companyId || req.company_id || req.companyId;
+      const dotNumber = normalizeDot(req.params.dotNumber);
+      if (!companyId) throw new Error("Missing company context.");
+
+      await client.query("BEGIN");
+
+      const documentQuery = await client.query(
+        `
+        SELECT
+          d.id AS document_id,
+          d.dot_number,
+          d.uploaded_at
+        FROM public.insurance_documents d
+        WHERE d.company_id = $1
+          AND d.dot_number = $2
+          AND d.document_type = 'COI'
+        ORDER BY
+          CASE WHEN d.status = 'ON_FILE' THEN 0 ELSE 1 END,
+          d.uploaded_at DESC
+        LIMIT 1;
+        `,
+        [companyId, dotNumber]
+      );
+
+      if (!documentQuery.rowCount) {
+        throw new Error("No COI insurance document found for this carrier.");
+      }
+
+      const insuranceDocument = documentQuery.rows[0];
+
+      const ocrJob = await client.query(
+        `
+        SELECT id
+        FROM public.insurance_ocr_jobs
+        WHERE document_id = $1
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1;
+        `,
+        [insuranceDocument.document_id]
+      );
+      const ocrJobId = ocrJob.rows?.[0]?.id ?? null;
+
+      const raiseResult = await client.query(
+        `
+        SELECT *
+        FROM public.raise_insurance_document_review_exception($1, $2, $3, $4, $5, $6);
+        `,
+        [
+          insuranceDocument.document_id,
+          ocrJobId,
+          insuranceDocument.dot_number,
+          "MANUAL_DOCUMENT_REVIEW_REQUIRED",
+          "Raised manually by admin from carrier insurance section.",
+          {
+            source: "carrier_profile_admin_action",
+            requested_dot_number: dotNumber,
+          },
+        ]
+      );
+
+      await client.query("COMMIT");
+      return res.json({
+        ok: true,
+        action: "RAISE_DOCUMENT_REVIEW_EXCEPTION",
+        document: insuranceDocument,
+        result: raiseResult.rows?.[0] ?? null,
+      });
+    } catch (err) {
+      try {
+        await client.query("ROLLBACK");
+      } catch {}
+      return res.status(400).json({
+        ok: false,
+        error: err.message || "Failed to raise document review exception.",
+      });
+    } finally {
+      client.release();
+    }
+  }
+);
+
 
 /**
  * GET /api/admin/insurance/normalization-exceptions

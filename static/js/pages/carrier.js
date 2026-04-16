@@ -101,6 +101,8 @@ function fmtSignedDate(d) {
   let showAdminInsuranceActions = false;
   let selectedInsuranceCoverageDelete = null;
   let insuranceDeleteInFlight = false;
+  let insuranceRaiseReviewInFlight = false;
+  let insuranceRaiseReviewCompleted = false;
 
   
   function setText(id, value) {
@@ -970,6 +972,24 @@ function wireInsuranceDeleteModalOnce() {
   });
 }
 
+function wireInsuranceDocumentReviewModalOnce() {
+  const modal = document.getElementById("insurance-document-review-modal");
+  const openBtn = document.getElementById("btn-raise-insurance-document-review");
+  const closeBtn = document.getElementById("insurance-document-review-close");
+  const cancelBtn = document.getElementById("insurance-document-review-cancel");
+  const confirmBtn = document.getElementById("insurance-document-review-confirm");
+  if (!modal || !openBtn || !closeBtn || !cancelBtn || !confirmBtn) return;
+
+  openBtn.addEventListener("click", openInsuranceDocumentReviewModal);
+  closeBtn.addEventListener("click", closeInsuranceDocumentReviewModal);
+  cancelBtn.addEventListener("click", closeInsuranceDocumentReviewModal);
+  confirmBtn.addEventListener("click", confirmInsuranceDocumentReviewRaise);
+
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeInsuranceDocumentReviewModal();
+  });
+}
+
 function renderScreeningSummary(data) {
   const card = document.getElementById("screening-summary-card");
   const badge = document.getElementById("screening-status-badge");
@@ -1164,6 +1184,107 @@ function updateInsuranceDeleteConfirmUi() {
   }
   if (closeBtn) closeBtn.disabled = insuranceDeleteInFlight;
   if (cancelBtn) cancelBtn.disabled = insuranceDeleteInFlight;
+}
+
+function updateInsuranceDocumentReviewButtonVisibility() {
+  const btn = document.getElementById("btn-raise-insurance-document-review");
+  if (!btn) return;
+  btn.hidden = !showAdminInsuranceActions;
+}
+
+function updateInsuranceDocumentReviewModalUi() {
+  const confirmBtn = document.getElementById("insurance-document-review-confirm");
+  const closeBtn = document.getElementById("insurance-document-review-close");
+  const cancelBtn = document.getElementById("insurance-document-review-cancel");
+  if (!confirmBtn || !closeBtn || !cancelBtn) return;
+
+  confirmBtn.disabled = insuranceRaiseReviewInFlight;
+  closeBtn.disabled = insuranceRaiseReviewInFlight;
+  cancelBtn.disabled = insuranceRaiseReviewInFlight;
+  confirmBtn.textContent = insuranceRaiseReviewCompleted
+    ? "Done"
+    : (insuranceRaiseReviewInFlight ? "Raising…" : "Raise Exception");
+}
+
+function openInsuranceDocumentReviewModal() {
+  const modal = document.getElementById("insurance-document-review-modal");
+  const errorEl = document.getElementById("insurance-document-review-error");
+  const successEl = document.getElementById("insurance-document-review-success");
+  if (!modal) return;
+
+  insuranceRaiseReviewInFlight = false;
+  insuranceRaiseReviewCompleted = false;
+
+  if (errorEl) {
+    errorEl.hidden = true;
+    errorEl.textContent = "";
+  }
+  if (successEl) {
+    successEl.hidden = true;
+    successEl.textContent = "";
+  }
+
+  updateInsuranceDocumentReviewModalUi();
+  modal.hidden = false;
+}
+
+function closeInsuranceDocumentReviewModal() {
+  const modal = document.getElementById("insurance-document-review-modal");
+  if (!modal || insuranceRaiseReviewInFlight) return;
+  modal.hidden = true;
+}
+
+async function confirmInsuranceDocumentReviewRaise() {
+  const errorEl = document.getElementById("insurance-document-review-error");
+  const successEl = document.getElementById("insurance-document-review-success");
+  if (insuranceRaiseReviewInFlight) return;
+
+  if (insuranceRaiseReviewCompleted) {
+    closeInsuranceDocumentReviewModal();
+    return;
+  }
+
+  insuranceRaiseReviewInFlight = true;
+  if (errorEl) {
+    errorEl.hidden = true;
+    errorEl.textContent = "";
+  }
+  if (successEl) {
+    successEl.hidden = true;
+    successEl.textContent = "";
+  }
+  updateInsuranceDocumentReviewModalUi();
+
+  try {
+    const res = await fetch(
+      `/api/admin/insurance/documents/${encodeURIComponent(CURRENT_DOT)}/raise-document-review`,
+      {
+        method: "POST",
+        credentials: "include",
+      }
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data?.ok !== true) {
+      throw new Error(data?.error || "Unable to raise a document review exception.");
+    }
+
+    insuranceRaiseReviewCompleted = true;
+    if (successEl) {
+      successEl.textContent = "Document review exception is now OPEN for this insurance document.";
+      successEl.hidden = false;
+    }
+    await loadInsuranceCoverages(CURRENT_DOT);
+  } catch (err) {
+    if (errorEl) {
+      errorEl.textContent = err?.message || "Request failed.";
+      errorEl.hidden = false;
+    } else {
+      alert(err?.message || "Request failed.");
+    }
+  } finally {
+    insuranceRaiseReviewInFlight = false;
+    updateInsuranceDocumentReviewModalUi();
+  }
 }
 
 function openInsuranceDeleteConfirmModal({ coverageId, title }) {
@@ -2168,6 +2289,7 @@ if (data && data.source === "cache_stale") {
 
       const me = await getMe();
       showAdminInsuranceActions = isCompanyAdminUser(me);
+      updateInsuranceDocumentReviewButtonVisibility();
       applyInsuranceLock(me);
       if (me) {
         await loadDefaultScreeningResult(dot);
@@ -2948,6 +3070,7 @@ document.addEventListener("DOMContentLoaded", () => {
   wireScreeningModalOnce();
   wireOverrideModalOnce();
   wireInsuranceDeleteModalOnce();
+  wireInsuranceDocumentReviewModalOnce();
   wireQuickJump();
   wireBackToOverview();
   document.getElementById("btn-refresh-carrier")?.addEventListener("click", () => {
