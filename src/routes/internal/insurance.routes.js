@@ -416,6 +416,7 @@ router.post(
       if (!coverageDrafts.length) throw new Error("coverages must contain at least one coverage.");
 
       const insertedCoverageIds = [];
+      const normalizationResults = [];
       for (let i = 0; i < coverageDrafts.length; i += 1) {
         try {
           const coverageId = await insertManualCoverageAndLimit({
@@ -426,15 +427,41 @@ router.post(
             coverageInput: coverageDrafts[i],
           });
           insertedCoverageIds.push(coverageId);
+
+          const savepointName = `sp_normalize_${i + 1}`;
+          await client.query(`SAVEPOINT ${savepointName}`);
+          try {
+            const normalizeResult = await client.query(
+              `
+              SELECT *
+              FROM public.insurance_normalization_process($1);
+              `,
+              [coverageId]
+            );
+            normalizationResults.push({
+              coverage_id: coverageId,
+              ok: true,
+              result: normalizeResult.rows ?? [],
+            });
+            await client.query(`RELEASE SAVEPOINT ${savepointName}`);
+          } catch (normalizeErr) {
+            await client.query(`ROLLBACK TO SAVEPOINT ${savepointName}`);
+            normalizationResults.push({
+              coverage_id: coverageId,
+              ok: false,
+              error: normalizeErr?.message || "Normalization failed.",
+            });
+          }
         } catch (err) {
           throw new Error(`Coverage ${i + 1}: ${err.message || "failed to insert coverage."}`);
         }
       }
 
-      // Document-review SAVE_COVERAGES flow is intentionally raw-insert-only:
-      // 1) insert raw coverage, 2) insert raw limit, 3) close document-review exception.
-      // Normalization is NOT auto-run in this transaction.
-      const closeResult = await closeDocumentReviewException(client, exceptionId, "Resolved after manual coverage insert");
+      const closeResult = await closeDocumentReviewException(
+        client,
+        exceptionId,
+        "Resolved after manual coverage insert and normalization attempt"
+      );
 
       await client.query("COMMIT");
       return res.json({
@@ -442,6 +469,7 @@ router.post(
         action: "SAVE_COVERAGES",
         inserted_count: insertedCoverageIds.length,
         coverage_ids: insertedCoverageIds,
+        normalization_results: normalizationResults,
         close_result: closeResult,
       });
     } catch (err) {
@@ -450,6 +478,110 @@ router.post(
       } catch {}
       const surfacedError = toDocumentBasedOcrError(err?.message, resolveDocumentId);
       return res.status(400).json({ ok: false, error: surfacedError || "Resolve failed." });
+    } finally {
+      client.release();
+    }
+  }
+);
+
+/**
+ * POST /api/admin/insurance/normalization-exceptions/:exceptionId/raise-document-review
+ */
+router.post(
+  "/admin/insurance/normalization-exceptions/:exceptionId/raise-document-review",
+  requireAuth,
+  loadCompanyContext,
+  requireCompanyAdmin,
+  async (req, res) => {
+    const client = await pool.connect();
+
+    try {
+      const companyId = req.companyContext?.companyId || req.company_id || req.companyId;
+      const exceptionId = String(req.params.exceptionId || "").trim();
+
+      if (!companyId) throw new Error("Missing company context.");
+      if (!exceptionId) throw new Error("exceptionId is required.");
+
+      await client.query("BEGIN");
+
+      const exceptionDoc = await client.query(
+        `
+        SELECT
+          e.id AS exception_id,
+          e.document_id,
+          e.dot_number,
+          e.exception_type,
+          e.exception_reason,
+          e.source_coverage_type,
+          e.source_coverage_type_raw
+        FROM public.insurance_normalization_exceptions e
+        JOIN public.insurance_documents d
+          ON d.id = e.document_id
+        WHERE e.id = $1
+          AND e.status = 'OPEN'
+          AND d.company_id = $2
+        LIMIT 1;
+        `,
+        [exceptionId, companyId]
+      );
+
+      if (!exceptionDoc.rowCount) {
+        throw new Error("Normalization exception not found for this company.");
+      }
+
+      const row = exceptionDoc.rows[0];
+      const ocrJob = await client.query(
+        `
+        SELECT id
+        FROM public.insurance_ocr_jobs
+        WHERE document_id = $1
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1;
+        `,
+        [row.document_id]
+      );
+
+      const ocrJobId = ocrJob.rows?.[0]?.id ?? null;
+
+      const raisedResult = await client.query(
+        `
+        SELECT *
+        FROM public.raise_insurance_document_review_exception($1, $2, $3, $4, $5, $6);
+        `,
+        [
+          row.document_id,
+          ocrJobId,
+          row.dot_number,
+          "MANUAL_DOCUMENT_REVIEW_REQUIRED",
+          `Raised from normalization exception ${row.exception_id}: ${row.exception_reason || "No reason provided."}`,
+          {
+            normalization_exception_id: row.exception_id,
+            source_coverage_type: row.source_coverage_type || null,
+            source_coverage_type_raw: row.source_coverage_type_raw || null,
+            source_exception_type: row.exception_type || null,
+          },
+        ]
+      );
+
+      const closeResult = await closeNormalizationException(
+        client,
+        exceptionId,
+        "Escalated to document review by admin"
+      );
+
+      await client.query("COMMIT");
+
+      return res.json({
+        ok: true,
+        action: "RAISE_DOCUMENT_REVIEW_EXCEPTION",
+        result: raisedResult.rows?.[0] ?? null,
+        close_result: closeResult,
+      });
+    } catch (err) {
+      try {
+        await client.query("ROLLBACK");
+      } catch {}
+      return res.status(400).json({ ok: false, error: err.message || "Failed to raise exception." });
     } finally {
       client.release();
     }

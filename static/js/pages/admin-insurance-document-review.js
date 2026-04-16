@@ -48,6 +48,12 @@
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#039;");
 
+  const carrierProfileLinkHtml = (dotNumber) => {
+    const normalized = String(dotNumber ?? "").replace(/\D/g, "");
+    if (!normalized) return "—";
+    return `<a href="/${encodeURIComponent(normalized)}" target="_blank" rel="noopener noreferrer">${escapeHtml(normalized)}</a>`;
+  };
+
   function showStatus(message, type = "error") {
     statusBanner.hidden = false;
     statusBanner.classList.toggle("is-error", type === "error");
@@ -259,7 +265,7 @@
     for (const row of state.documentReview.rows) {
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td>${escapeHtml(row.dot_number)}</td>
+        <td>${carrierProfileLinkHtml(row.dot_number)}</td>
         <td>${escapeHtml(row.carrier_name || "—")}</td>
         <td>
           <div><strong>${escapeHtml(row.exception_type || "—")}</strong></div>
@@ -303,7 +309,7 @@
       const hasCurrentAmount = Number.isFinite(currentAmount) && currentAmount > 0;
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td>${escapeHtml(row.dot_number)}</td>
+        <td>${carrierProfileLinkHtml(row.dot_number)}</td>
         <td>${escapeHtml(row.carrier_name || "—")}</td>
         <td>
           <div class="source-value">
@@ -316,6 +322,7 @@
         <td>
           <div class="actions">
             <button class="btn-inline" type="button" data-norm-toggle-resolve="${row.exception_id}">Resolve</button>
+            <button class="btn-inline" type="button" data-norm-raise-document-review="${row.exception_id}">Raise Exception</button>
             <button class="btn-inline is-danger" type="button" data-norm-close="${row.exception_id}">Close</button>
           </div>
         </td>
@@ -462,6 +469,27 @@
           await loadNormalizationQueue(true);
         } catch (error) {
           showStatus(error.message || "Failed to close exception.");
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    });
+
+    document.querySelectorAll("[data-norm-raise-document-review]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const exceptionId = btn.getAttribute("data-norm-raise-document-review");
+        btn.disabled = true;
+        clearStatus();
+        try {
+          await apiPost(
+            `/api/admin/insurance/normalization-exceptions/${encodeURIComponent(exceptionId)}/raise-document-review`,
+            {}
+          );
+          showStatus("Raised document review exception and removed item from normalization queue.", "success");
+          state.normalization.expandedExceptionId = null;
+          await loadNormalizationQueue(true);
+        } catch (error) {
+          showStatus(error.message || "Failed to raise document review exception.");
         } finally {
           btn.disabled = false;
         }
