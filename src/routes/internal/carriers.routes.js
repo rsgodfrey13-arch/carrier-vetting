@@ -310,6 +310,13 @@ router.get("/carriers/:dot", async (req, res) => {
 // --- MANUAL REFRESH (premium button) ---
 router.post("/carriers/:dot/refresh", async (req, res) => {
   const dot = req.params.dot;
+    if (String(dot) === '9999999') {
+    return res.json({
+      success: true,
+      skipped: true,
+      reason: 'demo_carrier'
+    });
+  }
 
   // optional: if locked, return quickly
   const result = await refresh_carrier_in_db(dot, 15000);
