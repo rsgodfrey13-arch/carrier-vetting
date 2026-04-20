@@ -42,6 +42,34 @@ const slides = [
     img: "/static/images/tour/my_carriers.png"
   },
   {
+  title: "Build custom carrier screening profiles",
+  body: `
+Create fully customizable screening profiles so Carrier Shark can automatically determine whether a carrier passes or fails your requirements.
+
+<br><br>
+
+Build different profiles for different customers, freight types, lanes, or risk tolerances.
+
+<br><br>
+
+Each profile can include checks for:
+<br><br>
+
+• Authority status<br>
+• Safety rating<br>
+• Insurance limits<br>
+• Cargo coverage<br>
+• Contract authority<br>
+• Operating status<br>
+• Any custom criteria you choose
+
+<br><br>
+
+Carrier Shark instantly returns a clear pass or fail result and shows exactly why the carrier met or missed your requirements.
+  `,
+  img: "/static/images/tour/screening_criteria.png"
+},
+  {
     title: "Send agreements and collect documents",
     body: `
   Send contracts for secure e-signature and receive W-9s, insurance certificates, ACH forms, and more.
