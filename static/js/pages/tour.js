@@ -44,22 +44,15 @@ const slides = [
 {
   title: "Build custom carrier screening profiles",
   body: `
-Create customizable screening profiles so Carrier Shark can automatically determine whether a carrier passes or fails your requirements.
+Create multiple customizable screening profiles so Carrier Shark can automatically determine whether a carrier passes or fails your requirements.
 
 <br><br>
 
-Build different profiles for different customers, freight types, lanes, or risk tolerances.
+Build different profiles for different customers, freight types, lanes, risk tolerances, or internal workflows.
 
 <br><br>
 
-Profiles can screen for:
-<br><br>
-
-• Authority & operating status<br>
-• Safety rating<br>
-• Insurance & cargo limits<br>
-• Contract authority<br>
-• Any custom criteria you choose
+Each profile can contain its own combination of rules and screening requirements, allowing you to evaluate carriers differently depending on the situation.
 
 <br><br>
 
