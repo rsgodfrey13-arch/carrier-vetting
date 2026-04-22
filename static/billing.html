@@ -42,7 +42,7 @@
           <div class="billing-summary-left">
             <div class="cs-label">Price</div>
             <div class="billing-price">
-              <span id="price-label">$399</span><span class="billing-per">/mo</span>
+              <span id="price-label">$199</span><span class="billing-per">/mo</span>
             </div>
             <div class="cs-fineprint">Cancel anytime.</div>
           </div>
@@ -91,13 +91,13 @@
     const context = (params.get("context") || "").toLowerCase(); // "upgrade"
 
     const pretty = { starter: "Starter", core: "Core", pro: "Pro", enterprise: "Enterprise" };
-    const price  = { starter: "$0", core: "$399", pro: "$999", enterprise: "Custom" };
+    const price  = { starter: "$0", core: "$199", pro: "$399", enterprise: "$1499" };
     const isStarter = plan === "starter";
     const normalizedPlan = pretty[plan] ? plan : "core";
 
     document.getElementById("plan-label").textContent = pretty[normalizedPlan] || "Core";
     document.getElementById("plan-input").value = normalizedPlan;
-    document.getElementById("price-label").textContent = price[normalizedPlan] || "$399";
+    document.getElementById("price-label").textContent = price[normalizedPlan] || "$199";
 
     const perEl = document.querySelector(".billing-per");
     if (perEl) perEl.textContent = normalizedPlan === "starter" ? "" : "/mo";
