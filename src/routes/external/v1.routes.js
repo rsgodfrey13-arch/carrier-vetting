@@ -3,6 +3,7 @@
 const express = require("express");
 const { apiAuth } = require("../../middleware/apiAuth");
 const { pool } = require("../../db/pool");
+const mailgunRoutes = require("./mailgun.routes");
 const createApiV1 = require("./v1.router");
 const healthExternalRoutes = require("./healthExternal.routes");
 
@@ -15,6 +16,7 @@ function externalV1Routes() {
 
   // Webhook FIRST (no apiAuth)
   router.use(docupipeRoutes);
+router.use(mailgunRoutes);
   router.use(healthExternalRoutes);
 
   // Everything else protected
